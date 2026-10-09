@@ -48,6 +48,32 @@ data class SyncProgress(
     val message: String = ""
 )
 
+class TtlCache<K : Any, V : Any>(private val defaultTtlMillis: Long) {
+    private data class CacheEntry<V>(val data: V, val timestamp: Long)
+    private val map = java.util.concurrent.ConcurrentHashMap<K, CacheEntry<V>>()
+
+    fun get(key: K): V? {
+        val entry = map[key] ?: return null
+        if (System.currentTimeMillis() - entry.timestamp > defaultTtlMillis) {
+            map.remove(key)
+            return null
+        }
+        return entry.data
+    }
+
+    fun put(key: K, data: V) {
+        map[key] = CacheEntry(data, System.currentTimeMillis())
+    }
+
+    fun remove(key: K) {
+        map.remove(key)
+    }
+
+    fun clear() {
+        map.clear()
+    }
+}
+
 class MediaRepository(
     private val jellyfinDao: JellyfinDao,
     private val userPreferencesRepository: UserPreferencesRepository? = null,
@@ -58,7 +84,27 @@ class MediaRepository(
         val syncProgress: StateFlow<SyncProgress> = _syncProgress.asStateFlow()
         private val syncMutex = Mutex()
         private val syncScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-        private val providerCache = java.util.concurrent.ConcurrentHashMap<String, List<TmdbItemDto>>()
+
+        val tmdbTopRatedCache = TtlCache<String, List<TmdbItemDto>>(7 * 24 * 3600 * 1000L)
+        val tmdbTrendingDayCache = TtlCache<String, List<TmdbItemDto>>(7 * 24 * 3600 * 1000L)
+        val tmdbTrendingCache = TtlCache<String, List<TmdbItemDto>>(7 * 24 * 3600 * 1000L)
+        val tmdbRecommendationsCache = TtlCache<String, List<TmdbItemDto>>(7 * 24 * 3600 * 1000L)
+        val tmdbGenreCache = TtlCache<String, List<TmdbItemDto>>(7 * 24 * 3600 * 1000L)
+        val tmdbProviderCache = TtlCache<String, List<TmdbItemDto>>(7 * 24 * 3600 * 1000L)
+
+        val serverTopMoviesCache = TtlCache<String, List<JellyfinMediaEntity>>(15 * 60 * 1000L)
+        val serverTopSeriesCache = TtlCache<String, List<JellyfinMediaEntity>>(15 * 60 * 1000L)
+        val serverContinueWatchingCache = TtlCache<String, List<JellyfinMediaEntity>>(3 * 60 * 1000L)
+        val serverLatestCache = TtlCache<String, List<JellyfinMediaEntity>>(10 * 60 * 1000L)
+        val serverRecentlyPlayedCache = TtlCache<String, List<JellyfinMediaEntity>>(10 * 60 * 1000L)
+
+        fun invalidateServerCaches() {
+            serverContinueWatchingCache.clear()
+            serverRecentlyPlayedCache.clear()
+            serverLatestCache.clear()
+            serverTopMoviesCache.clear()
+            serverTopSeriesCache.clear()
+        }
 
         fun updateProgress(progress: SyncProgress) {
             _syncProgress.value = progress
@@ -668,6 +714,9 @@ class MediaRepository(
     }
 
     suspend fun getContinueWatching(serverUrl: String, userId: String, token: String): Result<List<JellyfinMediaEntity>> {
+        val cacheKey = "$serverUrl-$userId"
+        serverContinueWatchingCache.get(cacheKey)?.let { return Result.success(it) }
+
         return runCatching {
             val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
             val authHeader = buildJellyfinAuthHeader(token = token)
@@ -676,7 +725,11 @@ class MediaRepository(
             if (entities.isNotEmpty()) {
                 jellyfinDao.insertOrUpdateAll(entities)
             }
-            entities.deduplicateMediaEntities()
+            val deduplicated = entities.deduplicateMediaEntities()
+            if (deduplicated.isNotEmpty()) {
+                serverContinueWatchingCache.put(cacheKey, deduplicated)
+            }
+            deduplicated
         }
     }
 
@@ -694,6 +747,9 @@ class MediaRepository(
     }
 
     suspend fun getLatest(serverUrl: String, userId: String, token: String): Result<List<JellyfinMediaEntity>> {
+        val cacheKey = "$serverUrl-$userId"
+        serverLatestCache.get(cacheKey)?.let { return Result.success(it) }
+
         return runCatching {
             val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
             val authHeader = buildJellyfinAuthHeader(token = token)
@@ -702,7 +758,11 @@ class MediaRepository(
             if (entities.isNotEmpty()) {
                 jellyfinDao.insertOrUpdateAll(entities)
             }
-            entities.deduplicateMediaEntities()
+            val deduplicated = entities.deduplicateMediaEntities()
+            if (deduplicated.isNotEmpty()) {
+                serverLatestCache.put(cacheKey, deduplicated)
+            }
+            deduplicated
         }
     }
 
@@ -765,7 +825,27 @@ class MediaRepository(
         }
     }
 
+    suspend fun getTraktUserLists(traktToken: String, clientId: String): Result<List<com.example.tujelly.data.remote.trakt.TraktUserListDto>> {
+        return runCatching {
+            val api = NetworkClientFactory.createService("https://api.trakt.tv/", TraktApiService::class.java)
+            val authHeader = "Bearer $traktToken"
+            api.getUserLists(authHeader = authHeader, clientId = clientId)
+        }
+    }
+
+    suspend fun getTraktCustomListItems(traktToken: String, clientId: String, listId: String): Result<List<TraktMediaDto>> {
+        return runCatching {
+            val api = NetworkClientFactory.createService("https://api.trakt.tv/", TraktApiService::class.java)
+            val authHeader = "Bearer $traktToken"
+            val items = api.getCustomListItems(authHeader = authHeader, clientId = clientId, listId = listId)
+            items.mapNotNull { it.movie ?: it.show }
+        }
+    }
+
     suspend fun getRecentlyPlayed(serverUrl: String, userId: String, token: String): Result<List<JellyfinMediaEntity>> {
+        val cacheKey = "$serverUrl-$userId"
+        serverRecentlyPlayedCache.get(cacheKey)?.let { return Result.success(it) }
+
         return runCatching {
             val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
             val authHeader = buildJellyfinAuthHeader(token = token)
@@ -773,35 +853,51 @@ class MediaRepository(
             val entities = response.items.map { it.toEntity() }
             if (entities.isNotEmpty()) {
                 jellyfinDao.insertOrUpdateAll(entities)
+                serverRecentlyPlayedCache.put(cacheKey, entities)
             }
             entities
         }
     }
 
     suspend fun getTmdbTrending(apiKey: String): Result<List<TmdbItemDto>> {
+        tmdbTrendingCache.get(apiKey)?.let { return Result.success(it) }
         return runCatching {
             val api = NetworkClientFactory.createService("https://api.themoviedb.org/3/", TmdbApiService::class.java)
             val response = api.getTrending(apiKey = apiKey)
+            if (response.results.isNotEmpty()) {
+                tmdbTrendingCache.put(apiKey, response.results)
+            }
             response.results
         }
     }
 
     suspend fun getTmdbTrendingDay(apiKey: String): Result<List<TmdbItemDto>> {
+        tmdbTrendingDayCache.get(apiKey)?.let { return Result.success(it) }
         return runCatching {
             val api = NetworkClientFactory.createService("https://api.themoviedb.org/3/", TmdbApiService::class.java)
             val response = api.getTrendingDay(apiKey = apiKey)
+            if (response.results.isNotEmpty()) {
+                tmdbTrendingDayCache.put(apiKey, response.results)
+            }
             response.results
         }
     }
 
     suspend fun getTmdbRecommendations(apiKey: String, tmdbId: Long, isTv: Boolean = false): Result<List<TmdbItemDto>> {
+        val cacheKey = "$tmdbId-$isTv"
+        tmdbRecommendationsCache.get(cacheKey)?.let { return Result.success(it) }
+
         return runCatching {
             val api = NetworkClientFactory.createService("https://api.themoviedb.org/3/", TmdbApiService::class.java)
-            if (isTv) {
+            val results = if (isTv) {
                 api.getTvRecommendations(seriesId = tmdbId, apiKey = apiKey).results
             } else {
                 api.getMovieRecommendations(movieId = tmdbId, apiKey = apiKey).results
             }
+            if (results.isNotEmpty()) {
+                tmdbRecommendationsCache.put(cacheKey, results)
+            }
+            results
         }
     }
 
@@ -858,19 +954,26 @@ class MediaRepository(
     }
 
     suspend fun getTmdbByGenre(apiKey: String, genreId: String, isTv: Boolean = false): Result<List<TmdbItemDto>> {
+        val cacheKey = "$genreId-$isTv"
+        tmdbGenreCache.get(cacheKey)?.let { return Result.success(it) }
+
         return runCatching {
             val api = NetworkClientFactory.createService("https://api.themoviedb.org/3/", TmdbApiService::class.java)
-            if (isTv) {
+            val results = if (isTv) {
                 api.discoverTvByGenre(apiKey = apiKey, genreId = genreId).results
             } else {
                 api.discoverMoviesByGenre(apiKey = apiKey, genreId = genreId).results
             }
+            if (results.isNotEmpty()) {
+                tmdbGenreCache.put(cacheKey, results)
+            }
+            results
         }
     }
 
     suspend fun getTmdbByProvider(apiKey: String, providerId: String, region: String = "ES"): Result<List<TmdbItemDto>> {
         val cacheKey = "$providerId-$region"
-        providerCache[cacheKey]?.let { return Result.success(it) }
+        tmdbProviderCache.get(cacheKey)?.let { return Result.success(it) }
 
         return runCatching {
             val api = NetworkClientFactory.createService("https://api.themoviedb.org/3/", TmdbApiService::class.java)
@@ -880,18 +983,24 @@ class MediaRepository(
                 .getOrNull()?.results ?: emptyList()
             val combined = movies + tv
             if (combined.isNotEmpty()) {
-                providerCache[cacheKey] = combined
+                tmdbProviderCache.put(cacheKey, combined)
             }
             combined
         }
     }
 
     suspend fun getTmdbTopRated(apiKey: String): Result<List<TmdbItemDto>> {
+        tmdbTopRatedCache.get(apiKey)?.let { return Result.success(it) }
+
         return runCatching {
             val api = NetworkClientFactory.createService("https://api.themoviedb.org/3/", TmdbApiService::class.java)
             val movies = runCatching { api.getTopRatedMovies(apiKey = apiKey) }.getOrNull()?.results ?: emptyList()
             val tv = runCatching { api.getTopRatedTv(apiKey = apiKey) }.getOrNull()?.results ?: emptyList()
-            movies + tv
+            val combined = movies + tv
+            if (combined.isNotEmpty()) {
+                tmdbTopRatedCache.put(apiKey, combined)
+            }
+            combined
         }
     }
 
@@ -908,6 +1017,8 @@ class MediaRepository(
      */
     suspend fun getTopRatedMoviesServer(serverUrl: String, userId: String, token: String, limit: Int = 20): List<JellyfinMediaEntity> {
         if (serverUrl.isBlank() || token.isBlank()) return jellyfinDao.getTopMoviesLocal(limit).filterAllowed()
+        val cacheKey = "$serverUrl-$userId-$limit"
+        serverTopMoviesCache.get(cacheKey)?.let { return it }
 
         return runCatching {
             val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
@@ -969,6 +1080,7 @@ class MediaRepository(
 
             if (merged.isNotEmpty()) {
                 jellyfinDao.insertOrUpdateAll(merged)
+                serverTopMoviesCache.put(cacheKey, merged)
                 merged
             } else {
                 jellyfinDao.getTopMoviesLocal(limit).filterAllowed()
@@ -986,6 +1098,8 @@ class MediaRepository(
      */
     suspend fun getTopRatedSeriesServer(serverUrl: String, userId: String, token: String, limit: Int = 20): List<JellyfinMediaEntity> {
         if (serverUrl.isBlank() || token.isBlank()) return jellyfinDao.getTopSeriesLocal(limit).filterAllowed()
+        val cacheKey = "$serverUrl-$userId-$limit"
+        serverTopSeriesCache.get(cacheKey)?.let { return it }
 
         return runCatching {
             val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
@@ -1046,6 +1160,7 @@ class MediaRepository(
 
             if (merged.isNotEmpty()) {
                 jellyfinDao.insertOrUpdateAll(merged)
+                serverTopSeriesCache.put(cacheKey, merged)
                 merged
             } else {
                 jellyfinDao.getTopSeriesLocal(limit).filterAllowed()

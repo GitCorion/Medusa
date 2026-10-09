@@ -27,7 +27,8 @@ val SUPPORTED_PLATFORMS: List<StreamPlatform> = listOf(
     StreamPlatform("skyshowtime", "SKYSHOWTIME", "1773", R.drawable.ic_brand_skyshowtime, R.drawable.ic_brand_skyshowtime_mono, Color(0xFF101A78), Color(0xFF03051A)),
     StreamPlatform("movistar", "MOVISTAR+", "2241|149", R.drawable.ic_brand_movistar, R.drawable.ic_brand_movistar_mono, Color(0xFF019DF4), Color(0xFF020B20)),
     StreamPlatform("filmin", "FILMIN", "63", R.drawable.ic_brand_filmin, R.drawable.ic_brand_filmin_mono, Color(0xFF00FFA1), Color(0xFF00241A)),
-    StreamPlatform("crunchyroll", "CRUNCHYROLL", "283", R.drawable.ic_brand_crunchyroll, R.drawable.ic_brand_crunchyroll_mono, Color(0xFFF78B25), Color(0xFF1C0D00))
+    StreamPlatform("crunchyroll", "CRUNCHYROLL", "283", R.drawable.ic_brand_crunchyroll, R.drawable.ic_brand_crunchyroll_mono, Color(0xFFF78B25), Color(0xFF1C0D00)),
+    StreamPlatform("trakt", "TRAKT.TV", "trakt", R.drawable.ic_brand_trakt, R.drawable.ic_brand_trakt_mono, Color(0xFFED1C24), Color(0xFF2B0406))
 )
 
 fun platformById(id: String): StreamPlatform? = SUPPORTED_PLATFORMS.firstOrNull { it.id.equals(id, ignoreCase = true) }

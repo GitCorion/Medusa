@@ -41,6 +41,21 @@ data class TraktUserDto(
 )
 
 @Serializable
+data class TraktUserListDto(
+    @SerialName("name") val name: String,
+    @SerialName("description") val description: String? = null,
+    @SerialName("item_count") val itemCount: Int? = 0,
+    @SerialName("ids") val ids: TraktIdsDto
+)
+
+@Serializable
+data class TraktListItemDto(
+    @SerialName("type") val type: String? = null,
+    @SerialName("movie") val movie: TraktMediaDto? = null,
+    @SerialName("show") val show: TraktMediaDto? = null
+)
+
+@Serializable
 data class TraktErrorResponse(
     @SerialName("error") val error: String? = null,
     @SerialName("error_description") val errorDescription: String? = null

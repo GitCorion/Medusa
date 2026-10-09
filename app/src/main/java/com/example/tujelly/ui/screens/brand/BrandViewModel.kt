@@ -125,6 +125,7 @@ class BrandViewModel(application: Application) : AndroidViewModel(application) {
                 focusedItem = filtered.firstOrNull()?.items?.firstOrNull(),
                 format = currentFormat
             )
+            return
         } else {
             _uiState.value = BrandUiState.Loading
         }
@@ -148,119 +149,241 @@ class BrandViewModel(application: Application) : AndroidViewModel(application) {
             )
 
             val sections = mutableListOf<HomeSection>()
-            val api = NetworkClientFactory.createService("https://api.themoviedb.org/3/", TmdbApiService::class.java)
 
-            try {
-                supervisorScope {
-                    val trendingDeferred = async {
-                        val (trendingMovies, trendingTv) = coroutineScope {
-                            val m = async {
-                                runCatching {
-                                    api.discoverMoviesByProvider(apiKey = effectiveApiKey, providerId = brand.providerId, watchRegion = effectiveRegion, page = 1)
-                                }.getOrNull()?.results ?: emptyList()
-                            }
-                            val t = async {
-                                runCatching {
-                                    api.discoverTvByProvider(apiKey = effectiveApiKey, providerId = brand.providerId, watchRegion = effectiveRegion, page = 1)
-                                }.getOrNull()?.results ?: emptyList()
-                            }
-                            Pair(m.await(), t.await())
-                        }
-                        val combined = (trendingMovies + trendingTv).take(30)
+            if (brand.id.equals("trakt", ignoreCase = true)) {
+                val traktClientId = prefs.traktClientId.ifBlank { com.example.tujelly.data.local.DEFAULT_TRAKT_CLIENT_ID }
+                val hasToken = prefs.traktAccessToken.isNotBlank()
 
-                        val localMatched = filterToLibraryUseCase.filterTmdbItems(
-                            tmdbItems = combined,
+                // 1. Tendencias Globales de Trakt
+                try {
+                    val trendingResult = mediaRepository.getTraktTrending(clientId = traktClientId)
+                    val rawTrending = trendingResult.getOrDefault(emptyList()).take(30)
+                    val matchedTrending = filterToLibraryUseCase.filterTraktItems(
+                        traktItems = rawTrending,
+                        serverUrl = prefs.jellyfinServerUrl,
+                        userId = prefs.jellyfinUserId,
+                        token = prefs.jellyfinAccessToken,
+                        maxCandidates = 30
+                    )
+                    if (matchedTrending.isNotEmpty()) {
+                        sections.add(
+                            HomeSection(
+                                title = "Tendencias en Trakt.tv",
+                                items = matchedTrending.map {
+                                    it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TRAKT_RECOMMENDATION)
+                                },
+                                badge = "POPULAR"
+                            )
+                        )
+                    }
+                } catch (_: Exception) {}
+
+                if (hasToken) {
+                    // 2. Recomendaciones Personalizadas
+                    try {
+                        val recsResult = mediaRepository.getTraktRecommendations(
+                            traktToken = prefs.traktAccessToken,
+                            clientId = traktClientId
+                        )
+                        val rawRecs = recsResult.getOrDefault(emptyList()).take(30)
+                        val matchedRecs = filterToLibraryUseCase.filterTraktItems(
+                            traktItems = rawRecs,
                             serverUrl = prefs.jellyfinServerUrl,
                             userId = prefs.jellyfinUserId,
                             token = prefs.jellyfinAccessToken,
                             maxCandidates = 30
                         )
-                        if (localMatched.isNotEmpty()) {
-                            localMatched.map {
-                                it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TMDB_TRENDING)
-                            }
-                        } else {
-                            combined.take(20).map { it.toDirectMediaItem() }
+                        if (matchedRecs.isNotEmpty()) {
+                            sections.add(
+                                HomeSection(
+                                    title = "Recomendaciones para ti",
+                                    items = matchedRecs.map {
+                                        it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TRAKT_RECOMMENDATION)
+                                    },
+                                    badge = "PARA TI"
+                                )
+                            )
                         }
-                    }
+                    } catch (_: Exception) {}
 
-                    val seriesDeferred = async {
-                        val trendingTv = runCatching {
-                            api.discoverTvByProvider(apiKey = effectiveApiKey, providerId = brand.providerId, watchRegion = effectiveRegion, page = 2)
-                        }.getOrNull()?.results ?: emptyList()
-
-                        val localMatched = filterToLibraryUseCase.filterTmdbItems(
-                            tmdbItems = trendingTv.take(30),
+                    // 3. Tu Watchlist
+                    try {
+                        val watchlistResult = mediaRepository.getTraktWatchlist(
+                            traktToken = prefs.traktAccessToken,
+                            clientId = traktClientId
+                        )
+                        val rawWatchlist = watchlistResult.getOrDefault(emptyList()).take(30)
+                        val matchedWatchlist = filterToLibraryUseCase.filterTraktItems(
+                            traktItems = rawWatchlist,
                             serverUrl = prefs.jellyfinServerUrl,
                             userId = prefs.jellyfinUserId,
                             token = prefs.jellyfinAccessToken,
                             maxCandidates = 30
                         )
-                        if (localMatched.isNotEmpty()) {
-                            localMatched.map {
-                                it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TMDB_TRENDING)
-                            }
-                        } else {
-                            trendingTv.take(20).map { it.toDirectMediaItem() }
+                        if (matchedWatchlist.isNotEmpty()) {
+                            sections.add(
+                                HomeSection(
+                                    title = "Tu Watchlist",
+                                    items = matchedWatchlist.map {
+                                        it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TRAKT_WATCHLIST)
+                                    },
+                                    badge = null
+                                )
+                            )
                         }
-                    }
+                    } catch (_: Exception) {}
 
-                    val topDeferred = async {
-                        val topMovies = runCatching {
-                            api.discoverMoviesByProvider(apiKey = effectiveApiKey, providerId = brand.providerId, watchRegion = effectiveRegion, sortBy = "vote_average.desc", voteCountGte = 200, page = 1)
-                        }.getOrNull()?.results ?: emptyList()
-
-                        val localMatched = filterToLibraryUseCase.filterTmdbItems(
-                            tmdbItems = topMovies.take(30),
-                            serverUrl = prefs.jellyfinServerUrl,
-                            userId = prefs.jellyfinUserId,
-                            token = prefs.jellyfinAccessToken,
-                            maxCandidates = 30
+                    // 4. Tus Listas Personalizadas de Trakt
+                    try {
+                        val userListsResult = mediaRepository.getTraktUserLists(
+                            traktToken = prefs.traktAccessToken,
+                            clientId = traktClientId
                         )
-                        if (localMatched.isNotEmpty()) {
-                            localMatched.map {
-                                it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TMDB_TRENDING)
+                        val userLists = userListsResult.getOrDefault(emptyList())
+                        for (list in userLists) {
+                            val listId = list.ids.slug ?: list.ids.trakt?.toString() ?: continue
+                            val listItemsResult = mediaRepository.getTraktCustomListItems(
+                                traktToken = prefs.traktAccessToken,
+                                clientId = traktClientId,
+                                listId = listId
+                            )
+                            val rawListItems = listItemsResult.getOrDefault(emptyList()).take(30)
+                            val matchedListItems = filterToLibraryUseCase.filterTraktItems(
+                                traktItems = rawListItems,
+                                serverUrl = prefs.jellyfinServerUrl,
+                                userId = prefs.jellyfinUserId,
+                                token = prefs.jellyfinAccessToken,
+                                maxCandidates = 30
+                            )
+                            if (matchedListItems.isNotEmpty()) {
+                                sections.add(
+                                    HomeSection(
+                                        title = list.name,
+                                        items = matchedListItems.map {
+                                            it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TRAKT_WATCHLIST)
+                                        },
+                                        badge = "LISTA"
+                                    )
+                                )
                             }
-                        } else {
-                            topMovies.take(20).map { it.toDirectMediaItem() }
                         }
-                    }
-
-                    val trendingItems = trendingDeferred.await()
-                    val seriesItems = seriesDeferred.await()
-                    val topItems = topDeferred.await()
-
-                    if (trendingItems.isNotEmpty()) {
-                        sections.add(
-                            HomeSection(
-                                title = "En Tendencia",
-                                items = trendingItems,
-                                badge = null
-                            )
-                        )
-                    }
-
-                    if (seriesItems.isNotEmpty()) {
-                        sections.add(
-                            HomeSection(
-                                title = "Series Destacadas",
-                                items = seriesItems,
-                                badge = null
-                            )
-                        )
-                    }
-
-                    if (topItems.isNotEmpty()) {
-                        sections.add(
-                            HomeSection(
-                                title = "Cine Aclamado",
-                                items = topItems,
-                                badge = null
-                            )
-                        )
-                    }
+                    } catch (_: Exception) {}
                 }
-            } catch (_: Exception) {}
+            } else {
+                val api = NetworkClientFactory.createService("https://api.themoviedb.org/3/", TmdbApiService::class.java)
+
+                try {
+                    supervisorScope {
+                        val trendingDeferred = async {
+                            val (trendingMovies, trendingTv) = coroutineScope {
+                                val m = async {
+                                    runCatching {
+                                        api.discoverMoviesByProvider(apiKey = effectiveApiKey, providerId = brand.providerId, watchRegion = effectiveRegion, page = 1)
+                                    }.getOrNull()?.results ?: emptyList()
+                                }
+                                val t = async {
+                                    runCatching {
+                                        api.discoverTvByProvider(apiKey = effectiveApiKey, providerId = brand.providerId, watchRegion = effectiveRegion, page = 1)
+                                    }.getOrNull()?.results ?: emptyList()
+                                }
+                                Pair(m.await(), t.await())
+                            }
+                            val combined = (trendingMovies + trendingTv).take(30)
+
+                            val localMatched = filterToLibraryUseCase.filterTmdbItems(
+                                tmdbItems = combined,
+                                serverUrl = prefs.jellyfinServerUrl,
+                                userId = prefs.jellyfinUserId,
+                                token = prefs.jellyfinAccessToken,
+                                maxCandidates = 30
+                            )
+                            if (localMatched.isNotEmpty()) {
+                                localMatched.map {
+                                    it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TMDB_TRENDING)
+                                }
+                            } else {
+                                combined.take(20).map { it.toDirectMediaItem() }
+                            }
+                        }
+
+                        val seriesDeferred = async {
+                            val trendingTv = runCatching {
+                                api.discoverTvByProvider(apiKey = effectiveApiKey, providerId = brand.providerId, watchRegion = effectiveRegion, page = 2)
+                            }.getOrNull()?.results ?: emptyList()
+
+                            val localMatched = filterToLibraryUseCase.filterTmdbItems(
+                                tmdbItems = trendingTv.take(30),
+                                serverUrl = prefs.jellyfinServerUrl,
+                                userId = prefs.jellyfinUserId,
+                                token = prefs.jellyfinAccessToken,
+                                maxCandidates = 30
+                            )
+                            if (localMatched.isNotEmpty()) {
+                                localMatched.map {
+                                    it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TMDB_TRENDING)
+                                }
+                            } else {
+                                trendingTv.take(20).map { it.toDirectMediaItem() }
+                            }
+                        }
+
+                        val topDeferred = async {
+                            val topMovies = runCatching {
+                                api.discoverMoviesByProvider(apiKey = effectiveApiKey, providerId = brand.providerId, watchRegion = effectiveRegion, sortBy = "vote_average.desc", voteCountGte = 200, page = 1)
+                            }.getOrNull()?.results ?: emptyList()
+
+                            val localMatched = filterToLibraryUseCase.filterTmdbItems(
+                                tmdbItems = topMovies.take(30),
+                                serverUrl = prefs.jellyfinServerUrl,
+                                userId = prefs.jellyfinUserId,
+                                token = prefs.jellyfinAccessToken,
+                                maxCandidates = 30
+                            )
+                            if (localMatched.isNotEmpty()) {
+                                localMatched.map {
+                                    it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TMDB_TRENDING)
+                                }
+                            } else {
+                                topMovies.take(20).map { it.toDirectMediaItem() }
+                            }
+                        }
+
+                        val trendingItems = trendingDeferred.await()
+                        val seriesItems = seriesDeferred.await()
+                        val topItems = topDeferred.await()
+
+                        if (trendingItems.isNotEmpty()) {
+                            sections.add(
+                                HomeSection(
+                                    title = "En Tendencia",
+                                    items = trendingItems,
+                                    badge = null
+                                )
+                            )
+                        }
+
+                        if (seriesItems.isNotEmpty()) {
+                            sections.add(
+                                HomeSection(
+                                    title = "Series Destacadas",
+                                    items = seriesItems,
+                                    badge = null
+                                )
+                            )
+                        }
+
+                        if (topItems.isNotEmpty()) {
+                            sections.add(
+                                HomeSection(
+                                    title = "Cine Aclamado",
+                                    items = topItems,
+                                    badge = null
+                                )
+                            )
+                        }
+                    }
+                } catch (_: Exception) {}
+            }
 
             allRawSections = sections
             val filtered = filterSections(allRawSections, currentFormat)

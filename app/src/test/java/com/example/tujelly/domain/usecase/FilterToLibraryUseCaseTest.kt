@@ -149,6 +149,17 @@ class FakeJellyfinDao : JellyfinDao {
         return localDb.filter { it.playbackPositionTicks > 0L && !it.isPlayed }.take(limit)
     }
 
+    override suspend fun getIdsMissingOverview(limit: Int): List<String> {
+        return localDb.filter { it.overview.isNullOrBlank() }.map { it.id }.take(limit)
+    }
+
+    override suspend fun updateOverview(id: String, overview: String) {
+        val index = localDb.indexOfFirst { it.id == id }
+        if (index >= 0) {
+            localDb[index] = localDb[index].copy(overview = overview)
+        }
+    }
+
     override suspend fun clearAll() {
         localDb.clear()
     }

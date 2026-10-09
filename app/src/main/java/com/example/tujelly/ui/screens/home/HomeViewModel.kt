@@ -35,6 +35,13 @@ sealed interface HomeUiState {
 
 class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
+    companion object {
+        @Volatile
+        private var lastStaticSections: List<HomeSection>? = null
+        @Volatile
+        private var lastStaticGenres: List<String> = emptyList()
+    }
+
     private val userPreferencesRepository = UserPreferencesRepository(application)
     private val database = AppDatabase.getDatabase(application)
     private val mediaRepository = MediaRepository(database.jellyfinDao(), userPreferencesRepository, database.tmdbVoteCacheDao())
@@ -64,8 +71,8 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Loading)
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
-    private var lastSections: List<HomeSection>? = null
-    private var lastGenres: List<String> = emptyList()
+    private var lastSections: List<HomeSection>? = lastStaticSections
+    private var lastGenres: List<String> = lastStaticGenres
     private var isFeedLoading = false
 
     init {
@@ -99,23 +106,31 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun loadHomeFeed() {
+    fun loadHomeFeed(forceRefresh: Boolean = false) {
         viewModelScope.launch {
             val prefs = userPreferencesRepository.userPreferencesFlow.first()
             if (prefs.jellyfinServerUrl.isBlank() || prefs.jellyfinAccessToken.isBlank()) {
                 _uiState.value = HomeUiState.EmptySettings
             } else {
-                loadFeedForPrefs(prefs)
+                loadFeedForPrefs(prefs, forceRefresh)
             }
         }
     }
 
-    private fun loadFeedForPrefs(prefs: UserPreferences) {
+    fun forceRefreshHomeFeed() {
+        GetHomeFeedUseCase.invalidateFeedCache()
+        MediaRepository.invalidateServerCaches()
+        lastStaticSections = null
+        lastSections = null
+        loadHomeFeed(forceRefresh = true)
+    }
+
+    private fun loadFeedForPrefs(prefs: UserPreferences, forceRefresh: Boolean = false) {
         if (isFeedLoading) return
         isFeedLoading = true
 
-        // Si ya tenemos snapshot previo, lo mostramos de inmediato (sin spinner) y refrescamos en segundo plano.
-        val cached = lastSections
+        // Si ya tenemos snapshot previo, lo mostramos de inmediato (sin spinner)
+        val cached = lastSections ?: lastStaticSections
         if (!cached.isNullOrEmpty()) {
             val filtered = filterSections(cached, _selectedFormat.value)
             val currentFocused = (_uiState.value as? HomeUiState.Success)?.focusedItem
@@ -146,12 +161,15 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             try {
                 var hasEmitted = false
                 lastGenres = mediaRepository.getMostWatchedGenres()
+                lastStaticGenres = lastGenres
 
-                getHomeFeedUseCase(prefs).collect { sections ->
+                getHomeFeedUseCase(prefs, forceRefresh = forceRefresh).collect { sections ->
                     if (sections.isNotEmpty()) {
                         hasEmitted = true
                         lastSections = sections
+                        lastStaticSections = sections
                         lastGenres = mediaRepository.getMostWatchedGenres()
+                        lastStaticGenres = lastGenres
                         val filtered = filterSections(sections, _selectedFormat.value)
                         val currentFocused = (_uiState.value as? HomeUiState.Success)?.focusedItem
                         val firstItem = currentFocused ?: filtered.firstOrNull()?.items?.firstOrNull()

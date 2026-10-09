@@ -40,6 +40,10 @@ sealed interface GenreUiState {
 
 class GenreViewModel(application: Application) : AndroidViewModel(application) {
 
+    companion object {
+        private val genreCache = java.util.concurrent.ConcurrentHashMap<String, Pair<GenreUiState.Success, List<Pair<GenreFormat, HomeSection>>>>()
+    }
+
     private val userPreferencesRepository = UserPreferencesRepository(application)
     private val database = com.example.tujelly.data.local.db.AppDatabase.getDatabase(application)
     private val mediaRepository = com.example.tujelly.data.repository.MediaRepository(
@@ -68,7 +72,22 @@ class GenreViewModel(application: Application) : AndroidViewModel(application) {
     private var currentFormat: GenreFormat = GenreFormat.ALL
     private var currentGenre: String = ""
 
-    fun loadGenreFeed(genreName: String) {
+    fun loadGenreFeed(genreName: String, forceRefresh: Boolean = false) {
+        if (forceRefresh) {
+            genreCache.remove(genreName)
+        }
+        val cached = genreCache[genreName]
+        if (cached != null && cached.first.sections.isNotEmpty()) {
+            currentGenre = genreName
+            currentFormat = GenreFormat.ALL
+            formatSections = cached.second
+            _uiState.value = cached.first.copy(
+                format = GenreFormat.ALL,
+                focusedItem = cached.first.sections.firstOrNull()?.items?.firstOrNull()
+            )
+            return
+        }
+
         viewModelScope.launch {
             _uiState.value = GenreUiState.Loading
             currentGenre = genreName
@@ -296,12 +315,16 @@ class GenreViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         val firstItem = filtered.firstOrNull()?.items?.firstOrNull()
-        _uiState.value = GenreUiState.Success(
+        val successState = GenreUiState.Success(
             genreName = currentGenre,
             sections = filtered,
             format = currentFormat,
             focusedItem = firstItem
         )
+        _uiState.value = successState
+        if (formatSections.isNotEmpty() && currentGenre.isNotBlank()) {
+            genreCache[currentGenre] = Pair(successState, formatSections)
+        }
     }
 
     fun setFocusedItem(item: MediaItem) {

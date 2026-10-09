@@ -50,6 +50,21 @@ interface TraktApiService {
         @Header("trakt-api-version") apiVersion: String = "2"
     ): TraktUserDto
 
+    @GET("users/me/lists")
+    suspend fun getUserLists(
+        @Header("Authorization") authHeader: String,
+        @Header("trakt-api-key") clientId: String,
+        @Header("trakt-api-version") apiVersion: String = "2"
+    ): List<TraktUserListDto>
+
+    @GET("users/me/lists/{list_id}/items")
+    suspend fun getCustomListItems(
+        @Header("Authorization") authHeader: String,
+        @Header("trakt-api-key") clientId: String,
+        @retrofit2.http.Path("list_id") listId: String,
+        @Header("trakt-api-version") apiVersion: String = "2"
+    ): List<TraktListItemDto>
+
     @retrofit2.http.POST("oauth/device/code")
     suspend fun getDeviceCode(
         @retrofit2.http.Header("trakt-api-version") apiVersion: String = "2",

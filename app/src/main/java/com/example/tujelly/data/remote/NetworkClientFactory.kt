@@ -125,7 +125,21 @@ object NetworkClientFactory {
         if (okHttpClient.cache != null) return
         val cacheDir = java.io.File(context.cacheDir, "http_cache")
         val cache = okhttp3.Cache(cacheDir, 50L * 1024 * 1024) // 50 MB
-        okHttpClient = okHttpClient.newBuilder().cache(cache).build()
+        okHttpClient = okHttpClient.newBuilder()
+            .cache(cache)
+            .addNetworkInterceptor { chain ->
+                val request = chain.request()
+                val response = chain.proceed(request)
+                if (request.url.host.contains("themoviedb.org", ignoreCase = true) && response.isSuccessful) {
+                    response.newBuilder()
+                        .header("Cache-Control", "public, max-age=604800") // 7 days disk cache for TMDB
+                        .removeHeader("Pragma")
+                        .build()
+                } else {
+                    response
+                }
+            }
+            .build()
         serviceCache.clear()
     }
 
