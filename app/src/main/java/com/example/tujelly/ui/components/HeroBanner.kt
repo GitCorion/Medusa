@@ -40,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -87,9 +88,10 @@ fun HeroBanner(
     // 1. Carrusel de destacados autorrotatorio cuando no hay foco directo
     val cleanFeatured = remember(featuredItems) { featuredItems.take(5) }
     var carouselIndex by remember { mutableIntStateOf(0) }
+    var isHeroFocused by remember { mutableStateOf(false) }
 
-    LaunchedEffect(item, cleanFeatured) {
-        if (item == null && cleanFeatured.size > 1) {
+    LaunchedEffect(item, cleanFeatured, isHeroFocused) {
+        if (item == null && !isHeroFocused && cleanFeatured.size > 1) {
             while (true) {
                 delay(6000L)
                 carouselIndex = (carouselIndex + 1) % cleanFeatured.size
@@ -97,7 +99,8 @@ fun HeroBanner(
         }
     }
 
-    val effectiveItem = item ?: cleanFeatured.getOrNull(carouselIndex)
+    val effectiveIndex = if (cleanFeatured.isNotEmpty()) carouselIndex % cleanFeatured.size else 0
+    val effectiveItem = item ?: cleanFeatured.getOrNull(effectiveIndex)
 
     // 2. Previsualización diferida del tráiler tras 2.5s
     var showTrailer by remember(effectiveItem?.id) { mutableStateOf(false) }
@@ -114,6 +117,7 @@ fun HeroBanner(
         modifier = modifier
             .fillMaxWidth()
             .height(310.dp)
+            .onFocusChanged { isHeroFocused = it.hasFocus }
     ) {
         // Crossfade cinematográfico de la imagen de fondo
         Crossfade(
@@ -504,7 +508,7 @@ fun HeroBanner(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 cleanFeatured.indices.forEach { idx ->
-                    val isActive = idx == carouselIndex
+                    val isActive = idx == effectiveIndex
                     Box(
                         modifier = Modifier
                             .size(if (isActive) 8.dp else 6.dp)

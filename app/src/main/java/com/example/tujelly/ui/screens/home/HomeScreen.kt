@@ -99,7 +99,20 @@ fun HomeScreen(
     val coroutineScope = rememberCoroutineScope()
     val syncProgress by viewModel.syncProgress.collectAsState()
     val localMediaCount by viewModel.localMediaCount.collectAsState()
-    val focusedBackdrop = (uiState as? HomeUiState.Success)?.focusedItem?.backdropUrl
+    val currentSuccess = uiState as? HomeUiState.Success
+    val defaultHeroBackdrop = remember(currentSuccess?.sections) {
+        val sections = currentSuccess?.sections ?: emptyList()
+        val candidates = sections.filter { it.title != "Continuar Viendo" && it.items.isNotEmpty() }
+        val showcase = candidates.firstOrNull { it.title == "Grandes Producciones de tu colección" }
+            ?: candidates.firstOrNull { it.title == "Top 10 en España hoy" }
+            ?: candidates.firstOrNull { it.title == "Tendencias en España" }
+            ?: candidates.firstOrNull { it.title == "Añadido recientemente" }
+            ?: candidates.firstOrNull { it.title == "Series Destacadas" }
+            ?: candidates.firstOrNull()
+            ?: sections.firstOrNull()
+        showcase?.items?.firstOrNull()?.backdropUrl
+    }
+    val focusedBackdrop = currentSuccess?.focusedItem?.backdropUrl ?: defaultHeroBackdrop
 
     Box(modifier = Modifier.fillMaxSize()) {
         // Global ambient backdrop crossfade
@@ -151,7 +164,12 @@ fun HomeScreen(
             buttonStyleKey = buttonStyleKey,
             isMonochrome = isMonochrome,
             syncProgress = syncProgress,
-            localMediaCount = localMediaCount
+            localMediaCount = localMediaCount,
+            modifier = Modifier.onFocusChanged { focusState ->
+                if (focusState.hasFocus) {
+                    viewModel.setFocusedItem(null)
+                }
+            }
         )
 
 
@@ -326,7 +344,17 @@ fun HomeScreen(
                             }
                         }
 
-                        val featuredItems = state.sections.firstOrNull()?.items?.take(5) ?: emptyList()
+                        val featuredItems = remember(state.sections) {
+                            val candidates = state.sections.filter { it.title != "Continuar Viendo" && it.items.isNotEmpty() }
+                            val showcaseSection = candidates.firstOrNull { it.title == "Grandes Producciones de tu colección" }
+                                ?: candidates.firstOrNull { it.title == "Top 10 en España hoy" }
+                                ?: candidates.firstOrNull { it.title == "Tendencias en España" }
+                                ?: candidates.firstOrNull { it.title == "Añadido recientemente" }
+                                ?: candidates.firstOrNull { it.title == "Series Destacadas" }
+                                ?: candidates.firstOrNull()
+                                ?: state.sections.firstOrNull()
+                            showcaseSection?.items?.take(6) ?: emptyList()
+                        }
 
                         Box(
                             modifier = Modifier
@@ -334,6 +362,7 @@ fun HomeScreen(
                                 .bringIntoViewResponder(heroBringIntoViewResponder)
                                 .onFocusChanged { focusState ->
                                     if (focusState.hasFocus) {
+                                        viewModel.setFocusedItem(null)
                                         coroutineScope.launch {
                                             listState.scrollToItem(0, 0)
                                         }
@@ -357,6 +386,11 @@ fun HomeScreen(
                                 genres = state.genres,
                                 onSelectGenre = { genreName ->
                                     onOpenGenre(genreName)
+                                },
+                                modifier = Modifier.onFocusChanged { focusState ->
+                                    if (focusState.hasFocus) {
+                                        viewModel.setFocusedItem(null)
+                                    }
                                 }
                             )
                         }
@@ -367,7 +401,12 @@ fun HomeScreen(
                             onSelectBrand = { brandId ->
                                 onOpenBrand(brandId)
                             },
-                            visiblePlatforms = selectedPlatforms.takeIf { it.isNotEmpty() }
+                            visiblePlatforms = selectedPlatforms.takeIf { it.isNotEmpty() },
+                            modifier = Modifier.onFocusChanged { focusState ->
+                                if (focusState.hasFocus) {
+                                    viewModel.setFocusedItem(null)
+                                }
+                            }
                         )
                     }
 

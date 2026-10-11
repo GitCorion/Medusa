@@ -134,10 +134,13 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         if (!cached.isNullOrEmpty()) {
             val filtered = filterSections(cached, _selectedFormat.value)
             val currentFocused = (_uiState.value as? HomeUiState.Success)?.focusedItem
+            val validFocused = currentFocused?.takeIf { focused ->
+                filtered.any { section -> section.items.any { it.id == focused.id } }
+            }
             _uiState.value = HomeUiState.Success(
                 sections = filtered,
                 genres = lastGenres,
-                focusedItem = currentFocused ?: filtered.firstOrNull()?.items?.firstOrNull()
+                focusedItem = validFocused
             )
         } else {
             _uiState.value = HomeUiState.Loading
@@ -172,11 +175,13 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                         lastStaticGenres = lastGenres
                         val filtered = filterSections(sections, _selectedFormat.value)
                         val currentFocused = (_uiState.value as? HomeUiState.Success)?.focusedItem
-                        val firstItem = currentFocused ?: filtered.firstOrNull()?.items?.firstOrNull()
+                        val validFocused = currentFocused?.takeIf { focused ->
+                            filtered.any { section -> section.items.any { it.id == focused.id } }
+                        }
                         _uiState.value = HomeUiState.Success(
                             sections = filtered,
                             genres = lastGenres,
-                            focusedItem = firstItem
+                            focusedItem = validFocused
                         )
                     }
                 }
@@ -201,15 +206,13 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         val sections = lastSections ?: return
         val filtered = filterSections(sections, format)
         val currentFocused = (_uiState.value as? HomeUiState.Success)?.focusedItem
-        val firstItem = if (filtered.any { it.items.any { item -> item.id == currentFocused?.id } }) {
-            currentFocused
-        } else {
-            filtered.firstOrNull()?.items?.firstOrNull()
+        val validFocused = currentFocused?.takeIf { focused ->
+            filtered.any { section -> section.items.any { it.id == focused.id } }
         }
         _uiState.value = HomeUiState.Success(
             sections = filtered,
             genres = lastGenres,
-            focusedItem = firstItem
+            focusedItem = validFocused
         )
     }
 
@@ -232,7 +235,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun setFocusedItem(item: MediaItem) {
+    fun setFocusedItem(item: MediaItem?) {
         val currentState = _uiState.value
         if (currentState is HomeUiState.Success) {
             _uiState.value = currentState.copy(focusedItem = item)
