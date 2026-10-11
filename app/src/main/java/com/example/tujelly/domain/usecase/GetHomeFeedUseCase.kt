@@ -521,7 +521,7 @@ class GetHomeFeedUseCase(
                     traktToken = prefs.traktAccessToken,
                     clientId = traktClientId
                 )
-                val userLists = userListsResult.getOrDefault(emptyList()).take(5)
+                val userLists = userListsResult.getOrDefault(emptyList()).filterNot { it.isLibrarySyncList() }.take(5)
                 for (list in userLists) {
                     val listId = list.ids.trakt?.toString() ?: list.ids.slug ?: continue
                     val username = list.user?.username

@@ -843,10 +843,10 @@ class MediaRepository(
             }.getOrDefault(emptyList()).map { it.list }
 
             val combined = (personalLists + likedLists)
-                .filter { it.name.isNotBlank() }
+                .filter { it.name.isNotBlank() && !it.isLibrarySyncList() }
                 .distinctBy { it.ids.trakt?.toString() ?: it.ids.slug ?: it.name }
 
-            android.util.Log.d("TraktRepo", "Found ${personalLists.size} personal lists and ${likedLists.size} liked lists (total: ${combined.size})")
+            android.util.Log.d("TraktRepo", "Found ${personalLists.size} personal lists and ${likedLists.size} liked lists (total after filtering library lists: ${combined.size})")
             combined
         }
     }

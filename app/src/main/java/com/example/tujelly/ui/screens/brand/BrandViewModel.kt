@@ -166,13 +166,17 @@ class BrandViewModel(application: Application) : AndroidViewModel(application) {
                 val hasToken = prefs.traktAccessToken.isNotBlank()
 
                 if (hasToken) {
+                    val serverViews = runCatching {
+                        mediaRepository.getUserViews(prefs.jellyfinServerUrl, prefs.jellyfinUserId, prefs.jellyfinAccessToken).getOrDefault(emptyList())
+                    }.getOrDefault(emptyList()).mapNotNull { it.name }.filter { it.isNotBlank() }.toSet()
+
                     // 1. Tus Listas Personalizadas y Guardadas de Trakt (¡Prioridad máxima!)
                     try {
                         val userListsResult = mediaRepository.getTraktUserLists(
                             traktToken = prefs.traktAccessToken,
                             clientId = traktClientId
                         )
-                        val userLists = userListsResult.getOrDefault(emptyList())
+                        val userLists = userListsResult.getOrDefault(emptyList()).filterNot { it.isLibrarySyncList(serverViews) }
                         for (list in userLists) {
                             val listId = list.ids.trakt?.toString() ?: list.ids.slug ?: continue
                             val username = list.user?.username

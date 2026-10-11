@@ -5,12 +5,15 @@ import com.example.tujelly.data.local.db.JellyfinMediaEntity
 import com.example.tujelly.data.remote.tmdb.TmdbItemDto
 import com.example.tujelly.data.remote.trakt.TraktIdsDto
 import com.example.tujelly.data.remote.trakt.TraktMediaDto
+import com.example.tujelly.data.remote.trakt.TraktUserListDto
 import com.example.tujelly.data.repository.MediaRepository
 import com.example.tujelly.data.repository.deduplicateMediaEntities
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class FakeJellyfinDao : JellyfinDao {
@@ -304,5 +307,41 @@ class FilterToLibraryUseCaseTest {
 
         val dune2 = deduplicated.first { it.tmdbId == "693134" }
         assertEquals("Dune: Parte Dos", dune2.title)
+    }
+
+    @Test
+    fun `isLibrarySyncList identifies default movie and series sync lists from Trakt`() {
+        val moviesList = TraktUserListDto(name = "Películas", ids = TraktIdsDto(slug = "peliculas"))
+        val seriesList = TraktUserListDto(name = "Series", ids = TraktIdsDto(slug = "series"))
+        val englishMoviesList = TraktUserListDto(name = "Movies", ids = TraktIdsDto(slug = "movies"))
+        val englishShowsList = TraktUserListDto(name = "TV Shows", ids = TraktIdsDto(slug = "tv-shows"))
+        val jellyfinPrefixedList = TraktUserListDto(name = "Jellyfin - Películas", ids = TraktIdsDto(slug = "jellyfin-peliculas"))
+        val libraryList = TraktUserListDto(name = "Biblioteca", ids = TraktIdsDto(slug = "biblioteca"))
+
+        assertTrue(moviesList.isLibrarySyncList())
+        assertTrue(seriesList.isLibrarySyncList())
+        assertTrue(englishMoviesList.isLibrarySyncList())
+        assertTrue(englishShowsList.isLibrarySyncList())
+        assertTrue(jellyfinPrefixedList.isLibrarySyncList())
+        assertTrue(libraryList.isLibrarySyncList())
+    }
+
+    @Test
+    fun `isLibrarySyncList preserves custom and thematic user lists`() {
+        val thematicList = TraktUserListDto(name = "Películas de los 80", ids = TraktIdsDto(slug = "peliculas-de-los-80"))
+        val topSciFiList = TraktUserListDto(name = "Top 100 Sci-Fi", ids = TraktIdsDto(slug = "top-100-sci-fi"))
+        val favoritesList = TraktUserListDto(name = "Series Recomendadas", ids = TraktIdsDto(slug = "series-recomendadas"))
+
+        assertFalse(thematicList.isLibrarySyncList())
+        assertFalse(topSciFiList.isLibrarySyncList())
+        assertFalse(favoritesList.isLibrarySyncList())
+    }
+
+    @Test
+    fun `isLibrarySyncList matches custom server library names dynamically`() {
+        val customServerList = TraktUserListDto(name = "Mi Cine 4K", ids = TraktIdsDto(slug = "mi-cine-4k"))
+        val serverLibraries = setOf("Mi Cine 4K", "Series Animadas")
+
+        assertTrue(customServerList.isLibrarySyncList(serverLibraries))
     }
 }
