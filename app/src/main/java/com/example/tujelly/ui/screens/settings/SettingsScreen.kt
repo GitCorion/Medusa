@@ -94,6 +94,7 @@ import com.example.tujelly.data.local.PERFORMANCE_MODE_HIGH
 import com.example.tujelly.data.local.PERFORMANCE_MODE_LOW
 import com.example.tujelly.data.model.SUPPORTED_PLATFORMS
 import com.example.tujelly.data.model.StreamPlatform
+import com.example.tujelly.data.remote.trakt.TraktUserListDto
 import com.example.tujelly.ui.components.TvNavTab
 import com.example.tujelly.ui.components.TvTopBar
 import com.example.tujelly.ui.theme.TvAccent
@@ -545,6 +546,60 @@ private fun TraktCategory(
             value = "Vinculado"
         )
 
+        TvSectionHeader(title = "LISTAS Y COLECCIONES")
+
+        Text(
+            text = "Gestiona qué listas se muestran en el carrusel de Trakt y en la pantalla de inicio. Si Trakt duplicó tus películas o series de la biblioteca, desmárcalas para ocultarlas.",
+            fontSize = 12.sp,
+            color = Color(0xFF94A3B8),
+            lineHeight = 16.sp,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        if (uiState.isLoadingTraktLists) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.padding(vertical = 12.dp)
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(16.dp),
+                    color = focusColor,
+                    strokeWidth = 2.dp
+                )
+                Text(
+                    text = "Cargando listas de Trakt...",
+                    fontSize = 12.sp,
+                    color = Color(0xFF94A3B8)
+                )
+            }
+        } else if (uiState.traktUserLists.isEmpty()) {
+            Text(
+                text = "No se encontraron listas en tu cuenta de Trakt.",
+                fontSize = 12.sp,
+                color = Color(0xFF64748B),
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
+        } else {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp)
+            ) {
+                uiState.traktUserLists.forEach { traktList ->
+                    val isVisible = !traktList.isUserHidden(uiState.hiddenTraktLists)
+                    TvTraktListToggleRow(
+                        list = traktList,
+                        isVisible = isVisible,
+                        onToggle = { viewModel.toggleTraktListVisibility(traktList) },
+                        focusColor = focusColor,
+                        focusContent = focusContent
+                    )
+                }
+            }
+        }
+
         TvSectionHeader(title = "ACCIONES")
 
         Row(
@@ -552,7 +607,10 @@ private fun TraktCategory(
             modifier = Modifier.padding(top = 4.dp)
         ) {
             Button(
-                onClick = { viewModel.validateTraktToken() },
+                onClick = {
+                    viewModel.validateTraktToken()
+                    viewModel.loadTraktUserLists()
+                },
                 colors = ButtonDefaults.colors(
                     containerColor = Color(0x14FFFFFF),
                     contentColor = Color.White,
@@ -560,7 +618,7 @@ private fun TraktCategory(
                     focusedContentColor = focusContent
                 )
             ) {
-                Text("Comprobar conexión", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                Text("Actualizar listas", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
             }
 
             Button(
@@ -1086,6 +1144,108 @@ private fun <T> TvSegmentedSelector(
                         color = if (isSelected) Color.White else Color(0xFFCBD5E1),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun TvTraktListToggleRow(
+    list: TraktUserListDto,
+    isVisible: Boolean,
+    onToggle: () -> Unit,
+    focusColor: Color,
+    focusContent: Color,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        onClick = onToggle,
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 2.dp),
+        shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(10.dp)),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = if (isVisible) Color(0x12FFFFFF) else Color(0x06FFFFFF),
+            focusedContainerColor = Color(0x28FFFFFF)
+        ),
+        border = ClickableSurfaceDefaults.border(
+            border = Border(
+                border = BorderStroke(
+                    0.5.dp,
+                    if (isVisible) Color(0x22FFFFFF) else Color(0x0EFFFFFF)
+                )
+            ),
+            focusedBorder = Border(border = BorderStroke(1.5.dp, Color.White))
+        ),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.01f)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(if (isVisible) Color(0x1AFFFFFF) else Color(0x0DFFFFFF)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = if (isVisible) Icons.Rounded.Visibility else Icons.Rounded.VisibilityOff,
+                    contentDescription = null,
+                    tint = if (isVisible) Color.White else Color(0xFF64748B),
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(14.dp))
+
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = list.name,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = if (isVisible) Color.White else Color(0xFF94A3B8)
+                )
+                val subtitle = buildString {
+                    append("${list.itemCount ?: 0} elementos")
+                    val author = list.user?.username
+                    if (!author.isNullOrBlank()) {
+                        append(" • @$author")
+                    }
+                    if (!isVisible) {
+                        append(" • (Oculta en TuJelly)")
+                    }
+                }
+                Text(
+                    text = subtitle,
+                    fontSize = 11.sp,
+                    color = if (isVisible) Color(0xFF94A3B8) else Color(0xFF64748B)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Box(
+                modifier = Modifier
+                    .size(20.dp)
+                    .clip(RoundedCornerShape(5.dp))
+                    .background(if (isVisible) focusColor else Color(0x18FFFFFF)),
+                contentAlignment = Alignment.Center
+            ) {
+                if (isVisible) {
+                    Icon(
+                        imageVector = Icons.Rounded.Check,
+                        contentDescription = null,
+                        tint = focusContent,
+                        modifier = Modifier.size(13.dp)
                     )
                 }
             }

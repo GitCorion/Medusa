@@ -80,38 +80,17 @@ data class TraktUserListDto(
     @SerialName("user") val user: TraktUserDto? = null
 ) {
     /**
-     * Comprueba si esta lista de Trakt es una réplica automática o sincronizada de la
-     * biblioteca local de Jellyfin (Películas, Series, Biblioteca, Colección, etc.).
-     * Estas listas se excluyen porque TuJelly ya gestiona la biblioteca de forma nativa.
+     * Comprueba si el usuario ha marcado esta lista como oculta en Ajustes.
+     * Comprueba por ID de Trakt, slug o nombre.
      */
-    fun isLibrarySyncList(serverLibraryNames: Set<String> = emptySet()): Boolean {
-        val cleanName = name.trim().lowercase(java.util.Locale.ROOT)
-        val cleanSlug = ids.slug?.trim()?.lowercase(java.util.Locale.ROOT) ?: ""
-
-        if (serverLibraryNames.isNotEmpty()) {
-            val normalizedServerNames = serverLibraryNames.map { it.trim().lowercase(java.util.Locale.ROOT) }.toSet()
-            if (cleanName in normalizedServerNames || cleanSlug in normalizedServerNames) return true
-        }
-
-        val forbiddenExact = setOf(
-            "películas", "peliculas", "movies",
-            "series", "shows", "tv shows", "tv-shows",
-            "biblioteca", "library", "mi biblioteca", "my library",
-            "colección", "coleccion", "collection",
-            "películas y series", "peliculas y series", "movies & shows", "movies and shows",
-            "jellyfin", "jellyfin library", "biblioteca jellyfin"
-        )
-
-        if (cleanName in forbiddenExact || cleanSlug in forbiddenExact) return true
-
-        if (cleanName.startsWith("jellyfin") && (
-            cleanName.contains("película") || cleanName.contains("pelicula") ||
-            cleanName.contains("movie") || cleanName.contains("serie") || cleanName.contains("show")
-        )) {
-            return true
-        }
-
-        return false
+    fun isUserHidden(hiddenKeys: Set<String>): Boolean {
+        if (hiddenKeys.isEmpty()) return false
+        val idStr = ids.trakt?.toString()?.lowercase(java.util.Locale.ROOT)
+        val slugStr = ids.slug?.trim()?.lowercase(java.util.Locale.ROOT)
+        val nameStr = name.trim().lowercase(java.util.Locale.ROOT)
+        return (idStr != null && idStr in hiddenKeys) ||
+               (slugStr != null && slugStr in hiddenKeys) ||
+               nameStr in hiddenKeys
     }
 }
 

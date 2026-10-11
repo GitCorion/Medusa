@@ -152,6 +152,10 @@ class FakeJellyfinDao : JellyfinDao {
         return localDb.filter { it.playbackPositionTicks > 0L && !it.isPlayed }.take(limit)
     }
 
+    override suspend fun getLatestLocal(limit: Int): List<JellyfinMediaEntity> {
+        return localDb.filter { it.type in listOf("Movie", "Series") }.takeLast(limit).reversed()
+    }
+
     override suspend fun getIdsMissingOverview(limit: Int): List<String> {
         return localDb.filter { it.overview.isNullOrBlank() }.map { it.id }.take(limit)
     }
@@ -310,38 +314,36 @@ class FilterToLibraryUseCaseTest {
     }
 
     @Test
-    fun `isLibrarySyncList identifies default movie and series sync lists from Trakt`() {
-        val moviesList = TraktUserListDto(name = "Películas", ids = TraktIdsDto(slug = "peliculas"))
-        val seriesList = TraktUserListDto(name = "Series", ids = TraktIdsDto(slug = "series"))
-        val englishMoviesList = TraktUserListDto(name = "Movies", ids = TraktIdsDto(slug = "movies"))
-        val englishShowsList = TraktUserListDto(name = "TV Shows", ids = TraktIdsDto(slug = "tv-shows"))
-        val jellyfinPrefixedList = TraktUserListDto(name = "Jellyfin - Películas", ids = TraktIdsDto(slug = "jellyfin-peliculas"))
-        val libraryList = TraktUserListDto(name = "Biblioteca", ids = TraktIdsDto(slug = "biblioteca"))
+    fun `isUserHidden returns false by default when no hidden lists are configured`() {
+        val moviesList = TraktUserListDto(name = "Películas", ids = TraktIdsDto(trakt = 101, slug = "peliculas"))
+        val seriesList = TraktUserListDto(name = "Series", ids = TraktIdsDto(trakt = 102, slug = "series"))
+        val customList = TraktUserListDto(name = "Top 100 Sci-Fi", ids = TraktIdsDto(trakt = 103, slug = "top-100-sci-fi"))
 
-        assertTrue(moviesList.isLibrarySyncList())
-        assertTrue(seriesList.isLibrarySyncList())
-        assertTrue(englishMoviesList.isLibrarySyncList())
-        assertTrue(englishShowsList.isLibrarySyncList())
-        assertTrue(jellyfinPrefixedList.isLibrarySyncList())
-        assertTrue(libraryList.isLibrarySyncList())
+        val emptyHiddenKeys = emptySet<String>()
+        assertFalse(moviesList.isUserHidden(emptyHiddenKeys))
+        assertFalse(seriesList.isUserHidden(emptyHiddenKeys))
+        assertFalse(customList.isUserHidden(emptyHiddenKeys))
     }
 
     @Test
-    fun `isLibrarySyncList preserves custom and thematic user lists`() {
-        val thematicList = TraktUserListDto(name = "Películas de los 80", ids = TraktIdsDto(slug = "peliculas-de-los-80"))
-        val topSciFiList = TraktUserListDto(name = "Top 100 Sci-Fi", ids = TraktIdsDto(slug = "top-100-sci-fi"))
-        val favoritesList = TraktUserListDto(name = "Series Recomendadas", ids = TraktIdsDto(slug = "series-recomendadas"))
+    fun `isUserHidden matches list by id, slug or name`() {
+        val moviesList = TraktUserListDto(name = "Películas", ids = TraktIdsDto(trakt = 101, slug = "peliculas"))
+        val seriesList = TraktUserListDto(name = "Series", ids = TraktIdsDto(trakt = 102, slug = "series"))
+        val customList = TraktUserListDto(name = "Top 100 Sci-Fi", ids = TraktIdsDto(trakt = 103, slug = "top-100-sci-fi"))
 
-        assertFalse(thematicList.isLibrarySyncList())
-        assertFalse(topSciFiList.isLibrarySyncList())
-        assertFalse(favoritesList.isLibrarySyncList())
-    }
+        // Ocultar por nombre exacto normalizado
+        val hiddenByName = setOf("películas")
+        assertTrue(moviesList.isUserHidden(hiddenByName))
+        assertFalse(seriesList.isUserHidden(hiddenByName))
 
-    @Test
-    fun `isLibrarySyncList matches custom server library names dynamically`() {
-        val customServerList = TraktUserListDto(name = "Mi Cine 4K", ids = TraktIdsDto(slug = "mi-cine-4k"))
-        val serverLibraries = setOf("Mi Cine 4K", "Series Animadas")
+        // Ocultar por slug
+        val hiddenBySlug = setOf("series")
+        assertTrue(seriesList.isUserHidden(hiddenBySlug))
+        assertFalse(moviesList.isUserHidden(hiddenBySlug))
 
-        assertTrue(customServerList.isLibrarySyncList(serverLibraries))
+        // Ocultar por ID numérico de Trakt
+        val hiddenById = setOf("103")
+        assertTrue(customList.isUserHidden(hiddenById))
+        assertFalse(moviesList.isUserHidden(hiddenById))
     }
 }

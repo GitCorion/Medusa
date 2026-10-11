@@ -843,10 +843,10 @@ class MediaRepository(
             }.getOrDefault(emptyList()).map { it.list }
 
             val combined = (personalLists + likedLists)
-                .filter { it.name.isNotBlank() && !it.isLibrarySyncList() }
+                .filter { it.name.isNotBlank() }
                 .distinctBy { it.ids.trakt?.toString() ?: it.ids.slug ?: it.name }
 
-            android.util.Log.d("TraktRepo", "Found ${personalLists.size} personal lists and ${likedLists.size} liked lists (total after filtering library lists: ${combined.size})")
+            android.util.Log.d("TraktRepo", "Found ${personalLists.size} personal lists and ${likedLists.size} liked lists (total: ${combined.size})")
             combined
         }
     }
@@ -1218,6 +1218,11 @@ class MediaRepository(
     suspend fun getLocalSeries(): List<JellyfinMediaEntity> = jellyfinDao.getSeries().deduplicateMediaEntities().filterAllowed()
     suspend fun getAllCatalog(): List<JellyfinMediaEntity> = jellyfinDao.getAllCatalog().deduplicateMediaEntities().filterAllowed()
     suspend fun getContinueWatchingLocal(limit: Int = 20): List<JellyfinMediaEntity> = jellyfinDao.getContinueWatchingLocal(limit).deduplicateMediaEntities().filterAllowed()
+    suspend fun getLatestLocal(serverUrl: String = "", userId: String = "", limit: Int = 20): List<JellyfinMediaEntity> {
+        val cacheKey = "$serverUrl-$userId"
+        serverLatestCache.get(cacheKey)?.let { return it.take(limit) }
+        return jellyfinDao.getLatestLocal(limit).deduplicateMediaEntities().filterAllowed()
+    }
     suspend fun getTopMoviesLocal(limit: Int = 20): List<JellyfinMediaEntity> = jellyfinDao.getTopMoviesLocal(limit).deduplicateMediaEntities().filterAllowed()
     suspend fun getTopSeriesLocal(limit: Int = 20): List<JellyfinMediaEntity> = jellyfinDao.getTopSeriesLocal(limit).deduplicateMediaEntities().filterAllowed()
     suspend fun getTopRatedLocal(limit: Int = 20): List<JellyfinMediaEntity> = jellyfinDao.getTopRatedLocal(limit).deduplicateMediaEntities().filterAllowed()

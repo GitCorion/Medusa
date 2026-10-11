@@ -106,6 +106,9 @@ data class SettingsUiState(
     val updateInfo: com.example.tujelly.data.remote.github.UpdateInfo? = null,
     val downloadProgress: Float? = null,
     val selectedPlatforms: Set<String> = emptySet(),
+    val hiddenTraktLists: Set<String> = emptySet(),
+    val traktUserLists: List<com.example.tujelly.data.remote.trakt.TraktUserListDto> = emptyList(),
+    val isLoadingTraktLists: Boolean = false,
     // Sincronización y Catálogo
     val syncedMoviesCount: Int = 0,
     val syncedSeriesCount: Int = 0,
@@ -197,11 +200,13 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 platformLogoStyle = prefs.platformLogoStyle,
                 performanceMode = prefs.performanceMode,
                 selectedPlatforms = prefs.selectedPlatforms,
+                hiddenTraktLists = prefs.hiddenTraktLists,
                 isJellyfinConnected = isJfConnected,
                 isTraktConnected = prefs.traktAccessToken.isNotBlank()
             )
             if (prefs.traktAccessToken.isNotBlank()) {
                 validateTraktToken(prefs.traktAccessToken, prefs.traktClientId)
+                loadTraktUserLists(prefs.traktAccessToken, prefs.traktClientId)
             }
         }
     }
@@ -254,6 +259,35 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    fun loadTraktUserLists(
+        token: String = _uiState.value.traktToken,
+        clientId: String = _uiState.value.traktClientId
+    ) {
+        if (token.isBlank()) return
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoadingTraktLists = true)
+            val database = com.example.tujelly.data.local.db.AppDatabase.getDatabase(getApplication())
+            val repository = com.example.tujelly.data.repository.MediaRepository(database.jellyfinDao())
+            val effectiveClientId = clientId.ifBlank { DEFAULT_TRAKT_CLIENT_ID }
+            val listsResult = repository.getTraktUserLists(token, effectiveClientId)
+            val lists = listsResult.getOrDefault(emptyList())
+            _uiState.value = _uiState.value.copy(
+                traktUserLists = lists,
+                isLoadingTraktLists = false
+            )
+        }
+    }
+
+    fun toggleTraktListVisibility(list: com.example.tujelly.data.remote.trakt.TraktUserListDto) {
+        val key = list.ids.trakt?.toString() ?: list.ids.slug ?: list.name
+        viewModelScope.launch {
+            userPreferencesRepository.toggleHiddenTraktList(key)
+            val updatedPrefs = userPreferencesRepository.userPreferencesFlow.first()
+            _uiState.value = _uiState.value.copy(hiddenTraktLists = updatedPrefs.hiddenTraktLists)
+            com.example.tujelly.ui.screens.brand.BrandViewModel.clearCache("trakt")
+        }
+    }
+
     fun setAppTheme(theme: String) {
         viewModelScope.launch {
             userPreferencesRepository.setAppTheme(theme)
@@ -286,6 +320,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                     traktUsername = handle,
                     statusMessage = "Cuenta Trakt verificada: @$handle"
                 )
+                loadTraktUserLists(token, effectiveClientId)
             }.onFailure { e ->
                 _uiState.value = _uiState.value.copy(
                     isTraktConnected = true,
@@ -447,6 +482,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 traktUserCode = null,
                 traktQrUrl = null,
                 isWaitingTraktAuth = false,
+                traktUserLists = emptyList(),
                 statusMessage = "Cuenta de Trakt desvinculada."
             )
         }
@@ -508,6 +544,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                                 statusMessage = "Trakt vinculado exitosamente."
                             )
                             validateTraktToken(tokenResponse.accessToken, clientId)
+                            loadTraktUserLists(tokenResponse.accessToken, clientId)
                             break
                         }
                     } catch (e: Throwable) {

@@ -56,6 +56,7 @@ data class UserPreferences(
     val performanceMode: String = PERFORMANCE_MODE_AUTO,
     val jellyfinLastSync: String = "",
     val selectedPlatforms: Set<String> = emptySet(),
+    val hiddenTraktLists: Set<String> = emptySet(),
     val hasCompletedOnboarding: Boolean = false
 ) {
     val isMonochrome: Boolean
@@ -93,6 +94,7 @@ class UserPreferencesRepository(val context: Context) {
         val JELLYFIN_SYNC_CHECKPOINT_OFFSET = intPreferencesKey("jellyfin_sync_checkpoint_offset")
         val JELLYFIN_SYNC_CHECKPOINT_TOTAL = intPreferencesKey("jellyfin_sync_checkpoint_total")
         val SELECTED_PLATFORMS = stringPreferencesKey("selected_platforms")
+        val HIDDEN_TRAKT_LISTS = stringPreferencesKey("hidden_trakt_lists")
         val HAS_COMPLETED_ONBOARDING = stringPreferencesKey("has_completed_onboarding")
     }
 
@@ -124,6 +126,11 @@ class UserPreferencesRepository(val context: Context) {
             selectedPlatforms = (prefs[Keys.SELECTED_PLATFORMS] ?: "")
                 .split(",")
                 .map { it.trim() }
+                .filter { it.isNotBlank() }
+                .toSet(),
+            hiddenTraktLists = (prefs[Keys.HIDDEN_TRAKT_LISTS] ?: "")
+                .split(",")
+                .map { it.trim().lowercase(java.util.Locale.ROOT) }
                 .filter { it.isNotBlank() }
                 .toSet(),
             hasCompletedOnboarding = prefs[Keys.HAS_COMPLETED_ONBOARDING] == true.toString()
@@ -240,6 +247,24 @@ class UserPreferencesRepository(val context: Context) {
     suspend fun updateSelectedPlatforms(platforms: Set<String>) {
         context.dataStore.edit { prefs ->
             prefs[Keys.SELECTED_PLATFORMS] = platforms.sorted().joinToString(",")
+        }
+    }
+
+    suspend fun toggleHiddenTraktList(key: String) {
+        val cleanKey = key.trim().lowercase(java.util.Locale.ROOT)
+        if (cleanKey.isBlank()) return
+        context.dataStore.edit { prefs ->
+            val current = (prefs[Keys.HIDDEN_TRAKT_LISTS] ?: "")
+                .split(",")
+                .map { it.trim().lowercase(java.util.Locale.ROOT) }
+                .filter { it.isNotBlank() }
+                .toMutableSet()
+            if (current.contains(cleanKey)) {
+                current.remove(cleanKey)
+            } else {
+                current.add(cleanKey)
+            }
+            prefs[Keys.HIDDEN_TRAKT_LISTS] = current.joinToString(",")
         }
     }
 
