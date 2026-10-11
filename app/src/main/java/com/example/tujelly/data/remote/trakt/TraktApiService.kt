@@ -57,7 +57,14 @@ interface TraktApiService {
         @Header("trakt-api-version") apiVersion: String = "2"
     ): List<TraktUserListDto>
 
-    @GET("users/me/lists/{list_id}/items")
+    @GET("users/me/likes/lists")
+    suspend fun getLikedLists(
+        @Header("Authorization") authHeader: String,
+        @Header("trakt-api-key") clientId: String,
+        @Header("trakt-api-version") apiVersion: String = "2"
+    ): List<TraktLikedListDto>
+
+    @GET("lists/{list_id}/items")
     suspend fun getCustomListItems(
         @Header("Authorization") authHeader: String,
         @Header("trakt-api-key") clientId: String,

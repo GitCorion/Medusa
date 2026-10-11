@@ -42,10 +42,16 @@ data class TraktUserDto(
 
 @Serializable
 data class TraktUserListDto(
-    @SerialName("name") val name: String,
+    @SerialName("name") val name: String = "",
     @SerialName("description") val description: String? = null,
     @SerialName("item_count") val itemCount: Int? = 0,
-    @SerialName("ids") val ids: TraktIdsDto
+    @SerialName("ids") val ids: TraktIdsDto = TraktIdsDto()
+)
+
+@Serializable
+data class TraktLikedListDto(
+    @SerialName("liked_at") val likedAt: String? = null,
+    @SerialName("list") val list: TraktUserListDto
 )
 
 @Serializable

@@ -241,13 +241,13 @@ class BrandViewModel(application: Application) : AndroidViewModel(application) {
                         )
                         val userLists = userListsResult.getOrDefault(emptyList())
                         for (list in userLists) {
-                            val listId = list.ids.slug ?: list.ids.trakt?.toString() ?: continue
+                            val listId = list.ids.trakt?.toString() ?: list.ids.slug ?: continue
                             val listItemsResult = mediaRepository.getTraktCustomListItems(
                                 traktToken = prefs.traktAccessToken,
                                 clientId = traktClientId,
                                 listId = listId
                             )
-                            val rawListItems = listItemsResult.getOrDefault(emptyList()).take(30)
+                            val rawListItems = listItemsResult.getOrDefault(emptyList())
                             val matchedListItems = filterToLibraryUseCase.filterTraktItems(
                                 traktItems = rawListItems,
                                 serverUrl = prefs.jellyfinServerUrl,

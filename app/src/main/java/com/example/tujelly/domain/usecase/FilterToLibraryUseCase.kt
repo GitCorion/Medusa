@@ -21,21 +21,26 @@ class FilterToLibraryUseCase(
         maxCandidates: Int = 20
     ): List<JellyfinMediaEntity> {
         val seenIds = mutableSetOf<String>()
-        val candidates = traktItems.take(maxCandidates)
+        val results = mutableListOf<JellyfinMediaEntity>()
 
-        return candidates.mapNotNull { item ->
+        for (item in traktItems) {
+            if (results.size >= maxCandidates) break
             val tmdbId = item.ids.tmdb?.toString()
             val imdbId = item.ids.imdb
             val title = item.title
             val year = item.year
 
-            mediaRepository.findLocal(
+            val entity = mediaRepository.findLocal(
                 tmdbId = tmdbId,
                 imdbId = imdbId,
                 title = title,
                 year = year
             )
-        }.filter { seenIds.add(it.id) }
+            if (entity != null && seenIds.add(entity.id)) {
+                results.add(entity)
+            }
+        }
+        return results
     }
 
     /**

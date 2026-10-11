@@ -829,7 +829,18 @@ class MediaRepository(
         return runCatching {
             val api = NetworkClientFactory.createService("https://api.trakt.tv/", TraktApiService::class.java)
             val authHeader = "Bearer $traktToken"
-            api.getUserLists(authHeader = authHeader, clientId = clientId)
+
+            val personalLists = runCatching {
+                api.getUserLists(authHeader = authHeader, clientId = clientId)
+            }.getOrDefault(emptyList())
+
+            val likedLists = runCatching {
+                api.getLikedLists(authHeader = authHeader, clientId = clientId)
+            }.getOrDefault(emptyList()).map { it.list }
+
+            (personalLists + likedLists)
+                .filter { it.name.isNotBlank() }
+                .distinctBy { it.ids.trakt ?: it.ids.slug ?: it.name }
         }
     }
 
