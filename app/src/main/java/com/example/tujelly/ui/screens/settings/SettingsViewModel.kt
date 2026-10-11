@@ -371,6 +371,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                         clientId = _uiState.value.traktClientId,
                         clientSecret = _uiState.value.traktClientSecret
                     )
+                    com.example.tujelly.ui.screens.brand.BrandViewModel.clearCache("trakt")
                     if (isConnected) {
                         validateTraktToken(value, _uiState.value.traktClientId)
                     }
@@ -438,6 +439,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         traktPollJob?.cancel()
         viewModelScope.launch {
             userPreferencesRepository.updateTraktConfig("", _uiState.value.traktClientId, _uiState.value.traktClientSecret)
+            com.example.tujelly.ui.screens.brand.BrandViewModel.clearCache("trakt")
             _uiState.value = _uiState.value.copy(
                 isTraktConnected = false,
                 traktToken = "",
@@ -498,6 +500,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                                 clientId = clientId,
                                 clientSecret = clientSecret
                             )
+                            com.example.tujelly.ui.screens.brand.BrandViewModel.clearCache("trakt")
                             _uiState.value = _uiState.value.copy(
                                 isWaitingTraktAuth = false,
                                 isTraktConnected = true,

@@ -12,11 +12,42 @@ data class TraktIdsDto(
 )
 
 @Serializable
+data class TraktImagesSizesDto(
+    @SerialName("poster") val poster: List<String>? = null,
+    @SerialName("fanart") val fanart: List<String>? = null,
+    @SerialName("thumb") val thumb: List<String>? = null
+)
+
+@Serializable
 data class TraktMediaDto(
     @SerialName("title") val title: String,
     @SerialName("year") val year: Int? = null,
-    @SerialName("ids") val ids: TraktIdsDto
+    @SerialName("ids") val ids: TraktIdsDto,
+    @SerialName("overview") val overview: String? = null,
+    @SerialName("rating") val rating: Float? = null,
+    @SerialName("images") val images: TraktImagesSizesDto? = null
 )
+
+fun TraktMediaDto.toDirectMediaItem(
+    source: com.example.tujelly.domain.model.MediaSource = com.example.tujelly.domain.model.MediaSource.TRAKT_WATCHLIST
+): com.example.tujelly.domain.model.MediaItem {
+    val rawPoster = images?.poster?.firstOrNull() ?: images?.thumb?.firstOrNull()
+    val poster = rawPoster?.let { if (it.startsWith("http")) it else "https://$it" }
+    val rawBackdrop = images?.fanart?.firstOrNull()
+    val backdrop = rawBackdrop?.let { if (it.startsWith("http")) it else "https://$it" }
+
+    return com.example.tujelly.domain.model.MediaItem(
+        id = "trakt-${ids.trakt ?: ids.tmdb ?: ids.slug ?: title.hashCode()}",
+        title = title,
+        overview = overview,
+        type = "Movie",
+        posterUrl = poster,
+        backdropUrl = backdrop,
+        rating = rating,
+        year = year,
+        source = source
+    )
+}
 
 @Serializable
 data class TraktWatchlistItemDto(
@@ -45,7 +76,8 @@ data class TraktUserListDto(
     @SerialName("name") val name: String = "",
     @SerialName("description") val description: String? = null,
     @SerialName("item_count") val itemCount: Int? = 0,
-    @SerialName("ids") val ids: TraktIdsDto = TraktIdsDto()
+    @SerialName("ids") val ids: TraktIdsDto = TraktIdsDto(),
+    @SerialName("user") val user: TraktUserDto? = null
 )
 
 @Serializable

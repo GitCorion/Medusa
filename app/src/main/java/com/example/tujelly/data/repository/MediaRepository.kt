@@ -832,23 +832,56 @@ class MediaRepository(
 
             val personalLists = runCatching {
                 api.getUserLists(authHeader = authHeader, clientId = clientId)
+            }.onFailure {
+                android.util.Log.w("TraktRepo", "Error fetching user personal lists: ${it.localizedMessage}")
             }.getOrDefault(emptyList())
 
             val likedLists = runCatching {
                 api.getLikedLists(authHeader = authHeader, clientId = clientId)
+            }.onFailure {
+                android.util.Log.w("TraktRepo", "Error fetching user liked lists: ${it.localizedMessage}")
             }.getOrDefault(emptyList()).map { it.list }
 
-            (personalLists + likedLists)
+            val combined = (personalLists + likedLists)
                 .filter { it.name.isNotBlank() }
-                .distinctBy { it.ids.trakt ?: it.ids.slug ?: it.name }
+                .distinctBy { it.ids.trakt?.toString() ?: it.ids.slug ?: it.name }
+
+            android.util.Log.d("TraktRepo", "Found ${personalLists.size} personal lists and ${likedLists.size} liked lists (total: ${combined.size})")
+            combined
         }
     }
 
-    suspend fun getTraktCustomListItems(traktToken: String, clientId: String, listId: String): Result<List<TraktMediaDto>> {
+    suspend fun getTraktCustomListItems(
+        traktToken: String,
+        clientId: String,
+        listId: String,
+        username: String? = null
+    ): Result<List<TraktMediaDto>> {
         return runCatching {
             val api = NetworkClientFactory.createService("https://api.trakt.tv/", TraktApiService::class.java)
             val authHeader = "Bearer $traktToken"
-            val items = api.getCustomListItems(authHeader = authHeader, clientId = clientId, listId = listId)
+
+            val targetUser = username?.takeIf { it.isNotBlank() } ?: "me"
+
+            // 1. Intentar endpoint de usuario (/users/{user}/lists/{list_id}/items) que soporta tanto slugs como IDs
+            val userItems = runCatching {
+                api.getUserListItems(authHeader = authHeader, clientId = clientId, user = targetUser, listId = listId)
+            }.onFailure {
+                android.util.Log.w("TraktRepo", "Error fetching user list items ($targetUser / $listId): ${it.localizedMessage}")
+            }.getOrNull()
+
+            val items = if (!userItems.isNullOrEmpty()) {
+                userItems
+            } else {
+                // 2. Fallback a endpoint global de listas (/lists/{list_id}/items)
+                runCatching {
+                    api.getCustomListItems(authHeader = authHeader, clientId = clientId, listId = listId)
+                }.onFailure {
+                    android.util.Log.w("TraktRepo", "Fallback error fetching list items ($listId): ${it.localizedMessage}")
+                }.getOrDefault(emptyList())
+            }
+
+            android.util.Log.d("TraktRepo", "List $listId (user: $targetUser) returned ${items.size} raw items")
             items.mapNotNull { it.movie ?: it.show }
         }
     }

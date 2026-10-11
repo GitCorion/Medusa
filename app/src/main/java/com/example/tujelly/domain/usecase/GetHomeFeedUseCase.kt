@@ -6,6 +6,7 @@ import com.example.tujelly.data.repository.MediaRepository
 import com.example.tujelly.domain.model.HomeSection
 import com.example.tujelly.domain.model.MediaItem
 import com.example.tujelly.domain.model.MediaSource
+import com.example.tujelly.data.remote.trakt.toDirectMediaItem
 import com.example.tujelly.util.toOptimizedMediaItem
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -523,31 +524,41 @@ class GetHomeFeedUseCase(
                 val userLists = userListsResult.getOrDefault(emptyList()).take(5)
                 for (list in userLists) {
                     val listId = list.ids.trakt?.toString() ?: list.ids.slug ?: continue
+                    val username = list.user?.username
                     val listItemsResult = mediaRepository.getTraktCustomListItems(
                         traktToken = prefs.traktAccessToken,
                         clientId = traktClientId,
-                        listId = listId
+                        listId = listId,
+                        username = username
                     )
-                    val rawListItems = listItemsResult.getOrDefault(emptyList())
-                    val matchedListItems = filterToLibraryUseCase.filterTraktItems(
-                        traktItems = rawListItems,
-                        serverUrl = prefs.jellyfinServerUrl,
-                        userId = prefs.jellyfinUserId,
-                        token = prefs.jellyfinAccessToken,
-                        maxCandidates = 30
-                    )
-                    if (matchedListItems.isNotEmpty()) {
-                        shownMediaIds.addAll(matchedListItems.map { it.id })
-                        sections.add(
-                            HomeSection(
-                                title = "Trakt: ${list.name}",
-                                items = matchedListItems.map {
-                                    it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TRAKT_WATCHLIST)
-                                },
-                                badge = "TRAKT LISTA"
-                            )
+                    val rawListItems = listItemsResult.getOrDefault(emptyList()).take(30)
+                    if (rawListItems.isNotEmpty()) {
+                        val matchedListItems = filterToLibraryUseCase.filterTraktItems(
+                            traktItems = rawListItems,
+                            serverUrl = prefs.jellyfinServerUrl,
+                            userId = prefs.jellyfinUserId,
+                            token = prefs.jellyfinAccessToken,
+                            maxCandidates = 30
                         )
-                        emitFeed(sections)
+                        val displayItems = if (matchedListItems.isNotEmpty()) {
+                            matchedListItems.map {
+                                it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TRAKT_WATCHLIST)
+                            }
+                        } else {
+                            rawListItems.map { it.toDirectMediaItem(MediaSource.TRAKT_WATCHLIST) }
+                        }
+
+                        if (displayItems.isNotEmpty()) {
+                            shownMediaIds.addAll(matchedListItems.map { it.id })
+                            sections.add(
+                                HomeSection(
+                                    title = "Trakt: ${list.name}",
+                                    items = displayItems,
+                                    badge = "TRAKT LISTA"
+                                )
+                            )
+                            emitFeed(sections)
+                        }
                     }
                 }
             } catch (_: Exception) {}

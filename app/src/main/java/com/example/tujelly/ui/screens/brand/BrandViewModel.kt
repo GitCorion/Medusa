@@ -8,6 +8,7 @@ import com.example.tujelly.data.local.UserPreferencesRepository
 import com.example.tujelly.data.remote.NetworkClientFactory
 import com.example.tujelly.data.remote.tmdb.TmdbApiService
 import com.example.tujelly.data.remote.tmdb.TmdbItemDto
+import com.example.tujelly.data.remote.trakt.toDirectMediaItem
 import com.example.tujelly.domain.model.HomeSection
 import com.example.tujelly.domain.model.MediaItem
 import com.example.tujelly.domain.model.MediaSource
@@ -51,6 +52,14 @@ class BrandViewModel(application: Application) : AndroidViewModel(application) {
 
     companion object {
         private val brandCache = ConcurrentHashMap<String, BrandUiState.Success>()
+
+        fun clearCache(brandId: String? = null) {
+            if (brandId != null) {
+                brandCache.remove(brandId)
+            } else {
+                brandCache.clear()
+            }
+        }
     }
 
     private val userPreferencesRepository = UserPreferencesRepository(application)
@@ -117,7 +126,9 @@ class BrandViewModel(application: Application) : AndroidViewModel(application) {
             brandCache.remove(brandId)
         }
         val cached = brandCache[brandId]
-        if (cached != null && cached.sections.isNotEmpty()) {
+        // Si la marca es Trakt y solo tiene 1 sección (probablemente tendencias pre-login), no usamos la caché
+        val isStaleTraktCache = brandId.equals("trakt", ignoreCase = true) && cached != null && cached.sections.size <= 1
+        if (cached != null && cached.sections.isNotEmpty() && !isStaleTraktCache) {
             allRawSections = cached.sections
             val filtered = filterSections(allRawSections, currentFormat)
             _uiState.value = cached.copy(
@@ -154,86 +165,8 @@ class BrandViewModel(application: Application) : AndroidViewModel(application) {
                 val traktClientId = prefs.traktClientId.ifBlank { com.example.tujelly.data.local.DEFAULT_TRAKT_CLIENT_ID }
                 val hasToken = prefs.traktAccessToken.isNotBlank()
 
-                // 1. Tendencias Globales de Trakt
-                try {
-                    val trendingResult = mediaRepository.getTraktTrending(clientId = traktClientId)
-                    val rawTrending = trendingResult.getOrDefault(emptyList()).take(30)
-                    val matchedTrending = filterToLibraryUseCase.filterTraktItems(
-                        traktItems = rawTrending,
-                        serverUrl = prefs.jellyfinServerUrl,
-                        userId = prefs.jellyfinUserId,
-                        token = prefs.jellyfinAccessToken,
-                        maxCandidates = 30
-                    )
-                    if (matchedTrending.isNotEmpty()) {
-                        sections.add(
-                            HomeSection(
-                                title = "Tendencias en Trakt.tv",
-                                items = matchedTrending.map {
-                                    it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TRAKT_RECOMMENDATION)
-                                },
-                                badge = "POPULAR"
-                            )
-                        )
-                    }
-                } catch (_: Exception) {}
-
                 if (hasToken) {
-                    // 2. Recomendaciones Personalizadas
-                    try {
-                        val recsResult = mediaRepository.getTraktRecommendations(
-                            traktToken = prefs.traktAccessToken,
-                            clientId = traktClientId
-                        )
-                        val rawRecs = recsResult.getOrDefault(emptyList()).take(30)
-                        val matchedRecs = filterToLibraryUseCase.filterTraktItems(
-                            traktItems = rawRecs,
-                            serverUrl = prefs.jellyfinServerUrl,
-                            userId = prefs.jellyfinUserId,
-                            token = prefs.jellyfinAccessToken,
-                            maxCandidates = 30
-                        )
-                        if (matchedRecs.isNotEmpty()) {
-                            sections.add(
-                                HomeSection(
-                                    title = "Recomendaciones para ti",
-                                    items = matchedRecs.map {
-                                        it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TRAKT_RECOMMENDATION)
-                                    },
-                                    badge = "PARA TI"
-                                )
-                            )
-                        }
-                    } catch (_: Exception) {}
-
-                    // 3. Tu Watchlist
-                    try {
-                        val watchlistResult = mediaRepository.getTraktWatchlist(
-                            traktToken = prefs.traktAccessToken,
-                            clientId = traktClientId
-                        )
-                        val rawWatchlist = watchlistResult.getOrDefault(emptyList()).take(30)
-                        val matchedWatchlist = filterToLibraryUseCase.filterTraktItems(
-                            traktItems = rawWatchlist,
-                            serverUrl = prefs.jellyfinServerUrl,
-                            userId = prefs.jellyfinUserId,
-                            token = prefs.jellyfinAccessToken,
-                            maxCandidates = 30
-                        )
-                        if (matchedWatchlist.isNotEmpty()) {
-                            sections.add(
-                                HomeSection(
-                                    title = "Tu Watchlist",
-                                    items = matchedWatchlist.map {
-                                        it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TRAKT_WATCHLIST)
-                                    },
-                                    badge = null
-                                )
-                            )
-                        }
-                    } catch (_: Exception) {}
-
-                    // 4. Tus Listas Personalizadas de Trakt
+                    // 1. Tus Listas Personalizadas y Guardadas de Trakt (¡Prioridad máxima!)
                     try {
                         val userListsResult = mediaRepository.getTraktUserLists(
                             traktToken = prefs.traktAccessToken,
@@ -242,32 +175,148 @@ class BrandViewModel(application: Application) : AndroidViewModel(application) {
                         val userLists = userListsResult.getOrDefault(emptyList())
                         for (list in userLists) {
                             val listId = list.ids.trakt?.toString() ?: list.ids.slug ?: continue
+                            val username = list.user?.username
                             val listItemsResult = mediaRepository.getTraktCustomListItems(
                                 traktToken = prefs.traktAccessToken,
                                 clientId = traktClientId,
-                                listId = listId
+                                listId = listId,
+                                username = username
                             )
-                            val rawListItems = listItemsResult.getOrDefault(emptyList())
-                            val matchedListItems = filterToLibraryUseCase.filterTraktItems(
-                                traktItems = rawListItems,
+                            val rawListItems = listItemsResult.getOrDefault(emptyList()).take(40)
+                            if (rawListItems.isNotEmpty()) {
+                                val matchedListItems = filterToLibraryUseCase.filterTraktItems(
+                                    traktItems = rawListItems,
+                                    serverUrl = prefs.jellyfinServerUrl,
+                                    userId = prefs.jellyfinUserId,
+                                    token = prefs.jellyfinAccessToken,
+                                    maxCandidates = 40
+                                )
+                                val displayItems = if (matchedListItems.isNotEmpty()) {
+                                    matchedListItems.map {
+                                        it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TRAKT_WATCHLIST)
+                                    }
+                                } else {
+                                    rawListItems.map { it.toDirectMediaItem(MediaSource.TRAKT_WATCHLIST) }
+                                }
+                                if (displayItems.isNotEmpty()) {
+                                    sections.add(
+                                        HomeSection(
+                                            title = list.name,
+                                            items = displayItems,
+                                            badge = "LISTA"
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                    } catch (e: Exception) {
+                        android.util.Log.e("BrandVM", "Error loading Trakt custom lists", e)
+                    }
+
+                    // 2. Tu Watchlist de Trakt
+                    try {
+                        val watchlistResult = mediaRepository.getTraktWatchlist(
+                            traktToken = prefs.traktAccessToken,
+                            clientId = traktClientId
+                        )
+                        val rawWatchlist = watchlistResult.getOrDefault(emptyList()).take(30)
+                        if (rawWatchlist.isNotEmpty()) {
+                            val matchedWatchlist = filterToLibraryUseCase.filterTraktItems(
+                                traktItems = rawWatchlist,
                                 serverUrl = prefs.jellyfinServerUrl,
                                 userId = prefs.jellyfinUserId,
                                 token = prefs.jellyfinAccessToken,
                                 maxCandidates = 30
                             )
-                            if (matchedListItems.isNotEmpty()) {
+                            val displayItems = if (matchedWatchlist.isNotEmpty()) {
+                                matchedWatchlist.map {
+                                    it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TRAKT_WATCHLIST)
+                                }
+                            } else {
+                                rawWatchlist.map { it.toDirectMediaItem(MediaSource.TRAKT_WATCHLIST) }
+                            }
+                            if (displayItems.isNotEmpty()) {
                                 sections.add(
                                     HomeSection(
-                                        title = list.name,
-                                        items = matchedListItems.map {
-                                            it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TRAKT_WATCHLIST)
-                                        },
-                                        badge = "LISTA"
+                                        title = "Tu Watchlist",
+                                        items = displayItems,
+                                        badge = "PENDIENTE"
                                     )
                                 )
                             }
                         }
-                    } catch (_: Exception) {}
+                    } catch (e: Exception) {
+                        android.util.Log.e("BrandVM", "Error loading Trakt watchlist", e)
+                    }
+
+                    // 3. Recomendaciones Personalizadas de Trakt
+                    try {
+                        val recsResult = mediaRepository.getTraktRecommendations(
+                            traktToken = prefs.traktAccessToken,
+                            clientId = traktClientId
+                        )
+                        val rawRecs = recsResult.getOrDefault(emptyList()).take(30)
+                        if (rawRecs.isNotEmpty()) {
+                            val matchedRecs = filterToLibraryUseCase.filterTraktItems(
+                                traktItems = rawRecs,
+                                serverUrl = prefs.jellyfinServerUrl,
+                                userId = prefs.jellyfinUserId,
+                                token = prefs.jellyfinAccessToken,
+                                maxCandidates = 30
+                            )
+                            val displayItems = if (matchedRecs.isNotEmpty()) {
+                                matchedRecs.map {
+                                    it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TRAKT_RECOMMENDATION)
+                                }
+                            } else {
+                                rawRecs.map { it.toDirectMediaItem(MediaSource.TRAKT_RECOMMENDATION) }
+                            }
+                            if (displayItems.isNotEmpty()) {
+                                sections.add(
+                                    HomeSection(
+                                        title = "Recomendaciones para ti",
+                                        items = displayItems,
+                                        badge = "PARA TI"
+                                    )
+                                )
+                            }
+                        }
+                    } catch (e: Exception) {
+                        android.util.Log.e("BrandVM", "Error loading Trakt recommendations", e)
+                    }
+                }
+
+                // 4. Tendencias Globales de Trakt
+                try {
+                    val trendingResult = mediaRepository.getTraktTrending(clientId = traktClientId)
+                    val rawTrending = trendingResult.getOrDefault(emptyList()).take(30)
+                    if (rawTrending.isNotEmpty()) {
+                        val matchedTrending = filterToLibraryUseCase.filterTraktItems(
+                            traktItems = rawTrending,
+                            serverUrl = prefs.jellyfinServerUrl,
+                            userId = prefs.jellyfinUserId,
+                            token = prefs.jellyfinAccessToken,
+                            maxCandidates = 30
+                        )
+                        val displayItems = if (matchedTrending.isNotEmpty()) {
+                            matchedTrending.map {
+                                it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TRAKT_RECOMMENDATION)
+                            }
+                        } else {
+                            rawTrending.map { it.toDirectMediaItem(MediaSource.TRAKT_RECOMMENDATION) }
+                        }
+                        if (displayItems.isNotEmpty()) {
+                            sections.add(
+                                HomeSection(
+                                    title = "Tendencias en Trakt.tv",
+                                    items = displayItems,
+                                    badge = "POPULAR"
+                                )
+                            )
+                        }
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("BrandVM", "Error loading Trakt trending", e)
                 }
             } else {
                 val api = NetworkClientFactory.createService("https://api.themoviedb.org/3/", TmdbApiService::class.java)
