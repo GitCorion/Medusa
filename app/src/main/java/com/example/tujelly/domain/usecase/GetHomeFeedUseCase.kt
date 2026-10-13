@@ -14,7 +14,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.sync.Mutex
@@ -67,18 +67,18 @@ class GetHomeFeedUseCase(
         }
     }
 
-    operator fun invoke(prefs: UserPreferences, forceRefresh: Boolean = false): Flow<List<HomeSection>> = flow {
+    operator fun invoke(prefs: UserPreferences, forceRefresh: Boolean = false): Flow<List<HomeSection>> = channelFlow {
         if (prefs.jellyfinServerUrl.isBlank() || prefs.jellyfinUserId.isBlank() || prefs.jellyfinAccessToken.isBlank()) {
-            emit(emptyList())
-            return@flow
+            send(emptyList())
+            return@channelFlow
         }
 
         // Si tenemos caché en memoria completo reciente (< 5 min), emitir de inmediato y evitar recargas innecesarias
         val cached = cachedHomeFeed
         if (!forceRefresh && cached != null && cached.size >= 4) {
-            emit(cached)
+            send(cached)
             if (System.currentTimeMillis() - cachedFeedTimestamp < 5 * 60 * 1000L) {
-                return@flow
+                return@channelFlow
             }
         }
 
@@ -104,7 +104,7 @@ class GetHomeFeedUseCase(
                     cachedHomeFeed = snapshot
                     cachedFeedTimestamp = System.currentTimeMillis()
                 }
-                emit(snapshot)
+                send(snapshot)
             }
         }
 
@@ -600,7 +600,7 @@ class GetHomeFeedUseCase(
         }
 
         if (sections.isEmpty()) {
-            emit(emptyList())
+            send(emptyList())
         }
     }
 
