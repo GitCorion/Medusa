@@ -1217,6 +1217,12 @@ class MediaRepository(
     suspend fun getLocalMovies(): List<JellyfinMediaEntity> = jellyfinDao.getMovies().deduplicateMediaEntities().filterAllowed()
     suspend fun getLocalSeries(): List<JellyfinMediaEntity> = jellyfinDao.getSeries().deduplicateMediaEntities().filterAllowed()
     suspend fun getAllCatalog(): List<JellyfinMediaEntity> = jellyfinDao.getAllCatalog().deduplicateMediaEntities().filterAllowed()
+    suspend fun getItemById(id: String): JellyfinMediaEntity? = jellyfinDao.getItemById(id)
+    suspend fun getItemsByIds(ids: List<String>): List<JellyfinMediaEntity> {
+        if (ids.isEmpty()) return emptyList()
+        return jellyfinDao.getItemsByIds(ids).filterAllowed()
+    }
+
     suspend fun getContinueWatchingLocal(limit: Int = 20): List<JellyfinMediaEntity> = jellyfinDao.getContinueWatchingLocal(limit).deduplicateMediaEntities().filterAllowed()
     suspend fun getLatestLocal(serverUrl: String = "", userId: String = "", limit: Int = 20): List<JellyfinMediaEntity> {
         val cacheKey = "$serverUrl-$userId"

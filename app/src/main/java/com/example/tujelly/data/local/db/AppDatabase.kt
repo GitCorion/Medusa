@@ -8,14 +8,15 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
-    entities = [JellyfinMediaEntity::class, TmdbVoteCacheEntity::class],
-    version = 10,
+    entities = [JellyfinMediaEntity::class, TmdbVoteCacheEntity::class, HomeSectionCacheEntity::class],
+    version = 11,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun jellyfinDao(): JellyfinDao
     abstract fun tmdbVoteCacheDao(): TmdbVoteCacheDao
+    abstract fun homeSectionCacheDao(): HomeSectionCacheDao
 
     companion object {
         @Volatile
@@ -31,6 +32,13 @@ abstract class AppDatabase : RoomDatabase() {
         val MIGRATION_6_7 = object : Migration(6, 7) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE jellyfin_media ADD COLUMN tags TEXT DEFAULT NULL")
+            }
+        }
+
+        // Migración que faltaba — evita que fallbackToDestructiveMigration() borre la BD
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // No-op: el schema no cambió entre v7 y v8
             }
         }
 
@@ -61,6 +69,21 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """CREATE TABLE IF NOT EXISTS home_section_cache (
+                        sectionKey TEXT NOT NULL PRIMARY KEY,
+                        title TEXT NOT NULL,
+                        itemIds TEXT NOT NULL,
+                        badge TEXT DEFAULT NULL,
+                        isRanked INTEGER NOT NULL DEFAULT 0,
+                        updatedAt INTEGER NOT NULL DEFAULT 0
+                    )"""
+                )
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -68,7 +91,10 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "tujelly_database"
                 )
-                    .addMigrations(MIGRATION_5_6, MIGRATION_6_7, MIGRATION_8_9, MIGRATION_9_10)
+                    .addMigrations(
+                        MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8,
+                        MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11
+                    )
                     .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance

@@ -51,6 +51,9 @@ interface JellyfinDao {
     @Query("SELECT * FROM jellyfin_media WHERE id = :id LIMIT 1")
     suspend fun getItemById(id: String): JellyfinMediaEntity?
 
+    @Query("SELECT * FROM jellyfin_media WHERE id IN (:ids)")
+    suspend fun getItemsByIds(ids: List<String>): List<JellyfinMediaEntity>
+
     @Query("SELECT * FROM jellyfin_media WHERE type = 'Movie' ORDER BY title ASC")
     suspend fun getMovies(): List<JellyfinMediaEntity>
 

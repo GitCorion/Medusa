@@ -48,6 +48,11 @@ class FakeJellyfinDao : JellyfinDao {
         return localDb.firstOrNull { it.id == id }
     }
 
+    override suspend fun getItemsByIds(ids: List<String>): List<JellyfinMediaEntity> {
+        val idSet = ids.toSet()
+        return localDb.filter { it.id in idSet }
+    }
+
     override suspend fun insertOrUpdate(item: JellyfinMediaEntity) {
         localDb.removeAll { it.id == item.id }
         localDb.add(item)

@@ -130,8 +130,8 @@ class DetailViewModel(application: Application) : AndroidViewModel(application) 
                     _uiState.value = DetailUiState.Loading
                 }
 
-                // 2. Resolver entidad completa si no estaba en local o si falta overview
-                val entity = if (initialEntity != null && !initialEntity.overview.isNullOrBlank()) {
+                // 2. Resolver entidad: si no estaba en local, obtener de red de forma bloqueante
+                val entity: JellyfinMediaEntity = if (initialEntity != null) {
                     initialEntity
                 } else {
                     val remote = mediaRepository.getItemDetail(
@@ -140,81 +140,52 @@ class DetailViewModel(application: Application) : AndroidViewModel(application) 
                         token = token,
                         itemId = itemId
                     ).getOrNull()
-                    remote ?: initialEntity
-                }
-
-                if (entity == null) {
-                    _uiState.value = DetailUiState.Error("Elemento no encontrado en tu biblioteca")
-                    return@launch
+                    remote ?: run {
+                        _uiState.value = DetailUiState.Error("Elemento no encontrado en tu biblioteca")
+                        return@launch
+                    }
                 }
 
                 var finalEntity = entity
                 val isTv = finalEntity.type.equals("Series", ignoreCase = true) || finalEntity.type.equals("Episode", ignoreCase = true)
                 val tmdbLong = finalEntity.tmdbId?.toLongOrNull()
 
-                // Si aún falta overview, intentar TMDB en segundo plano
-                if (finalEntity.overview.isNullOrBlank() && tmdbLong != null && prefs.tmdbApiKey.isNotBlank()) {
-                    try {
-                        val tmdbApi = com.example.tujelly.data.remote.NetworkClientFactory.createService(
-                            "https://api.themoviedb.org/3/",
-                            com.example.tujelly.data.remote.tmdb.TmdbApiService::class.java
-                        )
-                        val tmdbOverview: String? = if (isTv) {
-                            runCatching { tmdbApi.getTvDetails(tmdbLong, prefs.tmdbApiKey).overview }.getOrNull()
-                        } else {
-                            runCatching { tmdbApi.getMovieDetails(tmdbLong, prefs.tmdbApiKey).overview }.getOrNull()
-                        }
-                        if (!tmdbOverview.isNullOrBlank()) {
-                            finalEntity = finalEntity.copy(overview = tmdbOverview)
-                            database.jellyfinDao().insertOrUpdate(finalEntity)
-                        }
-                    } catch (_: Exception) {}
-                }
-
-                // Si no teníamos estado previo (caso local == null) o si finalEntity tiene nuevos datos (overview, etc)
-                val posterUrl = JellyfinImageUtils.getPosterUrl(
-                    baseUrl = baseUrl,
-                    itemId = finalEntity.id,
-                    imageTag = finalEntity.primaryImageTag,
-                    token = token
-                )
-                var backdropUrl = JellyfinImageUtils.getDetailBackdropUrl(
-                    baseUrl = baseUrl,
-                    itemId = finalEntity.id,
-                    imageTag = finalEntity.backdropImageTag,
-                    token = token
-                )
-                if (finalEntity.type.equals("Episode", ignoreCase = true) && !finalEntity.seriesId.isNullOrBlank()) {
-                    val parentSeries = database.jellyfinDao().getItemById(finalEntity.seriesId)
-                    if (parentSeries != null) {
-                        if (finalEntity.seriesName.isNullOrBlank()) {
-                            finalEntity = finalEntity.copy(seriesName = parentSeries.title)
-                        }
-                        if (backdropUrl == null && !parentSeries.backdropImageTag.isNullOrBlank()) {
-                            backdropUrl = JellyfinImageUtils.getDetailBackdropUrl(
-                                baseUrl = baseUrl,
-                                itemId = parentSeries.id,
-                                imageTag = parentSeries.backdropImageTag,
-                                token = token
-                            )
+                // Si no teníamos entidad local previa, pintar Success con la entidad remota ahora
+                if (initialEntity == null) {
+                    val posterUrl = JellyfinImageUtils.getPosterUrl(
+                        baseUrl = baseUrl,
+                        itemId = finalEntity.id,
+                        imageTag = finalEntity.primaryImageTag,
+                        token = token
+                    )
+                    var backdropUrl = JellyfinImageUtils.getDetailBackdropUrl(
+                        baseUrl = baseUrl,
+                        itemId = finalEntity.id,
+                        imageTag = finalEntity.backdropImageTag,
+                        token = token
+                    )
+                    if (finalEntity.type.equals("Episode", ignoreCase = true) && !finalEntity.seriesId.isNullOrBlank()) {
+                        val parentSeries = database.jellyfinDao().getItemById(finalEntity.seriesId)
+                        if (parentSeries != null) {
+                            if (finalEntity.seriesName.isNullOrBlank()) {
+                                finalEntity = finalEntity.copy(seriesName = parentSeries.title)
+                            }
+                            if (backdropUrl == null && !parentSeries.backdropImageTag.isNullOrBlank()) {
+                                backdropUrl = JellyfinImageUtils.getDetailBackdropUrl(
+                                    baseUrl = baseUrl,
+                                    itemId = parentSeries.id,
+                                    imageTag = parentSeries.backdropImageTag,
+                                    token = token
+                                )
+                            }
                         }
                     }
-                }
-                val logoUrl = JellyfinImageUtils.getLogoUrl(
-                    baseUrl = baseUrl,
-                    itemId = finalEntity.id,
-                    token = token
-                )
-
-                // Actualizar UI con la entidad enriquecida
-                (_uiState.value as? DetailUiState.Success)?.let { curr ->
-                    _uiState.value = curr.copy(
-                        entity = finalEntity,
-                        posterUrl = posterUrl,
-                        backdropUrl = backdropUrl,
-                        logoUrl = logoUrl
+                    val logoUrl = JellyfinImageUtils.getLogoUrl(
+                        baseUrl = baseUrl,
+                        itemId = finalEntity.id,
+                        token = token
                     )
-                } ?: run {
+
                     _uiState.value = DetailUiState.Success(
                         entity = finalEntity,
                         posterUrl = posterUrl,
@@ -227,6 +198,55 @@ class DetailViewModel(application: Application) : AndroidViewModel(application) 
                         accentColor = prefs.accentColor,
                         isLoadingEpisodes = isTv
                     )
+                }
+
+                // 2.5 Enriquecer overview en segundo plano SIN BLOQUEAR la UI ni los demás loaders
+                launch {
+                    try {
+                        var enrichedEntity = finalEntity
+                        var updated = false
+
+                        // Si falta overview en local, pedir a Jellyfin
+                        if (enrichedEntity.overview.isNullOrBlank()) {
+                            val remoteDetail = mediaRepository.getItemDetail(
+                                serverUrl = baseUrl,
+                                userId = prefs.jellyfinUserId,
+                                token = token,
+                                itemId = itemId
+                            ).getOrNull()
+                            if (remoteDetail != null && !remoteDetail.overview.isNullOrBlank()) {
+                                enrichedEntity = enrichedEntity.copy(
+                                    overview = remoteDetail.overview,
+                                    genres = if (enrichedEntity.genres.isNullOrBlank()) remoteDetail.genres else enrichedEntity.genres
+                                )
+                                updated = true
+                            }
+                        }
+
+                        // Si aún falta overview, intentar con TMDB
+                        if (enrichedEntity.overview.isNullOrBlank() && tmdbLong != null && prefs.tmdbApiKey.isNotBlank()) {
+                            val tmdbApi = com.example.tujelly.data.remote.NetworkClientFactory.createService(
+                                "https://api.themoviedb.org/3/",
+                                com.example.tujelly.data.remote.tmdb.TmdbApiService::class.java
+                            )
+                            val tmdbOverview: String? = if (isTv) {
+                                runCatching { tmdbApi.getTvDetails(tmdbLong, prefs.tmdbApiKey).overview }.getOrNull()
+                            } else {
+                                runCatching { tmdbApi.getMovieDetails(tmdbLong, prefs.tmdbApiKey).overview }.getOrNull()
+                            }
+                            if (!tmdbOverview.isNullOrBlank()) {
+                                enrichedEntity = enrichedEntity.copy(overview = tmdbOverview)
+                                updated = true
+                            }
+                        }
+
+                        if (updated) {
+                            database.jellyfinDao().insertOrUpdate(enrichedEntity)
+                            (_uiState.value as? DetailUiState.Success)?.let { curr ->
+                                _uiState.value = curr.copy(entity = enrichedEntity)
+                            }
+                        }
+                    } catch (_: Exception) {}
                 }
 
                 // 3. Cargar en paralelo sin bloquear la pantalla: Trailer, Series/Episodios, Recomendaciones, Colecciones
