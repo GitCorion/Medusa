@@ -287,6 +287,35 @@ class FilterToLibraryUseCaseTest {
     }
 
     @Test
+    fun `filterTmdbItems scans full candidate list and does not truncate before finding library matches`() = runTest {
+        val fakeDao = FakeJellyfinDao()
+        val movieAt35 = JellyfinMediaEntity(
+            id = "movie-deep-match",
+            title = "Deep Match Movie",
+            type = "Movie",
+            tmdbId = "99999"
+        )
+        fakeDao.setLocalItems(listOf(movieAt35))
+
+        val repo = MediaRepository(fakeDao)
+        val useCase = FilterToLibraryUseCase(repo)
+
+        // Generar 40 items TMDB donde el match está en la posición 35
+        val tmdbCandidates = (1..40).map { i ->
+            if (i == 35) {
+                TmdbItemDto(id = 99999, title = "Deep Match Movie")
+            } else {
+                TmdbItemDto(id = i.toLong(), title = "Random TMDB Title $i")
+            }
+        }
+
+        val filtered = useCase.filterTmdbItems(tmdbCandidates, maxCandidates = 20)
+
+        assertEquals(1, filtered.size)
+        assertEquals("movie-deep-match", filtered[0].id)
+    }
+
+    @Test
     fun `deduplicateMediaEntities merges duplicate versions of same movie without merging sequels`() {
         val movie1080p = JellyfinMediaEntity(
             id = "m1-1080p",

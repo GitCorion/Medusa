@@ -56,11 +56,12 @@ class FilterToLibraryUseCase(
         maxCandidates: Int = 20
     ): List<JellyfinMediaEntity> {
         val seenIds = mutableSetOf<String>()
-        val candidates = tmdbItems.take(maxCandidates)
+        val results = mutableListOf<JellyfinMediaEntity>()
 
-        return candidates.mapNotNull { item ->
+        for (item in tmdbItems) {
+            if (results.size >= maxCandidates) break
             val tmdbId = item.id.toString()
-            val title = item.title ?: item.name ?: return@mapNotNull null
+            val title = item.title ?: item.name ?: continue
             val year = (item.releaseDate ?: item.firstAirDate)?.take(4)?.toIntOrNull()
 
             val entity = mediaRepository.findLocal(
@@ -69,7 +70,7 @@ class FilterToLibraryUseCase(
                 title = title,
                 year = year
             )
-            if (entity != null) {
+            if (entity != null && seenIds.add(entity.id)) {
                 var updated = entity
                 if (item.voteAverage != null && item.voteAverage > 0f) {
                     updated = updated.copy(communityRating = item.voteAverage)
@@ -80,10 +81,9 @@ class FilterToLibraryUseCase(
                 if (updated.backdropImageTag.isNullOrEmpty() && !item.backdropPath.isNullOrBlank()) {
                     updated = updated.copy(backdropImageTag = "tmdb:${item.backdropPath}")
                 }
-                updated
-            } else {
-                null
+                results.add(updated)
             }
-        }.filter { seenIds.add(it.id) }
+        }
+        return results
     }
 }

@@ -102,11 +102,15 @@ fun MediaRow(
             }
         }
 
+        val uniqueItems = androidx.compose.runtime.remember(section.items) {
+            section.items.distinctBy { it.id }
+        }
+
         LazyRow(
             contentPadding = PaddingValues(horizontal = 48.dp, vertical = 6.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            itemsIndexed(section.items, key = { _, it -> it.id }) { index, item ->
+            itemsIndexed(uniqueItems, key = { index, it -> "${it.id}_$index" }) { index, item ->
                 val displayItem = if (section.isRanked && item.rank == null) {
                     item.copy(rank = index + 1)
                 } else {

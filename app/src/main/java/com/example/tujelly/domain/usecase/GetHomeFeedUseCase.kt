@@ -38,6 +38,33 @@ class GetHomeFeedUseCase(
             cachedHomeFeed = null
             cachedFeedTimestamp = 0L
         }
+
+        fun sectionPriority(title: String): Int = when {
+            title == "Continuar Viendo" -> 0
+            title.contains("Top 10", ignoreCase = true) -> 10
+            title == "Añadido recientemente" -> 20
+            title.startsWith("Porque viste") -> 30
+            title.contains("Netflix", ignoreCase = true) -> 40
+            title.contains("Prime", ignoreCase = true) -> 41
+            title.contains("Disney", ignoreCase = true) -> 42
+            title.contains("Apple", ignoreCase = true) -> 43
+            title.contains("Max", ignoreCase = true) -> 44
+            title.contains("SkyShowtime", ignoreCase = true) -> 45
+            title.contains("Movistar", ignoreCase = true) -> 46
+            title.contains("Filmin", ignoreCase = true) -> 47
+            title.contains("Crunchyroll", ignoreCase = true) -> 48
+            title.startsWith("Populares en ") -> 49
+            title.startsWith("Trakt:") -> 60
+            title == "Tu Watchlist de Trakt.tv" -> 61
+            title == "Recomendado por la comunidad Trakt" -> 62
+            title == "Tendencias en Trakt.tv" -> 63
+            title == "Grandes Producciones de tu colección" -> 70
+            title == "Series Destacadas" -> 80
+            title == "Películas Recomendadas" -> 90
+            title.startsWith("Recomendados de") -> 100
+            title == "Joyas de tu colección" -> 110
+            else -> 200
+        }
     }
 
     operator fun invoke(prefs: UserPreferences, forceRefresh: Boolean = false): Flow<List<HomeSection>> = flow {
@@ -81,44 +108,21 @@ class GetHomeFeedUseCase(
             }
         }
 
-        fun sectionPriority(title: String): Int = when {
-            title == "Continuar Viendo" -> 0
-            title.contains("Top 10", ignoreCase = true) -> 10
-            title == "Añadido recientemente" -> 20
-            title.startsWith("Porque viste") -> 30
-            title.contains("Netflix", ignoreCase = true) -> 40
-            title.contains("Prime", ignoreCase = true) -> 41
-            title.contains("Disney", ignoreCase = true) -> 42
-            title.contains("Apple", ignoreCase = true) -> 43
-            title.contains("Max", ignoreCase = true) -> 44
-            title.contains("SkyShowtime", ignoreCase = true) -> 45
-            title.contains("Movistar", ignoreCase = true) -> 46
-            title.contains("Filmin", ignoreCase = true) -> 47
-            title.contains("Crunchyroll", ignoreCase = true) -> 48
-            title.startsWith("Populares en ") -> 49
-            title.startsWith("Trakt:") -> 60
-            title == "Tu Watchlist de Trakt.tv" -> 61
-            title == "Recomendado por la comunidad Trakt" -> 62
-            title == "Tendencias en Trakt.tv" -> 63
-            title == "Grandes Producciones de tu colección" -> 70
-            title == "Series Destacadas" -> 80
-            title == "Películas Recomendadas" -> 90
-            title.startsWith("Recomendados de") -> 100
-            title == "Joyas de tu colección" -> 110
-            else -> 200
-        }
 
         fun updateOrAddSection(newSection: HomeSection) {
-            val idx = sections.indexOfFirst { it.title == newSection.title }
+            val uniqueItems = newSection.items.distinctBy { it.id }
+            if (uniqueItems.isEmpty()) return
+            val cleanSection = if (uniqueItems.size == newSection.items.size) newSection else newSection.copy(items = uniqueItems)
+            val idx = sections.indexOfFirst { it.title == cleanSection.title }
             if (idx != -1) {
-                sections[idx] = newSection
+                sections[idx] = cleanSection
             } else {
-                val newPriority = sectionPriority(newSection.title)
+                val newPriority = sectionPriority(cleanSection.title)
                 val insertIdx = sections.indexOfFirst { sectionPriority(it.title) > newPriority }
                 if (insertIdx != -1) {
-                    sections.add(insertIdx, newSection)
+                    sections.add(insertIdx, cleanSection)
                 } else {
-                    sections.add(newSection)
+                    sections.add(cleanSection)
                 }
             }
         }
@@ -130,9 +134,12 @@ class GetHomeFeedUseCase(
             itemIds: List<String> = emptyList()
         ) {
             feedMutex.withLock {
-                updateOrAddSection(newSection)
+                val uniqueItems = newSection.items.distinctBy { it.id }
+                if (uniqueItems.isEmpty()) return@withLock
+                val cleanSection = if (uniqueItems.size == newSection.items.size) newSection else newSection.copy(items = uniqueItems)
+                updateOrAddSection(cleanSection)
                 if (cacheKey != null && itemIds.isNotEmpty()) {
-                    persistSection(cacheKey, newSection, itemIds)
+                    persistSection(cacheKey, cleanSection, itemIds.distinct())
                 }
                 emitFeed(sections)
             }
@@ -370,12 +377,12 @@ class GetHomeFeedUseCase(
                         com.example.tujelly.data.model.SUPPORTED_PLATFORMS.filter { it.id in selected }
                     }).filter { it.id != "trakt" && it.providerId.isNotBlank() }
 
-                    val semaphore = Semaphore(4)
+                    val semaphore = Semaphore(3)
                     activeProviders.forEach { platform ->
                         launch {
                             semaphore.acquire()
                             try {
-                                withTimeoutOrNull(4500L) {
+                                withTimeoutOrNull(7000L) {
                                     val result = mediaRepository.getTmdbByProvider(
                                         apiKey = effectiveTmdbKey,
                                         providerId = platform.providerId,
@@ -388,23 +395,26 @@ class GetHomeFeedUseCase(
                                             serverUrl = prefs.jellyfinServerUrl,
                                             userId = prefs.jellyfinUserId,
                                             token = prefs.jellyfinAccessToken,
-                                            maxCandidates = 30
+                                            maxCandidates = 25
                                         )
-                                        if (matched.isNotEmpty()) {
-                                            val platformItems = matched.take(20).map {
+                                        val uniqueMatched = matched.distinctBy { it.id }
+                                        if (uniqueMatched.isNotEmpty()) {
+                                            val platformItems = uniqueMatched.take(20).map {
                                                 it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TMDB_TRENDING)
                                             }
-                                            val platformTitle = "Populares en ${platform.name}"
-                                            val platformSection = HomeSection(
-                                                title = platformTitle,
-                                                items = platformItems,
-                                                badge = null
-                                            )
-                                            postSection(
-                                                platformSection,
-                                                cacheKey = "platform_${platform.id}",
-                                                itemIds = matched.map { it.id }
-                                            )
+                                            if (platformItems.isNotEmpty()) {
+                                                val platformTitle = "Populares en ${platform.name}"
+                                                val platformSection = HomeSection(
+                                                    title = platformTitle,
+                                                    items = platformItems,
+                                                    badge = null
+                                                )
+                                                postSection(
+                                                    platformSection,
+                                                    cacheKey = "platform_${platform.id}",
+                                                    itemIds = platformItems.map { it.id }
+                                                )
+                                            }
                                         }
                                     }
                                 }
@@ -803,8 +813,11 @@ class GetHomeFeedUseCase(
             // Verificar que la sección no esté ya presente (evitar duplicados con PASO 0)
             if (sections.any { it.title == entry.title }) continue
 
-            // Reconstruir items desde IDs cacheados
-            val ids: List<String> = entry.itemIds.split(",").map { it.trim() }.filter { it.isNotBlank() }
+            // Reconstruir items desde IDs cacheados (estrictamente deduplicados)
+            val ids: List<String> = entry.itemIds.split(",")
+                .map { it.trim() }
+                .filter { it.isNotBlank() }
+                .distinct()
             if (ids.isEmpty()) continue
 
             // Carga masiva en 1 sola consulta SQL
@@ -812,8 +825,8 @@ class GetHomeFeedUseCase(
                 mediaRepository.getItemsByIds(ids).associateBy { it.id }
             }.getOrDefault(emptyMap())
 
-            // Preservar el orden original
-            val entities: List<JellyfinMediaEntity> = ids.mapNotNull { idMap[it] }
+            // Preservar el orden original y garantizar unicidad
+            val entities: List<JellyfinMediaEntity> = ids.mapNotNull { idMap[it] }.distinctBy { it.id }
             if (entities.isEmpty()) continue
 
             // Determinar el MediaSource correcto según el tipo de sección
@@ -837,16 +850,24 @@ class GetHomeFeedUseCase(
                 }
             }
 
-            shownMediaIds.addAll(entities.map { it.id })
-            sections.add(
-                HomeSection(
+            val uniqueItems = items.distinctBy { it.id }
+            if (uniqueItems.isNotEmpty()) {
+                shownMediaIds.addAll(entities.map { it.id })
+                val restoredSection = HomeSection(
                     title = entry.title,
-                    items = items,
+                    items = uniqueItems,
                     badge = entry.badge,
                     isRanked = entry.isRanked
                 )
-            )
-            restored = true
+                val newPriority = sectionPriority(restoredSection.title)
+                val insertIdx = sections.indexOfFirst { sectionPriority(it.title) > newPriority }
+                if (insertIdx != -1) {
+                    sections.add(insertIdx, restoredSection)
+                } else {
+                    sections.add(restoredSection)
+                }
+                restored = true
+            }
         }
         return restored
     }

@@ -105,7 +105,7 @@ class BrandViewModel(application: Application) : AndroidViewModel(application) {
         rawSections: List<HomeSection>,
         format: com.example.tujelly.domain.model.MediaFormatFilter
     ): List<HomeSection> {
-        return when (format) {
+        val result = when (format) {
             com.example.tujelly.domain.model.MediaFormatFilter.ALL -> rawSections
             com.example.tujelly.domain.model.MediaFormatFilter.MOVIES -> rawSections.mapNotNull { section ->
                 val filteredItems = section.items.filter { it.type.equals("Movie", ignoreCase = true) }
@@ -118,6 +118,7 @@ class BrandViewModel(application: Application) : AndroidViewModel(application) {
                 if (filteredItems.isNotEmpty()) section.copy(items = filteredItems) else null
             }
         }
+        return result.distinctBy { it.title }
     }
 
     fun loadBrandFeed(brandId: String, forceRefresh: Boolean = false) {

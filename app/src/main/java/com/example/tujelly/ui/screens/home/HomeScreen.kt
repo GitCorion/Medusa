@@ -428,7 +428,7 @@ fun HomeScreen(
                         )
                     }
 
-                    items(state.sections) { section ->
+                    items(state.sections, key = { section -> section.title }) { section ->
                         MediaRow(
                             section = section,
                             onItemClick = { item ->
