@@ -8,8 +8,6 @@ import com.example.tujelly.data.local.UserPreferencesRepository
 import com.example.tujelly.data.remote.NetworkClientFactory
 import com.example.tujelly.data.remote.tmdb.TmdbApiService
 import com.example.tujelly.data.remote.tmdb.TmdbItemDto
-import com.example.tujelly.data.remote.tmdb.toDirectMediaItem
-import com.example.tujelly.data.remote.trakt.toDirectMediaItem
 import com.example.tujelly.domain.model.HomeSection
 import com.example.tujelly.domain.model.MediaItem
 import com.example.tujelly.domain.model.MediaSource
@@ -193,12 +191,8 @@ class BrandViewModel(application: Application) : AndroidViewModel(application) {
                                     token = prefs.jellyfinAccessToken,
                                     maxCandidates = 40
                                 )
-                                val displayItems = if (matchedListItems.isNotEmpty()) {
-                                    matchedListItems.map {
-                                        it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TRAKT_WATCHLIST)
-                                    }
-                                } else {
-                                    rawListItems.map { it.toDirectMediaItem(MediaSource.TRAKT_WATCHLIST) }
+                                val displayItems = matchedListItems.map {
+                                    it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TRAKT_WATCHLIST)
                                 }
                                 if (displayItems.isNotEmpty()) {
                                     sections.add(
@@ -221,21 +215,17 @@ class BrandViewModel(application: Application) : AndroidViewModel(application) {
                             traktToken = prefs.traktAccessToken,
                             clientId = traktClientId
                         )
-                        val rawWatchlist = watchlistResult.getOrDefault(emptyList()).take(30)
+                        val rawWatchlist = watchlistResult.getOrDefault(emptyList()).take(40)
                         if (rawWatchlist.isNotEmpty()) {
                             val matchedWatchlist = filterToLibraryUseCase.filterTraktItems(
                                 traktItems = rawWatchlist,
                                 serverUrl = prefs.jellyfinServerUrl,
                                 userId = prefs.jellyfinUserId,
                                 token = prefs.jellyfinAccessToken,
-                                maxCandidates = 30
+                                maxCandidates = 40
                             )
-                            val displayItems = if (matchedWatchlist.isNotEmpty()) {
-                                matchedWatchlist.map {
-                                    it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TRAKT_WATCHLIST)
-                                }
-                            } else {
-                                rawWatchlist.map { it.toDirectMediaItem(MediaSource.TRAKT_WATCHLIST) }
+                            val displayItems = matchedWatchlist.map {
+                                it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TRAKT_WATCHLIST)
                             }
                             if (displayItems.isNotEmpty()) {
                                 sections.add(
@@ -257,21 +247,17 @@ class BrandViewModel(application: Application) : AndroidViewModel(application) {
                             traktToken = prefs.traktAccessToken,
                             clientId = traktClientId
                         )
-                        val rawRecs = recsResult.getOrDefault(emptyList()).take(30)
+                        val rawRecs = recsResult.getOrDefault(emptyList()).take(40)
                         if (rawRecs.isNotEmpty()) {
                             val matchedRecs = filterToLibraryUseCase.filterTraktItems(
                                 traktItems = rawRecs,
                                 serverUrl = prefs.jellyfinServerUrl,
                                 userId = prefs.jellyfinUserId,
                                 token = prefs.jellyfinAccessToken,
-                                maxCandidates = 30
+                                maxCandidates = 40
                             )
-                            val displayItems = if (matchedRecs.isNotEmpty()) {
-                                matchedRecs.map {
-                                    it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TRAKT_RECOMMENDATION)
-                                }
-                            } else {
-                                rawRecs.map { it.toDirectMediaItem(MediaSource.TRAKT_RECOMMENDATION) }
+                            val displayItems = matchedRecs.map {
+                                it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TRAKT_RECOMMENDATION)
                             }
                             if (displayItems.isNotEmpty()) {
                                 sections.add(
@@ -291,21 +277,17 @@ class BrandViewModel(application: Application) : AndroidViewModel(application) {
                 // 4. Tendencias Globales de Trakt
                 try {
                     val trendingResult = mediaRepository.getTraktTrending(clientId = traktClientId)
-                    val rawTrending = trendingResult.getOrDefault(emptyList()).take(30)
+                    val rawTrending = trendingResult.getOrDefault(emptyList()).take(40)
                     if (rawTrending.isNotEmpty()) {
                         val matchedTrending = filterToLibraryUseCase.filterTraktItems(
                             traktItems = rawTrending,
                             serverUrl = prefs.jellyfinServerUrl,
                             userId = prefs.jellyfinUserId,
                             token = prefs.jellyfinAccessToken,
-                            maxCandidates = 30
+                            maxCandidates = 40
                         )
-                        val displayItems = if (matchedTrending.isNotEmpty()) {
-                            matchedTrending.map {
-                                it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TRAKT_RECOMMENDATION)
-                            }
-                        } else {
-                            rawTrending.map { it.toDirectMediaItem(MediaSource.TRAKT_RECOMMENDATION) }
+                        val displayItems = matchedTrending.map {
+                            it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TRAKT_RECOMMENDATION)
                         }
                         if (displayItems.isNotEmpty()) {
                             sections.add(
@@ -339,21 +321,17 @@ class BrandViewModel(application: Application) : AndroidViewModel(application) {
                                 }
                                 Pair(m.await(), t.await())
                             }
-                            val combined = (trendingMovies + trendingTv).take(30)
+                            val combined = (trendingMovies + trendingTv).take(40)
 
                             val localMatched = filterToLibraryUseCase.filterTmdbItems(
                                 tmdbItems = combined,
                                 serverUrl = prefs.jellyfinServerUrl,
                                 userId = prefs.jellyfinUserId,
                                 token = prefs.jellyfinAccessToken,
-                                maxCandidates = 30
+                                maxCandidates = 40
                             )
-                            if (localMatched.isNotEmpty()) {
-                                localMatched.map {
-                                    it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TMDB_TRENDING)
-                                }
-                            } else {
-                                combined.take(20).map { it.toDirectMediaItem() }
+                            localMatched.map {
+                                it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TMDB_TRENDING)
                             }
                         }
 
@@ -363,18 +341,14 @@ class BrandViewModel(application: Application) : AndroidViewModel(application) {
                             }.getOrNull()?.results ?: emptyList()
 
                             val localMatched = filterToLibraryUseCase.filterTmdbItems(
-                                tmdbItems = trendingTv.take(30),
+                                tmdbItems = trendingTv.take(40),
                                 serverUrl = prefs.jellyfinServerUrl,
                                 userId = prefs.jellyfinUserId,
                                 token = prefs.jellyfinAccessToken,
-                                maxCandidates = 30
+                                maxCandidates = 40
                             )
-                            if (localMatched.isNotEmpty()) {
-                                localMatched.map {
-                                    it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TMDB_TRENDING)
-                                }
-                            } else {
-                                trendingTv.take(20).map { it.toDirectMediaItem() }
+                            localMatched.map {
+                                it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TMDB_TRENDING)
                             }
                         }
 
@@ -384,18 +358,14 @@ class BrandViewModel(application: Application) : AndroidViewModel(application) {
                             }.getOrNull()?.results ?: emptyList()
 
                             val localMatched = filterToLibraryUseCase.filterTmdbItems(
-                                tmdbItems = topMovies.take(30),
+                                tmdbItems = topMovies.take(40),
                                 serverUrl = prefs.jellyfinServerUrl,
                                 userId = prefs.jellyfinUserId,
                                 token = prefs.jellyfinAccessToken,
-                                maxCandidates = 30
+                                maxCandidates = 40
                             )
-                            if (localMatched.isNotEmpty()) {
-                                localMatched.map {
-                                    it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TMDB_TRENDING)
-                                }
-                            } else {
-                                topMovies.take(20).map { it.toDirectMediaItem() }
+                            localMatched.map {
+                                it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TMDB_TRENDING)
                             }
                         }
 

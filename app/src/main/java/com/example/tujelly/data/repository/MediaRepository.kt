@@ -1057,15 +1057,23 @@ class MediaRepository(
         return runCatching {
             val api = NetworkClientFactory.createService("https://api.themoviedb.org/3/", TmdbApiService::class.java)
             val (movies, tv) = coroutineScope {
-                val m = async {
-                    runCatching { api.discoverMoviesByProvider(apiKey = apiKey, providerId = providerId, watchRegion = region) }
+                val m1 = async {
+                    runCatching { api.discoverMoviesByProvider(apiKey = apiKey, providerId = providerId, watchRegion = region, page = 1) }
                         .getOrNull()?.results ?: emptyList()
                 }
-                val t = async {
-                    runCatching { api.discoverTvByProvider(apiKey = apiKey, providerId = providerId, watchRegion = region) }
+                val m2 = async {
+                    runCatching { api.discoverMoviesByProvider(apiKey = apiKey, providerId = providerId, watchRegion = region, page = 2) }
                         .getOrNull()?.results ?: emptyList()
                 }
-                Pair(m.await(), t.await())
+                val t1 = async {
+                    runCatching { api.discoverTvByProvider(apiKey = apiKey, providerId = providerId, watchRegion = region, page = 1) }
+                        .getOrNull()?.results ?: emptyList()
+                }
+                val t2 = async {
+                    runCatching { api.discoverTvByProvider(apiKey = apiKey, providerId = providerId, watchRegion = region, page = 2) }
+                        .getOrNull()?.results ?: emptyList()
+                }
+                Pair(m1.await() + m2.await(), t1.await() + t2.await())
             }
             val combined = movies + tv
             if (combined.isNotEmpty()) {

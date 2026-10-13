@@ -8,8 +8,6 @@ import com.example.tujelly.data.repository.MediaRepository
 import com.example.tujelly.domain.model.HomeSection
 import com.example.tujelly.domain.model.MediaItem
 import com.example.tujelly.domain.model.MediaSource
-import com.example.tujelly.data.remote.trakt.toDirectMediaItem
-import com.example.tujelly.data.remote.tmdb.toDirectMediaItem
 import com.example.tujelly.util.toOptimizedMediaItem
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -338,22 +336,10 @@ class GetHomeFeedUseCase(
                                     token = prefs.jellyfinAccessToken,
                                     maxCandidates = 30
                                 )
-                                val top10Items: List<MediaItem> = if (matchedDaily.size >= 10) {
-                                    matchedDaily.take(10).mapIndexed { idx, it ->
+                                if (matchedDaily.isNotEmpty()) {
+                                    val top10Items = matchedDaily.take(10).mapIndexed { idx, it ->
                                         it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TMDB_TRENDING).copy(rank = idx + 1)
                                     }
-                                } else {
-                                    val matchedIds = matchedDaily.mapNotNull { it.tmdbId }.toSet()
-                                    val localItems = matchedDaily.map {
-                                        it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TMDB_TRENDING)
-                                    }
-                                    val fallbackItems = dailyTrending
-                                        .filter { it.id.toString() !in matchedIds }
-                                        .take(10 - localItems.size)
-                                        .map { it.toDirectMediaItem() }
-                                    (localItems + fallbackItems).take(10).mapIndexed { idx, it -> it.copy(rank = idx + 1) }
-                                }
-                                if (top10Items.isNotEmpty()) {
                                     val top10Section = HomeSection(
                                         title = "Top 10 en España hoy",
                                         items = top10Items,
@@ -404,25 +390,10 @@ class GetHomeFeedUseCase(
                                             token = prefs.jellyfinAccessToken,
                                             maxCandidates = 30
                                         )
-                                        val platformItems: List<MediaItem> = if (matched.size >= 10) {
-                                            matched.take(20).map {
+                                        if (matched.isNotEmpty()) {
+                                            val platformItems = matched.take(20).map {
                                                 it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TMDB_TRENDING)
                                             }
-                                        } else if (matched.isNotEmpty()) {
-                                            val matchedIds = matched.mapNotNull { it.tmdbId }.toSet()
-                                            val localItems = matched.map {
-                                                it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TMDB_TRENDING)
-                                            }
-                                            val tmdbRemaining = rawTmdbItems
-                                                .filter { it.id.toString() !in matchedIds }
-                                                .take(20 - localItems.size)
-                                                .map { it.toDirectMediaItem() }
-                                            (localItems + tmdbRemaining).take(20)
-                                        } else {
-                                            rawTmdbItems.take(20).map { it.toDirectMediaItem() }
-                                        }
-
-                                        if (platformItems.isNotEmpty()) {
                                             val platformTitle = "Populares en ${platform.name}"
                                             val platformSection = HomeSection(
                                                 title = platformTitle,
@@ -459,7 +430,7 @@ class GetHomeFeedUseCase(
                                     traktToken = prefs.traktAccessToken,
                                     clientId = traktClientId
                                 )
-                                val rawTraktRecs = traktRecsResult.getOrDefault(emptyList()).take(20)
+                                val rawTraktRecs = traktRecsResult.getOrDefault(emptyList()).take(40)
                                 val matchedTraktRecs = filterToLibraryUseCase.filterTraktItems(
                                     traktItems = rawTraktRecs,
                                     serverUrl = prefs.jellyfinServerUrl,
@@ -467,15 +438,10 @@ class GetHomeFeedUseCase(
                                     token = prefs.jellyfinAccessToken,
                                     maxCandidates = 20
                                 )
-                                val displayItems = if (matchedTraktRecs.isNotEmpty()) {
-                                    matchedTraktRecs.map { it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TRAKT_RECOMMENDATION) }
-                                } else {
-                                    rawTraktRecs.map { it.toDirectMediaItem(MediaSource.TRAKT_RECOMMENDATION) }
-                                }
-                                if (displayItems.isNotEmpty()) {
+                                if (matchedTraktRecs.isNotEmpty()) {
                                     val traktRecSection = HomeSection(
                                         title = "Recomendado por la comunidad Trakt",
-                                        items = displayItems,
+                                        items = matchedTraktRecs.map { it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TRAKT_RECOMMENDATION) },
                                         badge = null
                                     )
                                     postSection(traktRecSection, cacheKey = "trakt_recs", itemIds = matchedTraktRecs.map { it.id })
@@ -492,7 +458,7 @@ class GetHomeFeedUseCase(
                                     traktToken = prefs.traktAccessToken,
                                     clientId = traktClientId
                                 )
-                                val rawWatchlist = watchlistResult.getOrDefault(emptyList()).take(20)
+                                val rawWatchlist = watchlistResult.getOrDefault(emptyList()).take(40)
                                 val matchedWatchlist = filterToLibraryUseCase.filterTraktItems(
                                     traktItems = rawWatchlist,
                                     serverUrl = prefs.jellyfinServerUrl,
@@ -500,15 +466,10 @@ class GetHomeFeedUseCase(
                                     token = prefs.jellyfinAccessToken,
                                     maxCandidates = 20
                                 )
-                                val displayItems = if (matchedWatchlist.isNotEmpty()) {
-                                    matchedWatchlist.map { it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TRAKT_WATCHLIST) }
-                                } else {
-                                    rawWatchlist.map { it.toDirectMediaItem(MediaSource.TRAKT_WATCHLIST) }
-                                }
-                                if (displayItems.isNotEmpty()) {
+                                if (matchedWatchlist.isNotEmpty()) {
                                     val watchlistSection = HomeSection(
                                         title = "Tu Watchlist de Trakt.tv",
-                                        items = displayItems,
+                                        items = matchedWatchlist.map { it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TRAKT_WATCHLIST) },
                                         badge = null
                                     )
                                     postSection(watchlistSection, cacheKey = "trakt_watchlist", itemIds = matchedWatchlist.map { it.id })
@@ -517,7 +478,7 @@ class GetHomeFeedUseCase(
                         }
                     }
 
-                    // User Lists (cada lista de usuario emite en cuanto responde)
+                    // User Lists (cada lista de usuario emite en cuanto responde si tiene items en Jellyfin)
                     launch {
                         runCatching {
                             withTimeoutOrNull(5000L) {
@@ -540,7 +501,7 @@ class GetHomeFeedUseCase(
                                                 listId = listId,
                                                 username = username
                                             )
-                                            val rawListItems = listItemsResult.getOrDefault(emptyList()).take(30)
+                                            val rawListItems = listItemsResult.getOrDefault(emptyList()).take(50)
                                             if (rawListItems.isEmpty()) return@withTimeoutOrNull
 
                                             val matchedListItems = filterToLibraryUseCase.filterTraktItems(
@@ -550,17 +511,12 @@ class GetHomeFeedUseCase(
                                                 token = prefs.jellyfinAccessToken,
                                                 maxCandidates = 30
                                             )
-                                            val displayItems = if (matchedListItems.isNotEmpty()) {
-                                                matchedListItems.map { it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TRAKT_WATCHLIST) }
-                                            } else {
-                                                rawListItems.map { it.toDirectMediaItem(MediaSource.TRAKT_WATCHLIST) }
-                                            }
 
-                                            if (displayItems.isNotEmpty()) {
+                                            if (matchedListItems.isNotEmpty()) {
                                                 val listTitle = "Trakt: ${list.name}"
                                                 val traktListSection = HomeSection(
                                                     title = listTitle,
-                                                    items = displayItems,
+                                                    items = matchedListItems.map { it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TRAKT_WATCHLIST) },
                                                     badge = "TRAKT LISTA"
                                                 )
                                                 val listKey = "trakt_list_${list.ids.trakt ?: list.ids.slug ?: list.name.hashCode()}"
@@ -578,7 +534,7 @@ class GetHomeFeedUseCase(
                         runCatching {
                             withTimeoutOrNull(4000L) {
                                 val trendingResult = mediaRepository.getTraktTrending(clientId = traktClientId)
-                                val rawTrending = trendingResult.getOrDefault(emptyList()).take(20)
+                                val rawTrending = trendingResult.getOrDefault(emptyList()).take(40)
                                 val matchedTrending = filterToLibraryUseCase.filterTraktItems(
                                     traktItems = rawTrending,
                                     serverUrl = prefs.jellyfinServerUrl,
@@ -586,15 +542,10 @@ class GetHomeFeedUseCase(
                                     token = prefs.jellyfinAccessToken,
                                     maxCandidates = 20
                                 )
-                                val displayItems = if (matchedTrending.isNotEmpty()) {
-                                    matchedTrending.map { it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TRAKT_RECOMMENDATION) }
-                                } else {
-                                    rawTrending.map { it.toDirectMediaItem(MediaSource.TRAKT_RECOMMENDATION) }
-                                }
-                                if (displayItems.isNotEmpty()) {
+                                if (matchedTrending.isNotEmpty()) {
                                     val traktTrendingSection = HomeSection(
                                         title = "Tendencias en Trakt.tv",
-                                        items = displayItems,
+                                        items = matchedTrending.map { it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TRAKT_RECOMMENDATION) },
                                         badge = null
                                     )
                                     postSection(traktTrendingSection, cacheKey = "trakt_trending", itemIds = matchedTrending.map { it.id })
