@@ -6,6 +6,8 @@ import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -79,21 +81,23 @@ fun HeroBanner(
     modifier: Modifier = Modifier,
     featuredItems: List<MediaItem> = emptyList(),
     accentColor: String = ACCENT_CYAN,
-    buttonStyle: String = BUTTON_STYLE_ICONS_ONLY
+    buttonStyle: String = BUTTON_STYLE_ICONS_ONLY,
+    onRequestTrailer: (suspend (MediaItem) -> String?)? = null,
+    onActiveHeroChanged: ((MediaItem) -> Unit)? = null
 ) {
     val indicatorTheme = com.example.tujelly.ui.theme.LocalIndicatorTheme.current
     val isMonochrome = com.example.tujelly.ui.theme.LocalIsMonochromeTheme.current ||
             indicatorTheme == com.example.tujelly.data.local.INDICATOR_THEME_MONOCHROME
 
     // 1. Carrusel de destacados autorrotatorio cuando no hay foco directo
-    val cleanFeatured = remember(featuredItems) { featuredItems.take(5) }
+    val cleanFeatured = remember(featuredItems) { featuredItems.take(6) }
     var carouselIndex by remember { mutableIntStateOf(0) }
     var isHeroFocused by remember { mutableStateOf(false) }
 
     LaunchedEffect(item, cleanFeatured, isHeroFocused) {
         if (item == null && !isHeroFocused && cleanFeatured.size > 1) {
             while (true) {
-                delay(6000L)
+                delay(9000L)
                 carouselIndex = (carouselIndex + 1) % cleanFeatured.size
             }
         }
@@ -102,16 +106,42 @@ fun HeroBanner(
     val effectiveIndex = if (cleanFeatured.isNotEmpty()) carouselIndex % cleanFeatured.size else 0
     val effectiveItem = item ?: cleanFeatured.getOrNull(effectiveIndex)
 
-    // 2. Previsualización diferida del tráiler tras 2.5s
+    // Notificar al contenedor principal para sincronizar el ambient backlight
+    LaunchedEffect(effectiveItem?.id) {
+        effectiveItem?.let { onActiveHeroChanged?.invoke(it) }
+    }
+
+    // 2. Previsualización diferida del tráiler tras 2.5s (estilo Netflix)
+    var resolvedTrailerUrl by remember(effectiveItem?.id) { mutableStateOf(effectiveItem?.trailerUrl) }
     var showTrailer by remember(effectiveItem?.id) { mutableStateOf(false) }
 
     LaunchedEffect(effectiveItem?.id) {
         showTrailer = false
-        if (effectiveItem?.trailerUrl != null && effectiveItem.trailerUrl.isNotBlank()) {
-            delay(2500L)
+        resolvedTrailerUrl = effectiveItem?.trailerUrl
+
+        // Reposo cinematográfico de 2.5s antes de consultar la API para no penalizar el scroll rápido
+        delay(2500L)
+
+        // Si no trae trailerUrl pre-asignado, solicitarlo de forma asíncrona a TMDB
+        if (resolvedTrailerUrl.isNullOrBlank() && effectiveItem != null && onRequestTrailer != null) {
+            val fetched = onRequestTrailer(effectiveItem)
+            if (!fetched.isNullOrBlank()) {
+                resolvedTrailerUrl = fetched
+            }
+        }
+
+        if (!resolvedTrailerUrl.isNullOrBlank()) {
             showTrailer = true
         }
     }
+
+    val videoId = if (!resolvedTrailerUrl.isNullOrBlank()) extractYoutubeId(resolvedTrailerUrl!!) else ""
+    val isVideoActive = showTrailer && videoId.isNotBlank()
+    val trailerAlpha by animateFloatAsState(
+        targetValue = if (isVideoActive) 0.76f else 0f,
+        animationSpec = tween(durationMillis = 700),
+        label = "heroTrailerAlpha"
+    )
 
     Box(
         modifier = modifier
@@ -143,52 +173,54 @@ fun HeroBanner(
             }
         }
 
-        // Background Trailer Video Overlay (si hay tráiler disponible y tras 2.5s)
-        if (showTrailer && effectiveItem?.trailerUrl != null) {
-            val videoId = extractYoutubeId(effectiveItem.trailerUrl)
-            if (videoId.isNotBlank()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .alpha(0.45f)
-                ) {
-                    AndroidView(
-                        factory = { ctx ->
-                            WebView(ctx).apply {
-                                layoutParams = ViewGroup.LayoutParams(
-                                    ViewGroup.LayoutParams.MATCH_PARENT,
-                                    ViewGroup.LayoutParams.MATCH_PARENT
-                                )
-                                settings.javaScriptEnabled = true
-                                settings.domStorageEnabled = true
-                                settings.mediaPlaybackRequiresUserGesture = false
-                                webChromeClient = WebChromeClient()
-                                webViewClient = WebViewClient()
+        // Background Trailer Video Overlay con fundido cinematográfico
+        if (trailerAlpha > 0.01f && videoId.isNotBlank()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .alpha(trailerAlpha)
+            ) {
+                AndroidView(
+                    factory = { ctx ->
+                        WebView(ctx).apply {
+                            layoutParams = ViewGroup.LayoutParams(
+                                ViewGroup.LayoutParams.MATCH_PARENT,
+                                ViewGroup.LayoutParams.MATCH_PARENT
+                            )
+                            settings.javaScriptEnabled = true
+                            settings.domStorageEnabled = true
+                            settings.mediaPlaybackRequiresUserGesture = false
+                            webChromeClient = WebChromeClient()
+                            webViewClient = WebViewClient()
 
-                                val html = """
-                                    <!DOCTYPE html>
-                                    <html>
-                                    <head>
-                                        <style>
-                                            * { margin:0; padding:0; }
-                                            html, body { width:100vw; height:100vh; background:#000; overflow:hidden; }
-                                            iframe { width:100vw; height:100vh; border:none; pointer-events:none; }
-                                        </style>
-                                    </head>
-                                    <body>
-                                        <iframe src="https://www.youtube-nocookie.com/embed/$videoId?autoplay=1&mute=1&controls=0&loop=1&playlist=$videoId&playsinline=1"
-                                                allow="autoplay; encrypted-media">
-                                        </iframe>
-                                    </body>
-                                    </html>
-                                """.trimIndent()
+                            val html = """
+                                <!DOCTYPE html>
+                                <html>
+                                <head>
+                                    <style>
+                                        * { margin:0; padding:0; }
+                                        html, body { width:100vw; height:100vh; background:#000; overflow:hidden; }
+                                        iframe { width:100vw; height:100vh; border:none; pointer-events:none; }
+                                    </style>
+                                </head>
+                                <body>
+                                    <iframe src="https://www.youtube-nocookie.com/embed/$videoId?autoplay=1&mute=1&controls=0&loop=1&playlist=$videoId&playsinline=1"
+                                            allow="autoplay; encrypted-media">
+                                    </iframe>
+                                </body>
+                                </html>
+                            """.trimIndent()
 
-                                loadDataWithBaseURL("https://www.youtube-nocookie.com", html, "text/html", "UTF-8", null)
-                            }
-                        },
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
+                            loadDataWithBaseURL("https://www.youtube-nocookie.com", html, "text/html", "UTF-8", null)
+                        }
+                    },
+                    onRelease = { webView ->
+                        webView.stopLoading()
+                        webView.loadUrl("about:blank")
+                        webView.destroy()
+                    },
+                    modifier = Modifier.fillMaxSize()
+                )
             }
         }
 
@@ -292,6 +324,16 @@ fun HeroBanner(
 
                 // Metadata Badges Row
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (isVideoActive && trailerAlpha > 0.35f) {
+                        TvPill(
+                            text = "▶ TRÁILER",
+                            containerColor = if (isMonochrome) Color(0x33FFFFFF) else Color(0x33E50914),
+                            textColor = if (isMonochrome) Color.White else Color(0xFFFF4D4D),
+                            borderColor = if (isMonochrome) Color(0x44FFFFFF) else Color(0x66FF4D4D)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
+
                     if (effectiveItem.rating != null && effectiveItem.rating > 0f) {
                         TvRatingBadge(rating = effectiveItem.rating, compact = false)
                         Spacer(modifier = Modifier.width(8.dp))
@@ -373,10 +415,10 @@ fun HeroBanner(
 
                     val sourceLabel = when (effectiveItem.source) {
                         MediaSource.TRAKT_RECOMMENDATION -> "Trakt Recomendado"
-                        MediaSource.TMDB_TRENDING -> "En Tendencia"
+                        MediaSource.TMDB_TRENDING -> if (effectiveItem.rank != null && effectiveItem.rank <= 10) "Top ${effectiveItem.rank} Hoy" else "En Tendencia"
                         MediaSource.TMDB_RECOMMENDATION -> "Para ti"
                         MediaSource.TRAKT_WATCHLIST -> "Tu Watchlist"
-                        MediaSource.JELLYFIN -> "En tu Servidor"
+                        MediaSource.JELLYFIN -> "En tu Colección"
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     TvPill(
@@ -509,9 +551,15 @@ fun HeroBanner(
             ) {
                 cleanFeatured.indices.forEach { idx ->
                     val isActive = idx == effectiveIndex
+                    val indicatorWidth by animateDpAsState(
+                        targetValue = if (isActive) 24.dp else 6.dp,
+                        animationSpec = tween(durationMillis = 350),
+                        label = "carouselIndicatorWidth"
+                    )
                     Box(
                         modifier = Modifier
-                            .size(if (isActive) 8.dp else 6.dp)
+                            .height(6.dp)
+                            .width(indicatorWidth)
                             .clip(CircleShape)
                             .background(if (isActive) (if (isMonochrome) Color.White else focusColor) else Color(0x44FFFFFF))
                     )

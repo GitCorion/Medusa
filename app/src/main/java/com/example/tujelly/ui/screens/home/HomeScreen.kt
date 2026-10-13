@@ -66,6 +66,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.example.tujelly.data.local.BUTTON_STYLE_ICONS_ONLY
 import com.example.tujelly.data.local.BUTTON_STYLE_TEXT_ONLY
+import com.example.tujelly.domain.BillboardPoolBuilder
 import com.example.tujelly.ui.components.BrandTileRow
 import com.example.tujelly.ui.components.GenreRow
 import com.example.tujelly.ui.components.HeroBanner
@@ -100,19 +101,18 @@ fun HomeScreen(
     val syncProgress by viewModel.syncProgress.collectAsState()
     val localMediaCount by viewModel.localMediaCount.collectAsState()
     val currentSuccess = uiState as? HomeUiState.Success
-    val defaultHeroBackdrop = remember(currentSuccess?.sections) {
+    val daySeed = remember { java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_YEAR).toLong() }
+    var activeCarouselBackdrop by remember { mutableStateOf<String?>(null) }
+
+    val featuredBillboardItems = remember(currentSuccess?.sections) {
         val sections = currentSuccess?.sections ?: emptyList()
-        val candidates = sections.filter { it.title != "Continuar Viendo" && it.items.isNotEmpty() }
-        val showcase = candidates.firstOrNull { it.title == "Grandes Producciones de tu colección" }
-            ?: candidates.firstOrNull { it.title == "Top 10 en España hoy" }
-            ?: candidates.firstOrNull { it.title == "Tendencias en España" }
-            ?: candidates.firstOrNull { it.title == "Añadido recientemente" }
-            ?: candidates.firstOrNull { it.title == "Series Destacadas" }
-            ?: candidates.firstOrNull()
-            ?: sections.firstOrNull()
-        showcase?.items?.firstOrNull()?.backdropUrl
+        BillboardPoolBuilder.buildBillboardPool(sections, daySeed)
     }
-    val focusedBackdrop = currentSuccess?.focusedItem?.backdropUrl ?: defaultHeroBackdrop
+
+    val defaultHeroBackdrop = remember(featuredBillboardItems) {
+        featuredBillboardItems.firstOrNull()?.backdropUrl
+    }
+    val focusedBackdrop = currentSuccess?.focusedItem?.backdropUrl ?: activeCarouselBackdrop ?: defaultHeroBackdrop
 
     Box(modifier = Modifier.fillMaxSize()) {
         // Global ambient backdrop crossfade
@@ -344,18 +344,6 @@ fun HomeScreen(
                             }
                         }
 
-                        val featuredItems = remember(state.sections) {
-                            val candidates = state.sections.filter { it.title != "Continuar Viendo" && it.items.isNotEmpty() }
-                            val showcaseSection = candidates.firstOrNull { it.title == "Grandes Producciones de tu colección" }
-                                ?: candidates.firstOrNull { it.title == "Top 10 en España hoy" }
-                                ?: candidates.firstOrNull { it.title == "Tendencias en España" }
-                                ?: candidates.firstOrNull { it.title == "Añadido recientemente" }
-                                ?: candidates.firstOrNull { it.title == "Series Destacadas" }
-                                ?: candidates.firstOrNull()
-                                ?: state.sections.firstOrNull()
-                            showcaseSection?.items?.take(6) ?: emptyList()
-                        }
-
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -371,11 +359,13 @@ fun HomeScreen(
                         ) {
                             HeroBanner(
                                 item = state.focusedItem,
-                                featuredItems = featuredItems,
+                                featuredItems = featuredBillboardItems,
                                 onPlayClick = { item -> onPlayMedia(item.id) },
                                 onDetailClick = { item -> onDetailMedia(item.id) },
                                 accentColor = accentColorKey,
-                                buttonStyle = buttonStyleKey
+                                buttonStyle = buttonStyleKey,
+                                onRequestTrailer = { mediaItem -> viewModel.getTrailerUrl(mediaItem) },
+                                onActiveHeroChanged = { activeItem -> activeCarouselBackdrop = activeItem.backdropUrl }
                             )
                         }
                     }

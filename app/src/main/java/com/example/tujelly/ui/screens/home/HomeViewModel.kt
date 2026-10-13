@@ -245,4 +245,24 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             _uiState.value = currentState.copy(focusedItem = item)
         }
     }
+
+    private val trailerCache = java.util.concurrent.ConcurrentHashMap<String, String>()
+
+    suspend fun getTrailerUrl(item: MediaItem): String? {
+        trailerCache[item.id]?.let { return it }
+        if (!item.trailerUrl.isNullOrBlank()) {
+            trailerCache[item.id] = item.trailerUrl
+            return item.trailerUrl
+        }
+        val prefs = userPreferencesRepository.userPreferencesFlow.first()
+        if (prefs.tmdbApiKey.isBlank()) return null
+        val entity = database.jellyfinDao().getItemById(item.id) ?: return null
+        val tmdbId = entity.tmdbId?.toLongOrNull() ?: return null
+        val isTv = item.type.equals("Series", ignoreCase = true) || item.type.equals("Episode", ignoreCase = true)
+        val trailer = mediaRepository.getTmdbTrailerUrl(prefs.tmdbApiKey, tmdbId, isTv)
+        if (!trailer.isNullOrBlank()) {
+            trailerCache[item.id] = trailer
+        }
+        return trailer
+    }
 }

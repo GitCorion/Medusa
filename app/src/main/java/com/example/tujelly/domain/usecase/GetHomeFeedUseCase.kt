@@ -855,12 +855,8 @@ class GetHomeFeedUseCase(
             // Strictly exclude played or abandoned in-progress items
             if (entity.isPlayed || entity.playbackPositionTicks > 0L) return@filter false
 
-            val year = entity.productionYear
-            val genres = entity.genres?.split(",", ";")?.map { it.lowercase().trim() } ?: emptyList()
-            val matchesGenre = userGenresLower.isNotEmpty() && genres.any { it in userGenresLower }
-
-            // Filter out old movies (< 1995) unless matching watched genres
-            if (year != null && year < 1995 && !matchesGenre) return@filter false
+            // Requisito indispensable para la cabecera: poseer imagen de fondo (backdrop)
+            if (entity.backdropImageTag.isNullOrBlank()) return@filter false
 
             true
         }.sortedByDescending { entity ->
@@ -869,12 +865,12 @@ class GetHomeFeedUseCase(
             val genres = entity.genres?.split(",", ";")?.map { it.lowercase().trim() } ?: emptyList()
 
             if (userGenresLower.isNotEmpty() && genres.any { it in userGenresLower }) {
-                score += 2.0f
+                score += 1.5f
             }
             if (year >= 2015) {
-                score += 1.5f
-            } else if (year >= 2000) {
                 score += 0.8f
+            } else if (year >= 2000) {
+                score += 0.4f
             }
             score
         }
