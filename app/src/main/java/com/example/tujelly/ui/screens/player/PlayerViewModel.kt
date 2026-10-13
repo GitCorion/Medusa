@@ -12,6 +12,9 @@ import com.example.tujelly.data.remote.jellyfin.JellyfinPlaybackProgressRequest
 import com.example.tujelly.data.remote.jellyfin.NextEpisodeInfo
 import com.example.tujelly.data.remote.jellyfin.SkipMarker
 import com.example.tujelly.data.local.BUTTON_STYLE_ICONS_ONLY
+import com.example.tujelly.data.local.db.AppDatabase
+import com.example.tujelly.data.repository.MediaRepository
+import com.example.tujelly.domain.usecase.GetHomeFeedUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -700,16 +703,48 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun reportStopped(positionMs: Long) {
-        if (currentPlayableId.isBlank() || jellyfinBaseUrl.isBlank()) return
-        viewModelScope.launch {
+    fun reportStopped(positionMs: Long, durationMs: Long = 0L) {
+        val itemId = currentPlayableId
+        val baseUrl = jellyfinBaseUrl
+        val authHeader = jellyfinAuthHeader
+        if (itemId.isBlank()) return
+
+        viewModelScope.launch(Dispatchers.IO) {
+            val isCompleted = durationMs > 0L && positionMs >= (durationMs * 0.90).toLong()
+            val isTooShort = positionMs < 30_000L && !isCompleted
+            val finalTicks = if (isCompleted || isTooShort) 0L else positionMs * 10_000L
+            val isPlayed = isCompleted
+
+            // 1. Actualizar Room localmente de inmediato
             runCatching {
-                val api = NetworkClientFactory.createService(jellyfinBaseUrl, JellyfinApiService::class.java)
-                val ticks = positionMs * 10_000L
-                api.reportPlaybackStopped(
-                    authHeader = jellyfinAuthHeader,
-                    request = JellyfinPlaybackProgressRequest(itemId = currentPlayableId, positionTicks = ticks)
+                val db = AppDatabase.getDatabase(getApplication())
+                db.jellyfinDao().updatePlaybackPosition(
+                    itemId = itemId,
+                    positionTicks = finalTicks,
+                    isPlayed = isPlayed
                 )
+            }
+
+            // 2. Invalidar cachés de Home para reflejar el estado de inmediato
+            GetHomeFeedUseCase.invalidateFeedCache()
+            MediaRepository.invalidateServerCaches()
+
+            // 3. Notificar al servidor Jellyfin
+            if (baseUrl.isNotBlank() && authHeader.isNotBlank()) {
+                runCatching {
+                    val api = NetworkClientFactory.createService(baseUrl, JellyfinApiService::class.java)
+                    val ticks = positionMs * 10_000L
+                    api.reportPlaybackStopped(
+                        authHeader = authHeader,
+                        request = JellyfinPlaybackProgressRequest(itemId = itemId, positionTicks = ticks)
+                    )
+                    if (isCompleted) {
+                        val prefs = userPreferencesRepository.userPreferencesFlow.first()
+                        if (prefs.jellyfinUserId.isNotBlank()) {
+                            api.markPlayed(authHeader = authHeader, userId = prefs.jellyfinUserId, itemId = itemId)
+                        }
+                    }
+                }
             }
         }
     }

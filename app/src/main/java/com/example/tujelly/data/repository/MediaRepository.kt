@@ -28,6 +28,7 @@ import com.example.tujelly.util.JellyfinImageUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -720,16 +721,50 @@ class MediaRepository(
         return runCatching {
             val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
             val authHeader = buildJellyfinAuthHeader(token = token)
-            val response = api.getResumeItems(authHeader = authHeader, userId = userId)
-            val entities = response.items.map { it.toEntity() }
-            if (entities.isNotEmpty()) {
-                jellyfinDao.insertOrUpdateAll(entities)
+
+            coroutineScope {
+                val resumeDeferred = async {
+                    runCatching {
+                        api.getResumeItems(authHeader = authHeader, userId = userId).items.map { it.toEntity() }
+                    }.getOrDefault(emptyList())
+                }
+                val nextUpDeferred = async {
+                    runCatching {
+                        api.getNextUpItems(authHeader = authHeader, userId = userId).items.map { it.toEntity() }
+                    }.getOrDefault(emptyList())
+                }
+
+                val resumeEntities = resumeDeferred.await()
+                val nextUpEntities = nextUpDeferred.await()
+
+                val allFetched = (resumeEntities + nextUpEntities)
+                if (allFetched.isNotEmpty()) {
+                    jellyfinDao.insertOrUpdateAll(allFetched)
+                }
+
+                val seenKeys = mutableSetOf<String>()
+                val combined = mutableListOf<JellyfinMediaEntity>()
+
+                for (item in resumeEntities) {
+                    val key = item.seriesId ?: item.id
+                    if (seenKeys.add(key)) {
+                        combined.add(item)
+                    }
+                }
+
+                for (item in nextUpEntities) {
+                    val key = item.seriesId ?: item.id
+                    if (seenKeys.add(key)) {
+                        combined.add(item)
+                    }
+                }
+
+                val deduplicated = combined.deduplicateMediaEntities()
+                if (deduplicated.isNotEmpty()) {
+                    serverContinueWatchingCache.put(cacheKey, deduplicated)
+                }
+                deduplicated
             }
-            val deduplicated = entities.deduplicateMediaEntities()
-            if (deduplicated.isNotEmpty()) {
-                serverContinueWatchingCache.put(cacheKey, deduplicated)
-            }
-            deduplicated
         }
     }
 
@@ -1223,7 +1258,15 @@ class MediaRepository(
         return jellyfinDao.getItemsByIds(ids).filterAllowed()
     }
 
-    suspend fun getContinueWatchingLocal(limit: Int = 20): List<JellyfinMediaEntity> = jellyfinDao.getContinueWatchingLocal(limit).deduplicateMediaEntities().filterAllowed()
+    suspend fun getContinueWatchingLocal(limit: Int = 20): List<JellyfinMediaEntity> {
+        val raw = jellyfinDao.getContinueWatchingLocal(limit * 2)
+        val seenKeys = mutableSetOf<String>()
+        val filtered = raw.filter { item ->
+            val key = item.seriesId ?: item.id
+            seenKeys.add(key)
+        }.take(limit)
+        return filtered.deduplicateMediaEntities().filterAllowed()
+    }
     suspend fun getLatestLocal(serverUrl: String = "", userId: String = "", limit: Int = 20): List<JellyfinMediaEntity> {
         val cacheKey = "$serverUrl-$userId"
         serverLatestCache.get(cacheKey)?.let { return it.take(limit) }

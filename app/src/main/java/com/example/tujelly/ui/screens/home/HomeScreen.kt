@@ -40,6 +40,7 @@ import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.WarningAmber
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -104,6 +105,19 @@ fun HomeScreen(
     val daySeed = remember { java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_YEAR).toLong() }
     var activeCarouselBackdrop by remember { mutableStateOf<String?>(null) }
 
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                viewModel.refreshContinueWatching()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
     val featuredBillboardItems = remember(currentSuccess?.sections) {
         val sections = currentSuccess?.sections ?: emptyList()
         BillboardPoolBuilder.buildBillboardPool(sections, daySeed)
@@ -127,6 +141,7 @@ fun HomeScreen(
                         model = backdropUrl,
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
+                        alignment = Alignment.TopCenter,
                         modifier = Modifier
                             .fillMaxSize()
                             .alpha(0.32f)
@@ -152,25 +167,39 @@ fun HomeScreen(
             modifier = Modifier
                 .fillMaxSize()
         ) {
-        // Universal Persistent TV TopBar
-        com.example.tujelly.ui.components.TvTopBar(
-            selectedTab = com.example.tujelly.ui.components.TvNavTab.HOME,
-            onNavigateHome = { /* Ya en Inicio */ },
-            onOpenMedusa = onOpenMedusa,
-            onOpenFavorites = onOpenFavorites,
-            onOpenSearch = onOpenSearch,
-            onOpenSettings = onOpenSettings,
-            accentColorKey = accentColorKey,
-            buttonStyleKey = buttonStyleKey,
-            isMonochrome = isMonochrome,
-            syncProgress = syncProgress,
-            localMediaCount = localMediaCount,
-            modifier = Modifier.onFocusChanged { focusState ->
-                if (focusState.hasFocus) {
-                    viewModel.setFocusedItem(null)
+        // Universal Persistent TV TopBar con gradiente protector superior
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color(0xEE07070B),
+                            Color(0xAA07070B),
+                            Color(0x0007070B)
+                        )
+                    )
+                )
+        ) {
+            com.example.tujelly.ui.components.TvTopBar(
+                selectedTab = com.example.tujelly.ui.components.TvNavTab.HOME,
+                onNavigateHome = { /* Ya en Inicio */ },
+                onOpenMedusa = onOpenMedusa,
+                onOpenFavorites = onOpenFavorites,
+                onOpenSearch = onOpenSearch,
+                onOpenSettings = onOpenSettings,
+                accentColorKey = accentColorKey,
+                buttonStyleKey = buttonStyleKey,
+                isMonochrome = isMonochrome,
+                syncProgress = syncProgress,
+                localMediaCount = localMediaCount,
+                modifier = Modifier.onFocusChanged { focusState ->
+                    if (focusState.hasFocus) {
+                        viewModel.setFocusedItem(null)
+                    }
                 }
-            }
-        )
+            )
+        }
 
 
         when (val state = uiState) {
@@ -364,7 +393,6 @@ fun HomeScreen(
                                 onDetailClick = { item -> onDetailMedia(item.id) },
                                 accentColor = accentColorKey,
                                 buttonStyle = buttonStyleKey,
-                                onRequestTrailer = { mediaItem -> viewModel.getTrailerUrl(mediaItem) },
                                 onActiveHeroChanged = { activeItem -> activeCarouselBackdrop = activeItem.backdropUrl }
                             )
                         }
@@ -403,7 +431,13 @@ fun HomeScreen(
                     items(state.sections) { section ->
                         MediaRow(
                             section = section,
-                            onItemClick = { item -> onDetailMedia(item.id) },
+                            onItemClick = { item ->
+                                if (section.title == "Continuar Viendo") {
+                                    onPlayMedia(item.id)
+                                } else {
+                                    onDetailMedia(item.id)
+                                }
+                            },
                             onItemFocus = { item -> viewModel.setFocusedItem(item) }
                         )
                     }

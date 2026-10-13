@@ -556,8 +556,9 @@ private fun PlayerContent(
     DisposableEffect(exoPlayer) {
         onDispose {
             val finalPos = exoPlayer.currentPosition
+            val totalDur = exoPlayer.duration
             if (finalPos > 0 && exoPlayer.playerError == null) {
-                viewModel.reportStopped(finalPos)
+                viewModel.reportStopped(finalPos, totalDur)
             }
             exoPlayer.release()
         }
@@ -620,9 +621,13 @@ private fun PlayerContent(
     LaunchedEffect(exoPlayer) {
         exoPlayer.addListener(object : Player.Listener {
             override fun onPlaybackStateChanged(playbackState: Int) {
-                if (playbackState == Player.STATE_ENDED && nextEpisode != null && creditsMarker == null) {
-                    nextEpisodeCountdown = -1 // sin cuenta atrás: el episodio ya ha terminado
-                    showNextEpisodeOverlay = true
+                if (playbackState == Player.STATE_ENDED) {
+                    val dur = exoPlayer.duration.coerceAtLeast(1L)
+                    viewModel.reportStopped(dur, dur)
+                    if (nextEpisode != null && creditsMarker == null) {
+                        nextEpisodeCountdown = -1 // sin cuenta atrás: el episodio ya ha terminado
+                        showNextEpisodeOverlay = true
+                    }
                 }
             }
         })

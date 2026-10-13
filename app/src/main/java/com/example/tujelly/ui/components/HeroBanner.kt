@@ -1,13 +1,7 @@
 package com.example.tujelly.ui.components
 
-import android.annotation.SuppressLint
-import android.view.ViewGroup
-import android.webkit.WebChromeClient
-import android.webkit.WebView
-import android.webkit.WebViewClient
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -17,6 +11,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -31,7 +26,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -40,7 +34,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
@@ -52,7 +45,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.tv.material3.Border
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
@@ -71,7 +63,6 @@ import com.example.tujelly.ui.theme.TvPill
 import com.example.tujelly.ui.theme.TvRatingBadge
 import kotlinx.coroutines.delay
 
-@SuppressLint("SetJavaScriptEnabled")
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 fun HeroBanner(
@@ -82,14 +73,13 @@ fun HeroBanner(
     featuredItems: List<MediaItem> = emptyList(),
     accentColor: String = ACCENT_CYAN,
     buttonStyle: String = BUTTON_STYLE_ICONS_ONLY,
-    onRequestTrailer: (suspend (MediaItem) -> String?)? = null,
     onActiveHeroChanged: ((MediaItem) -> Unit)? = null
 ) {
     val indicatorTheme = com.example.tujelly.ui.theme.LocalIndicatorTheme.current
     val isMonochrome = com.example.tujelly.ui.theme.LocalIsMonochromeTheme.current ||
             indicatorTheme == com.example.tujelly.data.local.INDICATOR_THEME_MONOCHROME
 
-    // 1. Carrusel de destacados autorrotatorio cuando no hay foco directo
+    // 1. Carrusel de destacados con rotación reposada (12s) que se pausa cuando el usuario interactúa
     val cleanFeatured = remember(featuredItems) { featuredItems.take(6) }
     var carouselIndex by remember { mutableIntStateOf(0) }
     var isHeroFocused by remember { mutableStateOf(false) }
@@ -97,7 +87,7 @@ fun HeroBanner(
     LaunchedEffect(item, cleanFeatured, isHeroFocused) {
         if (item == null && !isHeroFocused && cleanFeatured.size > 1) {
             while (true) {
-                delay(9000L)
+                delay(12000L)
                 carouselIndex = (carouselIndex + 1) % cleanFeatured.size
             }
         }
@@ -111,45 +101,13 @@ fun HeroBanner(
         effectiveItem?.let { onActiveHeroChanged?.invoke(it) }
     }
 
-    // 2. Previsualización diferida del tráiler tras 2.5s (estilo Netflix)
-    var resolvedTrailerUrl by remember(effectiveItem?.id) { mutableStateOf(effectiveItem?.trailerUrl) }
-    var showTrailer by remember(effectiveItem?.id) { mutableStateOf(false) }
-
-    LaunchedEffect(effectiveItem?.id) {
-        showTrailer = false
-        resolvedTrailerUrl = effectiveItem?.trailerUrl
-
-        // Reposo cinematográfico de 2.5s antes de consultar la API para no penalizar el scroll rápido
-        delay(2500L)
-
-        // Si no trae trailerUrl pre-asignado, solicitarlo de forma asíncrona a TMDB
-        if (resolvedTrailerUrl.isNullOrBlank() && effectiveItem != null && onRequestTrailer != null) {
-            val fetched = onRequestTrailer(effectiveItem)
-            if (!fetched.isNullOrBlank()) {
-                resolvedTrailerUrl = fetched
-            }
-        }
-
-        if (!resolvedTrailerUrl.isNullOrBlank()) {
-            showTrailer = true
-        }
-    }
-
-    val videoId = if (!resolvedTrailerUrl.isNullOrBlank()) extractYoutubeId(resolvedTrailerUrl!!) else ""
-    val isVideoActive = showTrailer && videoId.isNotBlank()
-    val trailerAlpha by animateFloatAsState(
-        targetValue = if (isVideoActive) 0.76f else 0f,
-        animationSpec = tween(durationMillis = 700),
-        label = "heroTrailerAlpha"
-    )
-
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(310.dp)
+            .height(350.dp)
             .onFocusChanged { isHeroFocused = it.hasFocus }
     ) {
-        // Crossfade cinematográfico de la imagen de fondo
+        // Crossfade cinematográfico de la imagen de fondo (anclada a la derecha y ajustada para no cortar cabezas)
         Crossfade(
             targetState = effectiveItem,
             animationSpec = tween(durationMillis = 400),
@@ -157,12 +115,37 @@ fun HeroBanner(
         ) { currentItem ->
             Box(modifier = Modifier.fillMaxSize()) {
                 if (currentItem?.backdropUrl != null || currentItem?.posterUrl != null) {
-                    AsyncImage(
-                        model = currentItem.backdropUrl ?: currentItem.posterUrl,
-                        contentDescription = currentItem.title,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
-                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .fillMaxWidth(0.75f)
+                            .align(Alignment.TopEnd)
+                    ) {
+                        AsyncImage(
+                            model = currentItem.backdropUrl ?: currentItem.posterUrl,
+                            contentDescription = currentItem.title,
+                            contentScale = ContentScale.Crop,
+                            alignment = Alignment.TopCenter,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                        // Suave desvanecimiento horizontal a la izquierda para fundirse con la zona de texto
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(
+                                    Brush.horizontalGradient(
+                                        colors = listOf(
+                                            Color(0xFF0A0B0E),
+                                            Color(0xEE0A0B0E),
+                                            Color(0x660A0B0E),
+                                            Color.Transparent
+                                        ),
+                                        startX = 0f,
+                                        endX = 380f
+                                    )
+                                )
+                        )
+                    }
                 } else {
                     Box(
                         modifier = Modifier
@@ -173,57 +156,6 @@ fun HeroBanner(
             }
         }
 
-        // Background Trailer Video Overlay con fundido cinematográfico
-        if (trailerAlpha > 0.01f && videoId.isNotBlank()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .alpha(trailerAlpha)
-            ) {
-                AndroidView(
-                    factory = { ctx ->
-                        WebView(ctx).apply {
-                            layoutParams = ViewGroup.LayoutParams(
-                                ViewGroup.LayoutParams.MATCH_PARENT,
-                                ViewGroup.LayoutParams.MATCH_PARENT
-                            )
-                            settings.javaScriptEnabled = true
-                            settings.domStorageEnabled = true
-                            settings.mediaPlaybackRequiresUserGesture = false
-                            webChromeClient = WebChromeClient()
-                            webViewClient = WebViewClient()
-
-                            val html = """
-                                <!DOCTYPE html>
-                                <html>
-                                <head>
-                                    <style>
-                                        * { margin:0; padding:0; }
-                                        html, body { width:100vw; height:100vh; background:#000; overflow:hidden; }
-                                        iframe { width:100vw; height:100vh; border:none; pointer-events:none; }
-                                    </style>
-                                </head>
-                                <body>
-                                    <iframe src="https://www.youtube-nocookie.com/embed/$videoId?autoplay=1&mute=1&controls=0&loop=1&playlist=$videoId&playsinline=1"
-                                            allow="autoplay; encrypted-media">
-                                    </iframe>
-                                </body>
-                                </html>
-                            """.trimIndent()
-
-                            loadDataWithBaseURL("https://www.youtube-nocookie.com", html, "text/html", "UTF-8", null)
-                        }
-                    },
-                    onRelease = { webView ->
-                        webView.stopLoading()
-                        webView.loadUrl("about:blank")
-                        webView.destroy()
-                    },
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
-        }
-
         // Horizontal gradient for dark left text background
         Box(
             modifier = Modifier
@@ -231,18 +163,18 @@ fun HeroBanner(
                 .background(
                     Brush.horizontalGradient(
                         colors = listOf(
-                            Color(0xF50A0B0E),
-                            Color(0xDC0A0B0E),
+                            Color(0xF80A0B0E),
+                            Color(0xEE0A0B0E),
                             Color(0x880A0B0E),
                             Color.Transparent
                         ),
                         startX = 0f,
-                        endX = 1400f
+                        endX = 1000f
                     )
                 )
         )
 
-        // Deep obsidian gradient overlay for cinematic contrast
+        // Deep obsidian gradient overlay for cinematic contrast at the bottom
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -250,8 +182,8 @@ fun HeroBanner(
                     Brush.verticalGradient(
                         colors = listOf(
                             Color.Transparent,
-                            Color(0x330A0B0E),
-                            Color(0xCC0A0B0E),
+                            Color(0x220A0B0E),
+                            Color(0xAA0A0B0E),
                             Color(0xFF0A0B0E)
                         )
                     )
@@ -262,8 +194,8 @@ fun HeroBanner(
             Column(
                 modifier = Modifier
                     .align(Alignment.TopStart)
-                    .padding(start = 48.dp, end = 48.dp, top = 20.dp, bottom = 14.dp)
-                    .fillMaxWidth(0.68f)
+                    .padding(start = 48.dp, end = 24.dp, top = 20.dp, bottom = 14.dp)
+                    .fillMaxWidth(0.58f)
             ) {
                 // Title / ClearLogo
                 var isLogoLoaded by remember(effectiveItem.id, effectiveItem.logoUrl) { mutableStateOf(false) }
@@ -324,16 +256,6 @@ fun HeroBanner(
 
                 // Metadata Badges Row
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (isVideoActive && trailerAlpha > 0.35f) {
-                        TvPill(
-                            text = "▶ TRÁILER",
-                            containerColor = if (isMonochrome) Color(0x33FFFFFF) else Color(0x33E50914),
-                            textColor = if (isMonochrome) Color.White else Color(0xFFFF4D4D),
-                            borderColor = if (isMonochrome) Color(0x44FFFFFF) else Color(0x66FF4D4D)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                    }
-
                     if (effectiveItem.rating != null && effectiveItem.rating > 0f) {
                         TvRatingBadge(rating = effectiveItem.rating, compact = false)
                         Spacer(modifier = Modifier.width(8.dp))
@@ -566,15 +488,5 @@ fun HeroBanner(
                 }
             }
         }
-    }
-}
-
-private fun extractYoutubeId(url: String): String {
-    return when {
-        url.contains("v=") -> url.substringAfter("v=").substringBefore("&")
-        url.contains("youtu.be/") -> url.substringAfter("youtu.be/").substringBefore("?")
-        url.contains("/embed/") -> url.substringAfter("/embed/").substringBefore("?")
-        url.length == 11 && !url.contains("/") -> url
-        else -> ""
     }
 }

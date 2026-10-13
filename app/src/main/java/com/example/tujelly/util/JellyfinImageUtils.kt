@@ -173,14 +173,9 @@ fun JellyfinMediaEntity.toOptimizedMediaItem(
         token = token
     )
 
-    val isContinueWatching = source == MediaSource.JELLYFIN && playbackPositionTicks > 0
     val effectiveTitle = if (isEpisode && !seriesName.isNullOrEmpty()) {
-        if (isContinueWatching) {
-            val epCode = if (seasonNumber != null && episodeNumber != null) " (T${seasonNumber}:E${episodeNumber})" else ""
-            "$seriesName$epCode"
-        } else {
-            seriesName
-        }
+        val epCode = if (seasonNumber != null && episodeNumber != null) " (T${seasonNumber}:E${episodeNumber})" else ""
+        "$seriesName$epCode"
     } else {
         title
     }

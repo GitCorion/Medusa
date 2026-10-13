@@ -256,6 +256,27 @@ fun MediaCard(
                                 letterSpacing = 0.5.sp
                             )
                         }
+                    } else if (hasMovieProgress) {
+                        val progressBorder = if (isMonochrome) Color(0x66FFFFFF) else Color(0x9900A4DC)
+                        val progressTextColor = if (isMonochrome) Color.White else Color(0xFF38BDF8)
+                        Box(
+                            modifier = Modifier
+                                .background(
+                                    color = Color(0xE60F172A),
+                                    shape = RoundedCornerShape(6.dp)
+                                )
+                                .border(1.dp, progressBorder, RoundedCornerShape(6.dp))
+                                .padding(horizontal = 6.dp, vertical = 2.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "En curso",
+                                color = progressTextColor,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 9.sp,
+                                letterSpacing = 0.5.sp
+                            )
+                        }
                     }
 
                     if (item.isFavorite) {

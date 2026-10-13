@@ -10,8 +10,10 @@ import com.example.tujelly.data.local.db.AppDatabase
 import com.example.tujelly.data.repository.MediaRepository
 import com.example.tujelly.domain.model.HomeSection
 import com.example.tujelly.domain.model.MediaItem
+import com.example.tujelly.domain.model.MediaSource
 import com.example.tujelly.domain.usecase.FilterToLibraryUseCase
 import com.example.tujelly.domain.usecase.GetHomeFeedUseCase
+import com.example.tujelly.util.toOptimizedMediaItem
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -129,6 +131,60 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         loadHomeFeed(forceRefresh = true)
     }
 
+    fun refreshContinueWatching() {
+        val current = _uiState.value as? HomeUiState.Success ?: return
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val prefs = userPreferencesRepository.userPreferencesFlow.first()
+            if (prefs.jellyfinServerUrl.isBlank() || prefs.jellyfinAccessToken.isBlank()) return@launch
+
+            // 1. Refresco inmediato desde Room local (<10ms)
+            val localItems = runCatching { mediaRepository.getContinueWatchingLocal(20) }.getOrDefault(emptyList())
+            updateContinueWatchingSection(localItems, prefs)
+
+            // 2. Refresco remoto desde Jellyfin (detecta nuevo capítulo NextUp o progreso sincronizado)
+            val serverResult = mediaRepository.getContinueWatching(
+                prefs.jellyfinServerUrl,
+                prefs.jellyfinUserId,
+                prefs.jellyfinAccessToken
+            ).getOrNull()
+
+            if (serverResult != null) {
+                updateContinueWatchingSection(serverResult, prefs)
+            }
+        }
+    }
+
+    private fun updateContinueWatchingSection(
+        entities: List<com.example.tujelly.data.local.db.JellyfinMediaEntity>,
+        prefs: UserPreferences
+    ) {
+        val current = _uiState.value as? HomeUiState.Success ?: return
+        val currentSections = current.sections.toMutableList()
+        val sectionIndex = currentSections.indexOfFirst { it.title == "Continuar Viendo" }
+
+        if (entities.isEmpty()) {
+            if (sectionIndex != -1) {
+                currentSections.removeAt(sectionIndex)
+                _uiState.value = current.copy(sections = currentSections)
+                lastSections = currentSections
+                lastStaticSections = currentSections
+            }
+        } else {
+            val newItems = entities.take(15).map {
+                it.toOptimizedMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.JELLYFIN)
+            }
+            val newSection = HomeSection(title = "Continuar Viendo", items = newItems)
+            if (sectionIndex != -1) {
+                currentSections[sectionIndex] = newSection
+            } else {
+                currentSections.add(0, newSection)
+            }
+            _uiState.value = current.copy(sections = currentSections)
+            lastSections = currentSections
+            lastStaticSections = currentSections
+        }
+    }
+
     private fun loadFeedForPrefs(prefs: UserPreferences, forceRefresh: Boolean = false) {
         if (isFeedLoading) return
         isFeedLoading = true
@@ -244,25 +300,5 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         if (currentState is HomeUiState.Success) {
             _uiState.value = currentState.copy(focusedItem = item)
         }
-    }
-
-    private val trailerCache = java.util.concurrent.ConcurrentHashMap<String, String>()
-
-    suspend fun getTrailerUrl(item: MediaItem): String? {
-        trailerCache[item.id]?.let { return it }
-        if (!item.trailerUrl.isNullOrBlank()) {
-            trailerCache[item.id] = item.trailerUrl
-            return item.trailerUrl
-        }
-        val prefs = userPreferencesRepository.userPreferencesFlow.first()
-        if (prefs.tmdbApiKey.isBlank()) return null
-        val entity = database.jellyfinDao().getItemById(item.id) ?: return null
-        val tmdbId = entity.tmdbId?.toLongOrNull() ?: return null
-        val isTv = item.type.equals("Series", ignoreCase = true) || item.type.equals("Episode", ignoreCase = true)
-        val trailer = mediaRepository.getTmdbTrailerUrl(prefs.tmdbApiKey, tmdbId, isTv)
-        if (!trailer.isNullOrBlank()) {
-            trailerCache[item.id] = trailer
-        }
-        return trailer
     }
 }

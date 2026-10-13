@@ -245,7 +245,7 @@ class GetHomeFeedUseCase(
                 "Continuar Viendo",
                 HomeSection(
                     title = "Continuar Viendo",
-                    items = resumeItems.take(15).map { it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.JELLYFIN) }
+                    items = resumeItems.take(15).map { it.toOptimizedMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.JELLYFIN) }
                 ),
                 preferredIndex = 0
             )

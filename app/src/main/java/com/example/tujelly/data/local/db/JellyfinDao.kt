@@ -63,8 +63,11 @@ interface JellyfinDao {
     @Query("SELECT * FROM jellyfin_media WHERE type IN ('Movie', 'Series')")
     suspend fun getAllCatalog(): List<JellyfinMediaEntity>
 
-    @Query("SELECT * FROM jellyfin_media WHERE playbackPositionTicks > 0 AND type IN ('Movie', 'Episode', 'Series') ORDER BY CASE WHEN type = 'Episode' THEN 0 ELSE 1 END LIMIT :limit")
+    @Query("SELECT * FROM jellyfin_media WHERE playbackPositionTicks > 0 AND isPlayed = 0 AND type IN ('Movie', 'Episode', 'Series') ORDER BY rowid DESC LIMIT :limit")
     suspend fun getContinueWatchingLocal(limit: Int = 20): List<JellyfinMediaEntity>
+
+    @Query("UPDATE jellyfin_media SET playbackPositionTicks = :positionTicks, isPlayed = :isPlayed WHERE id = :itemId")
+    suspend fun updatePlaybackPosition(itemId: String, positionTicks: Long, isPlayed: Boolean)
 
     @Query("SELECT * FROM jellyfin_media WHERE type IN ('Movie', 'Series') ORDER BY rowid DESC LIMIT :limit")
     suspend fun getLatestLocal(limit: Int = 20): List<JellyfinMediaEntity>
