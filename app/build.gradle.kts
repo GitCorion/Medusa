@@ -25,8 +25,8 @@ android {
         applicationId = "com.example.tujelly"
         minSdk = 26
         targetSdk = 35
-        versionCode = 63
-        versionName = "2.2.16"
+        versionCode = 64
+        versionName = "2.2.17"
     }
 
     signingConfigs {

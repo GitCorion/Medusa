@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -104,28 +105,37 @@ fun HeroBanner(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(350.dp)
+            .height(360.dp)
             .onFocusChanged { isHeroFocused = it.hasFocus }
     ) {
-        // Crossfade cinematográfico de la imagen de fondo (anclada a la derecha y ajustada para no cortar cabezas)
+        // Crossfade cinematográfico de la imagen de fondo con proporción nativa (16:9 sin recortes de cabezas ni bordes)
         Crossfade(
             targetState = effectiveItem,
             animationSpec = tween(durationMillis = 400),
             label = "heroBackdropCrossfade"
         ) { currentItem ->
             Box(modifier = Modifier.fillMaxSize()) {
-                if (currentItem?.backdropUrl != null || currentItem?.posterUrl != null) {
+                val isBackdrop = !currentItem?.backdropUrl.isNullOrBlank()
+                val imageModel = currentItem?.backdropUrl ?: currentItem?.posterUrl
+
+                if (imageModel != null) {
                     Box(
                         modifier = Modifier
                             .fillMaxHeight()
-                            .fillMaxWidth(0.75f)
-                            .align(Alignment.TopEnd)
+                            .then(
+                                if (isBackdrop) {
+                                    Modifier.aspectRatio(16f / 9f, matchHeightConstraintsFirst = true)
+                                } else {
+                                    Modifier.aspectRatio(2f / 3f, matchHeightConstraintsFirst = true)
+                                }
+                            )
+                            .align(Alignment.CenterEnd)
                     ) {
                         AsyncImage(
-                            model = currentItem.backdropUrl ?: currentItem.posterUrl,
-                            contentDescription = currentItem.title,
-                            contentScale = ContentScale.Crop,
-                            alignment = Alignment.TopCenter,
+                            model = imageModel,
+                            contentDescription = currentItem?.title,
+                            contentScale = ContentScale.Fit,
+                            alignment = Alignment.Center,
                             modifier = Modifier.fillMaxSize()
                         )
                         // Suave desvanecimiento horizontal a la izquierda para fundirse con la zona de texto
@@ -135,13 +145,28 @@ fun HeroBanner(
                                 .background(
                                     Brush.horizontalGradient(
                                         colors = listOf(
-                                            Color(0xFF0A0B0E),
-                                            Color(0xEE0A0B0E),
-                                            Color(0x660A0B0E),
+                                            Color(0xFF07070B),
+                                            Color(0xEE07070B),
+                                            Color(0x3307070B),
                                             Color.Transparent
                                         ),
                                         startX = 0f,
-                                        endX = 380f
+                                        endX = 200f
+                                    )
+                                )
+                        )
+                        // Suave desvanecimiento inferior para integrar con la fila siguiente
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(
+                                    Brush.verticalGradient(
+                                        colors = listOf(
+                                            Color.Transparent,
+                                            Color.Transparent,
+                                            Color(0x5507070B),
+                                            Color(0xFF07070B)
+                                        )
                                     )
                                 )
                         )
@@ -156,35 +181,18 @@ fun HeroBanner(
             }
         }
 
-        // Horizontal gradient for dark left text background
+        // Horizontal gradient for dark left text background (solo cubre el lado izquierdo para máxima legibilidad sin tapar la ilustración)
         Box(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxHeight()
+                .fillMaxWidth(0.55f)
                 .background(
                     Brush.horizontalGradient(
                         colors = listOf(
-                            Color(0xF80A0B0E),
-                            Color(0xEE0A0B0E),
-                            Color(0x880A0B0E),
+                            Color(0xF607070B),
+                            Color(0xEE07070B),
+                            Color(0x6607070B),
                             Color.Transparent
-                        ),
-                        startX = 0f,
-                        endX = 1000f
-                    )
-                )
-        )
-
-        // Deep obsidian gradient overlay for cinematic contrast at the bottom
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color.Transparent,
-                            Color(0x220A0B0E),
-                            Color(0xAA0A0B0E),
-                            Color(0xFF0A0B0E)
                         )
                     )
                 )
