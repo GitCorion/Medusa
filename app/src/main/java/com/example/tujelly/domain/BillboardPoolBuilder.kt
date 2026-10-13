@@ -4,91 +4,88 @@ import com.example.tujelly.domain.model.HomeSection
 import com.example.tujelly.domain.model.MediaItem
 
 /**
- * Generador inteligente del escaparate principal (Billboard / HeroBanner) al estilo Netflix.
+ * Generador inteligente del escaparate principal (Billboard / HeroBanner) al estilo Netflix / Max.
  *
- * En lugar de tomar estáticamente los primeros elementos de una sola sección,
- * combina de forma equilibrada los títulos más destacados de toda la biblioteca:
- * - El podio de tendencias del día (Top 10)
- * - Grandes producciones cinematográficas
- * - Series aclamadas
- * - Nuevas incorporaciones
- * - Contenidos populares de plataformas
+ * Sigue una lógica 100% de streaming contemporáneo:
+ * El escaparate destaca exclusivamente NOVEDADES Y TENDENCIAS:
+ * 1. Top 10 en España hoy (Tendencias del día en tu país disponibles en tu biblioteca)
+ * 2. Añadido recientemente (Nuevas incorporaciones a tu servidor Jellyfin)
+ * 3. Populares en Plataformas (Los buques insignia de Netflix, Prime Video, HBO Max, Disney+, Apple TV+)
+ * 4. Tendencias de Trakt.tv (Lo más visto globalmente)
  *
- * Aplica rotación temporal para evitar la fatiga visual de mostrar siempre la misma portada,
- * y garantiza que todos los candidatos posean material gráfico de alta resolución.
+ * Se excluyen expresamente del escaparate principal:
+ * - Listas privadas de consumo personal ("Continuar Viendo", "Watchlist")
+ * - Listas pasivas de catálogo estático basadas en valoraciones históricas ("Grandes Producciones", "Joyas", etc.)
+ *
+ * Esto evita el problema de llenar la portada con películas antiguas de archivo solo por tener notas altas en IMDb.
  */
 object BillboardPoolBuilder {
 
     fun buildBillboardPool(sections: List<HomeSection>, seed: Long = 0L): List<MediaItem> {
         if (sections.isEmpty()) return emptyList()
 
-        // Descartar listas de consumo personal ("Continuar Viendo", "Watchlist") para el escaparate
-        val showcaseSections = sections.filter {
-            it.title != "Continuar Viendo" &&
-            it.title != "Tu Watchlist de Trakt.tv" &&
-            it.items.isNotEmpty()
-        }
+        // 1. Identificar secciones dinámicas de actualidad y novedades
+        val top10Section = sections.firstOrNull { it.title.contains("Top 10", ignoreCase = true) }
+        val recentSection = sections.firstOrNull { it.title.contains("Añadido recientemente", ignoreCase = true) }
+        val platformSections = sections.filter { it.title.startsWith("Populares en ") }
+        val traktTrendingSection = sections.firstOrNull { it.title.contains("Tendencias", ignoreCase = true) }
 
-        // 1. Extraer los mejores títulos de cada categoría con backdrop horizontal válido
-        val top10Items = showcaseSections.firstOrNull { it.title.contains("Top 10", ignoreCase = true) }
-            ?.items?.filter { isValidCandidate(it) }?.take(3).orEmpty()
-
-        val blockbusterMovies = showcaseSections.firstOrNull { it.title.contains("Grandes Producciones", ignoreCase = true) }
-            ?.items?.filter { isValidCandidate(it) }
-            ?.sortedByDescending { candidateScore(it) }
-            ?.take(4).orEmpty()
-
-        val topSeries = showcaseSections.firstOrNull { it.title.contains("Series Destacadas", ignoreCase = true) }
-            ?.items?.filter { isValidCandidate(it) }
-            ?.sortedByDescending { candidateScore(it) }
-            ?.take(3).orEmpty()
-
-        val recentAdditions = showcaseSections.firstOrNull { it.title.contains("Añadido recientemente", ignoreCase = true) }
-            ?.items?.filter { isValidCandidate(it) }?.take(3).orEmpty()
-
-        val platformItems = showcaseSections.filter { it.title.startsWith("Populares en ") }
+        // Extraer candidatos válidos (con imagen horizontal y preferiblemente no reproducidos)
+        val top10Candidates = top10Section?.items?.filter { isValidCandidate(it) }?.take(4).orEmpty()
+        val recentCandidates = recentSection?.items?.filter { isValidCandidate(it) }?.take(4).orEmpty()
+        val platformCandidates = platformSections
             .flatMap { it.items.filter { item -> isValidCandidate(item) }.take(1) }
             .take(3)
+        val traktCandidates = traktTrendingSection?.items?.filter { isValidCandidate(it) }?.take(2).orEmpty()
 
-        val traktTrending = showcaseSections.firstOrNull { it.title.contains("Tendencias", ignoreCase = true) }
-            ?.items?.filter { isValidCandidate(it) }?.take(2).orEmpty()
-
-        // 2. Intercalar candidatos de distintos orígenes para máxima diversidad visual
+        // 2. Intercalar candidatos de actualidad para máxima frescura y variedad:
+        // Top 10 -> Novedad reciente -> Plataforma -> Trakt -> Top 10 -> Novedad...
         val candidatePool = mutableListOf<MediaItem>()
         val maxLen = maxOf(
-            top10Items.size,
-            blockbusterMovies.size,
-            topSeries.size,
-            recentAdditions.size,
-            platformItems.size,
-            traktTrending.size
+            top10Candidates.size,
+            recentCandidates.size,
+            platformCandidates.size,
+            traktCandidates.size
         )
 
         for (i in 0 until maxLen) {
-            if (i < top10Items.size) candidatePool.add(top10Items[i])
-            if (i < blockbusterMovies.size) candidatePool.add(blockbusterMovies[i])
-            if (i < topSeries.size) candidatePool.add(topSeries[i])
-            if (i < recentAdditions.size) candidatePool.add(recentAdditions[i])
-            if (i < platformItems.size) candidatePool.add(platformItems[i])
-            if (i < traktTrending.size) candidatePool.add(traktTrending[i])
+            if (i < top10Candidates.size) candidatePool.add(top10Candidates[i])
+            if (i < recentCandidates.size) candidatePool.add(recentCandidates[i])
+            if (i < platformCandidates.size) candidatePool.add(platformCandidates[i])
+            if (i < traktCandidates.size) candidatePool.add(traktCandidates[i])
         }
 
         var distinct = candidatePool.distinctBy { it.id }
 
-        // Fallback si la colección tiene pocas secciones pobladas
-        if (distinct.size < 4) {
-            val fallback = showcaseSections.flatMap { it.items }
+        // 3. Fallback en caso de arranque en frío o servidor con pocos títulos dinámicos:
+        // Nutrir el escaparate con más novedades del servidor ("Añadido recientemente")
+        if (distinct.size < 4 && recentSection != null) {
+            val fallbackRecents = recentSection.items
                 .filter { isValidCandidate(it) }
                 .distinctBy { it.id }
-            distinct = (distinct + fallback).distinctBy { it.id }
+            distinct = (distinct + fallbackRecents).distinctBy { it.id }
         }
 
+        // Si aún así no hay suficientes candidatos dinámicos, acudir al resto de secciones dinámicas
+        if (distinct.size < 4) {
+            val dynamicFallback = (platformSections + listOfNotNull(top10Section, traktTrendingSection))
+                .flatMap { it.items }
+                .filter { isValidCandidate(it) }
+                .distinctBy { it.id }
+            distinct = (distinct + dynamicFallback).distinctBy { it.id }
+        }
+
+        // Fallback de emergencia solo si no existiera ninguna sección de novedades o tendencias
         if (distinct.isEmpty()) {
-            return showcaseSections.flatMap { it.items }.take(6)
+            val emergencyFallback = sections
+                .filter { it.title != "Continuar Viendo" && it.title != "Tu Watchlist de Trakt.tv" }
+                .flatMap { it.items }
+                .filter { !it.backdropUrl.isNullOrBlank() }
+                .distinctBy { it.id }
+            return emergencyFallback.take(6)
         }
 
-        // 3. Rotación dinámica por ciclo temporal (Anti-Fatiga de impresión)
-        // La semilla desplaza cíclicamente la lista para que la portada no sea estática todos los días
+        // 4. Rotación anti-fatiga con semilla diaria
         val safeSeed = if (seed >= 0) seed else -seed
         val offset = (safeSeed % distinct.size).toInt()
         val rotated = if (offset > 0) {
@@ -101,13 +98,7 @@ object BillboardPoolBuilder {
     }
 
     private fun isValidCandidate(item: MediaItem): Boolean {
-        return !item.backdropUrl.isNullOrBlank()
-    }
-
-    private fun candidateScore(item: MediaItem): Float {
-        var score = item.rating ?: 5.0f
-        if (!item.logoUrl.isNullOrBlank()) score += 2.5f
-        if (!item.overview.isNullOrBlank()) score += 1.0f
-        return score
+        // Exigir imagen de fondo HD y descartar películas/series ya terminadas
+        return !item.backdropUrl.isNullOrBlank() && !item.isPlayed
     }
 }
