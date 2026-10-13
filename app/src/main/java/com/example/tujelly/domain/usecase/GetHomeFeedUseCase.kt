@@ -408,9 +408,12 @@ class GetHomeFeedUseCase(
         // =====================================================================
         // PASO 3: TOP 10 DE HOY EN ESPAÑA / REGIÓN
         // =====================================================================
-        if (prefs.tmdbApiKey.isNotBlank()) {
+        val effectiveTmdbKey = prefs.tmdbApiKey.takeIf { it.isNotBlank() } ?: com.example.tujelly.data.local.DEFAULT_TMDB_API_KEY
+        val effectiveWatchRegion = prefs.watchRegion.takeIf { it.isNotBlank() } ?: "ES"
+
+        if (effectiveTmdbKey.isNotBlank()) {
             try {
-                val dailyTrending = mediaRepository.getTmdbTrendingDay(apiKey = prefs.tmdbApiKey)
+                val dailyTrending = mediaRepository.getTmdbTrendingDay(apiKey = effectiveTmdbKey)
                     .getOrDefault(emptyList())
                 if (dailyTrending.isNotEmpty()) {
                     val matchedDaily = filterToLibraryUseCase.filterTmdbItems(
@@ -443,27 +446,27 @@ class GetHomeFeedUseCase(
             // PASO 4: PLATAFORMAS OFICIALES DE STREAMING (PARALELIZADO CON TIMEOUT)
             // =====================================================================
             val selected = prefs.selectedPlatforms
-            val activeProviders = if (selected.isEmpty()) {
-                com.example.tujelly.data.model.SUPPORTED_PLATFORMS.take(3)
+            val activeProviders = (if (selected.isEmpty()) {
+                com.example.tujelly.data.model.SUPPORTED_PLATFORMS
             } else {
                 com.example.tujelly.data.model.SUPPORTED_PLATFORMS.filter { it.id in selected }
-            }
+            }).filter { it.id != "trakt" && it.providerId.isNotBlank() }
 
             try {
                 supervisorScope {
                     val channel = Channel<Pair<com.example.tujelly.data.model.StreamPlatform, List<JellyfinMediaEntity>>>(Channel.UNLIMITED)
-                    val semaphore = Semaphore(2)
+                    val semaphore = Semaphore(4)
 
                     val workers = activeProviders.map { platform ->
                         launch {
                             runCatching {
                                 semaphore.acquire()
                                 try {
-                                    withTimeoutOrNull(2500L) {
+                                    withTimeoutOrNull(7000L) {
                                         val result = mediaRepository.getTmdbByProvider(
-                                            apiKey = prefs.tmdbApiKey,
+                                            apiKey = effectiveTmdbKey,
                                             providerId = platform.providerId,
-                                            region = prefs.watchRegion
+                                            region = effectiveWatchRegion
                                         )
                                         val matched = filterToLibraryUseCase.filterTmdbItems(
                                             tmdbItems = result.getOrDefault(emptyList()),
@@ -489,14 +492,9 @@ class GetHomeFeedUseCase(
                     }
 
                     for ((platform, matched) in channel) {
-                        val platformTitle = "Populares en ${platform.name}"
-                        val existingThisSectionIds = sections.firstOrNull { it.title == platformTitle }?.items?.map { it.id }?.toSet() ?: emptySet()
-                        val otherSectionsIds = shownMediaIds - existingThisSectionIds
-                        val uniqueMatched = matched.filter { it.id !in otherSectionsIds }
-                        if (uniqueMatched.isNotEmpty()) {
-                            shownMediaIds.removeAll(existingThisSectionIds)
-                            shownMediaIds.addAll(uniqueMatched.map { it.id })
-                            val platformItems = uniqueMatched.take(20)
+                        if (matched.isNotEmpty()) {
+                            val platformTitle = "Populares en ${platform.name}"
+                            val platformItems = matched.take(20)
                             val platformSection = HomeSection(
                                 title = platformTitle,
                                 items = platformItems.map {
@@ -504,7 +502,16 @@ class GetHomeFeedUseCase(
                                 },
                                 badge = null
                             )
-                            updateOrAddSection(platformTitle, platformSection)
+                            val insertIdx = run {
+                                val lastPlatformIdx = sections.indexOfLast { it.title.startsWith("Populares en ") }
+                                if (lastPlatformIdx != -1) return@run lastPlatformIdx + 1
+                                val recentsIdx = sections.indexOfFirst { it.title == "Añadido recientemente" }
+                                if (recentsIdx != -1) return@run recentsIdx + 1
+                                val top10Idx = sections.indexOfFirst { it.title.contains("Top 10", ignoreCase = true) }
+                                if (top10Idx != -1) return@run top10Idx + 1
+                                -1
+                            }
+                            updateOrAddSection(platformTitle, platformSection, preferredIndex = insertIdx)
                             persistSection("platform_${platform.id}", platformSection, platformItems.map { it.id })
                             emitFeed(sections)
                         }
