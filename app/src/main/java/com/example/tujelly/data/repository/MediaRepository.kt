@@ -1056,10 +1056,17 @@ class MediaRepository(
 
         return runCatching {
             val api = NetworkClientFactory.createService("https://api.themoviedb.org/3/", TmdbApiService::class.java)
-            val movies = runCatching { api.discoverMoviesByProvider(apiKey = apiKey, providerId = providerId, watchRegion = region) }
-                .getOrNull()?.results ?: emptyList()
-            val tv = runCatching { api.discoverTvByProvider(apiKey = apiKey, providerId = providerId, watchRegion = region) }
-                .getOrNull()?.results ?: emptyList()
+            val (movies, tv) = coroutineScope {
+                val m = async {
+                    runCatching { api.discoverMoviesByProvider(apiKey = apiKey, providerId = providerId, watchRegion = region) }
+                        .getOrNull()?.results ?: emptyList()
+                }
+                val t = async {
+                    runCatching { api.discoverTvByProvider(apiKey = apiKey, providerId = providerId, watchRegion = region) }
+                        .getOrNull()?.results ?: emptyList()
+                }
+                Pair(m.await(), t.await())
+            }
             val combined = movies + tv
             if (combined.isNotEmpty()) {
                 tmdbProviderCache.put(cacheKey, combined)
@@ -1068,13 +1075,34 @@ class MediaRepository(
         }
     }
 
+    suspend fun getTmdbMovieDetail(apiKey: String, movieId: Long): com.example.tujelly.data.remote.tmdb.TmdbMovieDetailDto? {
+        return runCatching {
+            val api = NetworkClientFactory.createService("https://api.themoviedb.org/3/", TmdbApiService::class.java)
+            api.getMovieDetails(movieId = movieId, apiKey = apiKey)
+        }.getOrNull()
+    }
+
+    suspend fun getTmdbTvDetail(apiKey: String, seriesId: Long): com.example.tujelly.data.remote.tmdb.TmdbTvDetailDto? {
+        return runCatching {
+            val api = NetworkClientFactory.createService("https://api.themoviedb.org/3/", TmdbApiService::class.java)
+            api.getTvDetails(seriesId = seriesId, apiKey = apiKey)
+        }.getOrNull()
+    }
+
     suspend fun getTmdbTopRated(apiKey: String): Result<List<TmdbItemDto>> {
         tmdbTopRatedCache.get(apiKey)?.let { return Result.success(it) }
 
         return runCatching {
             val api = NetworkClientFactory.createService("https://api.themoviedb.org/3/", TmdbApiService::class.java)
-            val movies = runCatching { api.getTopRatedMovies(apiKey = apiKey) }.getOrNull()?.results ?: emptyList()
-            val tv = runCatching { api.getTopRatedTv(apiKey = apiKey) }.getOrNull()?.results ?: emptyList()
+            val (movies, tv) = coroutineScope {
+                val m = async {
+                    runCatching { api.getTopRatedMovies(apiKey = apiKey) }.getOrNull()?.results ?: emptyList()
+                }
+                val t = async {
+                    runCatching { api.getTopRatedTv(apiKey = apiKey) }.getOrNull()?.results ?: emptyList()
+                }
+                Pair(m.await(), t.await())
+            }
             val combined = movies + tv
             if (combined.isNotEmpty()) {
                 tmdbTopRatedCache.put(apiKey, combined)

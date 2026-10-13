@@ -130,7 +130,48 @@ class DetailViewModel(application: Application) : AndroidViewModel(application) 
                     _uiState.value = DetailUiState.Loading
                 }
 
-                // 2. Resolver entidad: si no estaba en local, obtener de red de forma bloqueante
+                // 1.5. Si no está por ID directo, verificar si es un item con prefijo tmdb- o trakt-
+                if (initialEntity == null && itemId.startsWith("tmdb-")) {
+                    val tmdbIdStr = itemId.removePrefix("tmdb-")
+                    val matchedLocal = mediaRepository.findLocal(tmdbId = tmdbIdStr, imdbId = null)
+                    if (matchedLocal != null) {
+                        initialEntity = matchedLocal
+                    } else {
+                        val tmdbIdLong = tmdbIdStr.toLongOrNull()
+                        if (tmdbIdLong != null) {
+                            val tmdbKey = prefs.tmdbApiKey.ifBlank { com.example.tujelly.data.local.DEFAULT_TMDB_API_KEY }
+                            val movie = mediaRepository.getTmdbMovieDetail(tmdbKey, tmdbIdLong)
+                            if (movie != null) {
+                                initialEntity = JellyfinMediaEntity(
+                                    id = itemId,
+                                    title = movie.title ?: "Detalle",
+                                    type = "Movie",
+                                    tmdbId = tmdbIdStr,
+                                    overview = movie.overview,
+                                    communityRating = movie.voteAverage,
+                                    primaryImageTag = movie.posterPath?.let { "tmdb:$it" },
+                                    backdropImageTag = movie.backdropPath?.let { "tmdb:$it" }
+                                )
+                            } else {
+                                val tv = mediaRepository.getTmdbTvDetail(tmdbKey, tmdbIdLong)
+                                if (tv != null) {
+                                    initialEntity = JellyfinMediaEntity(
+                                        id = itemId,
+                                        title = tv.name ?: "Detalle",
+                                        type = "Series",
+                                        tmdbId = tmdbIdStr,
+                                        overview = tv.overview,
+                                        communityRating = tv.voteAverage,
+                                        primaryImageTag = tv.posterPath?.let { "tmdb:$it" },
+                                        backdropImageTag = tv.backdropPath?.let { "tmdb:$it" }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 2. Resolver entidad: si no estaba en local ni resuelto, obtener de red de Jellyfin
                 val entity: JellyfinMediaEntity = if (initialEntity != null) {
                     initialEntity
                 } else {

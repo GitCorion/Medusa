@@ -8,6 +8,7 @@ import com.example.tujelly.data.local.UserPreferencesRepository
 import com.example.tujelly.data.remote.NetworkClientFactory
 import com.example.tujelly.data.remote.tmdb.TmdbApiService
 import com.example.tujelly.data.remote.tmdb.TmdbItemDto
+import com.example.tujelly.data.remote.tmdb.toDirectMediaItem
 import com.example.tujelly.data.remote.trakt.toDirectMediaItem
 import com.example.tujelly.domain.model.HomeSection
 import com.example.tujelly.domain.model.MediaItem
@@ -456,26 +457,6 @@ class BrandViewModel(application: Application) : AndroidViewModel(application) {
         if (currentState is BrandUiState.Success) {
             _uiState.value = currentState.copy(focusedItem = item)
         }
-    }
-
-    private fun TmdbItemDto.toDirectMediaItem(): MediaItem {
-        val isTv = mediaType?.equals("tv", ignoreCase = true) == true || name != null
-        val titleText = title ?: name ?: "Título"
-        val poster = if (!posterPath.isNullOrBlank()) "https://image.tmdb.org/t/p/w500$posterPath" else null
-        val backdrop = if (!backdropPath.isNullOrBlank()) "https://image.tmdb.org/t/p/w1280$backdropPath" else null
-        val releaseYear = (releaseDate ?: firstAirDate)?.take(4)?.toIntOrNull()
-
-        return MediaItem(
-            id = "tmdb-$id",
-            title = titleText,
-            overview = overview,
-            type = if (isTv) "Series" else "Movie",
-            posterUrl = poster,
-            backdropUrl = backdrop,
-            rating = voteAverage,
-            year = releaseYear,
-            source = MediaSource.TMDB_TRENDING
-        )
     }
 
     private fun com.example.tujelly.data.local.db.JellyfinMediaEntity.toMediaItem(baseUrl: String, token: String, source: MediaSource): MediaItem =
