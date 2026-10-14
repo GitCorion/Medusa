@@ -186,7 +186,7 @@ class MediaRepository(
                             authHeader = authHeader,
                             userId = userId,
                             ids = idsParam,
-                            fields = "Overview",
+                            fields = "Overview,PrimaryImageTag",
                             limit = 40,
                             enableTotalRecordCount = false
                         )
@@ -197,12 +197,39 @@ class MediaRepository(
                             if (!item.overview.isNullOrBlank()) {
                                 jellyfinDao.updateOverview(item.id, item.overview)
                             }
+                            val posterTag = item.primaryImageTag ?: item.imageTags?.get("Primary")
+                            if (!posterTag.isNullOrBlank()) {
+                                jellyfinDao.updatePrimaryImageTag(item.id, posterTag)
+                            }
                         }
                         processedCount += missingIds.size
                     } else {
                         break
                     }
                     delay(1200L)
+                }
+
+                // Enriquecimiento de pósteres faltantes mediante TMDB API
+                val tmdbApi = NetworkClientFactory.createService("https://api.themoviedb.org/3/", TmdbApiService::class.java)
+                val prefs = userPreferencesRepository?.userPreferencesFlow?.firstOrNull()
+                val tmdbKey = prefs?.tmdbApiKey?.takeIf { it.isNotBlank() } ?: com.example.tujelly.data.local.DEFAULT_TMDB_API_KEY
+
+                val missingPosters = jellyfinDao.getItemsMissingPoster(limit = 40)
+                for (media in missingPosters) {
+                    val tmdbLong = media.tmdbId?.toLongOrNull() ?: continue
+                    val isTv = media.type.equals("Series", ignoreCase = true)
+                    val posterPath: String? = runCatching {
+                        if (isTv) {
+                            tmdbApi.getTvDetails(seriesId = tmdbLong, apiKey = tmdbKey).posterPath
+                        } else {
+                            tmdbApi.getMovieDetails(movieId = tmdbLong, apiKey = tmdbKey).posterPath
+                        }
+                    }.getOrNull()
+
+                    if (!posterPath.isNullOrBlank()) {
+                        jellyfinDao.updatePrimaryImageTag(media.id, "tmdb:$posterPath")
+                    }
+                    delay(200L)
                 }
             } catch (_: Exception) {
             } finally {
@@ -1428,8 +1455,7 @@ class MediaRepository(
         }
         val totalCount = maxOf(
             entity.totalItemCount ?: 0,
-            if (uniqueEps.isNotEmpty()) uniqueEps.size else 0,
-            if (playedCount > 0) maxOf(playedCount + 1, 10) else 10
+            if (uniqueEps.isNotEmpty()) uniqueEps.size else 0
         )
         val unplayedCount = (totalCount - playedCount).coerceAtLeast(0)
 
@@ -1792,7 +1818,7 @@ class MediaRepository(
             imdbId = providerIds?.get("Imdb") ?: providerIds?.get("imdb"),
             tvdbId = providerIds?.get("Tvdb") ?: providerIds?.get("tvdb"),
             overview = overview,
-            primaryImageTag = imageTags?.get("Primary"),
+            primaryImageTag = primaryImageTag ?: imageTags?.get("Primary"),
             backdropImageTag = backdropImageTags?.firstOrNull(),
             communityRating = communityRating,
             productionYear = productionYear,

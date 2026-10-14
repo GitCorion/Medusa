@@ -244,7 +244,8 @@ fun TujellyApp(
             MedusaScreen(
                 onNavigateHome = {
                     navController.navigate("home") {
-                        popUpTo("home") { inclusive = true }
+                        popUpTo("home") { inclusive = false }
+                        launchSingleTop = true
                     }
                 },
                 onOpenFavorites = {
@@ -278,7 +279,8 @@ fun TujellyApp(
                 },
                 onNavigateHome = {
                     navController.navigate("home") {
-                        popUpTo("home") { inclusive = true }
+                        popUpTo("home") { inclusive = false }
+                        launchSingleTop = true
                     }
                 },
                 onOpenMedusa = {
@@ -306,7 +308,8 @@ fun TujellyApp(
                 },
                 onNavigateHome = {
                     navController.navigate("home") {
-                        popUpTo("home") { inclusive = true }
+                        popUpTo("home") { inclusive = false }
+                        launchSingleTop = true
                     }
                 },
                 onOpenMedusa = {
@@ -339,7 +342,8 @@ fun TujellyApp(
                 },
                 onNavigateHome = {
                     navController.navigate("home") {
-                        popUpTo("home") { inclusive = true }
+                        popUpTo("home") { inclusive = false }
+                        launchSingleTop = true
                     }
                 },
                 onOpenMedusa = {
@@ -375,7 +379,8 @@ fun TujellyApp(
                 },
                 onNavigateHome = {
                     navController.navigate("home") {
-                        popUpTo("home") { inclusive = true }
+                        popUpTo("home") { inclusive = false }
+                        launchSingleTop = true
                     }
                 },
                 onOpenMedusa = {
@@ -432,7 +437,8 @@ fun TujellyApp(
                 },
                 onNavigateHome = {
                     navController.navigate("home") {
-                        popUpTo("home") { inclusive = true }
+                        popUpTo("home") { inclusive = false }
+                        launchSingleTop = true
                     }
                 },
                 onOpenMedusa = {

@@ -219,6 +219,7 @@ data class JellyfinItemDto(
     @SerialName("CollectionType") val collectionType: String? = null,
     @SerialName("ProviderIds") val providerIds: Map<String, String>? = null,
     @SerialName("Overview") val overview: String? = null,
+    @SerialName("PrimaryImageTag") val primaryImageTag: String? = null,
     @SerialName("ImageTags") val imageTags: Map<String, String>? = null,
     @SerialName("BackdropImageTags") val backdropImageTags: List<String>? = null,
     @SerialName("CommunityRating") val communityRating: Float? = null,

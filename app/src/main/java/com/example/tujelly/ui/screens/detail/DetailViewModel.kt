@@ -48,7 +48,8 @@ sealed interface DetailUiState {
         val genreItems: List<MediaItem> = emptyList(),
         val genreName: String? = null,
         val collectionItems: List<MediaItem> = emptyList(),
-        val isCollection: Boolean = false
+        val isCollection: Boolean = false,
+        val playedEpisodes: Int? = null
     ) : DetailUiState
     data class Error(val message: String) : DetailUiState
 }
@@ -298,6 +299,7 @@ class DetailViewModel(application: Application) : AndroidViewModel(application) 
                         val seriesStatus = statusDeferred.await()
 
                         (_uiState.value as? DetailUiState.Success)?.let { curr ->
+                            val playedCount = episodeStats?.playedUniqueEpisodes ?: 0
                             val updatedEntity = if (episodeStats != null) {
                                 curr.entity.copy(
                                     totalItemCount = episodeStats.totalUniqueEpisodes,
@@ -307,6 +309,7 @@ class DetailViewModel(application: Application) : AndroidViewModel(application) 
                             } else curr.entity
                             _uiState.value = curr.copy(
                                 entity = updatedEntity,
+                                playedEpisodes = playedCount,
                                 seriesStatus = seriesStatus,
                                 seasons = seasons,
                                 episodes = episodes,

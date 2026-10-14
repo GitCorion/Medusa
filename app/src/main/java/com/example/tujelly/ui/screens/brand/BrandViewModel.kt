@@ -306,9 +306,31 @@ class BrandViewModel(application: Application) : AndroidViewModel(application) {
             } else {
                 val api = NetworkClientFactory.createService("https://api.themoviedb.org/3/", TmdbApiService::class.java)
 
+                val tmdbSectionOrder = listOf("En Tendencia", "Series Destacadas", "Cine Aclamado")
+
+                val updateUiAndCache = {
+                    val currentSnapshot = synchronized(sections) {
+                        sections.sortedBy { s ->
+                            val idx = tmdbSectionOrder.indexOf(s.title)
+                            if (idx != -1) idx else 999
+                        }
+                    }
+                    allRawSections = currentSnapshot
+                    val filtered = filterSections(allRawSections, currentFormat)
+                    val currentFocused = (_uiState.value as? BrandUiState.Success)?.focusedItem
+                    val successState = BrandUiState.Success(
+                        brand = brand,
+                        sections = filtered,
+                        focusedItem = currentFocused ?: filtered.firstOrNull()?.items?.firstOrNull(),
+                        format = currentFormat
+                    )
+                    _uiState.value = successState
+                    brandCache[brandId] = successState.copy(sections = allRawSections, format = com.example.tujelly.domain.model.MediaFormatFilter.ALL)
+                }
+
                 try {
                     supervisorScope {
-                        val trendingDeferred = async {
+                        launch {
                             val (trendingMovies, trendingTv) = coroutineScope {
                                 val m = async {
                                     runCatching {
@@ -331,12 +353,19 @@ class BrandViewModel(application: Application) : AndroidViewModel(application) {
                                 token = prefs.jellyfinAccessToken,
                                 maxCandidates = 40
                             )
-                            localMatched.map {
+                            val displayItems = localMatched.map {
                                 it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TMDB_TRENDING)
+                            }
+                            if (displayItems.isNotEmpty()) {
+                                synchronized(sections) {
+                                    sections.removeAll { it.title == "En Tendencia" }
+                                    sections.add(HomeSection(title = "En Tendencia", items = displayItems))
+                                }
+                                updateUiAndCache()
                             }
                         }
 
-                        val seriesDeferred = async {
+                        launch {
                             val trendingTv = runCatching {
                                 api.discoverTvByProvider(apiKey = effectiveApiKey, providerId = brand.providerId, watchRegion = effectiveRegion, page = 2)
                             }.getOrNull()?.results ?: emptyList()
@@ -348,12 +377,19 @@ class BrandViewModel(application: Application) : AndroidViewModel(application) {
                                 token = prefs.jellyfinAccessToken,
                                 maxCandidates = 40
                             )
-                            localMatched.map {
+                            val displayItems = localMatched.map {
                                 it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TMDB_TRENDING)
+                            }
+                            if (displayItems.isNotEmpty()) {
+                                synchronized(sections) {
+                                    sections.removeAll { it.title == "Series Destacadas" }
+                                    sections.add(HomeSection(title = "Series Destacadas", items = displayItems))
+                                }
+                                updateUiAndCache()
                             }
                         }
 
-                        val topDeferred = async {
+                        launch {
                             val topMovies = runCatching {
                                 api.discoverMoviesByProvider(apiKey = effectiveApiKey, providerId = brand.providerId, watchRegion = effectiveRegion, sortBy = "vote_average.desc", voteCountGte = 200, page = 1)
                             }.getOrNull()?.results ?: emptyList()
@@ -365,55 +401,33 @@ class BrandViewModel(application: Application) : AndroidViewModel(application) {
                                 token = prefs.jellyfinAccessToken,
                                 maxCandidates = 40
                             )
-                            localMatched.map {
+                            val displayItems = localMatched.map {
                                 it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TMDB_TRENDING)
                             }
-                        }
-
-                        val trendingItems = trendingDeferred.await()
-                        val seriesItems = seriesDeferred.await()
-                        val topItems = topDeferred.await()
-
-                        if (trendingItems.isNotEmpty()) {
-                            sections.add(
-                                HomeSection(
-                                    title = "En Tendencia",
-                                    items = trendingItems,
-                                    badge = null
-                                )
-                            )
-                        }
-
-                        if (seriesItems.isNotEmpty()) {
-                            sections.add(
-                                HomeSection(
-                                    title = "Series Destacadas",
-                                    items = seriesItems,
-                                    badge = null
-                                )
-                            )
-                        }
-
-                        if (topItems.isNotEmpty()) {
-                            sections.add(
-                                HomeSection(
-                                    title = "Cine Aclamado",
-                                    items = topItems,
-                                    badge = null
-                                )
-                            )
+                            if (displayItems.isNotEmpty()) {
+                                synchronized(sections) {
+                                    sections.removeAll { it.title == "Cine Aclamado" }
+                                    sections.add(HomeSection(title = "Cine Aclamado", items = displayItems))
+                                }
+                                updateUiAndCache()
+                            }
                         }
                     }
                 } catch (_: Exception) {}
             }
 
-            allRawSections = sections
+            allRawSections = synchronized(sections) {
+                sections.sortedBy { s ->
+                    val idx = listOf("En Tendencia", "Series Destacadas", "Cine Aclamado").indexOf(s.title)
+                    if (idx != -1) idx else 999
+                }
+            }
             val filtered = filterSections(allRawSections, currentFormat)
-            val firstItem = filtered.firstOrNull()?.items?.firstOrNull()
+            val currentFocused = (_uiState.value as? BrandUiState.Success)?.focusedItem
             val successState = BrandUiState.Success(
                 brand = brand,
                 sections = filtered,
-                focusedItem = firstItem,
+                focusedItem = currentFocused ?: filtered.firstOrNull()?.items?.firstOrNull(),
                 format = currentFormat
             )
             if (sections.isNotEmpty()) {

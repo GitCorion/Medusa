@@ -143,6 +143,12 @@ interface JellyfinDao {
 
     @Query("UPDATE jellyfin_media SET overview = :overview WHERE id = :id AND (overview IS NULL OR overview = '')")
     suspend fun updateOverview(id: String, overview: String)
+
+    @Query("SELECT * FROM jellyfin_media WHERE (primaryImageTag IS NULL OR primaryImageTag = '') AND tmdbId IS NOT NULL AND tmdbId != '' LIMIT :limit")
+    suspend fun getItemsMissingPoster(limit: Int = 50): List<JellyfinMediaEntity>
+
+    @Query("UPDATE jellyfin_media SET primaryImageTag = :posterTag WHERE id = :id AND (primaryImageTag IS NULL OR primaryImageTag = '')")
+    suspend fun updatePrimaryImageTag(id: String, posterTag: String)
 }
 
 data class CachedOverviewDto(

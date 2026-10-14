@@ -405,9 +405,9 @@ fun DetailScreen(
 
                             val totalEps = entity.totalItemCount
                             val unplayedEps = entity.unplayedItemCount
-                            val playedEps = if (totalEps != null && unplayedEps != null) (totalEps - unplayedEps).coerceAtLeast(0) else null
+                            val playedEps = state.playedEpisodes ?: if (totalEps != null && unplayedEps != null) (totalEps - unplayedEps).coerceAtLeast(0) else 0
                             val isSeriesFinished = if (isTvSeries && unplayedEps != null) unplayedEps == 0 && (totalEps ?: 0) > 0 else entity.isPlayed
-                            val hasSeriesProgress = !isSeriesFinished && isTvSeries && playedEps != null && totalEps != null && playedEps > 0
+                            val hasSeriesProgress = !isSeriesFinished && isTvSeries && totalEps != null && totalEps > 0 && playedEps > 0
                             val hasItemProgress = !isTvSeries && entity.playbackPositionTicks > 0 && !entity.isPlayed
 
                             if (hasSeriesProgress) {
@@ -459,6 +459,7 @@ fun DetailScreen(
                             val playTargetId = when {
                                 state.isCollection && state.collectionItems.isNotEmpty() -> state.collectionItems.first().id
                                 isTvSeries && state.nextUpEpisode != null -> state.nextUpEpisode.id
+                                isTvSeries && state.episodes.isNotEmpty() -> state.episodes.first().id
                                 else -> entity.id
                             }
                             val isResume = (state.nextUpEpisode != null && (state.nextUpEpisode.isPlayed || state.nextUpEpisode.playbackPositionTicks > 0)) ||
@@ -467,9 +468,12 @@ fun DetailScreen(
                                 state.isCollection -> if (state.collectionItems.isNotEmpty()) "Reproducir Colección" else "Reproducir"
                                 isTvSeries && state.nextUpEpisode != null && isResume -> "Continuar ${state.nextUpEpisode.displayCode}"
                                 isTvSeries && state.nextUpEpisode != null -> "Reproducir ${state.nextUpEpisode.displayCode}"
+                                isTvSeries && state.episodes.isNotEmpty() -> "Reproducir S1:E1"
+                                isTvSeries -> "Reproducir"
                                 !isTvSeries && entity.playbackPositionTicks > 0 -> "Continuar"
                                 else -> "Reproducir"
                             }
+                            val playIcon = Icons.Rounded.PlayArrow
 
                             // 1. Play Button
                             Button(
@@ -497,7 +501,7 @@ fun DetailScreen(
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     if (showIcons) {
                                         Icon(
-                                            imageVector = Icons.Rounded.PlayArrow,
+                                            imageVector = playIcon,
                                             contentDescription = playLabel,
                                             modifier = Modifier.size(18.dp)
                                         )

@@ -182,6 +182,17 @@ class FakeJellyfinDao : JellyfinDao {
         }
     }
 
+    override suspend fun getItemsMissingPoster(limit: Int): List<JellyfinMediaEntity> {
+        return localDb.filter { it.primaryImageTag.isNullOrBlank() && !it.tmdbId.isNullOrBlank() }.take(limit)
+    }
+
+    override suspend fun updatePrimaryImageTag(id: String, posterTag: String) {
+        val index = localDb.indexOfFirst { it.id == id }
+        if (index >= 0) {
+            localDb[index] = localDb[index].copy(primaryImageTag = posterTag)
+        }
+    }
+
     override suspend fun clearAll() {
         localDb.clear()
     }

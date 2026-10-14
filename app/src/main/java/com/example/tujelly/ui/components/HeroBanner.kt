@@ -25,7 +25,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Info
-import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -383,7 +382,7 @@ fun HeroBanner(
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Button(
-                        onClick = { onPlayClick(effectiveItem) },
+                        onClick = { onDetailClick(effectiveItem) },
                         colors = ButtonDefaults.colors(
                             containerColor = if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.22f),
                             contentColor = if (isMonochrome) Color.White else focusColor,
@@ -405,60 +404,17 @@ fun HeroBanner(
                         ) {
                             if (showIcons) {
                                 Icon(
-                                    imageVector = Icons.Rounded.PlayArrow,
-                                    contentDescription = "Reproducir",
+                                    imageVector = Icons.Rounded.Info,
+                                    contentDescription = "Detalles",
                                     modifier = Modifier.size(18.dp)
                                 )
                             }
                             if (showText) {
                                 if (showIcons) Spacer(modifier = Modifier.width(6.dp))
                                 Text(
-                                    text = "Reproducir",
+                                    text = "Detalles",
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 13.sp,
-                                    maxLines = 1,
-                                    softWrap = false
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.width(12.dp))
-
-                    Button(
-                        onClick = { onDetailClick(effectiveItem) },
-                        colors = ButtonDefaults.colors(
-                            containerColor = Color(0x14FFFFFF),
-                            contentColor = Color(0xFFE2E8F0),
-                            focusedContainerColor = focusColor,
-                            focusedContentColor = focusContent
-                        ),
-                        shape = ButtonDefaults.shape(shape = CircleShape),
-                        border = ButtonDefaults.border(
-                            border = Border(
-                                border = BorderStroke(1.dp, Color(0x22FFFFFF)),
-                                shape = CircleShape
-                            ),
-                            focusedBorder = Border.None
-                        )
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            if (showIcons) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Info,
-                                    contentDescription = "Detalles",
-                                    modifier = Modifier.size(16.dp)
-                                )
-                            }
-                            if (showText) {
-                                if (showIcons) Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = "Detalles",
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.SemiBold,
                                     maxLines = 1,
                                     softWrap = false
                                 )
