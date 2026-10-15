@@ -245,9 +245,19 @@ class UserPreferencesRepository(context: Context) {
         }
     }
 
-    suspend fun toggleHiddenTraktList(key: String) {
+    /** Finaliza el onboarding en una sola escritura (plataformas + flag). */
+    suspend fun completeOnboarding(platforms: Set<String>) {
+        appContext.dataStore.edit { prefs ->
+            prefs[Keys.SELECTED_PLATFORMS] = platforms.sorted().joinToString(",")
+            prefs[Keys.HAS_COMPLETED_ONBOARDING] = true.toString()
+        }
+    }
+
+    /** Alterna una lista de Trakt oculta y devuelve el conjunto resultante (sin relectura). */
+    suspend fun toggleHiddenTraktList(key: String): Set<String> {
         val cleanKey = key.trim().lowercase(java.util.Locale.ROOT)
-        if (cleanKey.isBlank()) return
+        if (cleanKey.isBlank()) return emptySet()
+        var updated: Set<String> = emptySet()
         appContext.dataStore.edit { prefs ->
             val current = (prefs[Keys.HIDDEN_TRAKT_LISTS] ?: "")
                 .split(",")
@@ -260,6 +270,39 @@ class UserPreferencesRepository(context: Context) {
                 current.add(cleanKey)
             }
             prefs[Keys.HIDDEN_TRAKT_LISTS] = current.joinToString(",")
+            updated = current
+        }
+        return updated
+    }
+
+    /**
+     * Guarda de una sola vez toda la configuración de conexión (Jellyfin + Trakt + TMDB).
+     * Evita 3 escrituras separadas en la misma acción del usuario.
+     */
+    suspend fun saveConnectionConfig(
+        serverUrl: String,
+        userId: String,
+        accessToken: String,
+        username: String = "",
+        password: String = "",
+        traktToken: String,
+        traktClientId: String,
+        traktClientSecret: String = "",
+        tmdbApiKey: String,
+        watchRegion: String = "ES"
+    ) {
+        val cleanUrl = serverUrl.trimEnd('/')
+        appContext.dataStore.edit { prefs ->
+            prefs[Keys.JELLYFIN_SERVER_URL] = cleanUrl
+            prefs[Keys.JELLYFIN_USER_ID] = userId
+            prefs[Keys.JELLYFIN_ACCESS_TOKEN] = accessToken
+            if (username.isNotBlank()) prefs[Keys.JELLYFIN_USERNAME] = username
+            if (password.isNotBlank()) prefs[Keys.JELLYFIN_PASSWORD] = password
+            prefs[Keys.TRAKT_ACCESS_TOKEN] = traktToken
+            prefs[Keys.TRAKT_CLIENT_ID] = traktClientId
+            if (traktClientSecret.isNotBlank()) prefs[Keys.TRAKT_CLIENT_SECRET] = traktClientSecret
+            prefs[Keys.TMDB_API_KEY] = tmdbApiKey
+            prefs[Keys.WATCH_REGION] = watchRegion
         }
     }
 

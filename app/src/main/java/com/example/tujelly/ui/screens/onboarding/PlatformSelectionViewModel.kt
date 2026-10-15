@@ -33,8 +33,7 @@ class PlatformSelectionViewModel(application: Application) : AndroidViewModel(ap
 
     fun onContinue(onDone: () -> Unit) {
         viewModelScope.launch {
-            userPreferencesRepository.updateSelectedPlatforms(_selected.value)
-            userPreferencesRepository.markOnboardingCompleted()
+            userPreferencesRepository.completeOnboarding(_selected.value)
             onDone()
         }
     }

@@ -132,6 +132,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     private var traktPollJob: Job? = null
     private var jellyfinQuickConnectJob: Job? = null
+    private var serverUrlWriteJob: Job? = null
 
     init {
         loadCurrentPreferences()
@@ -275,9 +276,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun toggleTraktListVisibility(list: com.example.tujelly.data.remote.trakt.TraktUserListDto) {
         val key = list.ids.trakt?.toString() ?: list.ids.slug ?: list.name
         viewModelScope.launch {
-            userPreferencesRepository.toggleHiddenTraktList(key)
-            val updatedPrefs = userPreferencesRepository.userPreferencesFlow.first()
-            _uiState.value = _uiState.value.copy(hiddenTraktLists = updatedPrefs.hiddenTraktLists)
+            val updated = userPreferencesRepository.toggleHiddenTraktList(key)
+            _uiState.value = _uiState.value.copy(hiddenTraktLists = updated)
             com.example.tujelly.ui.screens.brand.BrandViewModel.clearCache("trakt")
         }
     }
@@ -437,7 +437,10 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
 
     fun onServerUrlChange(url: String) {
         _uiState.value = _uiState.value.copy(serverUrl = url)
-        viewModelScope.launch {
+        // Debounce: no persistir en cada pulsación de tecla (evita decenas de .edit{}).
+        serverUrlWriteJob?.cancel()
+        serverUrlWriteJob = viewModelScope.launch {
+            delay(500)
             userPreferencesRepository.updateJellyfinServerUrl(url)
         }
     }
@@ -772,16 +775,19 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                 val token = response.effectiveToken
                 val authedUser = response.effectiveUser.effectiveName.ifBlank { effectiveUsername }
 
-                // 1. Guardar credenciales inmediatamente en DataStore
-                userPreferencesRepository.updateJellyfinConfig(
+                // 1. Guardar credenciales inmediatamente en DataStore (una sola escritura)
+                userPreferencesRepository.saveConnectionConfig(
                     serverUrl = cleanUrl,
                     userId = userId,
                     accessToken = token,
                     username = authedUser,
-                    password = effectivePassword
+                    password = effectivePassword,
+                    traktToken = state.traktToken,
+                    traktClientId = state.traktClientId,
+                    traktClientSecret = state.traktClientSecret,
+                    tmdbApiKey = state.tmdbApiKey,
+                    watchRegion = state.watchRegion
                 )
-                userPreferencesRepository.updateTraktConfig(state.traktToken, state.traktClientId, state.traktClientSecret)
-                userPreferencesRepository.updateTmdbConfig(state.tmdbApiKey, state.watchRegion)
 
                 val database = com.example.tujelly.data.local.db.AppDatabase.getDatabase(getApplication())
                 val repository = com.example.tujelly.data.repository.MediaRepository(database.jellyfinDao(), userPreferencesRepository)
