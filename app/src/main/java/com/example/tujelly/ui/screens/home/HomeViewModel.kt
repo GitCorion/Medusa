@@ -60,7 +60,8 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     val selectedPlatforms: StateFlow<Set<String>> = userPreferencesRepository.selectedPlatforms
 
     val syncProgress: StateFlow<com.example.tujelly.data.repository.SyncProgress> = MediaRepository.syncProgress
-    val localMediaCount: StateFlow<Int> = mediaRepository.getMediaCountFlow()
+    val localMediaCount: StateFlow<Int> = mediaRepository.getLibraryStatsFlow()
+        .map { it.total }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
     private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Loading)

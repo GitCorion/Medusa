@@ -153,18 +153,12 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             }
         }
         viewModelScope.launch {
-            mediaRepository.getMoviesCountFlow().collect { count ->
-                _uiState.value = _uiState.value.copy(syncedMoviesCount = count)
-            }
-        }
-        viewModelScope.launch {
-            mediaRepository.getSeriesCountFlow().collect { count ->
-                _uiState.value = _uiState.value.copy(syncedSeriesCount = count)
-            }
-        }
-        viewModelScope.launch {
-            mediaRepository.getEpisodesCountFlow().collect { count ->
-                _uiState.value = _uiState.value.copy(syncedEpisodesCount = count)
+            mediaRepository.getLibraryStatsFlow().collect { stats ->
+                _uiState.value = _uiState.value.copy(
+                    syncedMoviesCount = stats.movies,
+                    syncedSeriesCount = stats.series,
+                    syncedEpisodesCount = stats.episodes
+                )
             }
         }
         viewModelScope.launch {

@@ -2,6 +2,7 @@ package com.example.tujelly.domain.usecase
 
 import com.example.tujelly.data.local.db.JellyfinDao
 import com.example.tujelly.data.local.db.JellyfinMediaEntity
+import com.example.tujelly.data.local.db.LibraryStats
 import com.example.tujelly.data.remote.tmdb.TmdbItemDto
 import com.example.tujelly.data.remote.trakt.TraktIdsDto
 import com.example.tujelly.data.remote.trakt.TraktMediaDto
@@ -119,15 +120,15 @@ class FakeJellyfinDao : JellyfinDao {
 
     override suspend fun getCount(): Int = localDb.size
 
-    override fun getMediaCountFlow(): Flow<Int> = flowOf(localDb.size)
-
-    override fun getMoviesCountFlow(): Flow<Int> = flowOf(localDb.count { it.type == "Movie" })
-
-    override fun getSeriesCountFlow(): Flow<Int> = flowOf(localDb.count { it.type == "Series" })
-
-    override fun getEpisodesCountFlow(): Flow<Int> = flowOf(localDb.count { it.type == "Episode" })
-
-    override fun getTotalSeriesEpisodesFlow(): Flow<Int> = flowOf(localDb.filter { it.type == "Series" }.sumOf { it.totalItemCount ?: 0 })
+    override fun getLibraryStatsFlow(): Flow<LibraryStats> = flowOf(
+        LibraryStats(
+            total = localDb.count { it.type == "Movie" || it.type == "Series" },
+            movies = localDb.count { it.type == "Movie" },
+            series = localDb.count { it.type == "Series" },
+            episodesDirect = localDb.count { it.type == "Episode" },
+            totalSeriesEpisodes = localDb.filter { it.type == "Series" }.sumOf { it.totalItemCount ?: 0 }
+        )
+    )
 
     override suspend fun getFavorites(): List<JellyfinMediaEntity> = localDb.filter { it.isFavorite }
 

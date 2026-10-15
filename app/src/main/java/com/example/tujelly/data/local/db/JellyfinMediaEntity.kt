@@ -13,6 +13,8 @@ import androidx.room.PrimaryKey
         Index(value = ["type"]),
         Index(value = ["isFavorite"]),
         Index(value = ["type", "communityRating"]),
+        Index(value = ["type", "isPlayed", "communityRating"]),
+        Index(value = ["isPlayed", "playbackPositionTicks"]),
         Index(value = ["seriesId", "type"]),
         Index(value = ["playbackPositionTicks"]),
         Index(value = ["productionYear"])

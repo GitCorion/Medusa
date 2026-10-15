@@ -105,20 +105,22 @@ interface JellyfinDao {
     @Query("SELECT COUNT(*) FROM jellyfin_media")
     suspend fun getCount(): Int
 
-    @Query("SELECT COUNT(*) FROM jellyfin_media WHERE type IN ('Movie', 'Series')")
-    fun getMediaCountFlow(): Flow<Int>
-
-    @Query("SELECT COUNT(*) FROM jellyfin_media WHERE type = 'Movie'")
-    fun getMoviesCountFlow(): Flow<Int>
-
-    @Query("SELECT COUNT(*) FROM jellyfin_media WHERE type = 'Series'")
-    fun getSeriesCountFlow(): Flow<Int>
-
-    @Query("SELECT COUNT(*) FROM jellyfin_media WHERE type = 'Episode'")
-    fun getEpisodesCountFlow(): Flow<Int>
-
-    @Query("SELECT COALESCE(SUM(totalItemCount), 0) FROM jellyfin_media WHERE type = 'Series'")
-    fun getTotalSeriesEpisodesFlow(): Flow<Int>
+    /**
+     * Estadísticas de la biblioteca en una sola consulta (antes eran 5 `Flow` de conteo
+     * observados en paralelo → 5 COUNT/SUM por cada escritura en la tabla).
+     */
+    @Query(
+        """
+        SELECT
+            COALESCE(SUM(CASE WHEN type IN ('Movie','Series') THEN 1 ELSE 0 END), 0) AS total,
+            COALESCE(SUM(CASE WHEN type = 'Movie' THEN 1 ELSE 0 END), 0) AS movies,
+            COALESCE(SUM(CASE WHEN type = 'Series' THEN 1 ELSE 0 END), 0) AS series,
+            COALESCE(SUM(CASE WHEN type = 'Episode' THEN 1 ELSE 0 END), 0) AS episodesDirect,
+            COALESCE(SUM(CASE WHEN type = 'Series' THEN totalItemCount ELSE 0 END), 0) AS totalSeriesEpisodes
+        FROM jellyfin_media
+        """
+    )
+    fun getLibraryStatsFlow(): Flow<LibraryStats>
 
     @Query("SELECT * FROM jellyfin_media WHERE isFavorite = 1 ORDER BY title ASC")
     suspend fun getFavorites(): List<JellyfinMediaEntity>
@@ -156,3 +158,14 @@ data class CachedOverviewDto(
     val overview: String?,
     val backdropImageTag: String? = null
 )
+
+data class LibraryStats(
+    val total: Int = 0,
+    val movies: Int = 0,
+    val series: Int = 0,
+    val episodesDirect: Int = 0,
+    val totalSeriesEpisodes: Int = 0
+) {
+    /** Episodios mostrados: el mayor entre los contados directamente y la suma de episodios de series. */
+    val episodes: Int get() = maxOf(episodesDirect, totalSeriesEpisodes)
+}

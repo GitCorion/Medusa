@@ -3,6 +3,7 @@ package com.example.tujelly.data.repository
 import com.example.tujelly.data.local.UserPreferencesRepository
 import com.example.tujelly.data.local.db.JellyfinDao
 import com.example.tujelly.data.local.db.JellyfinMediaEntity
+import com.example.tujelly.data.local.db.LibraryStats
 import com.example.tujelly.data.local.db.TmdbVoteCacheDao
 import com.example.tujelly.data.local.db.TmdbVoteCacheEntity
 import com.example.tujelly.data.remote.NetworkClientFactory
@@ -36,7 +37,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -458,6 +458,9 @@ class MediaRepository(
             runCatching {
                 val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
                 val authHeader = buildJellyfinAuthHeader(token = token)
+
+                // Purga entradas caducadas (>24h) de la caché de votos TMDB para que no crezca sin límite.
+                runCatching { tmdbVoteCacheDao?.deleteExpired() }
 
                 val currentLocal = getLocalCount()
 
@@ -1347,15 +1350,7 @@ class MediaRepository(
     suspend fun searchLocalMedia(query: String, limit: Int = 40): List<JellyfinMediaEntity> = jellyfinDao.searchLocalMedia(query.trim(), limit).deduplicateMediaEntities().filterAllowed()
     suspend fun getAllLocalTitles(): List<String> = jellyfinDao.getAllLocalTitles()
     suspend fun getLocalCount(): Int = jellyfinDao.getCount()
-    fun getMediaCountFlow(): Flow<Int> = jellyfinDao.getMediaCountFlow()
-    fun getMoviesCountFlow(): Flow<Int> = jellyfinDao.getMoviesCountFlow()
-    fun getSeriesCountFlow(): Flow<Int> = jellyfinDao.getSeriesCountFlow()
-    fun getEpisodesCountFlow(): Flow<Int> = combine(
-        jellyfinDao.getEpisodesCountFlow(),
-        jellyfinDao.getTotalSeriesEpisodesFlow()
-    ) { direct, seriesTotal ->
-        maxOf(direct, seriesTotal)
-    }
+    fun getLibraryStatsFlow(): Flow<LibraryStats> = jellyfinDao.getLibraryStatsFlow()
     suspend fun getFavoritesLocal(): List<JellyfinMediaEntity> = jellyfinDao.getFavorites().deduplicateMediaEntities().filterAllowed()
     fun getFavoritesFlow(): Flow<List<JellyfinMediaEntity>> = jellyfinDao.getFavoritesFlow().map { it.filterAllowed() }
 
