@@ -29,6 +29,7 @@ data class MedusaUiState(
     val mosaicTags: List<MedusaMosaicTag> = emptyList(),
     val activeChain: List<MedusaMosaicTag> = emptyList(),
     val matchingMovies: List<MediaItem> = emptyList(),
+    val totalMatchingCount: Int = 0,
     val format: MediaFormat = MediaFormat.ALL,
     val showMoviesOverlay: Boolean = false,
     val totalCatalogCount: Int = 0,
@@ -190,7 +191,8 @@ class MedusaViewModel @Inject constructor(
         filterJob?.cancel()
         filterJob = viewModelScope.launch(Dispatchers.Default) {
             val newTags = matrixEngine.generateMosaicTags(newChain, format, targetCapacity = 20)
-            val newMovies = matrixEngine.getMatchingMovies(newChain, format, serverUrl, accessToken)
+            val newMovies = matrixEngine.getMatchingMovies(newChain, format, serverUrl, accessToken, limit = 120)
+            val totalCount = matrixEngine.getMatchingCount(newChain, format)
 
             _selectedMovie.value = newMovies.firstOrNull()
             _uiState.update { current ->
@@ -198,7 +200,8 @@ class MedusaViewModel @Inject constructor(
                     activeChain = newChain,
                     format = format,
                     mosaicTags = newTags,
-                    matchingMovies = newMovies
+                    matchingMovies = newMovies,
+                    totalMatchingCount = totalCount
                 )
             }
         }
@@ -262,17 +265,11 @@ class MedusaViewModel @Inject constructor(
 
     /**
      * Tecla ATRÁS:
-     * 1. Si está viendo la película seleccionada -> la deselecciona.
-     * 2. Si el visor overlay está abierto -> lo cierra.
-     * 3. Si hay etiquetas activas conectadas -> desconecta la última (el mosaico se re-expande de forma asíncrona).
-     * 4. Si la cadena está vacía -> devuelve false para volver al Home.
+     * 1. Si el visor overlay está abierto -> lo cierra.
+     * 2. Si hay etiquetas activas conectadas -> desconecta la última (el mosaico se re-expande de forma asíncrona).
+     * 3. Si la cadena está vacía -> devuelve false para volver al Home.
      */
     fun onBackPress(): Boolean {
-        if (_selectedMovie.value != null) {
-            _selectedMovie.value = null
-            return true
-        }
-
         if (_uiState.value.showMoviesOverlay) {
             _uiState.update { it.copy(showMoviesOverlay = false) }
             return true

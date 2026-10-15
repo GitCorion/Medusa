@@ -263,13 +263,10 @@ fun MedusaScreen(
                             SelectedTagBadge(
                                 tag = tag,
                                 onRemove = {
-                                    val remaining = uiState.activeChain.filterNot { it.id == tag.id }
                                     viewModel.removeTagFromChain(tag)
-                                    if (remaining.isEmpty()) {
-                                        try {
-                                            tagRailFocusRequester.requestFocus()
-                                        } catch (_: Exception) {}
-                                    }
+                                    try {
+                                        tagRailFocusRequester.requestFocus()
+                                    } catch (_: Exception) {}
                                 },
                                 isMonochrome = isMonochrome,
                                 accentColor = accentColor,
@@ -327,7 +324,7 @@ fun MedusaScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             MedusaMoviesHeader(
-                                movieCount = uiState.matchingMovies.size,
+                                movieCount = uiState.totalMatchingCount,
                                 formatNounPlural = formatNounPlural,
                                 selectedMovieFlow = viewModel.selectedMovie,
                                 fallbackMovie = uiState.matchingMovies.firstOrNull(),
@@ -410,7 +407,7 @@ fun MedusaScreen(
 
                     if (uiState.activeChain.isNotEmpty()) {
                         Text(
-                            text = "${uiState.matchingMovies.size} $formatNounPlural disponibles",
+                            text = "${uiState.totalMatchingCount} $formatNounPlural disponibles",
                             color = if (isMonochrome) Color.White else accentColor,
                             fontSize = 10.5.sp,
                             fontWeight = FontWeight.Bold

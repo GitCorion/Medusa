@@ -340,10 +340,10 @@ class MedusaTagMatrixEngine {
         chain: List<MedusaMosaicTag>,
         format: MediaFormat = MediaFormat.ALL,
         serverUrl: String = "",
-        accessToken: String = ""
+        accessToken: String = "",
+        limit: Int = 120
     ): List<MediaItem> {
         val matchingIndices = resolveMatchingIndices(chain, format)
-        val limit = 40
         val takeCount = minOf(matchingIndices.size, limit)
         val result = ArrayList<MediaItem>(takeCount)
         for (i in 0 until takeCount) {
@@ -351,6 +351,16 @@ class MedusaTagMatrixEngine {
             result.add(entity.toMediaItem(serverUrl, accessToken))
         }
         return result
+    }
+
+    /**
+     * Devuelve el recuento total de obras que coinciden con los filtros actuales sin límite de paginación.
+     */
+    fun getMatchingCount(
+        chain: List<MedusaMosaicTag>,
+        format: MediaFormat = MediaFormat.ALL
+    ): Int {
+        return resolveMatchingIndices(chain, format).size
     }
 
     /**
@@ -395,8 +405,15 @@ class MedusaTagMatrixEngine {
         val isFirstSelection = chainKeys.isEmpty()
         val candidateList = ArrayList<Triple<PrecomputedTag, Int, Float>>(cooccurrenceCounts.size)
 
+        // Si el subconjunto es amplio, exigimos que la temática aparezca en al menos 2 obras
+        // para evitar que una etiqueta residual de una sola películacope el raíl.
+        val minCount = when {
+            matchingCount >= 30 -> 2
+            else -> 1
+        }
+
         for ((tag, count) in cooccurrenceCounts) {
-            if (count < 1) continue
+            if (count < minCount) continue
             val tagInfo = tagMetadataMap[tag] ?: continue
             if (!tagInfo.isValid || isBlacklistedTag(tag)) continue
 
@@ -414,13 +431,16 @@ class MedusaTagMatrixEngine {
                 if (tagInfo.isPillar) score += 4f
                 if (tag in listOf("ciencia ficcion", "animacion", "fantasia", "misterio", "aventura", "terror")) score += 6f
             } else {
-                // Con selección activa: el Lift es rey para que la lista esté viva y revele
-                // micro-temáticas específicas que realmente caracterizan a la selección actual
-                score = ln(count.toFloat() + 1f) * 2.2f + (lift * 4.2f)
+                // Con selección activa: regularizamos el Lift con contracción bayesiana (shrinkage)
+                // según el soporte de la etiqueta, asegurando que micro-temáticas relevantes surjan
+                // sin permitir que casos con 1 o 2 películas y sobre-etiquetado desplacen a temáticas ricas.
+                val shrinkage = count.toFloat() / (count + 3f)
+                val effectiveLift = 1f + (lift - 1f) * shrinkage
+                score = ln(count.toFloat() + 1f) * 3.2f + (effectiveLift * 3.5f)
 
                 if (!tagInfo.isPillar) {
                     // Impulsar temáticas específicas (Magia, Superhéroes, Robots, Animales, Espacio...)
-                    score += 5.0f
+                    score += 4.0f
                 } else {
                     // Evitar que macrogéneros genéricos acaparen siempre los primeros puestos
                     score += 1.0f

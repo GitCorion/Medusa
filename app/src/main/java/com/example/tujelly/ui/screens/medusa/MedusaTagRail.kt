@@ -118,9 +118,7 @@ fun MedusaTagRail(
             .fillMaxWidth()
             .height(44.dp)
             .onFocusChanged {
-                if (it.hasFocus) {
-                    isRailFocused = true
-                }
+                isRailFocused = it.hasFocus
             },
         contentPadding = PaddingValues(horizontal = 48.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp),
