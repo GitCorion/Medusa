@@ -62,7 +62,9 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -326,15 +328,18 @@ private fun PlayerContent(
 
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(
-                /* minBufferMs = */ 5_000,
-                /* maxBufferMs = */ 30_000,
-                /* bufferForPlaybackMs = */ 1_000,
-                /* bufferForPlaybackAfterRebufferMs = */ 2_000
+                /* minBufferMs = */ 15_000,
+                /* maxBufferMs = */ 50_000,
+                /* bufferForPlaybackMs = */ 1_500,
+                /* bufferForPlaybackAfterRebufferMs = */ 3_000
             )
             .build()
 
         val renderersFactory = DefaultRenderersFactory(context)
-            .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
+            // ON = prefiere el decodificador de hardware de la plataforma y sólo recurre
+            // a la extensión FFmpeg (software) cuando no hay uno válido. PREFER forzaba
+            // decodificación software y quemaba CPU en TV.
+            .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
             .setEnableDecoderFallback(true)
 
         val audioAttributes = AudioAttributes.Builder()
@@ -349,7 +354,12 @@ private fun PlayerContent(
             .setWakeMode(C.WAKE_MODE_NETWORK)
             .setAudioAttributes(audioAttributes, true)
             .build().apply {
-                addAnalyticsListener(androidx.media3.exoplayer.util.EventLogger())
+                // EventLogger sólo en builds depurables: en release inundaba logcat y añadía coste.
+                val isDebuggable = (context.applicationInfo.flags and
+                        android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+                if (isDebuggable) {
+                    addAnalyticsListener(androidx.media3.exoplayer.util.EventLogger())
+                }
 
                 val mediaItem = MediaItem.Builder()
                     .setUri(candidates.first())
@@ -520,41 +530,85 @@ private fun PlayerContent(
         }
     }
 
-    // Sync position & Report progress (Only during active playback in STATE_READY, never while buffering/stalled)
+    // Posición/buffer/duración en vivo para el HUD, los banners y la cuenta atrás del siguiente
+    // episodio. Sólo late mientras la UI consume esos valores; en reposo (sin overlay ni
+    // marcadores) no escribe estado y, por tanto, no provoca recomposición.
+    val needsLivePosition = showOverlayControls ||
+            introMarker != null || creditsMarker != null || nextEpisode != null
+    LaunchedEffect(exoPlayer, needsLivePosition) {
+        if (!needsLivePosition) return@LaunchedEffect
+        while (isActive) {
+            currentPosition = exoPlayer.currentPosition.coerceAtLeast(0L)
+            duration = exoPlayer.duration.coerceAtLeast(0L)
+            bufferedPosition = exoPlayer.bufferedPosition.coerceAtLeast(0L)
+            delay(500L)
+        }
+    }
+
+    // Report de progreso a Jellyfin cada 5 s durante reproducción activa (no toca estado de Compose).
     LaunchedEffect(exoPlayer) {
         var lastReportedMs = 0L
         var lastWasPlaying = false
 
         while (isActive) {
-            val pos = exoPlayer.currentPosition.coerceAtLeast(0L)
-            val dur = exoPlayer.duration.coerceAtLeast(0L)
-            val buf = exoPlayer.bufferedPosition.coerceAtLeast(0L)
             val playing = exoPlayer.isPlaying
             val state = exoPlayer.playbackState
-
-            currentPosition = pos
-            duration = dur
-            bufferedPosition = buf
+            val pos = exoPlayer.currentPosition.coerceAtLeast(0L)
 
             val isActivelyPlaying = exoPlayer.playerError == null && state == Player.STATE_READY && playing
             if (isActivelyPlaying && pos > 0) {
                 val now = System.currentTimeMillis()
                 val stateChanged = playing != lastWasPlaying
-                val intervalPassed = (now - lastReportedMs) >= 5000L
-
-                if (stateChanged || intervalPassed) {
+                if (stateChanged || (now - lastReportedMs) >= 5000L) {
                     viewModel.reportProgress(pos, isPaused = false)
                     lastReportedMs = now
                     lastWasPlaying = playing
                 }
             }
 
-            delay(500L)
+            delay(1000L)
         }
     }
 
+    // Valores actualizados para el listener: nextEpisode/creditsMarker llegan después de crear
+    // el player; sin rememberUpdatedState la lambda capturaría valores obsoletos.
+    val latestNextEpisode by rememberUpdatedState(nextEpisode)
+    val latestCreditsMarker by rememberUpdatedState(creditsMarker)
+
     DisposableEffect(exoPlayer) {
+        // Un único listener para discontinuidades, fin de reproducción y buffer; se elimina en
+        // onDispose (antes se añadía uno en un LaunchedEffect y nunca se retiraba).
+        val listener = object : Player.Listener {
+            override fun onPositionDiscontinuity(
+                oldPosition: Player.PositionInfo,
+                newPosition: Player.PositionInfo,
+                reason: Int
+            ) {
+                currentPosition = newPosition.positionMs.coerceAtLeast(0L)
+                duration = exoPlayer.duration.coerceAtLeast(0L)
+            }
+
+            override fun onEvents(player: Player, events: Player.Events) {
+                duration = player.duration.coerceAtLeast(0L)
+                bufferedPosition = player.bufferedPosition.coerceAtLeast(0L)
+            }
+
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                if (playbackState == Player.STATE_ENDED) {
+                    val dur = exoPlayer.duration.coerceAtLeast(1L)
+                    viewModel.reportStopped(dur, dur)
+                    currentPosition = dur
+                    duration = dur
+                    if (latestNextEpisode != null && latestCreditsMarker == null) {
+                        nextEpisodeCountdown = -1 // sin cuenta atrás: el episodio ya ha terminado
+                        showNextEpisodeOverlay = true
+                    }
+                }
+            }
+        }
+        exoPlayer.addListener(listener)
         onDispose {
+            exoPlayer.removeListener(listener)
             val finalPos = exoPlayer.currentPosition
             val totalDur = exoPlayer.duration
             if (finalPos > 0 && exoPlayer.playerError == null) {
@@ -567,33 +621,39 @@ private fun PlayerContent(
     // ─── Intro / Credits banner: usa los campos del plugin fielmente ────────────
     // introMarker.showAtMs = ShowSkipPromptAt del plugin
     // introMarker.hideAtMs = HideSkipPromptAt del plugin
-    LaunchedEffect(currentPosition, introMarker) {
+    // snapshotFlow() lee la posición fuera de composición → no recompone PlayerContent.
+    LaunchedEffect(introMarker) {
         val marker = introMarker
-        if (marker != null) {
-            // El banner es visible exactamente en el rango que el plugin especifica
-            val inWindow = currentPosition in marker.showAtMs..marker.hideAtMs
-            if (inWindow != showSkipIntroBanner) showSkipIntroBanner = inWindow
-        } else {
+        if (marker == null) {
             showSkipIntroBanner = false
+            return@LaunchedEffect
+        }
+        snapshotFlow { currentPosition }.collect { pos ->
+            // El banner es visible exactamente en el rango que el plugin especifica
+            val inWindow = pos in marker.showAtMs..marker.hideAtMs
+            if (inWindow != showSkipIntroBanner) showSkipIntroBanner = inWindow
         }
     }
 
-    LaunchedEffect(currentPosition, creditsMarker) {
+    LaunchedEffect(creditsMarker) {
         val marker = creditsMarker
-        if (marker != null) {
-            val inWindow = currentPosition in marker.showAtMs..marker.hideAtMs
-            if (inWindow != showSkipCreditsBanner) showSkipCreditsBanner = inWindow
-        } else {
+        if (marker == null) {
             showSkipCreditsBanner = false
+            return@LaunchedEffect
+        }
+        snapshotFlow { currentPosition }.collect { pos ->
+            val inWindow = pos in marker.showAtMs..marker.hideAtMs
+            if (inWindow != showSkipCreditsBanner) showSkipCreditsBanner = inWindow
         }
     }
 
     // ─── Next episode overlay ────────────────────────────────────────────
     // Caso A: creditsMarker presente (del plugin) → showAt=StartTicks, hideAt=EndTicks
     //         countdown = (hideAtMs - currentPosition) / 1000 en vivo
-    // Caso B: sin marker → sólo cuando STATE_ENDED (ver listener abajo)
-    LaunchedEffect(currentPosition, creditsMarker, nextEpisode) {
-        if (nextEpisode == null) {
+    // Caso B: sin marker → sólo cuando STATE_ENDED (ver listener arriba)
+    LaunchedEffect(creditsMarker, nextEpisode) {
+        val next = nextEpisode
+        if (next == null) {
             if (showNextEpisodeOverlay) showNextEpisodeOverlay = false
             return@LaunchedEffect
         }
@@ -601,36 +661,22 @@ private fun PlayerContent(
         val marker = creditsMarker
         if (marker != null) {
             // Rango del overlay = el mismo rango que el plugin indica para el outro
-            val inRange = currentPosition in marker.showAtMs..marker.hideAtMs
-            if (inRange) {
-                // Cuenta atrás = ticks reales que quedan hasta el fin del outro
-                nextEpisodeCountdown = ((marker.hideAtMs - currentPosition) / 1000L).toInt().coerceAtLeast(0)
-                if (!showNextEpisodeOverlay) showNextEpisodeOverlay = true
-            } else if (currentPosition > marker.hideAtMs) {
-                if (showNextEpisodeOverlay) {
-                    showNextEpisodeOverlay = false
-                    onPlayNextEpisode(nextEpisode!!)
+            snapshotFlow { currentPosition }.collect { pos ->
+                val inRange = pos in marker.showAtMs..marker.hideAtMs
+                if (inRange) {
+                    // Cuenta atrás = ticks reales que quedan hasta el fin del outro
+                    nextEpisodeCountdown = ((marker.hideAtMs - pos) / 1000L).toInt().coerceAtLeast(0)
+                    if (!showNextEpisodeOverlay) showNextEpisodeOverlay = true
+                } else if (pos > marker.hideAtMs) {
+                    if (showNextEpisodeOverlay) {
+                        showNextEpisodeOverlay = false
+                        onPlayNextEpisode(next)
+                    }
+                } else {
+                    if (showNextEpisodeOverlay) showNextEpisodeOverlay = false
                 }
-            } else {
-                if (showNextEpisodeOverlay) showNextEpisodeOverlay = false
             }
         }
-    }
-
-    // Caso B: STATE_ENDED sin marcador de créditos → mostrar overlay sin countdown
-    LaunchedEffect(exoPlayer) {
-        exoPlayer.addListener(object : Player.Listener {
-            override fun onPlaybackStateChanged(playbackState: Int) {
-                if (playbackState == Player.STATE_ENDED) {
-                    val dur = exoPlayer.duration.coerceAtLeast(1L)
-                    viewModel.reportStopped(dur, dur)
-                    if (nextEpisode != null && creditsMarker == null) {
-                        nextEpisodeCountdown = -1 // sin cuenta atrás: el episodio ya ha terminado
-                        showNextEpisodeOverlay = true
-                    }
-                }
-            }
-        })
     }
 
     // Cuando el countdown llega a 0 (caso A: créditos terminaron), lanzar siguiente episodio
@@ -730,6 +776,11 @@ private fun PlayerContent(
                 }
             },
             update = { playerView ->
+                // Reasignar siempre: el player se recrea con remember(info, retryTrigger) y,
+                // sin esto, tras un "Reintentar" el PlayerView seguía enlazado al player liberado.
+                if (playerView.player !== exoPlayer) {
+                    playerView.player = exoPlayer
+                }
                 playerView.resizeMode = currentResizeMode
                 playerView.keepScreenOn = isPlaying || showOverlayControls
             },
