@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.Column
@@ -690,11 +691,12 @@ fun DetailScreen(
                                     )
                                 }
                                 Spacer(modifier = Modifier.height(8.dp))
-                                Row(
+                                LazyRow(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    contentPadding = PaddingValues(vertical = 4.dp, horizontal = 2.dp),
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    state.seasons.forEach { season ->
+                                    items(state.seasons, key = { it.id }) { season ->
                                         val isSelected = season.id == state.selectedSeasonId
                                         Button(
                                             onClick = { viewModel.selectSeason(season.id) },
