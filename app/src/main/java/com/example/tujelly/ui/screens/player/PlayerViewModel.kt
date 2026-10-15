@@ -69,6 +69,14 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
     private var jellyfinBaseUrl: String = ""
     private var jellyfinAuthHeader: String = ""
 
+    // Perfil de dispositivo y soporte 4K HEVC: enumerar MediaCodecList es costoso y el
+    // resultado es estable durante toda la sesión. Se cachea y se calcula la primera vez
+    // en Dispatchers.Default (antes se enumeraba dos veces en el hilo principal por carga).
+    private val cachedDeviceProfile: com.example.tujelly.data.remote.jellyfin.JellyfinDeviceProfile
+            by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { createAndroidTvDeviceProfile() }
+    private val cachedDevice4kHevc: Boolean
+            by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { canDeviceDecode4kHevc() }
+
     // ─── Skip markers ──────────────────────────────────────────────────
     // Cada campo de SkipMarker viene directamente del plugin/API, sin valores inventados.
     /** Marcador de intro. Campos: showAt=ShowSkipPromptAt, hideAt=HideSkipPromptAt, skipTo=IntroEnd */
@@ -329,7 +337,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
             var effectiveUserId = userId
             var effectiveAuthHeader = jellyfinAuthHeader
 
-            val androidTvProfile = createAndroidTvDeviceProfile()
+            val androidTvProfile = withContext(Dispatchers.Default) { cachedDeviceProfile }
 
             val pbRequest = com.example.tujelly.data.remote.jellyfin.JellyfinPlaybackInfoRequest(
                 userId = effectiveUserId,
@@ -392,7 +400,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
                 Log.i("PlayerViewModel", "MS[$idx] PlayMethod=$playMethod ← ${if (playMethod == "DirectPlay") "✓ SUCCESS" else "⚠ Profile mismatch — check DeviceProfile codecs"}")
             }
 
-            val supports4K = canDeviceDecode4kHevc()
+            val supports4K = withContext(Dispatchers.Default) { cachedDevice4kHevc }
             Log.i("PlayerViewModel", "Device 4K HEVC hardware decode support: $supports4K")
 
             val chosenMediaSource = if (!preferredMediaSourceId.isNullOrBlank()) {
@@ -661,7 +669,8 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
 
     fun reportStart(positionMs: Long) {
         if (currentPlayableId.isBlank() || jellyfinBaseUrl.isBlank()) return
-        viewModelScope.launch {
+        // Fuera del hilo principal: createService/la red no deben bloquear la UI.
+        viewModelScope.launch(Dispatchers.IO) {
             runCatching {
                 val api = NetworkClientFactory.createService(jellyfinBaseUrl, JellyfinApiService::class.java)
                 val ticks = positionMs * 10_000L
@@ -675,7 +684,8 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
 
     fun reportProgress(positionMs: Long, isPaused: Boolean) {
         if (currentPlayableId.isBlank() || jellyfinBaseUrl.isBlank()) return
-        viewModelScope.launch {
+        // Fuera del hilo principal: createService/la red no deben bloquear la UI.
+        viewModelScope.launch(Dispatchers.IO) {
             runCatching {
                 val api = NetworkClientFactory.createService(jellyfinBaseUrl, JellyfinApiService::class.java)
                 val ticks = positionMs * 10_000L
