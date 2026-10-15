@@ -212,6 +212,44 @@ class FakeJellyfinDao : JellyfinDao {
         }
     }
 
+    override fun getAllItemsRestricted(): Flow<List<JellyfinMediaEntity>> = getAllItems()
+
+    override suspend fun searchLocalMediaRestricted(query: String, limit: Int): List<JellyfinMediaEntity> = searchLocalMedia(query, limit)
+
+    override suspend fun searchLocalMediaFtsRestricted(match: String, limit: Int): List<JellyfinMediaEntity> = searchLocalMediaFts(match, limit)
+
+    override suspend fun getItemsByIdsRestricted(ids: List<String>): List<JellyfinMediaEntity> = getItemsByIds(ids)
+
+    override suspend fun getMoviesRestricted(): List<JellyfinMediaEntity> = getMovies()
+
+    override suspend fun getSeriesRestricted(): List<JellyfinMediaEntity> = getSeries()
+
+    override suspend fun getAllCatalogRestricted(): List<JellyfinMediaEntity> = getAllCatalog()
+
+    override suspend fun getContinueWatchingLocalRestricted(limit: Int): List<JellyfinMediaEntity> = getContinueWatchingLocal(limit)
+
+    override suspend fun getLatestLocalRestricted(limit: Int): List<JellyfinMediaEntity> = getLatestLocal(limit)
+
+    override suspend fun getTopRatedLocalRestricted(limit: Int): List<JellyfinMediaEntity> = getTopRatedLocal(limit)
+
+    override suspend fun getTopMoviesLocalRestricted(limit: Int): List<JellyfinMediaEntity> = getTopMoviesLocal(limit)
+
+    override suspend fun getTopSeriesLocalRestricted(limit: Int): List<JellyfinMediaEntity> = getTopSeriesLocal(limit)
+
+    override suspend fun getItemsByGenreRestricted(genre: String, limit: Int): List<JellyfinMediaEntity> = getItemsByGenre(genre, limit)
+
+    override suspend fun getMoviesByGenreRestricted(genre: String, limit: Int): List<JellyfinMediaEntity> = getMoviesByGenre(genre, limit)
+
+    override suspend fun getSeriesByGenreRestricted(genre: String, limit: Int): List<JellyfinMediaEntity> = getSeriesByGenre(genre, limit)
+
+    override suspend fun getRecentMoviesByGenreRestricted(genre: String, limit: Int): List<JellyfinMediaEntity> = getRecentMoviesByGenre(genre, limit)
+
+    override suspend fun getRecentSeriesByGenreRestricted(genre: String, limit: Int): List<JellyfinMediaEntity> = getRecentSeriesByGenre(genre, limit)
+
+    override suspend fun getFavoritesRestricted(): List<JellyfinMediaEntity> = getFavorites()
+
+    override fun getFavoritesFlowRestricted(): Flow<List<JellyfinMediaEntity>> = getFavoritesFlow()
+
     override suspend fun clearAll() {
         localDb.clear()
     }

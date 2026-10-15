@@ -365,9 +365,7 @@ class MediaSyncRepository(
                                 }
                                 jellyfinDao.insertOrUpdateAll(entities)
 
-                                val currentAllowed = accessPolicy.getAllowedIdsSet()?.toMutableSet() ?: mutableSetOf()
-                                currentAllowed.addAll(entities.map { it.id })
-                                accessPolicy.saveAllowedIds(userId, currentAllowed)
+                                accessPolicy.addAllowedIds(userId, entities.map { it.id })
 
                                 deltaCount += entities.size
                                 deltaOffset += deltaItems.size

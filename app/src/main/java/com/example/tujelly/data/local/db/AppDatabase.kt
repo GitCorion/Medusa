@@ -8,8 +8,8 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
-    entities = [JellyfinMediaEntity::class, TmdbVoteCacheEntity::class, HomeSectionCacheEntity::class, JellyfinMediaFts::class],
-    version = 14,
+    entities = [JellyfinMediaEntity::class, TmdbVoteCacheEntity::class, HomeSectionCacheEntity::class, JellyfinMediaFts::class, AllowedMediaIdEntity::class],
+    version = 15,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -17,6 +17,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun jellyfinDao(): JellyfinDao
     abstract fun tmdbVoteCacheDao(): TmdbVoteCacheDao
     abstract fun homeSectionCacheDao(): HomeSectionCacheDao
+    abstract fun allowedMediaDao(): AllowedMediaDao
 
     companion object {
         @Volatile
@@ -110,6 +111,14 @@ abstract class AppDatabase : RoomDatabase() {
          * con `LOWER(columna)`. El backfill usa el `LOWER()` de SQLite (ASCII) para coincidir con
          * `asciiLowercase()` del constructor de [JellyfinMediaEntity].
          */
+        val MIGRATION_14_15 = object : Migration(14, 15) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `allowed_media_ids` (`mediaId` TEXT NOT NULL, PRIMARY KEY(`mediaId`))"
+                )
+            }
+        }
+
         val MIGRATION_13_14 = object : Migration(13, 14) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE jellyfin_media ADD COLUMN titleLower TEXT NOT NULL DEFAULT ''")
@@ -136,7 +145,7 @@ abstract class AppDatabase : RoomDatabase() {
                     .addMigrations(
                         MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8,
                         MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12,
-                        MIGRATION_12_13, MIGRATION_13_14
+                        MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15
                     )
                     .fallbackToDestructiveMigration()
                     .build()

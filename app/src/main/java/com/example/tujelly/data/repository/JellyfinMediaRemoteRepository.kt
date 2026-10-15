@@ -296,7 +296,7 @@ class JellyfinMediaRemoteRepository(
      * NO hace random puro (daría viejas películas sin criterio).
      */
     suspend fun getTopRatedMoviesServer(serverUrl: String, userId: String, token: String, limit: Int = 20): List<JellyfinMediaEntity> {
-        if (serverUrl.isBlank() || token.isBlank()) return jellyfinDao.getTopMoviesLocal(limit).filterAllowed(accessPolicy)
+        if (serverUrl.isBlank() || token.isBlank()) return localMediaRepository.getTopMoviesLocal(limit)
         val cacheKey = "$serverUrl-$userId-$limit"
         MediaCaches.serverTopMoviesCache.get(cacheKey)?.let { return it }
 
@@ -363,9 +363,9 @@ class JellyfinMediaRemoteRepository(
                 MediaCaches.serverTopMoviesCache.put(cacheKey, merged)
                 merged
             } else {
-                jellyfinDao.getTopMoviesLocal(limit).filterAllowed(accessPolicy)
+                localMediaRepository.getTopMoviesLocal(limit)
             }
-        }.getOrDefault(jellyfinDao.getTopMoviesLocal(limit).filterAllowed(accessPolicy))
+        }.getOrDefault(localMediaRepository.getTopMoviesLocal(limit))
     }
 
     /**
@@ -377,7 +377,7 @@ class JellyfinMediaRemoteRepository(
      *   3. Fallback: series mejor valoradas sin ver
      */
     suspend fun getTopRatedSeriesServer(serverUrl: String, userId: String, token: String, limit: Int = 20): List<JellyfinMediaEntity> {
-        if (serverUrl.isBlank() || token.isBlank()) return jellyfinDao.getTopSeriesLocal(limit).filterAllowed(accessPolicy)
+        if (serverUrl.isBlank() || token.isBlank()) return localMediaRepository.getTopSeriesLocal(limit)
         val cacheKey = "$serverUrl-$userId-$limit"
         MediaCaches.serverTopSeriesCache.get(cacheKey)?.let { return it }
 
@@ -443,9 +443,9 @@ class JellyfinMediaRemoteRepository(
                 MediaCaches.serverTopSeriesCache.put(cacheKey, merged)
                 merged
             } else {
-                jellyfinDao.getTopSeriesLocal(limit).filterAllowed(accessPolicy)
+                localMediaRepository.getTopSeriesLocal(limit)
             }
-        }.getOrDefault(jellyfinDao.getTopSeriesLocal(limit).filterAllowed(accessPolicy))
+        }.getOrDefault(localMediaRepository.getTopSeriesLocal(limit))
     }
 
     suspend fun getSeasons(serverUrl: String, userId: String, token: String, seriesId: String): List<SeasonItem> {

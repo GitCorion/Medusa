@@ -74,4 +74,19 @@ class AppDatabaseMigrationTest {
             assertEquals("s1", cursor.getString(0))
         }
     }
+
+    @Test
+    fun migrate14To15_createsAllowedMediaIdsTable() {
+        helper.createDatabase(TEST_DB, 14).apply {
+            close()
+        }
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, 15, true, AppDatabase.MIGRATION_14_15)
+
+        db.execSQL("INSERT INTO allowed_media_ids (mediaId) VALUES ('item-1')")
+        db.query("SELECT mediaId FROM allowed_media_ids WHERE mediaId = 'item-1'").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals("item-1", cursor.getString(0))
+        }
+    }
 }

@@ -18,6 +18,9 @@ interface JellyfinDao {
     @Query("SELECT * FROM jellyfin_media")
     fun getAllItems(): Flow<List<JellyfinMediaEntity>>
 
+    @Query("SELECT * FROM jellyfin_media WHERE id IN (SELECT mediaId FROM allowed_media_ids)")
+    fun getAllItemsRestricted(): Flow<List<JellyfinMediaEntity>>
+
     @Query("SELECT * FROM jellyfin_media WHERE tmdbId = :tmdbId ORDER BY CASE WHEN type = 'Series' THEN 0 WHEN type = 'Movie' THEN 1 ELSE 2 END LIMIT 1")
     suspend fun findByTmdbId(tmdbId: String): JellyfinMediaEntity?
 
@@ -45,6 +48,9 @@ interface JellyfinDao {
     @Query("SELECT * FROM jellyfin_media WHERE type IN ('Movie', 'Series') AND (LOWER(title) LIKE '%' || LOWER(:query) || '%' OR LOWER(originalTitle) LIKE '%' || LOWER(:query) || '%') ORDER BY communityRating DESC LIMIT :limit")
     suspend fun searchLocalMedia(query: String, limit: Int = 40): List<JellyfinMediaEntity>
 
+    @Query("SELECT * FROM jellyfin_media WHERE type IN ('Movie', 'Series') AND (LOWER(title) LIKE '%' || LOWER(:query) || '%' OR LOWER(originalTitle) LIKE '%' || LOWER(:query) || '%') AND id IN (SELECT mediaId FROM allowed_media_ids) ORDER BY communityRating DESC LIMIT :limit")
+    suspend fun searchLocalMediaRestricted(query: String, limit: Int = 40): List<JellyfinMediaEntity>
+
     /**
      * Búsqueda de texto completo (FTS4) sobre título y título original. [:match] debe venir ya
      * formateado como expresión MATCH (ver `LocalMediaRepository.buildFtsQuery`).
@@ -61,6 +67,22 @@ interface JellyfinDao {
     )
     suspend fun searchLocalMediaFts(match: String, limit: Int = 40): List<JellyfinMediaEntity>
 
+    /**
+     * Búsqueda FTS4 restringida a los IDs permitidos (control parental).
+     */
+    @Query(
+        """
+        SELECT jm.* FROM jellyfin_media jm
+        JOIN jellyfin_media_fts ON jm.rowid = jellyfin_media_fts.rowid
+        WHERE jellyfin_media_fts MATCH :match
+        AND jm.type IN ('Movie', 'Series')
+        AND jm.id IN (SELECT mediaId FROM allowed_media_ids)
+        ORDER BY jm.communityRating DESC
+        LIMIT :limit
+        """
+    )
+    suspend fun searchLocalMediaFtsRestricted(match: String, limit: Int = 40): List<JellyfinMediaEntity>
+
     @Query("SELECT DISTINCT title FROM jellyfin_media WHERE type IN ('Movie', 'Series') AND title IS NOT NULL AND title != '' ORDER BY title ASC")
     suspend fun getAllLocalTitles(): List<String>
 
@@ -70,14 +92,26 @@ interface JellyfinDao {
     @Query("SELECT * FROM jellyfin_media WHERE id IN (:ids)")
     suspend fun getItemsByIds(ids: List<String>): List<JellyfinMediaEntity>
 
+    @Query("SELECT * FROM jellyfin_media WHERE id IN (:ids) AND id IN (SELECT mediaId FROM allowed_media_ids)")
+    suspend fun getItemsByIdsRestricted(ids: List<String>): List<JellyfinMediaEntity>
+
     @Query("SELECT * FROM jellyfin_media WHERE type = 'Movie' ORDER BY title ASC")
     suspend fun getMovies(): List<JellyfinMediaEntity>
+
+    @Query("SELECT * FROM jellyfin_media WHERE type = 'Movie' AND id IN (SELECT mediaId FROM allowed_media_ids) ORDER BY title ASC")
+    suspend fun getMoviesRestricted(): List<JellyfinMediaEntity>
 
     @Query("SELECT * FROM jellyfin_media WHERE type = 'Series' ORDER BY title ASC")
     suspend fun getSeries(): List<JellyfinMediaEntity>
 
+    @Query("SELECT * FROM jellyfin_media WHERE type = 'Series' AND id IN (SELECT mediaId FROM allowed_media_ids) ORDER BY title ASC")
+    suspend fun getSeriesRestricted(): List<JellyfinMediaEntity>
+
     @Query("SELECT * FROM jellyfin_media WHERE type IN ('Movie', 'Series')")
     suspend fun getAllCatalog(): List<JellyfinMediaEntity>
+
+    @Query("SELECT * FROM jellyfin_media WHERE type IN ('Movie', 'Series') AND id IN (SELECT mediaId FROM allowed_media_ids)")
+    suspend fun getAllCatalogRestricted(): List<JellyfinMediaEntity>
 
     /**
      * Catálogo ligero para el motor de etiquetas de Medusa. El índice de co-ocurrencia necesita
@@ -106,35 +140,77 @@ interface JellyfinDao {
     @Query("SELECT * FROM jellyfin_media WHERE playbackPositionTicks > 0 AND isPlayed = 0 AND type IN ('Movie', 'Episode', 'Series') ORDER BY rowid DESC LIMIT :limit")
     suspend fun getContinueWatchingLocal(limit: Int = 20): List<JellyfinMediaEntity>
 
+    @Query("SELECT * FROM jellyfin_media WHERE playbackPositionTicks > 0 AND isPlayed = 0 AND type IN ('Movie', 'Episode', 'Series') AND id IN (SELECT mediaId FROM allowed_media_ids) ORDER BY rowid DESC LIMIT :limit")
+    suspend fun getContinueWatchingLocalRestricted(limit: Int = 20): List<JellyfinMediaEntity>
+
     @Query("UPDATE jellyfin_media SET playbackPositionTicks = :positionTicks, isPlayed = :isPlayed WHERE id = :itemId")
     suspend fun updatePlaybackPosition(itemId: String, positionTicks: Long, isPlayed: Boolean)
 
     @Query("SELECT * FROM jellyfin_media WHERE type IN ('Movie', 'Series') ORDER BY rowid DESC LIMIT :limit")
     suspend fun getLatestLocal(limit: Int = 20): List<JellyfinMediaEntity>
 
+    @Query("SELECT * FROM jellyfin_media WHERE type IN ('Movie', 'Series') AND id IN (SELECT mediaId FROM allowed_media_ids) ORDER BY rowid DESC LIMIT :limit")
+    suspend fun getLatestLocalRestricted(limit: Int = 20): List<JellyfinMediaEntity>
+
     @Query("SELECT * FROM jellyfin_media WHERE type IN ('Movie', 'Series') AND communityRating >= 7.0 AND communityRating <= 9.5 ORDER BY communityRating DESC LIMIT :limit")
     suspend fun getTopRatedLocal(limit: Int = 20): List<JellyfinMediaEntity>
+
+    @Query("SELECT * FROM jellyfin_media WHERE type IN ('Movie', 'Series') AND communityRating >= 7.0 AND communityRating <= 9.5 AND id IN (SELECT mediaId FROM allowed_media_ids) ORDER BY communityRating DESC LIMIT :limit")
+    suspend fun getTopRatedLocalRestricted(limit: Int = 20): List<JellyfinMediaEntity>
 
     @Query("SELECT * FROM jellyfin_media WHERE type = 'Movie' AND isPlayed = 0 AND playbackPositionTicks = 0 AND communityRating >= 6.8 AND communityRating <= 9.5 ORDER BY communityRating DESC, COALESCE(productionYear, 0) DESC LIMIT :limit")
     suspend fun getTopMoviesLocal(limit: Int = 20): List<JellyfinMediaEntity>
 
+    @Query("SELECT * FROM jellyfin_media WHERE type = 'Movie' AND isPlayed = 0 AND playbackPositionTicks = 0 AND communityRating >= 6.8 AND communityRating <= 9.5 AND id IN (SELECT mediaId FROM allowed_media_ids) ORDER BY communityRating DESC, COALESCE(productionYear, 0) DESC LIMIT :limit")
+    suspend fun getTopMoviesLocalRestricted(limit: Int = 20): List<JellyfinMediaEntity>
+
     @Query("SELECT * FROM jellyfin_media WHERE type = 'Series' AND isPlayed = 0 AND playbackPositionTicks = 0 AND communityRating >= 6.8 AND communityRating <= 9.5 ORDER BY communityRating DESC, COALESCE(productionYear, 0) DESC LIMIT :limit")
     suspend fun getTopSeriesLocal(limit: Int = 20): List<JellyfinMediaEntity>
+
+    @Query("SELECT * FROM jellyfin_media WHERE type = 'Series' AND isPlayed = 0 AND playbackPositionTicks = 0 AND communityRating >= 6.8 AND communityRating <= 9.5 AND id IN (SELECT mediaId FROM allowed_media_ids) ORDER BY communityRating DESC, COALESCE(productionYear, 0) DESC LIMIT :limit")
+    suspend fun getTopSeriesLocalRestricted(limit: Int = 20): List<JellyfinMediaEntity>
 
     @Query("SELECT * FROM jellyfin_media WHERE type IN ('Movie', 'Series') AND (communityRating IS NULL OR communityRating <= 9.5) AND (LOWER(genres) LIKE '%' || LOWER(:genre) || '%' OR LOWER(title) LIKE '%' || LOWER(:genre) || '%') ORDER BY communityRating DESC LIMIT :limit")
     suspend fun getItemsByGenre(genre: String, limit: Int = 40): List<JellyfinMediaEntity>
 
+    @Query("SELECT * FROM jellyfin_media WHERE type IN ('Movie', 'Series') AND (communityRating IS NULL OR communityRating <= 9.5) AND (LOWER(genres) LIKE '%' || LOWER(:genre) || '%' OR LOWER(title) LIKE '%' || LOWER(:genre) || '%') AND id IN (SELECT mediaId FROM allowed_media_ids) ORDER BY communityRating DESC LIMIT :limit")
+    suspend fun getItemsByGenreRestricted(genre: String, limit: Int = 40): List<JellyfinMediaEntity>
+
     @Query("SELECT * FROM jellyfin_media WHERE type = 'Movie' AND (LOWER(genres) LIKE '%' || LOWER(:genre) || '%' OR LOWER(title) LIKE '%' || LOWER(:genre) || '%') ORDER BY communityRating DESC LIMIT :limit")
     suspend fun getMoviesByGenre(genre: String, limit: Int = 40): List<JellyfinMediaEntity>
+
+    @Query("SELECT * FROM jellyfin_media WHERE type = 'Movie' AND (LOWER(genres) LIKE '%' || LOWER(:genre) || '%' OR LOWER(title) LIKE '%' || LOWER(:genre) || '%') AND id IN (SELECT mediaId FROM allowed_media_ids) ORDER BY communityRating DESC LIMIT :limit")
+    suspend fun getMoviesByGenreRestricted(genre: String, limit: Int = 40): List<JellyfinMediaEntity>
 
     @Query("SELECT * FROM jellyfin_media WHERE type = 'Series' AND (LOWER(genres) LIKE '%' || LOWER(:genre) || '%' OR LOWER(title) LIKE '%' || LOWER(:genre) || '%') ORDER BY communityRating DESC LIMIT :limit")
     suspend fun getSeriesByGenre(genre: String, limit: Int = 40): List<JellyfinMediaEntity>
 
+    @Query("SELECT * FROM jellyfin_media WHERE type = 'Series' AND (LOWER(genres) LIKE '%' || LOWER(:genre) || '%' OR LOWER(title) LIKE '%' || LOWER(:genre) || '%') AND id IN (SELECT mediaId FROM allowed_media_ids) ORDER BY communityRating DESC LIMIT :limit")
+    suspend fun getSeriesByGenreRestricted(genre: String, limit: Int = 40): List<JellyfinMediaEntity>
+
     @Query("SELECT * FROM jellyfin_media WHERE type = 'Movie' AND (LOWER(genres) LIKE '%' || LOWER(:genre) || '%' OR LOWER(title) LIKE '%' || LOWER(:genre) || '%') ORDER BY productionYear DESC, communityRating DESC LIMIT :limit")
     suspend fun getRecentMoviesByGenre(genre: String, limit: Int = 20): List<JellyfinMediaEntity>
 
+    @Query("SELECT * FROM jellyfin_media WHERE type = 'Movie' AND (LOWER(genres) LIKE '%' || LOWER(:genre) || '%' OR LOWER(title) LIKE '%' || LOWER(:genre) || '%') AND id IN (SELECT mediaId FROM allowed_media_ids) ORDER BY productionYear DESC, communityRating DESC LIMIT :limit")
+    suspend fun getRecentMoviesByGenreRestricted(genre: String, limit: Int = 20): List<JellyfinMediaEntity>
+
     @Query("SELECT * FROM jellyfin_media WHERE type = 'Series' AND (LOWER(genres) LIKE '%' || LOWER(:genre) || '%' OR LOWER(title) LIKE '%' || LOWER(:genre) || '%') ORDER BY productionYear DESC, communityRating DESC LIMIT :limit")
     suspend fun getRecentSeriesByGenre(genre: String, limit: Int = 20): List<JellyfinMediaEntity>
+
+    @Query("SELECT * FROM jellyfin_media WHERE type = 'Series' AND (LOWER(genres) LIKE '%' || LOWER(:genre) || '%' OR LOWER(title) LIKE '%' || LOWER(:genre) || '%') AND id IN (SELECT mediaId FROM allowed_media_ids) ORDER BY productionYear DESC, communityRating DESC LIMIT :limit")
+    suspend fun getRecentSeriesByGenreRestricted(genre: String, limit: Int = 20): List<JellyfinMediaEntity>
+
+    @Query("SELECT * FROM jellyfin_media WHERE isFavorite = 1 ORDER BY title ASC")
+    suspend fun getFavorites(): List<JellyfinMediaEntity>
+
+    @Query("SELECT * FROM jellyfin_media WHERE isFavorite = 1 AND id IN (SELECT mediaId FROM allowed_media_ids) ORDER BY title ASC")
+    suspend fun getFavoritesRestricted(): List<JellyfinMediaEntity>
+
+    @Query("SELECT * FROM jellyfin_media WHERE isFavorite = 1 ORDER BY title ASC")
+    fun getFavoritesFlow(): Flow<List<JellyfinMediaEntity>>
+
+    @Query("SELECT * FROM jellyfin_media WHERE isFavorite = 1 AND id IN (SELECT mediaId FROM allowed_media_ids) ORDER BY title ASC")
+    fun getFavoritesFlowRestricted(): Flow<List<JellyfinMediaEntity>>
 
     @Query("SELECT genres FROM jellyfin_media WHERE (isPlayed = 1 OR playbackPositionTicks > 0) AND genres IS NOT NULL AND genres != '' LIMIT 300")
     suspend fun getWatchedGenres(): List<String>
@@ -161,12 +237,6 @@ interface JellyfinDao {
         """
     )
     fun getLibraryStatsFlow(): Flow<LibraryStats>
-
-    @Query("SELECT * FROM jellyfin_media WHERE isFavorite = 1 ORDER BY title ASC")
-    suspend fun getFavorites(): List<JellyfinMediaEntity>
-
-    @Query("SELECT * FROM jellyfin_media WHERE isFavorite = 1 ORDER BY title ASC")
-    fun getFavoritesFlow(): Flow<List<JellyfinMediaEntity>>
 
     @Query("UPDATE jellyfin_media SET isFavorite = :isFavorite WHERE id = :itemId")
     suspend fun updateFavoriteStatus(itemId: String, isFavorite: Boolean)

@@ -2,6 +2,7 @@ package com.example.tujelly.di
 
 import android.content.Context
 import com.example.tujelly.data.local.UserPreferencesRepository
+import com.example.tujelly.data.local.db.AllowedMediaDao
 import com.example.tujelly.data.local.db.AppDatabase
 import com.example.tujelly.data.local.db.HomeSectionCacheDao
 import com.example.tujelly.data.local.db.JellyfinDao
@@ -41,12 +42,16 @@ object AppModule {
         UserPreferencesRepository(context)
 
     @Provides
+    fun provideAllowedMediaDao(database: AppDatabase): AllowedMediaDao = database.allowedMediaDao()
+
+    @Provides
     @Singleton
     fun provideMediaRepository(
         jellyfinDao: JellyfinDao,
         userPreferencesRepository: UserPreferencesRepository,
-        tmdbVoteCacheDao: TmdbVoteCacheDao
-    ): MediaRepository = MediaRepository(jellyfinDao, userPreferencesRepository, tmdbVoteCacheDao)
+        tmdbVoteCacheDao: TmdbVoteCacheDao,
+        allowedMediaDao: AllowedMediaDao
+    ): MediaRepository = MediaRepository(jellyfinDao, userPreferencesRepository, tmdbVoteCacheDao, allowedMediaDao)
 
     @Provides
     @Singleton

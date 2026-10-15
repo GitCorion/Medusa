@@ -2,6 +2,7 @@ package com.example.tujelly.data.repository
 
 import android.content.Context
 import com.example.tujelly.data.local.UserPreferencesRepository
+import com.example.tujelly.data.local.db.AllowedMediaDao
 import com.example.tujelly.data.local.db.JellyfinDao
 import com.example.tujelly.data.local.db.JellyfinMediaEntity
 import com.example.tujelly.data.local.db.LibraryStats
@@ -43,9 +44,10 @@ import kotlinx.coroutines.flow.StateFlow
 class MediaRepository(
     jellyfinDao: JellyfinDao,
     userPreferencesRepository: UserPreferencesRepository? = null,
-    tmdbVoteCacheDao: TmdbVoteCacheDao? = null
+    tmdbVoteCacheDao: TmdbVoteCacheDao? = null,
+    allowedMediaDao: AllowedMediaDao? = null
 ) {
-    private val accessPolicy = MediaAccessPolicy(userPreferencesRepository)
+    private val accessPolicy = MediaAccessPolicy(userPreferencesRepository, allowedMediaDao)
     private val local = LocalMediaRepository(jellyfinDao, accessPolicy)
     private val jellyfinRemote = JellyfinMediaRemoteRepository(jellyfinDao, accessPolicy, local)
     private val sync = MediaSyncRepository(jellyfinDao, userPreferencesRepository, tmdbVoteCacheDao, accessPolicy)
