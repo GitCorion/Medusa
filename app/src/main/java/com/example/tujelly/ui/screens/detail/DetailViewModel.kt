@@ -1,10 +1,9 @@
 package com.example.tujelly.ui.screens.detail
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.tujelly.data.local.UserPreferencesRepository
-import com.example.tujelly.data.local.db.AppDatabase
+import com.example.tujelly.data.local.db.JellyfinDao
 import com.example.tujelly.data.local.db.JellyfinMediaEntity
 import com.example.tujelly.data.repository.MediaRepository
 import com.example.tujelly.domain.model.EpisodeItem
@@ -15,6 +14,7 @@ import com.example.tujelly.domain.model.SeriesStatus
 import com.example.tujelly.domain.usecase.FilterToLibraryUseCase
 import com.example.tujelly.util.JellyfinImageUtils
 import com.example.tujelly.util.toOptimizedMediaItem
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 sealed interface DetailUiState {
     data object Loading : DetailUiState
@@ -52,11 +53,13 @@ sealed interface DetailUiState {
     data class Error(val message: String) : DetailUiState
 }
 
-class DetailViewModel(application: Application) : AndroidViewModel(application) {
-
-    private val userPreferencesRepository = UserPreferencesRepository(application)
-    private val database = AppDatabase.getDatabase(application)
-    private val mediaRepository = MediaRepository(database.jellyfinDao(), userPreferencesRepository, database.tmdbVoteCacheDao())
+@HiltViewModel
+class DetailViewModel @Inject constructor(
+    private val userPreferencesRepository: UserPreferencesRepository,
+    private val jellyfinDao: JellyfinDao,
+    private val mediaRepository: MediaRepository,
+    private val filterToLibraryUseCase: FilterToLibraryUseCase
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow<DetailUiState>(DetailUiState.Loading)
     val uiState: StateFlow<DetailUiState> = _uiState.asStateFlow()
@@ -69,7 +72,7 @@ class DetailViewModel(application: Application) : AndroidViewModel(application) 
                 val prefs = userPreferencesRepository.userPreferencesFlow.first()
                 val baseUrl = prefs.jellyfinServerUrl
                 val token = prefs.jellyfinAccessToken
-                val local = database.jellyfinDao().getItemById(itemId)
+                val local = jellyfinDao.getItemById(itemId)
 
                 // 1. Si está en BD local, pintar de INMEDIATO (0 ms) sin pantalla de carga
                 var initialEntity = local
@@ -82,7 +85,7 @@ class DetailViewModel(application: Application) : AndroidViewModel(application) 
                     )
                     // Si es episodio, resolver serie y backdrop del padre
                     if (initialEntity.type.equals("Episode", ignoreCase = true) && !initialEntity.seriesId.isNullOrBlank()) {
-                        val parentSeries = database.jellyfinDao().getItemById(initialEntity.seriesId)
+                        val parentSeries = jellyfinDao.getItemById(initialEntity.seriesId)
                         if (parentSeries != null) {
                             if (initialEntity.seriesName.isNullOrBlank()) {
                                 initialEntity = initialEntity.copy(seriesName = parentSeries.title)
@@ -168,7 +171,7 @@ class DetailViewModel(application: Application) : AndroidViewModel(application) 
                         token = token
                     )
                     if (finalEntity.type.equals("Episode", ignoreCase = true) && !finalEntity.seriesId.isNullOrBlank()) {
-                        val parentSeries = database.jellyfinDao().getItemById(finalEntity.seriesId)
+                        val parentSeries = jellyfinDao.getItemById(finalEntity.seriesId)
                         if (parentSeries != null) {
                             if (finalEntity.seriesName.isNullOrBlank()) {
                                 finalEntity = finalEntity.copy(seriesName = parentSeries.title)
@@ -244,7 +247,7 @@ class DetailViewModel(application: Application) : AndroidViewModel(application) 
                         }
 
                         if (updated) {
-                            database.jellyfinDao().insertOrUpdate(enrichedEntity)
+                            jellyfinDao.insertOrUpdate(enrichedEntity)
                             (_uiState.value as? DetailUiState.Success)?.let { curr ->
                                 _uiState.value = curr.copy(entity = enrichedEntity)
                             }
@@ -339,7 +342,6 @@ class DetailViewModel(application: Application) : AndroidViewModel(application) 
                 // Recomendaciones y género
                 launch {
                     try {
-                        val filterToLibraryUseCase = FilterToLibraryUseCase(mediaRepository)
                         var similarItems: List<MediaItem> = emptyList()
                         if (tmdbLong != null && prefs.tmdbApiKey.isNotBlank()) {
                             val tmdbRecs = mediaRepository.getTmdbRecommendations(prefs.tmdbApiKey, tmdbLong, isTv).getOrDefault(emptyList())
@@ -399,7 +401,7 @@ class DetailViewModel(application: Application) : AndroidViewModel(application) 
                                 .replace(" Collection", "", ignoreCase = true)
                                 .trim()
                             if (cleanName.isNotBlank()) {
-                                colEntities = database.jellyfinDao().searchLocalMedia(cleanName, limit = 20)
+                                colEntities = jellyfinDao.searchLocalMedia(cleanName, limit = 20)
                                     .filter { it.id != finalEntity.id && !it.type.equals("BoxSet", ignoreCase = true) }
                             }
                         }

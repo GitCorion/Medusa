@@ -1,17 +1,18 @@
 package com.example.tujelly.ui.screens.genre
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.tujelly.data.local.UserPreferencesRepository
 import com.example.tujelly.data.local.db.JellyfinMediaEntity
 import com.example.tujelly.data.remote.NetworkClientFactory
 import com.example.tujelly.data.remote.tmdb.TmdbApiService
+import com.example.tujelly.data.repository.MediaRepository
 import com.example.tujelly.domain.model.HomeSection
 import com.example.tujelly.domain.model.MediaItem
 import com.example.tujelly.domain.model.MediaSource
 import com.example.tujelly.domain.usecase.FilterToLibraryUseCase
 import com.example.tujelly.util.toOptimizedMediaItem
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,6 +21,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 typealias GenreFormat = com.example.tujelly.domain.model.MediaFormatFilter
 
@@ -34,20 +36,16 @@ sealed interface GenreUiState {
     data class Error(val message: String) : GenreUiState
 }
 
-class GenreViewModel(application: Application) : AndroidViewModel(application) {
+@HiltViewModel
+class GenreViewModel @Inject constructor(
+    private val userPreferencesRepository: UserPreferencesRepository,
+    private val mediaRepository: MediaRepository,
+    private val filterToLibraryUseCase: FilterToLibraryUseCase
+) : ViewModel() {
 
     companion object {
         private val genreCache = java.util.concurrent.ConcurrentHashMap<String, Pair<GenreUiState.Success, List<Pair<GenreFormat, HomeSection>>>>()
     }
-
-    private val userPreferencesRepository = UserPreferencesRepository(application)
-    private val database = com.example.tujelly.data.local.db.AppDatabase.getDatabase(application)
-    private val mediaRepository = com.example.tujelly.data.repository.MediaRepository(
-        database.jellyfinDao(),
-        userPreferencesRepository,
-        database.tmdbVoteCacheDao()
-    )
-    private val filterToLibraryUseCase = FilterToLibraryUseCase(mediaRepository)
 
     private val _uiState = MutableStateFlow<GenreUiState>(GenreUiState.Loading)
     val uiState: StateFlow<GenreUiState> = _uiState.asStateFlow()

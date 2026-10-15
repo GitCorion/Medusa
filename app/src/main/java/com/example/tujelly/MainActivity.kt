@@ -3,6 +3,7 @@ package com.example.tujelly
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import dagger.hilt.android.AndroidEntryPoint
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -65,6 +66,7 @@ import com.example.tujelly.ui.screens.search.SearchScreen
 import com.example.tujelly.ui.screens.settings.SettingsScreen
 import com.example.tujelly.ui.theme.TujellyTheme
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     private var pendingPlayItemId by mutableStateOf<String?>(null)
 

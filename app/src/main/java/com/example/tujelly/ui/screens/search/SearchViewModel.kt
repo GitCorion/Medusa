@@ -1,7 +1,6 @@
 package com.example.tujelly.ui.screens.search
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.tujelly.data.local.UserPreferencesRepository
 import com.example.tujelly.data.local.db.JellyfinMediaEntity
@@ -10,6 +9,7 @@ import com.example.tujelly.domain.model.HomeSection
 import com.example.tujelly.domain.model.MediaItem
 import com.example.tujelly.domain.model.MediaSource
 import com.example.tujelly.util.toOptimizedMediaItem
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import javax.inject.Inject
 
 data class SearchUiState(
     val query: String = "",
@@ -35,11 +36,11 @@ data class SearchUiState(
     val isPredictiveActive: Boolean = true
 )
 
-class SearchViewModel(application: Application) : AndroidViewModel(application) {
-
-    private val userPreferencesRepository = UserPreferencesRepository(application)
-    private val database = com.example.tujelly.data.local.db.AppDatabase.getDatabase(application)
-    private val mediaRepository = MediaRepository(database.jellyfinDao(), userPreferencesRepository, database.tmdbVoteCacheDao())
+@HiltViewModel
+class SearchViewModel @Inject constructor(
+    private val userPreferencesRepository: UserPreferencesRepository,
+    private val mediaRepository: MediaRepository
+) : ViewModel() {
 
     val accentColor: StateFlow<String> = userPreferencesRepository.accentColor
     val buttonStyle: StateFlow<String> = userPreferencesRepository.buttonStyle

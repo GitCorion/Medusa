@@ -1,15 +1,17 @@
 package com.example.tujelly.ui.screens.medusa
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import android.content.Context
 import com.example.tujelly.data.local.UserPreferencesRepository
-import com.example.tujelly.data.local.db.AppDatabase
+import com.example.tujelly.data.local.db.JellyfinDao
 import com.example.tujelly.data.local.db.JellyfinMediaEntity
 import com.example.tujelly.data.repository.MediaRepository
 import com.example.tujelly.domain.model.MediaItem
 import com.example.tujelly.domain.usecase.FilterToLibraryUseCase
 import com.example.tujelly.util.toOptimizedMediaItem
+import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -21,6 +23,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import javax.inject.Inject
 
 data class MedusaUiState(
     val mosaicTags: List<MedusaMosaicTag> = emptyList(),
@@ -34,17 +37,14 @@ data class MedusaUiState(
 
 typealias ConstellationUiState = MedusaUiState
 
-class MedusaViewModel(application: Application) : AndroidViewModel(application) {
-
-    private val userPreferencesRepository = UserPreferencesRepository(application)
-    private val database = AppDatabase.getDatabase(application)
-    private val jellyfinDao = database.jellyfinDao()
-    private val mediaRepository = MediaRepository(
-        jellyfinDao,
-        userPreferencesRepository,
-        database.tmdbVoteCacheDao()
-    )
-    private val filterToLibraryUseCase = FilterToLibraryUseCase(mediaRepository)
+@HiltViewModel
+class MedusaViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
+    private val userPreferencesRepository: UserPreferencesRepository,
+    private val jellyfinDao: JellyfinDao,
+    private val mediaRepository: MediaRepository,
+    private val filterToLibraryUseCase: FilterToLibraryUseCase
+) : ViewModel() {
 
     private val matrixEngine = MedusaTagMatrixEngine()
     private var rawCatalog: List<JellyfinMediaEntity> = emptyList()
@@ -73,9 +73,9 @@ class MedusaViewModel(application: Application) : AndroidViewModel(application) 
     val selectedMovie: StateFlow<MediaItem?> = _selectedMovie.asStateFlow()
 
     init {
-        TagTranslations.initCache(application)
+        TagTranslations.initCache(context)
         viewModelScope.launch {
-            TagTranslations.syncRemoteDictionary(application)
+            TagTranslations.syncRemoteDictionary(context)
         }
         loadData()
     }

@@ -1,18 +1,19 @@
 package com.example.tujelly.ui.screens.brand
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.tujelly.data.local.DEFAULT_TMDB_API_KEY
 import com.example.tujelly.data.local.UserPreferencesRepository
 import com.example.tujelly.data.remote.NetworkClientFactory
 import com.example.tujelly.data.remote.tmdb.TmdbApiService
 import com.example.tujelly.data.remote.tmdb.TmdbItemDto
+import com.example.tujelly.data.repository.MediaRepository
 import com.example.tujelly.domain.model.HomeSection
 import com.example.tujelly.domain.model.MediaItem
 import com.example.tujelly.domain.model.MediaSource
 import com.example.tujelly.domain.usecase.FilterToLibraryUseCase
 import com.example.tujelly.util.toOptimizedMediaItem
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,6 +24,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 import java.util.concurrent.ConcurrentHashMap
+import javax.inject.Inject
 
 data class BrandInfo(
     val id: String,
@@ -45,7 +47,12 @@ sealed interface BrandUiState {
     data class Error(val message: String) : BrandUiState
 }
 
-class BrandViewModel(application: Application) : AndroidViewModel(application) {
+@HiltViewModel
+class BrandViewModel @Inject constructor(
+    private val userPreferencesRepository: UserPreferencesRepository,
+    private val mediaRepository: MediaRepository,
+    private val filterToLibraryUseCase: FilterToLibraryUseCase
+) : ViewModel() {
 
     companion object {
         private val brandCache = ConcurrentHashMap<String, BrandUiState.Success>()
@@ -58,15 +65,6 @@ class BrandViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
     }
-
-    private val userPreferencesRepository = UserPreferencesRepository(application)
-    private val database = com.example.tujelly.data.local.db.AppDatabase.getDatabase(application)
-    private val mediaRepository = com.example.tujelly.data.repository.MediaRepository(
-        database.jellyfinDao(),
-        userPreferencesRepository,
-        database.tmdbVoteCacheDao()
-    )
-    private val filterToLibraryUseCase = FilterToLibraryUseCase(mediaRepository)
 
     val accentColor: StateFlow<String> = userPreferencesRepository.accentColor
     val buttonStyle: StateFlow<String> = userPreferencesRepository.buttonStyle

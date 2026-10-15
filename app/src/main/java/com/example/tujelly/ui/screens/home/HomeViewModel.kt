@@ -1,19 +1,19 @@
 package com.example.tujelly.ui.screens.home
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import android.content.Context
 import com.example.tujelly.data.local.ACCENT_CYAN
 import com.example.tujelly.data.local.UserPreferences
 import com.example.tujelly.data.local.UserPreferencesRepository
-import com.example.tujelly.data.local.db.AppDatabase
 import com.example.tujelly.data.repository.MediaRepository
 import com.example.tujelly.domain.model.HomeSection
 import com.example.tujelly.domain.model.MediaItem
 import com.example.tujelly.domain.model.MediaSource
-import com.example.tujelly.domain.usecase.FilterToLibraryUseCase
 import com.example.tujelly.domain.usecase.GetHomeFeedUseCase
 import com.example.tujelly.util.toOptimizedMediaItem
+import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 sealed interface HomeUiState {
     data object Loading : HomeUiState
@@ -35,7 +36,13 @@ sealed interface HomeUiState {
     data class Error(val message: String) : HomeUiState
 }
 
-class HomeViewModel(application: Application) : AndroidViewModel(application) {
+@HiltViewModel
+class HomeViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
+    private val userPreferencesRepository: UserPreferencesRepository,
+    private val mediaRepository: MediaRepository,
+    private val getHomeFeedUseCase: GetHomeFeedUseCase
+) : ViewModel() {
 
     companion object {
         @Volatile
@@ -43,16 +50,6 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         @Volatile
         private var lastStaticGenres: List<String> = emptyList()
     }
-
-    private val userPreferencesRepository = UserPreferencesRepository(application)
-    private val database = AppDatabase.getDatabase(application)
-    private val mediaRepository = MediaRepository(database.jellyfinDao(), userPreferencesRepository, database.tmdbVoteCacheDao())
-    private val filterToLibraryUseCase = FilterToLibraryUseCase(mediaRepository)
-    private val getHomeFeedUseCase = GetHomeFeedUseCase(
-        mediaRepository = mediaRepository,
-        filterToLibraryUseCase = filterToLibraryUseCase,
-        homeSectionCacheDao = database.homeSectionCacheDao()
-    )
 
     val accentColor: StateFlow<String> = userPreferencesRepository.accentColor
     val isMonochrome: StateFlow<Boolean> = userPreferencesRepository.isMonochrome
@@ -74,7 +71,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     init {
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             val count = mediaRepository.getLocalCount()
-            MediaRepository.checkActiveWorkerSync(application, count)
+            MediaRepository.checkActiveWorkerSync(context, count)
         }
         viewModelScope.launch {
             var wasSyncing = false

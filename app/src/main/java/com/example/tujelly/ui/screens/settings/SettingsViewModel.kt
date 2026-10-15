@@ -1,18 +1,20 @@
 package com.example.tujelly.ui.screens.settings
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.tujelly.data.local.BUTTON_STYLE_ICONS_ONLY
 import com.example.tujelly.data.local.DEFAULT_TRAKT_CLIENT_ID
 import com.example.tujelly.data.local.DEFAULT_TRAKT_CLIENT_SECRET
 import com.example.tujelly.data.local.UserPreferencesRepository
 import com.example.tujelly.data.remote.NetworkClientFactory
+import com.example.tujelly.data.remote.github.AppUpdateManager
 import com.example.tujelly.data.remote.jellyfin.JellyfinApiService
 import com.example.tujelly.data.remote.jellyfin.JellyfinAuthRequest
 import com.example.tujelly.data.remote.trakt.TraktApiService
 import com.example.tujelly.data.remote.trakt.TraktDeviceCodeRequest
 import com.example.tujelly.data.remote.trakt.TraktDeviceTokenRequest
+import com.example.tujelly.data.repository.MediaRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,6 +23,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.net.URLEncoder
+import javax.inject.Inject
 
 enum class SettingField(
     val title: String,
@@ -120,12 +123,12 @@ data class SettingsUiState(
         get() = indicatorTheme == com.example.tujelly.data.local.INDICATOR_THEME_MONOCHROME || accentColor == com.example.tujelly.data.local.ACCENT_WHITE
 }
 
-class SettingsViewModel(application: Application) : AndroidViewModel(application) {
-
-    private val userPreferencesRepository = UserPreferencesRepository(application)
-    private val appUpdateManager = com.example.tujelly.data.remote.github.AppUpdateManager(application)
-    private val database = com.example.tujelly.data.local.db.AppDatabase.getDatabase(application)
-    private val mediaRepository = com.example.tujelly.data.repository.MediaRepository(database.jellyfinDao(), userPreferencesRepository)
+@HiltViewModel
+class SettingsViewModel @Inject constructor(
+    private val userPreferencesRepository: UserPreferencesRepository,
+    private val appUpdateManager: AppUpdateManager,
+    private val mediaRepository: MediaRepository
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
@@ -261,8 +264,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
         if (token.isBlank()) return
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoadingTraktLists = true)
-            val database = com.example.tujelly.data.local.db.AppDatabase.getDatabase(getApplication())
-            val repository = com.example.tujelly.data.repository.MediaRepository(database.jellyfinDao())
+            val repository = mediaRepository
             val effectiveClientId = clientId.ifBlank { DEFAULT_TRAKT_CLIENT_ID }
             val listsResult = repository.getTraktUserLists(token, effectiveClientId)
             val lists = listsResult.getOrDefault(emptyList())
@@ -303,8 +305,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
             return
         }
         viewModelScope.launch {
-            val database = com.example.tujelly.data.local.db.AppDatabase.getDatabase(getApplication())
-            val repository = com.example.tujelly.data.repository.MediaRepository(database.jellyfinDao())
+            val repository = mediaRepository
             val effectiveClientId = clientId.ifBlank { DEFAULT_TRAKT_CLIENT_ID }
             val result = repository.getTraktUserProfile(token, effectiveClientId)
             result.onSuccess { user ->
@@ -705,8 +706,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                                 statusMessage = "Autorizado como ${me.effectiveName}. Sincronizando catálogo..."
                             )
 
-                            val database = com.example.tujelly.data.local.db.AppDatabase.getDatabase(getApplication())
-                            val repository = com.example.tujelly.data.repository.MediaRepository(database.jellyfinDao(), userPreferencesRepository)
+                            val repository = mediaRepository
                             // 2. Sincronizar catálogo en segundo plano (no se cancela al salir de la pantalla)
                             repository.startBackgroundSync(
                                 serverUrl = cleanUrl,
@@ -789,8 +789,7 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
                     watchRegion = state.watchRegion
                 )
 
-                val database = com.example.tujelly.data.local.db.AppDatabase.getDatabase(getApplication())
-                val repository = com.example.tujelly.data.repository.MediaRepository(database.jellyfinDao(), userPreferencesRepository)
+                val repository = mediaRepository
 
                 // 2. Sincronizar catálogo en segundo plano en syncScope (no se cancela al salir de Ajustes)
                 repository.startBackgroundSync(

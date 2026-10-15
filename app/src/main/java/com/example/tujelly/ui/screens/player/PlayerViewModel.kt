@@ -1,9 +1,8 @@
 package com.example.tujelly.ui.screens.player
 
-import android.app.Application
 import android.net.Uri
 import android.util.Log
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.tujelly.data.local.UserPreferencesRepository
 import com.example.tujelly.data.remote.NetworkClientFactory
@@ -14,6 +13,8 @@ import com.example.tujelly.data.remote.jellyfin.SkipMarker
 import com.example.tujelly.data.local.db.AppDatabase
 import com.example.tujelly.data.repository.MediaRepository
 import com.example.tujelly.domain.usecase.GetHomeFeedUseCase
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -54,9 +55,11 @@ data class PlayerStreamInfo(
     val currentVersionName: String = ""
 )
 
-class PlayerViewModel(application: Application) : AndroidViewModel(application) {
-
-    private val userPreferencesRepository = UserPreferencesRepository(application)
+@HiltViewModel
+class PlayerViewModel @Inject constructor(
+    private val userPreferencesRepository: UserPreferencesRepository,
+    private val database: AppDatabase
+) : ViewModel() {
 
     private val _streamInfo = MutableStateFlow<PlayerStreamInfo?>(null)
     val streamInfo: StateFlow<PlayerStreamInfo?> = _streamInfo.asStateFlow()
@@ -312,8 +315,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
             jellyfinBaseUrl = baseUrl
             jellyfinAuthHeader = "MediaBrowser Client=\"Tujelly\", Device=\"AndroidTV\", DeviceId=\"AndroidTV\", Version=\"1.0.0\", Token=\"$token\""
 
-            val db = com.example.tujelly.data.local.db.AppDatabase.getDatabase(getApplication())
-            val entity = db.jellyfinDao().getItemById(itemId)
+            val entity = database.jellyfinDao().getItemById(itemId)
 
             var playableId = itemId
             val api = NetworkClientFactory.createService(baseUrl, JellyfinApiService::class.java)
@@ -716,8 +718,7 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
 
             // 1. Actualizar Room localmente de inmediato
             runCatching {
-                val db = AppDatabase.getDatabase(getApplication())
-                db.jellyfinDao().updatePlaybackPosition(
+                database.jellyfinDao().updatePlaybackPosition(
                     itemId = itemId,
                     positionTicks = finalTicks,
                     isPlayed = isPlayed

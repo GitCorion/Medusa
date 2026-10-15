@@ -1,21 +1,21 @@
 package com.example.tujelly.ui.screens.favorites
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.tujelly.data.local.UserPreferencesRepository
-import com.example.tujelly.data.local.db.AppDatabase
 import com.example.tujelly.data.local.db.JellyfinMediaEntity
 import com.example.tujelly.data.repository.MediaRepository
 import com.example.tujelly.domain.model.MediaItem
 import com.example.tujelly.domain.model.MediaSource
 import com.example.tujelly.util.toOptimizedMediaItem
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 typealias FavoriteFilter = com.example.tujelly.domain.model.MediaFormatFilter
 
@@ -30,11 +30,11 @@ sealed interface FavoritesUiState {
     data class Error(val message: String) : FavoritesUiState
 }
 
-class FavoritesViewModel(application: Application) : AndroidViewModel(application) {
-
-    private val userPreferencesRepository = UserPreferencesRepository(application)
-    private val database = AppDatabase.getDatabase(application)
-    private val mediaRepository = MediaRepository(database.jellyfinDao(), userPreferencesRepository, database.tmdbVoteCacheDao())
+@HiltViewModel
+class FavoritesViewModel @Inject constructor(
+    private val userPreferencesRepository: UserPreferencesRepository,
+    private val mediaRepository: MediaRepository
+) : ViewModel() {
 
     val accentColor: StateFlow<String> = userPreferencesRepository.accentColor
     val buttonStyle: StateFlow<String> = userPreferencesRepository.buttonStyle
