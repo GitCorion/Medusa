@@ -33,6 +33,14 @@
 -dontwarn coil.**
 
 # ---------------------------------------------------------------------------
+# WorkManager: los InputMerger se instancian por reflexión a partir del nombre
+# de clase persistido. La regla consumer no preserva el constructor sin argumentos.
+# ---------------------------------------------------------------------------
+-keep class * extends androidx.work.InputMerger {
+    <init>();
+}
+
+# ---------------------------------------------------------------------------
 # ViewModels: se instancian por reflexión (AndroidViewModel(Application)),
 # por lo que sus constructores deben conservarse aunque no se llamen de forma directa.
 # ---------------------------------------------------------------------------
