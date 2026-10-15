@@ -19,9 +19,11 @@ import kotlinx.coroutines.flow.stateIn
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "tujelly_settings")
 
-const val DEFAULT_TMDB_API_KEY = "82dee22856e0d0ac5f767ec6fb845efc"
-const val DEFAULT_TRAKT_CLIENT_ID = "***REMOVED***"
-const val DEFAULT_TRAKT_CLIENT_SECRET = "***REMOVED***"
+// Claves por defecto para TMDB/Trakt. Provienen de BuildConfig (inyectables en build-time vía
+// env/keystore.properties); ya no hay literales hardcodeados en el código fuente.
+val DEFAULT_TMDB_API_KEY: String = com.example.tujelly.BuildConfig.DEFAULT_TMDB_API_KEY
+val DEFAULT_TRAKT_CLIENT_ID: String = com.example.tujelly.BuildConfig.DEFAULT_TRAKT_CLIENT_ID
+val DEFAULT_TRAKT_CLIENT_SECRET: String = com.example.tujelly.BuildConfig.DEFAULT_TRAKT_CLIENT_SECRET
 
 const val BUTTON_STYLE_ICONS_ONLY = "ICONS_ONLY"
 const val BUTTON_STYLE_ICONS_AND_TEXT = "ICONS_AND_TEXT"

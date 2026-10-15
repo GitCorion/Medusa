@@ -18,3 +18,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Tujelly"
 include(":app")
+include(":baselineprofile")

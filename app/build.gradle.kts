@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.hilt.android)
+    alias(libs.plugins.androidx.baselineprofile)
     id("com.google.devtools.ksp")
 }
 
@@ -28,6 +29,12 @@ android {
         targetSdk = 35
         versionCode = 69
         versionName = "2.2.22"
+
+        // Claves por defecto para TMDB/Trakt. Se pueden sobreescribir en build-time mediante
+        // variables de entorno o en keystore.properties (p. ej. en CI con secrets), sin tocar el código.
+        buildConfigField("String", "DEFAULT_TMDB_API_KEY", "\"${envOr("TMDB_API_KEY", "82dee22856e0d0ac5f767ec6fb845efc")}\"")
+        buildConfigField("String", "DEFAULT_TRAKT_CLIENT_ID", "\"${envOr("TRAKT_CLIENT_ID", "***REMOVED***")}\"")
+        buildConfigField("String", "DEFAULT_TRAKT_CLIENT_SECRET", "\"${envOr("TRAKT_CLIENT_SECRET", "***REMOVED***")}\"")
     }
 
     signingConfigs {
@@ -59,10 +66,20 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
+baselineProfile {
+    // Guarda los perfiles generados en el árbol de fuentes (app/src/<variant>/generated/baselineProfiles).
+    saveInSrc = true
+    // Optimización de layout de dex para el hot-path de arranque.
+    dexLayoutOptimization = true
+}
+
 dependencies {
+    baselineProfile(project(":baselineprofile"))
+
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.appcompat)
