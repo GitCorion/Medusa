@@ -7,7 +7,14 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
+import java.net.InetAddress
+import java.net.Socket
+import java.security.SecureRandom
+import java.security.cert.X509Certificate
 import java.util.concurrent.TimeUnit
+import javax.net.ssl.SSLContext
+import javax.net.ssl.SSLSocketFactory
+import javax.net.ssl.X509TrustManager
 
 object NetworkClientFactory {
 
@@ -17,14 +24,25 @@ object NetworkClientFactory {
         isLenient = true
     }
 
-    private val trustAllCerts = arrayOf<javax.net.ssl.TrustManager>(object : javax.net.ssl.X509TrustManager {
-        override fun checkClientTrusted(chain: Array<out java.security.cert.X509Certificate>?, authType: String?) {}
-        override fun checkServerTrusted(chain: Array<out java.security.cert.X509Certificate>?, authType: String?) {}
-        override fun getAcceptedIssuers(): Array<java.security.cert.X509Certificate> = arrayOf()
+    /**
+     * Trust manager permisivo: acepta certificados self-signed. Se usa **solo** para
+     * hosts locales/privados (LAN, localhost, docker/Real-Debrid) donde el bypass de TLS
+     * es necesario porque el usuario despliega su propio Jellyfin con certificados propios.
+     */
+    private val trustAllCerts = arrayOf<X509TrustManager>(object : X509TrustManager {
+        override fun checkClientTrusted(chain: Array<out X509Certificate>?, authType: String?) {}
+        override fun checkServerTrusted(chain: Array<out X509Certificate>?, authType: String?) {}
+        override fun getAcceptedIssuers(): Array<X509Certificate> = arrayOf()
     })
 
-    private val sslContext = javax.net.ssl.SSLContext.getInstance("TLS").apply {
-        init(null, trustAllCerts, java.security.SecureRandom())
+    /** Contexto TLS permisivo (trust-all) para hosts locales/privados. */
+    private val relaxedSslContext: SSLContext = SSLContext.getInstance("TLS").apply {
+        init(null, trustAllCerts, SecureRandom())
+    }
+
+    /** Contexto TLS estricto (CAs del sistema) para hosts públicos. */
+    private val strictSslContext: SSLContext = SSLContext.getInstance("TLS").apply {
+        init(null, null, null)
     }
 
     private fun isLocalHost(hostname: String): Boolean {
@@ -38,9 +56,41 @@ object NetworkClientFactory {
                 || hostname.endsWith(".home", ignoreCase = true)
     }
 
+    /**
+     * Fábrica TLS consciente del host. OkHttp la invoca con el host destino
+     * (`createSocket(socket, host, port, autoClose)`), lo que permite validar con las CAs del
+     * sistema los hosts públicos y conservar el bypass (self-signed) únicamente en la LAN.
+     * Así el endurecimiento aplica también a Coil y a las llamadas directas, no solo a Retrofit.
+     */
+    private val hostAwareSslSocketFactory: SSLSocketFactory = object : SSLSocketFactory() {
+        private val strict: SSLSocketFactory = strictSslContext.socketFactory
+        private val relaxed: SSLSocketFactory = relaxedSslContext.socketFactory
+
+        private fun factoryFor(host: String?): SSLSocketFactory =
+            if (host != null && isLocalHost(host)) relaxed else strict
+
+        override fun getDefaultCipherSuites(): Array<String> = strict.defaultCipherSuites
+        override fun getSupportedCipherSuites(): Array<String> = strict.supportedCipherSuites
+
+        override fun createSocket(s: Socket, host: String, port: Int, autoClose: Boolean): Socket =
+            factoryFor(host).createSocket(s, host, port, autoClose)
+
+        override fun createSocket(host: String, port: Int): Socket =
+            factoryFor(host).createSocket(host, port)
+
+        override fun createSocket(host: String, port: Int, localHost: InetAddress, localPort: Int): Socket =
+            factoryFor(host).createSocket(host, port, localHost, localPort)
+
+        override fun createSocket(host: InetAddress, port: Int): Socket =
+            relaxed.createSocket(host, port)
+
+        override fun createSocket(address: InetAddress, port: Int, localAddress: InetAddress, localPort: Int): Socket =
+            relaxed.createSocket(address, port, localAddress, localPort)
+    }
+
     @Volatile
     var okHttpClient: OkHttpClient = OkHttpClient.Builder()
-        .sslSocketFactory(sslContext.socketFactory, trustAllCerts[0] as javax.net.ssl.X509TrustManager)
+        .sslSocketFactory(hostAwareSslSocketFactory, trustAllCerts[0])
         .hostnameVerifier { hostname, session ->
             if (isLocalHost(hostname)) {
                 true
