@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.hilt.android)
     id("com.google.devtools.ksp")
 }
 
@@ -99,6 +100,10 @@ dependencies {
     implementation(libs.media3.ui)
     implementation(libs.media3.hls)
     implementation(libs.media3.ffmpeg.decoder)
+
+    // Dependency Injection (Hilt)
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
