@@ -51,6 +51,15 @@ class JellyfinSyncWorker(
             )
 
             if (syncResult.isSuccess) {
+                // Estadísticas del planificador SQLite: bootstrapea con ANALYZE la primera vez
+                // (para que se usen los índices compuestos) y luego se mantiene con PRAGMA optimize.
+                runCatching {
+                    val sqliteDb = database.openHelper.writableDatabase
+                    val hasStats = sqliteDb
+                        .query("SELECT 1 FROM sqlite_master WHERE type='table' AND name='sqlite_stat1' LIMIT 1")
+                        .use { it.moveToFirst() }
+                    sqliteDb.execSQL(if (hasStats) "PRAGMA optimize" else "ANALYZE")
+                }
                 Result.success()
             } else {
                 val exception = syncResult.exceptionOrNull()
