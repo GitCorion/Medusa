@@ -1,17 +1,24 @@
 package com.example.tujelly.data.worker
 
 import android.content.Context
+import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.example.tujelly.data.local.UserPreferencesRepository
 import com.example.tujelly.data.local.db.AppDatabase
 import com.example.tujelly.data.repository.MediaRepository
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedInject
 import kotlinx.coroutines.flow.first
 
-class JellyfinSyncWorker(
-    appContext: Context,
-    params: WorkerParameters
+@HiltWorker
+class JellyfinSyncWorker @AssistedInject constructor(
+    @Assisted appContext: Context,
+    @Assisted params: WorkerParameters,
+    private val userPreferencesRepository: UserPreferencesRepository,
+    private val database: AppDatabase,
+    private val mediaRepository: MediaRepository
 ) : CoroutineWorker(appContext, params) {
 
     companion object {
@@ -23,10 +30,6 @@ class JellyfinSyncWorker(
     }
 
     override suspend fun doWork(): Result {
-        val userPreferencesRepository = UserPreferencesRepository(applicationContext)
-        val database = AppDatabase.getDatabase(applicationContext)
-        val mediaRepository = MediaRepository(database.jellyfinDao(), userPreferencesRepository)
-
         val prefs = userPreferencesRepository.userPreferencesFlow.first()
 
         val serverUrl = inputData.getString(KEY_SERVER_URL)?.ifBlank { null }
