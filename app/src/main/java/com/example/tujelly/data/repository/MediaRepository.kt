@@ -495,15 +495,29 @@ class MediaRepository(
                         message = "Comprobando restricciones parentales..."
                     )
                     runCatching {
-                        val allAllowedResponse = api.getLibraryItems(
-                            authHeader = authHeader,
-                            userId = userId,
-                            includeItemTypes = "Movie,Series",
-                            recursive = true,
-                            fields = "",
-                            limit = 60000
-                        )
-                        val allowedIds = allAllowedResponse.items.map { it.id }.toSet()
+                        // Reconciliación paginada: antes se pedían hasta 60.000 ítems de una vez
+                        // (respuesta enorme en memoria). Ahora páginas de 500 IDs.
+                        val allowedIds = HashSet<String>()
+                        val pageLimit = 500
+                        var startIndex = 0
+                        while (true) {
+                            val response = api.getLibraryItems(
+                                authHeader = authHeader,
+                                userId = userId,
+                                includeItemTypes = "Movie,Series",
+                                recursive = true,
+                                fields = "",
+                                limit = pageLimit,
+                                startIndex = startIndex,
+                                enableTotalRecordCount = false
+                            )
+                            val items = response.items
+                            if (items.isEmpty()) break
+                            items.forEach { allowedIds.add(it.id) }
+                            if (items.size < pageLimit) break
+                            startIndex += items.size
+                            delay(50L)
+                        }
                         if (allowedIds.isNotEmpty()) {
                             saveAllowedIds(userId, allowedIds)
                         }
@@ -1842,80 +1856,94 @@ class MediaRepository(
 fun List<JellyfinMediaEntity>.deduplicateMediaEntities(): List<JellyfinMediaEntity> {
     if (size <= 1) return this
 
-    val result = mutableListOf<JellyfinMediaEntity>()
-    val processedIndices = mutableSetOf<Int>()
+    // Índices agrupados por cada clave de coincidencia (tipo + tmdbId/imdbId/título+año).
+    // Permite agrupar en un paso en lugar del doble bucle O(n²) original.
+    val byTmdb = HashMap<String, MutableList<Int>>()
+    val byImdb = HashMap<String, MutableList<Int>>()
+    val byMovieTitleYear = HashMap<String, MutableList<Int>>()
+    val bySeriesTitle = HashMap<String, MutableList<Int>>()
 
     for (i in indices) {
-        if (i in processedIndices) continue
+        val item = this[i]
+        val type = item.type.lowercase()
+        if (!item.tmdbId.isNullOrBlank()) {
+            byTmdb.getOrPut("$type|${item.tmdbId}") { mutableListOf() }.add(i)
+        }
+        if (!item.imdbId.isNullOrBlank()) {
+            byImdb.getOrPut("$type|${item.imdbId}") { mutableListOf() }.add(i)
+        }
+        when {
+            type == "movie" && item.productionYear != null ->
+                byMovieTitleYear.getOrPut("$type|${item.productionYear}|${item.title.trim().lowercase()}") { mutableListOf() }.add(i)
+            type == "series" ->
+                bySeriesTitle.getOrPut("$type|${item.title.trim().lowercase()}") { mutableListOf() }.add(i)
+        }
+    }
+
+    val processed = BooleanArray(size)
+    val result = ArrayList<JellyfinMediaEntity>(size)
+
+    for (i in indices) {
+        if (processed[i]) continue
         val itemA = this[i]
+        val type = itemA.type.lowercase()
 
-        val duplicates = mutableListOf(itemA)
-        for (j in (i + 1) until size) {
-            if (j in processedIndices) continue
-            val itemB = this[j]
+        // Grupo = itemA + los índices posteriores que coinciden con él por cualquier clave.
+        val groupIndices = sortedSetOf(i)
 
-            val isDuplicate = when {
-                !itemA.type.equals(itemB.type, ignoreCase = true) -> false
-
-                // 1. Same non-blank TMDB ID
-                !itemA.tmdbId.isNullOrBlank() && itemA.tmdbId == itemB.tmdbId -> true
-
-                // 2. Same non-blank IMDB ID
-                !itemA.imdbId.isNullOrBlank() && itemA.imdbId == itemB.imdbId -> true
-
-                // 3. Same Title and same non-null production year for Movies when TMDB/IMDB ID missing
-                itemA.type.equals("Movie", ignoreCase = true) &&
-                        itemA.productionYear != null &&
-                        itemA.productionYear == itemB.productionYear &&
-                        itemA.title.trim().equals(itemB.title.trim(), ignoreCase = true) -> true
-
-                // 4. Same Title for Series when TMDB/IMDB ID missing
-                itemA.type.equals("Series", ignoreCase = true) &&
-                        itemA.title.trim().equals(itemB.title.trim(), ignoreCase = true) -> true
-
-                else -> false
-            }
-
-            if (isDuplicate) {
-                duplicates.add(itemB)
-                processedIndices.add(j)
-            }
+        if (!itemA.tmdbId.isNullOrBlank()) {
+            byTmdb["$type|${itemA.tmdbId}"]?.forEach { j -> if (j > i && !processed[j]) groupIndices.add(j) }
+        }
+        if (!itemA.imdbId.isNullOrBlank()) {
+            byImdb["$type|${itemA.imdbId}"]?.forEach { j -> if (j > i && !processed[j]) groupIndices.add(j) }
+        }
+        when {
+            type == "movie" && itemA.productionYear != null ->
+                byMovieTitleYear["$type|${itemA.productionYear}|${itemA.title.trim().lowercase()}"]
+                    ?.forEach { j -> if (j > i && !processed[j]) groupIndices.add(j) }
+            type == "series" ->
+                bySeriesTitle["$type|${itemA.title.trim().lowercase()}"]
+                    ?.forEach { j -> if (j > i && !processed[j]) groupIndices.add(j) }
         }
 
-        if (duplicates.size == 1) {
+        groupIndices.forEach { processed[it] = true }
+
+        if (groupIndices.size == 1) {
             result.add(itemA)
-        } else {
-            val bestPlayed = duplicates.any { it.isPlayed }
-            val maxTicks = duplicates.maxOf { it.playbackPositionTicks }
-
-            val cleanTitleItem = duplicates.firstOrNull { item ->
-                val name = item.title.trim()
-                !name.contains("1080p", ignoreCase = true) &&
-                !name.contains("4k", ignoreCase = true) &&
-                !name.contains("hdr", ignoreCase = true) &&
-                !name.contains("remux", ignoreCase = true)
-            } ?: duplicates.first()
-
-            val bestTotal = duplicates.mapNotNull { it.totalItemCount }.filter { it > 0 }.minOrNull() ?: cleanTitleItem.totalItemCount
-            val bestUnplayed = duplicates.mapNotNull { it.unplayedItemCount }.minOrNull() ?: cleanTitleItem.unplayedItemCount
-
-            val primaryItem = duplicates.firstOrNull { it.isPlayed || it.playbackPositionTicks > 0 }
-                ?: cleanTitleItem
-
-            result.add(
-                cleanTitleItem.copy(
-                    id = primaryItem.id,
-                    isPlayed = bestPlayed,
-                    playbackPositionTicks = maxTicks,
-                    totalItemCount = bestTotal,
-                    unplayedItemCount = bestUnplayed,
-                    overview = cleanTitleItem.overview ?: duplicates.firstNotNullOfOrNull { it.overview },
-                    primaryImageTag = cleanTitleItem.primaryImageTag ?: duplicates.firstNotNullOfOrNull { it.primaryImageTag },
-                    backdropImageTag = cleanTitleItem.backdropImageTag ?: duplicates.firstNotNullOfOrNull { it.backdropImageTag }
-                )
-            )
+            continue
         }
-        processedIndices.add(i)
+
+        val duplicates = groupIndices.map { this[it] }
+
+        val bestPlayed = duplicates.any { it.isPlayed }
+        val maxTicks = duplicates.maxOf { it.playbackPositionTicks }
+
+        val cleanTitleItem = duplicates.firstOrNull { item ->
+            val name = item.title.trim()
+            !name.contains("1080p", ignoreCase = true) &&
+            !name.contains("4k", ignoreCase = true) &&
+            !name.contains("hdr", ignoreCase = true) &&
+            !name.contains("remux", ignoreCase = true)
+        } ?: duplicates.first()
+
+        val bestTotal = duplicates.mapNotNull { it.totalItemCount }.filter { it > 0 }.minOrNull() ?: cleanTitleItem.totalItemCount
+        val bestUnplayed = duplicates.mapNotNull { it.unplayedItemCount }.minOrNull() ?: cleanTitleItem.unplayedItemCount
+
+        val primaryItem = duplicates.firstOrNull { it.isPlayed || it.playbackPositionTicks > 0 }
+            ?: cleanTitleItem
+
+        result.add(
+            cleanTitleItem.copy(
+                id = primaryItem.id,
+                isPlayed = bestPlayed,
+                playbackPositionTicks = maxTicks,
+                totalItemCount = bestTotal,
+                unplayedItemCount = bestUnplayed,
+                overview = cleanTitleItem.overview ?: duplicates.firstNotNullOfOrNull { it.overview },
+                primaryImageTag = cleanTitleItem.primaryImageTag ?: duplicates.firstNotNullOfOrNull { it.primaryImageTag },
+                backdropImageTag = cleanTitleItem.backdropImageTag ?: duplicates.firstNotNullOfOrNull { it.backdropImageTag }
+            )
+        )
     }
 
     return result

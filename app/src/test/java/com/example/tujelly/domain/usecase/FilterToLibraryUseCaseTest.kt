@@ -369,6 +369,27 @@ class FilterToLibraryUseCaseTest {
     }
 
     @Test
+    fun `deduplicateMediaEntities merges series with same title`() {
+        val a = JellyfinMediaEntity(id = "s1-a", title = "The Bear", type = "Series", productionYear = 2022)
+        val b = JellyfinMediaEntity(id = "s1-b", title = "the bear ", type = "Series", productionYear = 2022, isPlayed = true)
+
+        val deduplicated = listOf(a, b).deduplicateMediaEntities()
+
+        assertEquals(1, deduplicated.size)
+        assertEquals(true, deduplicated[0].isPlayed)
+    }
+
+    @Test
+    fun `deduplicateMediaEntities does not merge movies with same title but different year`() {
+        val original = JellyfinMediaEntity(id = "m-a", title = "Dune", type = "Movie", productionYear = 1984)
+        val remake = JellyfinMediaEntity(id = "m-b", title = "Dune", type = "Movie", productionYear = 2021)
+
+        val deduplicated = listOf(original, remake).deduplicateMediaEntities()
+
+        assertEquals(2, deduplicated.size)
+    }
+
+    @Test
     fun `isUserHidden returns false by default when no hidden lists are configured`() {
         val moviesList = TraktUserListDto(name = "Películas", ids = TraktIdsDto(trakt = 101, slug = "peliculas"))
         val seriesList = TraktUserListDto(name = "Series", ids = TraktIdsDto(trakt = 102, slug = "series"))
