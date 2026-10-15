@@ -31,3 +31,35 @@
 
 # Coil Image Loader
 -dontwarn coil.**
+
+# ---------------------------------------------------------------------------
+# ViewModels: se instancian por reflexión (AndroidViewModel(Application)),
+# por lo que sus constructores deben conservarse aunque no se llamen de forma directa.
+# ---------------------------------------------------------------------------
+-keepclassmembers,allowobfuscation class * extends androidx.lifecycle.ViewModel {
+    <init>(...);
+}
+
+# ---------------------------------------------------------------------------
+# Kotlinx Serialization: reglas oficiales para serializadores generados.
+# (Los DTOs viven en com.example.tujelly.data.remote.**, ya protegido arriba,
+#  pero estas reglas cubren cualquier @Serializable fuera de ese paquete.)
+# ---------------------------------------------------------------------------
+-keepattributes RuntimeVisibleAnnotations,AnnotationDefault
+-if @kotlinx.serialization.Serializable class **
+-keepclassmembers class <1> {
+    static <1>$Companion Companion;
+}
+-if @kotlinx.serialization.Serializable class ** {
+    static **$* *;
+}
+-keepclassmembers class <2>$<3> {
+    kotlinx.serialization.KSerializer serializer(...);
+}
+-if @kotlinx.serialization.Serializable class ** {
+    public static ** INSTANCE;
+}
+-keepclassmembers class <1> {
+    public static <1> INSTANCE;
+    kotlinx.serialization.KSerializer serializer(...);
+}
