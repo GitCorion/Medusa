@@ -16,6 +16,7 @@ import com.example.tujelly.data.remote.jellyfin.JellyfinApiService
 import com.example.tujelly.data.remote.jellyfin.JellyfinItemsResponse
 import com.example.tujelly.data.remote.tmdb.TmdbApiService
 import com.example.tujelly.data.worker.JellyfinSyncWorker
+import com.example.tujelly.util.forEachBounded
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -81,48 +82,60 @@ class MediaSyncRepository(
                 val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
                 val authHeader = buildJellyfinAuthHeader(token = token)
 
+                // Overviews: Jellyfin (LAN). Se piden en lotes de 40 y se lanzan hasta 4 en paralelo
+                // (antes: secuencial con `delay(1200L)` fijo entre lotes → hasta ~5 min solo en esperas).
+                val overviewBatchSize = 40
+                val overviewConcurrency = 4
+                val processed = java.util.concurrent.atomic.AtomicInteger(0)
                 var processedCount = 0
                 while (processedCount < 10000) {
-                    val missingIds = jellyfinDao.getIdsMissingOverview(limit = 40)
+                    val missingIds = jellyfinDao.getIdsMissingOverview(limit = overviewBatchSize * overviewConcurrency)
                     if (missingIds.isEmpty()) break
 
-                    val idsParam = missingIds.joinToString(",")
-                    val response = runCatching {
-                        api.getLibraryItems(
-                            authHeader = authHeader,
-                            userId = userId,
-                            ids = idsParam,
-                            fields = "Overview,PrimaryImageTag",
-                            limit = 40,
-                            enableTotalRecordCount = false
-                        )
-                    }.getOrNull()
+                    missingIds.chunked(overviewBatchSize).forEachBounded(overviewConcurrency) { batch ->
+                        val idsParam = batch.joinToString(",")
+                        val response = runCatching {
+                            api.getLibraryItems(
+                                authHeader = authHeader,
+                                userId = userId,
+                                ids = idsParam,
+                                fields = "Overview,PrimaryImageTag",
+                                limit = overviewBatchSize,
+                                enableTotalRecordCount = false
+                            )
+                        }.getOrNull()
 
-                    if (response != null && response.items.isNotEmpty()) {
-                        for (item in response.items) {
-                            if (!item.overview.isNullOrBlank()) {
-                                jellyfinDao.updateOverview(item.id, item.overview)
+                        if (response != null && response.items.isNotEmpty()) {
+                            for (item in response.items) {
+                                if (!item.overview.isNullOrBlank()) {
+                                    jellyfinDao.updateOverview(item.id, item.overview)
+                                }
+                                val posterTag = item.primaryImageTag ?: item.imageTags?.get("Primary")
+                                if (!posterTag.isNullOrBlank()) {
+                                    jellyfinDao.updatePrimaryImageTag(item.id, posterTag)
+                                }
                             }
-                            val posterTag = item.primaryImageTag ?: item.imageTags?.get("Primary")
-                            if (!posterTag.isNullOrBlank()) {
-                                jellyfinDao.updatePrimaryImageTag(item.id, posterTag)
-                            }
+                            processed.addAndGet(batch.size)
                         }
-                        processedCount += missingIds.size
-                    } else {
-                        break
                     }
-                    delay(1200L)
+
+                    val advanced = processed.get()
+                    // Sin progreso (servidor sin respuesta) se corta; evita esperas inútiles.
+                    if (advanced == processedCount) break
+                    processedCount = advanced
+                    if (processedCount < 10000) delay(300L)
                 }
 
-                // Enriquecimiento de pósteres faltantes mediante TMDB API
+                // Pósteres faltantes vía TMDB: peticiones independientes → hasta 4 en paralelo
+                // (antes: secuencial con `delay(200L)` por ítem).
                 val tmdbApi = NetworkClientFactory.createService("https://api.themoviedb.org/3/", TmdbApiService::class.java)
                 val prefs = userPreferencesRepository?.userPreferencesFlow?.firstOrNull()
                 val tmdbKey = prefs?.tmdbApiKey?.takeIf { it.isNotBlank() } ?: com.example.tujelly.data.local.DEFAULT_TMDB_API_KEY
 
+                val tmdbConcurrency = 4
                 val missingPosters = jellyfinDao.getItemsMissingPoster(limit = 40)
-                for (media in missingPosters) {
-                    val tmdbLong = media.tmdbId?.toLongOrNull() ?: continue
+                missingPosters.forEachBounded(tmdbConcurrency) { media ->
+                    val tmdbLong = media.tmdbId?.toLongOrNull() ?: return@forEachBounded
                     val isTv = media.type.equals("Series", ignoreCase = true)
                     val posterPath: String? = runCatching {
                         if (isTv) {
@@ -135,7 +148,6 @@ class MediaSyncRepository(
                     if (!posterPath.isNullOrBlank()) {
                         jellyfinDao.updatePrimaryImageTag(media.id, "tmdb:$posterPath")
                     }
-                    delay(200L)
                 }
             } catch (_: Exception) {
             } finally {
