@@ -27,8 +27,8 @@ android {
         applicationId = "com.example.tujelly"
         minSdk = 26
         targetSdk = 35
-        versionCode = 69
-        versionName = "2.2.22"
+        versionCode = 70
+        versionName = "2.2.23"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
