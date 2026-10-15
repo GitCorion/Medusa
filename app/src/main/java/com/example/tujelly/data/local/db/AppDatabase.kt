@@ -8,8 +8,8 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
-    entities = [JellyfinMediaEntity::class, TmdbVoteCacheEntity::class, HomeSectionCacheEntity::class],
-    version = 12,
+    entities = [JellyfinMediaEntity::class, TmdbVoteCacheEntity::class, HomeSectionCacheEntity::class, JellyfinMediaFts::class],
+    version = 13,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -91,6 +91,19 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_12_13 = object : Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Tabla virtual FTS4 con contenido externo (misma que genera Room para la entidad
+                // JellyfinMediaFts) + triggers de sincronización y reconstrucción del índice.
+                db.execSQL("CREATE VIRTUAL TABLE IF NOT EXISTS `jellyfin_media_fts` USING FTS4(`title` TEXT NOT NULL, `originalTitle` TEXT, content=`jellyfin_media`)")
+                db.execSQL("CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_jellyfin_media_fts_BEFORE_UPDATE BEFORE UPDATE ON `jellyfin_media` BEGIN DELETE FROM `jellyfin_media_fts` WHERE `docid`=OLD.`rowid`; END")
+                db.execSQL("CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_jellyfin_media_fts_BEFORE_DELETE BEFORE DELETE ON `jellyfin_media` BEGIN DELETE FROM `jellyfin_media_fts` WHERE `docid`=OLD.`rowid`; END")
+                db.execSQL("CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_jellyfin_media_fts_AFTER_UPDATE AFTER UPDATE ON `jellyfin_media` BEGIN INSERT INTO `jellyfin_media_fts`(`docid`, `title`, `originalTitle`) VALUES (NEW.`rowid`, NEW.`title`, NEW.`originalTitle`); END")
+                db.execSQL("CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_jellyfin_media_fts_AFTER_INSERT AFTER INSERT ON `jellyfin_media` BEGIN INSERT INTO `jellyfin_media_fts`(`docid`, `title`, `originalTitle`) VALUES (NEW.`rowid`, NEW.`title`, NEW.`originalTitle`); END")
+                db.execSQL("INSERT INTO `jellyfin_media_fts`(`jellyfin_media_fts`) VALUES('rebuild')")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -100,7 +113,8 @@ abstract class AppDatabase : RoomDatabase() {
                 )
                     .addMigrations(
                         MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8,
-                        MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12
+                        MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12,
+                        MIGRATION_12_13
                     )
                     .fallbackToDestructiveMigration()
                     .build()

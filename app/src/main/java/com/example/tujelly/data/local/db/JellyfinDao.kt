@@ -45,6 +45,22 @@ interface JellyfinDao {
     @Query("SELECT * FROM jellyfin_media WHERE type IN ('Movie', 'Series') AND (LOWER(title) LIKE '%' || LOWER(:query) || '%' OR LOWER(originalTitle) LIKE '%' || LOWER(:query) || '%') ORDER BY communityRating DESC LIMIT :limit")
     suspend fun searchLocalMedia(query: String, limit: Int = 40): List<JellyfinMediaEntity>
 
+    /**
+     * Búsqueda de texto completo (FTS4) sobre título y título original. [:match] debe venir ya
+     * formateado como expresión MATCH (ver `LocalMediaRepository.buildFtsQuery`).
+     */
+    @Query(
+        """
+        SELECT jm.* FROM jellyfin_media jm
+        JOIN jellyfin_media_fts ON jm.rowid = jellyfin_media_fts.rowid
+        WHERE jellyfin_media_fts MATCH :match
+        AND jm.type IN ('Movie', 'Series')
+        ORDER BY jm.communityRating DESC
+        LIMIT :limit
+        """
+    )
+    suspend fun searchLocalMediaFts(match: String, limit: Int = 40): List<JellyfinMediaEntity>
+
     @Query("SELECT DISTINCT title FROM jellyfin_media WHERE type IN ('Movie', 'Series') AND title IS NOT NULL AND title != '' ORDER BY title ASC")
     suspend fun getAllLocalTitles(): List<String>
 

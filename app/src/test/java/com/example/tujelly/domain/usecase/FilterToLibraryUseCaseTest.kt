@@ -83,6 +83,17 @@ class FakeJellyfinDao : JellyfinDao {
         return localDb.filter { it.title.contains(query, ignoreCase = true) }.take(limit)
     }
 
+    override suspend fun searchLocalMediaFts(match: String, limit: Int): List<JellyfinMediaEntity> {
+        // El match viene en sintaxis FTS; para el test basta con extraer los términos alfanuméricos.
+        val terms = Regex("[\\p{L}\\p{N}]+").findAll(match).map { it.value }.toList()
+        return localDb.filter { entity ->
+            terms.isEmpty() || terms.all { term ->
+                entity.title.contains(term, ignoreCase = true) ||
+                    entity.originalTitle?.contains(term, ignoreCase = true) == true
+            }
+        }.take(limit)
+    }
+
     override suspend fun getAllLocalTitles(): List<String> {
         return localDb.filter { it.type in listOf("Movie", "Series") }.map { it.title }.distinct()
     }

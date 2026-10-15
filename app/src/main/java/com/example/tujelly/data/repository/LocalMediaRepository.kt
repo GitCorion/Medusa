@@ -61,8 +61,36 @@ class LocalMediaRepository(
     suspend fun getTopRatedLocal(limit: Int = 20): List<JellyfinMediaEntity> =
         jellyfinDao.getTopRatedLocal(limit).deduplicateMediaEntities().filterAllowed(accessPolicy)
 
-    suspend fun searchLocalMedia(query: String, limit: Int = 40): List<JellyfinMediaEntity> =
-        jellyfinDao.searchLocalMedia(query.trim(), limit).deduplicateMediaEntities().filterAllowed(accessPolicy)
+    suspend fun searchLocalMedia(query: String, limit: Int = 40): List<JellyfinMediaEntity> {
+        val clean = query.trim()
+        if (clean.isBlank()) return emptyList()
+
+        // Capa rápida: FTS4 (índice de texto completo) sobre título/título original.
+        val ftsQuery = buildFtsQuery(clean)
+        val ftsResults = if (ftsQuery != null) {
+            runCatching { jellyfinDao.searchLocalMediaFts(ftsQuery, limit) }.getOrDefault(emptyList())
+        } else {
+            emptyList()
+        }
+
+        // Fallback a la búsqueda LIKE original si el FTS no devuelve nada (tolerancia a subcadenas).
+        val results = ftsResults.ifEmpty { jellyfinDao.searchLocalMedia(clean, limit) }
+        return results.deduplicateMediaEntities().filterAllowed(accessPolicy)
+    }
+
+    /**
+     * Convierte la consulta del usuario en una expresión MATCH segura para FTS4. Se extraen los
+     * tramos alfanuméricos (Unicode) y se les añade `*` para búsqueda por prefijo; al no quedar
+     * caracteres de sintaxis (`"`, `-`, `*`, operadores...) la expresión no puede romper el parser.
+     */
+    private fun buildFtsQuery(raw: String): String? {
+        val tokens = Regex("[\\p{L}\\p{N}]+").findAll(raw)
+            .map { it.value }
+            .filter { it.isNotBlank() }
+            .toList()
+        if (tokens.isEmpty()) return null
+        return tokens.joinToString(" ") { "$it*" }
+    }
 
     suspend fun getAllLocalTitles(): List<String> = jellyfinDao.getAllLocalTitles()
 
