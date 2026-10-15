@@ -1,5 +1,6 @@
 package com.example.tujelly.ui.screens.player
 
+import android.content.Context
 import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
@@ -12,8 +13,13 @@ import com.example.tujelly.data.remote.jellyfin.NextEpisodeInfo
 import com.example.tujelly.data.remote.jellyfin.SkipMarker
 import com.example.tujelly.data.local.db.AppDatabase
 import com.example.tujelly.data.repository.MediaRepository
+import com.example.tujelly.domain.model.MediaItem
+import com.example.tujelly.domain.model.MediaSource
 import com.example.tujelly.domain.usecase.GetHomeFeedUseCase
+import com.example.tujelly.util.TvChannelManager
+import com.example.tujelly.util.toOptimizedMediaItem
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -57,6 +63,7 @@ data class PlayerStreamInfo(
 
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
+    @ApplicationContext private val appContext: Context,
     private val userPreferencesRepository: UserPreferencesRepository,
     private val database: AppDatabase
 ) : ViewModel() {
@@ -71,6 +78,10 @@ class PlayerViewModel @Inject constructor(
     private var currentPlayableId: String = ""
     private var jellyfinBaseUrl: String = ""
     private var jellyfinAuthHeader: String = ""
+
+    /** Item actual para publicar en la fila "Continuar viendo" (Watch Next) del launcher. */
+    @Volatile
+    private var nowPlaying: MediaItem? = null
 
     // Perfil de dispositivo y soporte 4K HEVC: enumerar MediaCodecList es costoso y el
     // resultado es estable durante toda la sesión. Se cachea y se calcula la primera vez
@@ -334,6 +345,8 @@ class PlayerViewModel @Inject constructor(
             }
 
             currentPlayableId = playableId
+            // Metadatos para Watch Next (título/póster). Si el ítem no está en Room, se omite.
+            nowPlaying = entity?.toOptimizedMediaItem(baseUrl, token, MediaSource.JELLYFIN)
 
             var effectiveToken = token
             var effectiveUserId = userId
@@ -684,10 +697,16 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
-    fun reportProgress(positionMs: Long, isPaused: Boolean) {
+    fun reportProgress(positionMs: Long, isPaused: Boolean, durationMs: Long = 0L) {
         if (currentPlayableId.isBlank() || jellyfinBaseUrl.isBlank()) return
         // Fuera del hilo principal: createService/la red no deben bloquear la UI.
         viewModelScope.launch(Dispatchers.IO) {
+            // Publicar en la fila "Continuar viendo" del launcher (TvContract).
+            nowPlaying?.let { item ->
+                if (positionMs > 0L && durationMs > 0L) {
+                    runCatching { TvChannelManager.publishToWatchNext(appContext, item, positionMs, durationMs) }
+                }
+            }
             runCatching {
                 val api = NetworkClientFactory.createService(jellyfinBaseUrl, JellyfinApiService::class.java)
                 val ticks = positionMs * 10_000L

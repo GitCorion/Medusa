@@ -560,7 +560,7 @@ private fun PlayerContent(
                 val now = System.currentTimeMillis()
                 val stateChanged = playing != lastWasPlaying
                 if (stateChanged || (now - lastReportedMs) >= 5000L) {
-                    viewModel.reportProgress(pos, isPaused = false)
+                    viewModel.reportProgress(pos, isPaused = false, durationMs = exoPlayer.duration.coerceAtLeast(0L))
                     lastReportedMs = now
                     lastWasPlaying = playing
                 }
