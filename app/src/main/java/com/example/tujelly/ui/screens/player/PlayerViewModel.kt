@@ -11,18 +11,15 @@ import com.example.tujelly.data.remote.jellyfin.JellyfinApiService
 import com.example.tujelly.data.remote.jellyfin.JellyfinPlaybackProgressRequest
 import com.example.tujelly.data.remote.jellyfin.NextEpisodeInfo
 import com.example.tujelly.data.remote.jellyfin.SkipMarker
-import com.example.tujelly.data.local.BUTTON_STYLE_ICONS_ONLY
 import com.example.tujelly.data.local.db.AppDatabase
 import com.example.tujelly.data.repository.MediaRepository
 import com.example.tujelly.domain.usecase.GetHomeFeedUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.Request
@@ -64,17 +61,9 @@ class PlayerViewModel(application: Application) : AndroidViewModel(application) 
     private val _streamInfo = MutableStateFlow<PlayerStreamInfo?>(null)
     val streamInfo: StateFlow<PlayerStreamInfo?> = _streamInfo.asStateFlow()
 
-    val buttonStyle: StateFlow<String> = userPreferencesRepository.userPreferencesFlow
-        .map { it.buttonStyle }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), BUTTON_STYLE_ICONS_ONLY)
-
-    val isMonochrome: StateFlow<Boolean> = userPreferencesRepository.userPreferencesFlow
-        .map { it.isMonochrome }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
-
-    val accentColor: StateFlow<String> = userPreferencesRepository.userPreferencesFlow
-        .map { it.accentColor }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), com.example.tujelly.data.local.ACCENT_CYAN)
+    val buttonStyle: StateFlow<String> = userPreferencesRepository.buttonStyle
+    val isMonochrome: StateFlow<Boolean> = userPreferencesRepository.isMonochrome
+    val accentColor: StateFlow<String> = userPreferencesRepository.accentColor
 
     private var currentPlayableId: String = ""
     private var jellyfinBaseUrl: String = ""

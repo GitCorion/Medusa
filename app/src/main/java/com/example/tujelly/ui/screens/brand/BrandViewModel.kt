@@ -16,12 +16,10 @@ import com.example.tujelly.util.toOptimizedMediaItem
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 import java.util.concurrent.ConcurrentHashMap
@@ -70,17 +68,9 @@ class BrandViewModel(application: Application) : AndroidViewModel(application) {
     )
     private val filterToLibraryUseCase = FilterToLibraryUseCase(mediaRepository)
 
-    val accentColor: StateFlow<String> = userPreferencesRepository.userPreferencesFlow
-        .map { it.accentColor }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), com.example.tujelly.data.local.ACCENT_CYAN)
-
-    val buttonStyle: StateFlow<String> = userPreferencesRepository.userPreferencesFlow
-        .map { it.buttonStyle }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), com.example.tujelly.data.local.BUTTON_STYLE_ICONS_ONLY)
-
-    val isMonochrome: StateFlow<Boolean> = userPreferencesRepository.userPreferencesFlow
-        .map { it.isMonochrome }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+    val accentColor: StateFlow<String> = userPreferencesRepository.accentColor
+    val buttonStyle: StateFlow<String> = userPreferencesRepository.buttonStyle
+    val isMonochrome: StateFlow<Boolean> = userPreferencesRepository.isMonochrome
 
     private val _uiState = MutableStateFlow<BrandUiState>(BrandUiState.Loading)
     val uiState: StateFlow<BrandUiState> = _uiState.asStateFlow()

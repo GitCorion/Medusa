@@ -3,8 +3,6 @@ package com.example.tujelly.ui.screens.search
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.tujelly.data.local.ACCENT_CYAN
-import com.example.tujelly.data.local.BUTTON_STYLE_ICONS_ONLY
 import com.example.tujelly.data.local.UserPreferencesRepository
 import com.example.tujelly.data.local.db.JellyfinMediaEntity
 import com.example.tujelly.data.repository.MediaRepository
@@ -16,12 +14,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -45,17 +41,9 @@ class SearchViewModel(application: Application) : AndroidViewModel(application) 
     private val database = com.example.tujelly.data.local.db.AppDatabase.getDatabase(application)
     private val mediaRepository = MediaRepository(database.jellyfinDao(), userPreferencesRepository, database.tmdbVoteCacheDao())
 
-    val accentColor: StateFlow<String> = userPreferencesRepository.userPreferencesFlow
-        .map { it.accentColor }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ACCENT_CYAN)
-
-    val buttonStyle: StateFlow<String> = userPreferencesRepository.userPreferencesFlow
-        .map { it.buttonStyle }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), BUTTON_STYLE_ICONS_ONLY)
-
-    val isMonochrome: StateFlow<Boolean> = userPreferencesRepository.userPreferencesFlow
-        .map { it.isMonochrome }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+    val accentColor: StateFlow<String> = userPreferencesRepository.accentColor
+    val buttonStyle: StateFlow<String> = userPreferencesRepository.buttonStyle
+    val isMonochrome: StateFlow<Boolean> = userPreferencesRepository.isMonochrome
 
     private val _uiState = MutableStateFlow(SearchUiState())
     val uiState: StateFlow<SearchUiState> = _uiState.asStateFlow()

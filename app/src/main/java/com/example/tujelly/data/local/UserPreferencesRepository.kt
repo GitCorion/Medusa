@@ -7,9 +7,15 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "tujelly_settings")
 
@@ -71,7 +77,12 @@ data class UserPreferences(
     }
 }
 
-class UserPreferencesRepository(val context: Context) {
+class UserPreferencesRepository(context: Context) {
+
+    private val appContext = context.applicationContext
+
+    /** Contexto de aplicación (sin riesgo de leak) para acceder a ficheros, etc. */
+    val applicationContext: Context get() = appContext
 
     private object Keys {
         val JELLYFIN_SERVER_URL = stringPreferencesKey("jellyfin_server_url")
@@ -98,67 +109,51 @@ class UserPreferencesRepository(val context: Context) {
         val HAS_COMPLETED_ONBOARDING = stringPreferencesKey("has_completed_onboarding")
     }
 
-    val userPreferencesFlow: Flow<UserPreferences> = context.dataStore.data.map { prefs ->
-        val rawTmdb = prefs[Keys.TMDB_API_KEY] ?: ""
-        val tmdbKey = if (rawTmdb.isBlank() || rawTmdb == "b673238641eb86a9f4787f0b5d564177") DEFAULT_TMDB_API_KEY else rawTmdb
-        val rawTraktId = prefs[Keys.TRAKT_CLIENT_ID] ?: ""
-        val traktId = if (rawTraktId.isBlank() || rawTraktId.startsWith("4376c989")) DEFAULT_TRAKT_CLIENT_ID else rawTraktId
-        val rawTraktSecret = prefs[Keys.TRAKT_CLIENT_SECRET] ?: ""
-        val traktSecret = if (rawTraktSecret.isBlank()) DEFAULT_TRAKT_CLIENT_SECRET else rawTraktSecret
+    /**
+     * Flujo único de preferencias compartido por toda la app.
+     *
+     * Antes cada ViewModel (y cada uso de `userPreferencesFlow.first()`) creaba su propia
+     * suscripción al DataStore. Ahora hay una sola colección compartida a nivel de aplicación.
+     */
+    val userPreferences: StateFlow<UserPreferences> = prefsStateFlow(appContext)
 
-        UserPreferences(
-            jellyfinServerUrl = prefs[Keys.JELLYFIN_SERVER_URL] ?: "",
-            jellyfinUserId = prefs[Keys.JELLYFIN_USER_ID] ?: "",
-            jellyfinUsername = prefs[Keys.JELLYFIN_USERNAME] ?: "",
-            jellyfinPassword = prefs[Keys.JELLYFIN_PASSWORD] ?: "",
-            jellyfinAccessToken = prefs[Keys.JELLYFIN_ACCESS_TOKEN] ?: "",
-            traktAccessToken = prefs[Keys.TRAKT_ACCESS_TOKEN] ?: "",
-            traktClientId = traktId,
-            traktClientSecret = traktSecret,
-            tmdbApiKey = tmdbKey,
-            watchRegion = prefs[Keys.WATCH_REGION] ?: "ES",
-            buttonStyle = prefs[Keys.BUTTON_STYLE] ?: BUTTON_STYLE_ICONS_ONLY,
-            accentColor = prefs[Keys.ACCENT_COLOR] ?: ACCENT_CYAN,
-            indicatorTheme = prefs[Keys.INDICATOR_THEME] ?: INDICATOR_THEME_COLOR,
-            platformLogoStyle = prefs[Keys.PLATFORM_LOGO_STYLE] ?: PLATFORM_LOGO_COLOR,
-            performanceMode = prefs[Keys.PERFORMANCE_MODE] ?: PERFORMANCE_MODE_AUTO,
-            jellyfinLastSync = prefs[Keys.JELLYFIN_LAST_SYNC] ?: "",
-            selectedPlatforms = (prefs[Keys.SELECTED_PLATFORMS] ?: "")
-                .split(",")
-                .map { it.trim() }
-                .filter { it.isNotBlank() }
-                .toSet(),
-            hiddenTraktLists = (prefs[Keys.HIDDEN_TRAKT_LISTS] ?: "")
-                .split(",")
-                .map { it.trim().lowercase(java.util.Locale.ROOT) }
-                .filter { it.isNotBlank() }
-                .toSet(),
-            hasCompletedOnboarding = prefs[Keys.HAS_COMPLETED_ONBOARDING] == true.toString()
-        )
-    }
+    /** Alias de compatibilidad: mismo [StateFlow] compartido, expuesto como [Flow]. */
+    val userPreferencesFlow: Flow<UserPreferences> = userPreferences
+
+    val accentColor: StateFlow<String> =
+        userPreferences.map { it.accentColor }.stateIn(appScope, SharingStarted.Eagerly, ACCENT_CYAN)
+
+    val isMonochrome: StateFlow<Boolean> =
+        userPreferences.map { it.isMonochrome }.stateIn(appScope, SharingStarted.Eagerly, false)
+
+    val buttonStyle: StateFlow<String> =
+        userPreferences.map { it.buttonStyle }.stateIn(appScope, SharingStarted.Eagerly, BUTTON_STYLE_ICONS_ONLY)
+
+    val selectedPlatforms: StateFlow<Set<String>> =
+        userPreferences.map { it.selectedPlatforms }.stateIn(appScope, SharingStarted.Eagerly, emptySet())
 
     suspend fun updateJellyfinServerUrl(serverUrl: String) {
         val cleanUrl = serverUrl.trimEnd('/')
-        context.dataStore.edit { prefs ->
+        appContext.dataStore.edit { prefs ->
             prefs[Keys.JELLYFIN_SERVER_URL] = cleanUrl
         }
     }
 
     suspend fun updateJellyfinUsername(username: String) {
-        context.dataStore.edit { prefs ->
+        appContext.dataStore.edit { prefs ->
             prefs[Keys.JELLYFIN_USERNAME] = username
         }
     }
 
     suspend fun updateJellyfinPassword(password: String) {
-        context.dataStore.edit { prefs ->
+        appContext.dataStore.edit { prefs ->
             prefs[Keys.JELLYFIN_PASSWORD] = password
         }
     }
 
     suspend fun updateJellyfinConfig(serverUrl: String, userId: String, accessToken: String, username: String = "", password: String = "") {
         val cleanUrl = serverUrl.trimEnd('/')
-        context.dataStore.edit { prefs ->
+        appContext.dataStore.edit { prefs ->
             prefs[Keys.JELLYFIN_SERVER_URL] = cleanUrl
             prefs[Keys.JELLYFIN_USER_ID] = userId
             prefs[Keys.JELLYFIN_ACCESS_TOKEN] = accessToken
@@ -172,7 +167,7 @@ class UserPreferencesRepository(val context: Context) {
     }
 
     suspend fun updateTraktConfig(token: String, clientId: String, clientSecret: String = "") {
-        context.dataStore.edit { prefs ->
+        appContext.dataStore.edit { prefs ->
             prefs[Keys.TRAKT_ACCESS_TOKEN] = token
             prefs[Keys.TRAKT_CLIENT_ID] = clientId
             if (clientSecret.isNotBlank()) {
@@ -182,44 +177,44 @@ class UserPreferencesRepository(val context: Context) {
     }
 
     suspend fun updateTmdbConfig(apiKey: String, region: String = "ES") {
-        context.dataStore.edit { prefs ->
+        appContext.dataStore.edit { prefs ->
             prefs[Keys.TMDB_API_KEY] = apiKey
             prefs[Keys.WATCH_REGION] = region
         }
     }
 
     suspend fun updateButtonStyle(style: String) {
-        context.dataStore.edit { prefs ->
+        appContext.dataStore.edit { prefs ->
             prefs[Keys.BUTTON_STYLE] = style
         }
     }
 
     suspend fun updateAccentColor(color: String) {
-        context.dataStore.edit { prefs ->
+        appContext.dataStore.edit { prefs ->
             prefs[Keys.ACCENT_COLOR] = color
         }
     }
 
     suspend fun updateIndicatorTheme(theme: String) {
-        context.dataStore.edit { prefs ->
+        appContext.dataStore.edit { prefs ->
             prefs[Keys.INDICATOR_THEME] = theme
         }
     }
 
     suspend fun updatePlatformLogoStyle(style: String) {
-        context.dataStore.edit { prefs ->
+        appContext.dataStore.edit { prefs ->
             prefs[Keys.PLATFORM_LOGO_STYLE] = style
         }
     }
 
     suspend fun updatePerformanceMode(mode: String) {
-        context.dataStore.edit { prefs ->
+        appContext.dataStore.edit { prefs ->
             prefs[Keys.PERFORMANCE_MODE] = mode
         }
     }
 
     suspend fun setAppTheme(theme: String) {
-        context.dataStore.edit { prefs ->
+        appContext.dataStore.edit { prefs ->
             if (theme == APP_THEME_MONOCHROME) {
                 prefs[Keys.ACCENT_COLOR] = ACCENT_WHITE
                 prefs[Keys.INDICATOR_THEME] = INDICATOR_THEME_MONOCHROME
@@ -233,19 +228,19 @@ class UserPreferencesRepository(val context: Context) {
     }
 
     suspend fun updateJellyfinLastSync(timestamp: String) {
-        context.dataStore.edit { prefs ->
+        appContext.dataStore.edit { prefs ->
             prefs[Keys.JELLYFIN_LAST_SYNC] = timestamp
         }
     }
 
     suspend fun clearJellyfinLastSync() {
-        context.dataStore.edit { prefs ->
+        appContext.dataStore.edit { prefs ->
             prefs.remove(Keys.JELLYFIN_LAST_SYNC)
         }
     }
 
     suspend fun updateSelectedPlatforms(platforms: Set<String>) {
-        context.dataStore.edit { prefs ->
+        appContext.dataStore.edit { prefs ->
             prefs[Keys.SELECTED_PLATFORMS] = platforms.sorted().joinToString(",")
         }
     }
@@ -253,7 +248,7 @@ class UserPreferencesRepository(val context: Context) {
     suspend fun toggleHiddenTraktList(key: String) {
         val cleanKey = key.trim().lowercase(java.util.Locale.ROOT)
         if (cleanKey.isBlank()) return
-        context.dataStore.edit { prefs ->
+        appContext.dataStore.edit { prefs ->
             val current = (prefs[Keys.HIDDEN_TRAKT_LISTS] ?: "")
                 .split(",")
                 .map { it.trim().lowercase(java.util.Locale.ROOT) }
@@ -269,13 +264,13 @@ class UserPreferencesRepository(val context: Context) {
     }
 
     suspend fun markOnboardingCompleted() {
-        context.dataStore.edit { prefs ->
+        appContext.dataStore.edit { prefs ->
             prefs[Keys.HAS_COMPLETED_ONBOARDING] = true.toString()
         }
     }
 
     suspend fun saveSyncCheckpoint(viewIndex: Int, offset: Int, totalSynced: Int) {
-        context.dataStore.edit { prefs ->
+        appContext.dataStore.edit { prefs ->
             prefs[Keys.JELLYFIN_SYNC_CHECKPOINT_VIEW_INDEX] = viewIndex
             prefs[Keys.JELLYFIN_SYNC_CHECKPOINT_OFFSET] = offset
             prefs[Keys.JELLYFIN_SYNC_CHECKPOINT_TOTAL] = totalSynced
@@ -283,7 +278,7 @@ class UserPreferencesRepository(val context: Context) {
     }
 
     suspend fun clearSyncCheckpoint() {
-        context.dataStore.edit { prefs ->
+        appContext.dataStore.edit { prefs ->
             prefs.remove(Keys.JELLYFIN_SYNC_CHECKPOINT_VIEW_INDEX)
             prefs.remove(Keys.JELLYFIN_SYNC_CHECKPOINT_OFFSET)
             prefs.remove(Keys.JELLYFIN_SYNC_CHECKPOINT_TOTAL)
@@ -291,11 +286,69 @@ class UserPreferencesRepository(val context: Context) {
     }
 
     suspend fun getSyncCheckpoint(): Triple<Int, Int, Int> {
-        val prefs = context.dataStore.data.first()
+        val prefs = appContext.dataStore.data.first()
         return Triple(
             prefs[Keys.JELLYFIN_SYNC_CHECKPOINT_VIEW_INDEX] ?: 0,
             prefs[Keys.JELLYFIN_SYNC_CHECKPOINT_OFFSET] ?: 0,
             prefs[Keys.JELLYFIN_SYNC_CHECKPOINT_TOTAL] ?: 0
         )
+    }
+
+    companion object {
+        /** Scope de aplicación para el flujo de preferencias compartido (vive todo el proceso). */
+        private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+        @Volatile
+        private var sharedPrefs: StateFlow<UserPreferences>? = null
+
+        /** Devuelve el único [StateFlow] de preferencias, creándolo la primera vez. */
+        private fun prefsStateFlow(context: Context): StateFlow<UserPreferences> {
+            sharedPrefs?.let { return it }
+            return synchronized(this) {
+                sharedPrefs ?: context.applicationContext.dataStore.data
+                    .map { it.toUserPreferences() }
+                    .stateIn(appScope, SharingStarted.Eagerly, UserPreferences())
+                    .also { sharedPrefs = it }
+            }
+        }
+
+        private fun Preferences.toUserPreferences(): UserPreferences {
+            val rawTmdb = this[Keys.TMDB_API_KEY] ?: ""
+            val tmdbKey = if (rawTmdb.isBlank() || rawTmdb == "b673238641eb86a9f4787f0b5d564177") DEFAULT_TMDB_API_KEY else rawTmdb
+            val rawTraktId = this[Keys.TRAKT_CLIENT_ID] ?: ""
+            val traktId = if (rawTraktId.isBlank() || rawTraktId.startsWith("4376c989")) DEFAULT_TRAKT_CLIENT_ID else rawTraktId
+            val rawTraktSecret = this[Keys.TRAKT_CLIENT_SECRET] ?: ""
+            val traktSecret = if (rawTraktSecret.isBlank()) DEFAULT_TRAKT_CLIENT_SECRET else rawTraktSecret
+
+            return UserPreferences(
+                jellyfinServerUrl = this[Keys.JELLYFIN_SERVER_URL] ?: "",
+                jellyfinUserId = this[Keys.JELLYFIN_USER_ID] ?: "",
+                jellyfinUsername = this[Keys.JELLYFIN_USERNAME] ?: "",
+                jellyfinPassword = this[Keys.JELLYFIN_PASSWORD] ?: "",
+                jellyfinAccessToken = this[Keys.JELLYFIN_ACCESS_TOKEN] ?: "",
+                traktAccessToken = this[Keys.TRAKT_ACCESS_TOKEN] ?: "",
+                traktClientId = traktId,
+                traktClientSecret = traktSecret,
+                tmdbApiKey = tmdbKey,
+                watchRegion = this[Keys.WATCH_REGION] ?: "ES",
+                buttonStyle = this[Keys.BUTTON_STYLE] ?: BUTTON_STYLE_ICONS_ONLY,
+                accentColor = this[Keys.ACCENT_COLOR] ?: ACCENT_CYAN,
+                indicatorTheme = this[Keys.INDICATOR_THEME] ?: INDICATOR_THEME_COLOR,
+                platformLogoStyle = this[Keys.PLATFORM_LOGO_STYLE] ?: PLATFORM_LOGO_COLOR,
+                performanceMode = this[Keys.PERFORMANCE_MODE] ?: PERFORMANCE_MODE_AUTO,
+                jellyfinLastSync = this[Keys.JELLYFIN_LAST_SYNC] ?: "",
+                selectedPlatforms = (this[Keys.SELECTED_PLATFORMS] ?: "")
+                    .split(",")
+                    .map { it.trim() }
+                    .filter { it.isNotBlank() }
+                    .toSet(),
+                hiddenTraktLists = (this[Keys.HIDDEN_TRAKT_LISTS] ?: "")
+                    .split(",")
+                    .map { it.trim().lowercase(java.util.Locale.ROOT) }
+                    .filter { it.isNotBlank() }
+                    .toSet(),
+                hasCompletedOnboarding = this[Keys.HAS_COMPLETED_ONBOARDING] == true.toString()
+            )
+        }
     }
 }

@@ -7,8 +7,6 @@ import com.example.tujelly.data.local.UserPreferencesRepository
 import com.example.tujelly.data.local.db.JellyfinMediaEntity
 import com.example.tujelly.data.remote.NetworkClientFactory
 import com.example.tujelly.data.remote.tmdb.TmdbApiService
-import com.example.tujelly.data.local.ACCENT_CYAN
-import com.example.tujelly.data.local.BUTTON_STYLE_ICONS_ONLY
 import com.example.tujelly.domain.model.HomeSection
 import com.example.tujelly.domain.model.MediaItem
 import com.example.tujelly.domain.model.MediaSource
@@ -17,12 +15,10 @@ import com.example.tujelly.util.toOptimizedMediaItem
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 typealias GenreFormat = com.example.tujelly.domain.model.MediaFormatFilter
@@ -56,17 +52,9 @@ class GenreViewModel(application: Application) : AndroidViewModel(application) {
     private val _uiState = MutableStateFlow<GenreUiState>(GenreUiState.Loading)
     val uiState: StateFlow<GenreUiState> = _uiState.asStateFlow()
 
-    val accentColor: StateFlow<String> = userPreferencesRepository.userPreferencesFlow
-        .map { it.accentColor }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ACCENT_CYAN)
-
-    val isMonochrome: StateFlow<Boolean> = userPreferencesRepository.userPreferencesFlow
-        .map { it.isMonochrome }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
-
-    val buttonStyle: StateFlow<String> = userPreferencesRepository.userPreferencesFlow
-        .map { it.buttonStyle }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), BUTTON_STYLE_ICONS_ONLY)
+    val accentColor: StateFlow<String> = userPreferencesRepository.accentColor
+    val isMonochrome: StateFlow<Boolean> = userPreferencesRepository.isMonochrome
+    val buttonStyle: StateFlow<String> = userPreferencesRepository.buttonStyle
 
     private var formatSections: List<Pair<GenreFormat, HomeSection>> = emptyList()
     private var currentFormat: GenreFormat = GenreFormat.ALL

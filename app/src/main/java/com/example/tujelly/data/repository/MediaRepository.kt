@@ -140,7 +140,7 @@ class MediaRepository(
             return cachedAllowedIds
         }
         
-        val ctx = userPreferencesRepository?.context ?: return null
+        val ctx = userPreferencesRepository?.applicationContext ?: return null
         val file = java.io.File(ctx.filesDir, "allowed_ids_$userId.txt")
         if (file.exists()) {
             val lines = file.readLines().toSet()
@@ -152,7 +152,7 @@ class MediaRepository(
     }
 
     private fun saveAllowedIds(userId: String, ids: Set<String>) {
-        val ctx = userPreferencesRepository?.context ?: return
+        val ctx = userPreferencesRepository?.applicationContext ?: return
         val file = java.io.File(ctx.filesDir, "allowed_ids_$userId.txt")
         file.writeText(ids.joinToString("\n"))
         cachedAllowedIds = ids
@@ -249,7 +249,7 @@ class MediaRepository(
     ) {
         if (serverUrl.isBlank() || userId.isBlank() || token.isBlank()) return
 
-        val targetContext = context ?: userPreferencesRepository?.context
+        val targetContext = context ?: userPreferencesRepository?.applicationContext
         if (targetContext != null) {
             val constraints = Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.CONNECTED)

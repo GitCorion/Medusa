@@ -54,21 +54,10 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         homeSectionCacheDao = database.homeSectionCacheDao()
     )
 
-    val accentColor: StateFlow<String> = userPreferencesRepository.userPreferencesFlow
-        .map { it.accentColor }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ACCENT_CYAN)
-
-    val isMonochrome: StateFlow<Boolean> = userPreferencesRepository.userPreferencesFlow
-        .map { it.isMonochrome }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
-
-    val buttonStyle: StateFlow<String> = userPreferencesRepository.userPreferencesFlow
-        .map { it.buttonStyle }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), com.example.tujelly.data.local.BUTTON_STYLE_ICONS_ONLY)
-
-    val selectedPlatforms: StateFlow<Set<String>> = userPreferencesRepository.userPreferencesFlow
-        .map { it.selectedPlatforms }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
+    val accentColor: StateFlow<String> = userPreferencesRepository.accentColor
+    val isMonochrome: StateFlow<Boolean> = userPreferencesRepository.isMonochrome
+    val buttonStyle: StateFlow<String> = userPreferencesRepository.buttonStyle
+    val selectedPlatforms: StateFlow<Set<String>> = userPreferencesRepository.selectedPlatforms
 
     val syncProgress: StateFlow<com.example.tujelly.data.repository.SyncProgress> = MediaRepository.syncProgress
     val localMediaCount: StateFlow<Int> = mediaRepository.getMediaCountFlow()
