@@ -9,7 +9,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [JellyfinMediaEntity::class, TmdbVoteCacheEntity::class, HomeSectionCacheEntity::class, JellyfinMediaFts::class],
-    version = 13,
+    version = 14,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -104,6 +104,28 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * v13 → v14: columnas normalizadas (`titleLower`, `originalTitleLower`, `seriesNameLower`)
+         * + índices, para que las búsquedas exactas por título usen índice en vez de un full-scan
+         * con `LOWER(columna)`. El backfill usa el `LOWER()` de SQLite (ASCII) para coincidir con
+         * `asciiLowercase()` del constructor de [JellyfinMediaEntity].
+         */
+        val MIGRATION_13_14 = object : Migration(13, 14) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE jellyfin_media ADD COLUMN titleLower TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE jellyfin_media ADD COLUMN originalTitleLower TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE jellyfin_media ADD COLUMN seriesNameLower TEXT NOT NULL DEFAULT ''")
+
+                db.execSQL("UPDATE jellyfin_media SET titleLower = LOWER(title)")
+                db.execSQL("UPDATE jellyfin_media SET originalTitleLower = LOWER(COALESCE(originalTitle, ''))")
+                db.execSQL("UPDATE jellyfin_media SET seriesNameLower = LOWER(COALESCE(seriesName, ''))")
+
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_jellyfin_media_titleLower ON jellyfin_media (titleLower)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_jellyfin_media_originalTitleLower ON jellyfin_media (originalTitleLower)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_jellyfin_media_seriesNameLower ON jellyfin_media (seriesNameLower)")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -114,7 +136,7 @@ abstract class AppDatabase : RoomDatabase() {
                     .addMigrations(
                         MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8,
                         MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12,
-                        MIGRATION_12_13
+                        MIGRATION_12_13, MIGRATION_13_14
                     )
                     .fallbackToDestructiveMigration()
                     .build()
