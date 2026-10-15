@@ -77,35 +77,34 @@ fun MediaCard(
     val activeGlowColor = if (isMonochrome) Color.White else accentColor
     val focusBorderColor = if (isMonochrome) Color.White else accentColor
 
-    val pulseGlow = if (isFocused) {
-        val infiniteTransition = rememberInfiniteTransition(label = "MediaCardGlow")
-        val animatedGlow by infiniteTransition.animateFloat(
-            initialValue = 0.50f,
-            targetValue = 0.90f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = 1600, easing = FastOutSlowInEasing),
-                repeatMode = RepeatMode.Reverse
-            ),
-            label = "pulseGlow"
-        )
-        animatedGlow
-    } else {
-        0.50f
-    }
+    // La transición se crea SIEMPRE (estructura estable) pero su valor NO se lee en
+    // composición: se lee dentro de drawBehind, así el pulso solo invalida la fase de
+    // dibujo y no recompone la tarjeta (ni su AsyncImage) cuadro a cuadro.
+    val infiniteTransition = rememberInfiniteTransition(label = "MediaCardGlow")
+    val pulseGlow = infiniteTransition.animateFloat(
+        initialValue = 0.50f,
+        targetValue = 0.90f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1600, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulseGlow"
+    )
 
     Box(
         modifier = modifier
             .drawBehind {
                 if (isFocused) {
+                    val glow = pulseGlow.value
                     // Difusión radial ultra suave (estilo iluminación posterior OLED, sin cajas ni bordes duros)
                     val glowRadius = size.width * 0.95f
                     val glowCenter = Offset(size.width / 2f, size.height * 0.48f)
                     drawRect(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                activeGlowColor.copy(alpha = 0.42f * pulseGlow),
-                                activeGlowColor.copy(alpha = 0.20f * pulseGlow),
-                                activeGlowColor.copy(alpha = 0.05f * pulseGlow),
+                                activeGlowColor.copy(alpha = 0.42f * glow),
+                                activeGlowColor.copy(alpha = 0.20f * glow),
+                                activeGlowColor.copy(alpha = 0.05f * glow),
                                 Color.Transparent
                             ),
                             center = glowCenter,

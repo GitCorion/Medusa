@@ -110,7 +110,7 @@ fun MediaRow(
             contentPadding = PaddingValues(horizontal = 48.dp, vertical = 6.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            itemsIndexed(uniqueItems, key = { index, it -> "${it.id}_$index" }) { index, item ->
+            itemsIndexed(uniqueItems, key = { _, it -> it.id }) { index, item ->
                 val displayItem = if (section.isRanked && item.rank == null) {
                     item.copy(rank = index + 1)
                 } else {

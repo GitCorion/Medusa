@@ -1,5 +1,7 @@
 package com.example.tujelly.domain.model
 
+import androidx.compose.runtime.Immutable
+
 enum class SeriesStatusType {
     CONTINUING, // En emisión / continúa
     ENDED,      // Terminada (concluyó su historia)
@@ -62,6 +64,7 @@ data class SeriesStatus(
     }
 }
 
+@Immutable
 data class SeasonItem(
     val id: String,
     val name: String,
@@ -69,6 +72,7 @@ data class SeasonItem(
     val episodeCount: Int = 0
 )
 
+@Immutable
 data class EpisodeItem(
     val id: String,
     val name: String,

@@ -41,7 +41,7 @@ import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.WarningAmber
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -87,11 +87,11 @@ fun HomeScreen(
     onOpenMedusa: () -> Unit = {},
     viewModel: HomeViewModel = viewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    val accentColorKey by viewModel.accentColor.collectAsState()
-    val isMonochrome by viewModel.isMonochrome.collectAsState()
-    val buttonStyleKey by viewModel.buttonStyle.collectAsState()
-    val selectedPlatforms by viewModel.selectedPlatforms.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val accentColorKey by viewModel.accentColor.collectAsStateWithLifecycle()
+    val isMonochrome by viewModel.isMonochrome.collectAsStateWithLifecycle()
+    val buttonStyleKey by viewModel.buttonStyle.collectAsStateWithLifecycle()
+    val selectedPlatforms by viewModel.selectedPlatforms.collectAsStateWithLifecycle()
     val showTopIcons = buttonStyleKey != BUTTON_STYLE_TEXT_ONLY
     val showTopText = buttonStyleKey != BUTTON_STYLE_ICONS_ONLY
 
@@ -99,11 +99,13 @@ fun HomeScreen(
     val focusContent = TvAccent.getFocusedContentColor(accentColorKey)
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
-    val syncProgress by viewModel.syncProgress.collectAsState()
-    val localMediaCount by viewModel.localMediaCount.collectAsState()
+    val syncProgress by viewModel.syncProgress.collectAsStateWithLifecycle()
+    val localMediaCount by viewModel.localMediaCount.collectAsStateWithLifecycle()
     val currentSuccess = uiState as? HomeUiState.Success
     val daySeed = remember { java.util.Calendar.getInstance().get(java.util.Calendar.DAY_OF_YEAR).toLong() }
-    var activeCarouselBackdrop by remember { mutableStateOf<String?>(null) }
+    // Estado del backdrop del carrusel aislado en un holder: se lee dentro de
+    // HomeGlobalBackdrop, de modo que su cambio NO recompone HomeScreen (ni la LazyColumn).
+    val backdropState = remember { HomeBackdropState() }
 
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
@@ -126,42 +128,14 @@ fun HomeScreen(
     val defaultHeroBackdrop = remember(featuredBillboardItems) {
         featuredBillboardItems.firstOrNull()?.backdropUrl
     }
-    val focusedBackdrop = currentSuccess?.focusedItem?.backdropUrl ?: activeCarouselBackdrop ?: defaultHeroBackdrop
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // Global ambient backdrop crossfade
-        Crossfade(
-            targetState = focusedBackdrop,
-            animationSpec = tween(durationMillis = 400),
-            label = "homeGlobalBackdrop"
-        ) { backdropUrl ->
-            if (!backdropUrl.isNullOrBlank()) {
-                Box(modifier = Modifier.fillMaxSize()) {
-                    AsyncImage(
-                        model = backdropUrl,
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        alignment = Alignment.TopCenter,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .alpha(0.32f)
-                    )
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(
-                                Brush.verticalGradient(
-                                    listOf(
-                                        Color(0xD007070B),
-                                        Color(0xE007070B),
-                                        Color(0xFF07070B)
-                                    )
-                                )
-                            )
-                    )
-                }
-            }
-        }
+        // Global ambient backdrop crossfade (aislado en su propio composable)
+        HomeGlobalBackdrop(
+            focusedItemBackdrop = currentSuccess?.focusedItem?.backdropUrl,
+            defaultBackdrop = defaultHeroBackdrop,
+            backdropState = backdropState
+        )
 
         Column(
             modifier = Modifier
@@ -393,7 +367,7 @@ fun HomeScreen(
                                 onDetailClick = { item -> onDetailMedia(item.id) },
                                 accentColor = accentColorKey,
                                 buttonStyle = buttonStyleKey,
-                                onActiveHeroChanged = { activeItem -> activeCarouselBackdrop = activeItem.backdropUrl }
+                                onActiveHeroChanged = { activeItem -> backdropState.carouselBackdrop = activeItem.backdropUrl }
                             )
                         }
                     }
@@ -446,6 +420,59 @@ fun HomeScreen(
         }
     }
 }
+}
+
+/**
+ * Holder del backdrop activo del carrusel. Se separa del scope de [HomeScreen] para que
+ * cambiar de hero (D-pad sobre el carrusel) no recomponga toda la pantalla ni la LazyColumn.
+ */
+private class HomeBackdropState {
+    var carouselBackdrop by mutableStateOf<String?>(null)
+}
+
+@Composable
+private fun HomeGlobalBackdrop(
+    focusedItemBackdrop: String?,
+    defaultBackdrop: String?,
+    backdropState: HomeBackdropState
+) {
+    // La lectura del estado ocurre aquí dentro, así solo este composable se recompone.
+    val focusedBackdrop = focusedItemBackdrop
+        ?: backdropState.carouselBackdrop
+        ?: defaultBackdrop
+
+    Crossfade(
+        targetState = focusedBackdrop,
+        animationSpec = tween(durationMillis = 400),
+        label = "homeGlobalBackdrop"
+    ) { backdropUrl ->
+        if (!backdropUrl.isNullOrBlank()) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                AsyncImage(
+                    model = backdropUrl,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    alignment = Alignment.TopCenter,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .alpha(0.32f)
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(
+                                    Color(0xD007070B),
+                                    Color(0xE007070B),
+                                    Color(0xFF07070B)
+                                )
+                            )
+                        )
+                )
+            }
+        }
+    }
 }
 
 

@@ -1,5 +1,7 @@
 package com.example.tujelly.domain.model
 
+import androidx.compose.runtime.Immutable
+
 enum class MediaSource {
     JELLYFIN,
     TRAKT_RECOMMENDATION,
@@ -8,6 +10,7 @@ enum class MediaSource {
     TRAKT_WATCHLIST
 }
 
+@Immutable
 data class MediaItem(
     val id: String, // Jellyfin ID for playback
     val title: String,
@@ -28,6 +31,7 @@ data class MediaItem(
     val trailerUrl: String? = null
 )
 
+@Immutable
 data class HomeSection(
     val title: String,
     val items: List<MediaItem>,

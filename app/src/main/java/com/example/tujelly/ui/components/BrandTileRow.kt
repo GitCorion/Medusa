@@ -39,10 +39,12 @@ fun BrandTileRow(
     modifier: Modifier = Modifier,
     visiblePlatforms: Set<String>? = null
 ) {
-    val platforms = if (visiblePlatforms != null) {
-        SUPPORTED_PLATFORMS.filter { it.id in visiblePlatforms }
-    } else {
-        SUPPORTED_PLATFORMS
+    val platforms = remember(visiblePlatforms) {
+        if (visiblePlatforms != null) {
+            SUPPORTED_PLATFORMS.filter { it.id in visiblePlatforms }
+        } else {
+            SUPPORTED_PLATFORMS
+        }
     }
 
     Column(

@@ -67,34 +67,32 @@ fun EpisodeCard(
             indicatorTheme == com.example.tujelly.data.local.INDICATOR_THEME_MONOCHROME
     val activeGlowColor = if (isMonochrome) Color.White else focusBorderColor
 
-    val pulseGlow = if (isFocused) {
-        val infiniteTransition = rememberInfiniteTransition(label = "EpisodeCardGlow")
-        val animatedGlow by infiniteTransition.animateFloat(
-            initialValue = 0.50f,
-            targetValue = 0.90f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = 1600, easing = FastOutSlowInEasing),
-                repeatMode = RepeatMode.Reverse
-            ),
-            label = "episodePulseGlow"
-        )
-        animatedGlow
-    } else {
-        0.50f
-    }
+    // Igual que MediaCard: transición creada siempre, valor leído en drawBehind
+    // (deferred read) para no recomponer la tarjeta en cada frame.
+    val infiniteTransition = rememberInfiniteTransition(label = "EpisodeCardGlow")
+    val pulseGlow = infiniteTransition.animateFloat(
+        initialValue = 0.50f,
+        targetValue = 0.90f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1600, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "episodePulseGlow"
+    )
 
     Box(
         modifier = modifier
             .drawBehind {
                 if (isFocused) {
+                    val glow = pulseGlow.value
                     val glowRadius = size.width * 0.75f
                     val glowCenter = Offset(size.width / 2f, size.height * 0.45f)
                     drawRect(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                activeGlowColor.copy(alpha = 0.42f * pulseGlow),
-                                activeGlowColor.copy(alpha = 0.20f * pulseGlow),
-                                activeGlowColor.copy(alpha = 0.05f * pulseGlow),
+                                activeGlowColor.copy(alpha = 0.42f * glow),
+                                activeGlowColor.copy(alpha = 0.20f * glow),
+                                activeGlowColor.copy(alpha = 0.05f * glow),
                                 Color.Transparent
                             ),
                             center = glowCenter,
