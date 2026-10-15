@@ -14,6 +14,7 @@ import com.example.tujelly.domain.usecase.GetHomeFeedUseCase
 import com.example.tujelly.util.toOptimizedMediaItem
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -22,6 +23,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 sealed interface HomeUiState {
@@ -64,7 +66,11 @@ class HomeViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Loading)
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
+    // Estado mutado tanto desde el feed (Main) como desde el refresco de "Continuar Viendo"
+    // (Dispatchers.IO) → @Volatile para garantizar visibilidad entre hilos.
+    @Volatile
     private var lastSections: List<HomeSection>? = lastStaticSections
+    @Volatile
     private var lastGenres: List<String> = lastStaticGenres
     private var isFeedLoading = false
 
@@ -210,15 +216,14 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 var hasEmitted = false
-                lastGenres = mediaRepository.getMostWatchedGenres()
-                lastStaticGenres = lastGenres
 
                 getHomeFeedUseCase(prefs, forceRefresh = forceRefresh).collect { sections ->
                     if (sections.isNotEmpty()) {
                         hasEmitted = true
                         lastSections = sections
                         lastStaticSections = sections
-                        lastGenres = mediaRepository.getMostWatchedGenres()
+                        // La agregación de géneros es CPU-bound: fuera del hilo principal.
+                        lastGenres = withContext(Dispatchers.Default) { mediaRepository.getMostWatchedGenres() }
                         lastStaticGenres = lastGenres
                         val filtered = filterSections(sections, _selectedFormat.value)
                         val currentFocused = (_uiState.value as? HomeUiState.Success)?.focusedItem

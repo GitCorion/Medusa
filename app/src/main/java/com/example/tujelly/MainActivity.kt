@@ -89,7 +89,9 @@ class MainActivity : ComponentActivity() {
                     .build()
             }
             .respectCacheHeaders(false)
-            .crossfade(true)
+            // Sin crossfade global: animar cada imagen de cada tarjeta penaliza el scroll.
+            // Hero/backdrop ya animan con su propio Crossfade composable.
+            .crossfade(false)
             .build()
         coil.Coil.setImageLoader(imageLoader)
 
