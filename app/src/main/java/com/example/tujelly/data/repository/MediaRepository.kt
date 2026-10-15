@@ -1,242 +1,74 @@
 package com.example.tujelly.data.repository
 
+import android.content.Context
 import com.example.tujelly.data.local.UserPreferencesRepository
 import com.example.tujelly.data.local.db.JellyfinDao
 import com.example.tujelly.data.local.db.JellyfinMediaEntity
 import com.example.tujelly.data.local.db.LibraryStats
 import com.example.tujelly.data.local.db.TmdbVoteCacheDao
-import com.example.tujelly.data.local.db.TmdbVoteCacheEntity
-import com.example.tujelly.data.remote.NetworkClientFactory
-import com.example.tujelly.data.remote.jellyfin.JellyfinApiService
 import com.example.tujelly.data.remote.jellyfin.JellyfinItemDto
-import com.example.tujelly.data.remote.jellyfin.JellyfinItemsResponse
-import com.example.tujelly.data.remote.tmdb.TmdbApiService
 import com.example.tujelly.data.remote.tmdb.TmdbItemDto
-import com.example.tujelly.data.remote.trakt.TraktApiService
+import com.example.tujelly.data.remote.tmdb.TmdbMovieDetailDto
+import com.example.tujelly.data.remote.tmdb.TmdbTvDetailDto
 import com.example.tujelly.data.remote.trakt.TraktMediaDto
+import com.example.tujelly.data.remote.trakt.TraktUserDto
+import com.example.tujelly.data.remote.trakt.TraktUserListDto
 import com.example.tujelly.domain.model.EpisodeItem
 import com.example.tujelly.domain.model.SeasonItem
+import com.example.tujelly.domain.model.SeriesEpisodeStats
 import com.example.tujelly.domain.model.SeriesStatus
-import android.content.Context
-import androidx.work.Constraints
-import androidx.work.ExistingWorkPolicy
-import androidx.work.NetworkType
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.WorkManager
-import androidx.work.workDataOf
-import com.example.tujelly.data.worker.JellyfinSyncWorker
-import com.example.tujelly.util.JellyfinImageUtils
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
 
-data class SyncProgress(
-    val isSyncing: Boolean = false,
-    val current: Int = 0,
-    val total: Int = 0,
-    val message: String = ""
-)
-
-class TtlCache<K : Any, V : Any>(private val defaultTtlMillis: Long) {
-    private data class CacheEntry<V>(val data: V, val timestamp: Long)
-    private val map = java.util.concurrent.ConcurrentHashMap<K, CacheEntry<V>>()
-
-    fun get(key: K): V? {
-        val entry = map[key] ?: return null
-        if (System.currentTimeMillis() - entry.timestamp > defaultTtlMillis) {
-            map.remove(key)
-            return null
-        }
-        return entry.data
-    }
-
-    fun put(key: K, data: V) {
-        map[key] = CacheEntry(data, System.currentTimeMillis())
-    }
-
-    fun remove(key: K) {
-        map.remove(key)
-    }
-
-    fun clear() {
-        map.clear()
-    }
-}
-
+/**
+ * Punto de entrada único del acceso a datos (catálogo Jellyfin, TMDB y Trakt).
+ *
+ * Históricamente era una clase-dios de ~1.900 líneas. Ahora es una **fachada delgada**
+ * que compone repositorios especializados y delega en ellos, manteniendo la misma API
+ * pública para no tocar a los consumidores (ViewModels, UseCases, Worker):
+ *
+ * - [LocalMediaRepository]        → consultas Room, deduplicado y resolución local
+ * - [JellyfinMediaRemoteRepository] → lecturas/escrituras puntuales contra Jellyfin
+ * - [MediaSyncRepository]         → sincronización masiva y progreso
+ * - [TmdbRepository]              → TMDB
+ * - [TraktRepository]             → Trakt
+ * - [MediaAccessPolicy]           → restricciones parentales (IDs permitidos)
+ * - [MediaCaches]                 → cachés en memoria (TTL)
+ *
+ * Es el "composition root" de estos colaboradores: al ser un `@Singleton` de Hilt,
+ * compartir la misma instancia de [MediaAccessPolicy] entre los repositorios evita
+ * duplicar el fichero de IDs permitidos. Un paso futuro puede promover los
+ * colaboradores a providers de Hilt si conviene inyectarlos por separado.
+ */
 class MediaRepository(
-    private val jellyfinDao: JellyfinDao,
-    private val userPreferencesRepository: UserPreferencesRepository? = null,
-    private val tmdbVoteCacheDao: TmdbVoteCacheDao? = null
+    jellyfinDao: JellyfinDao,
+    userPreferencesRepository: UserPreferencesRepository? = null,
+    tmdbVoteCacheDao: TmdbVoteCacheDao? = null
 ) {
+    private val accessPolicy = MediaAccessPolicy(userPreferencesRepository)
+    private val local = LocalMediaRepository(jellyfinDao, accessPolicy)
+    private val jellyfinRemote = JellyfinMediaRemoteRepository(jellyfinDao, accessPolicy, local)
+    private val sync = MediaSyncRepository(jellyfinDao, userPreferencesRepository, tmdbVoteCacheDao, accessPolicy)
+    private val tmdb = TmdbRepository(tmdbVoteCacheDao)
+    private val trakt = TraktRepository()
+
     companion object {
-        private val _syncProgress = MutableStateFlow(SyncProgress())
-        val syncProgress: StateFlow<SyncProgress> = _syncProgress.asStateFlow()
-        private val syncMutex = Mutex()
-        private val syncScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        val syncProgress: StateFlow<SyncProgress> = MediaSyncRepository.syncProgress
 
-        val tmdbTopRatedCache = TtlCache<String, List<TmdbItemDto>>(7 * 24 * 3600 * 1000L)
-        val tmdbTrendingDayCache = TtlCache<String, List<TmdbItemDto>>(7 * 24 * 3600 * 1000L)
-        val tmdbTrendingCache = TtlCache<String, List<TmdbItemDto>>(7 * 24 * 3600 * 1000L)
-        val tmdbRecommendationsCache = TtlCache<String, List<TmdbItemDto>>(7 * 24 * 3600 * 1000L)
-        val tmdbGenreCache = TtlCache<String, List<TmdbItemDto>>(7 * 24 * 3600 * 1000L)
-        val tmdbProviderCache = TtlCache<String, List<TmdbItemDto>>(7 * 24 * 3600 * 1000L)
+        fun invalidateServerCaches() = MediaCaches.invalidateServerCaches()
 
-        val serverTopMoviesCache = TtlCache<String, List<JellyfinMediaEntity>>(15 * 60 * 1000L)
-        val serverTopSeriesCache = TtlCache<String, List<JellyfinMediaEntity>>(15 * 60 * 1000L)
-        val serverContinueWatchingCache = TtlCache<String, List<JellyfinMediaEntity>>(3 * 60 * 1000L)
-        val serverLatestCache = TtlCache<String, List<JellyfinMediaEntity>>(10 * 60 * 1000L)
-        val serverRecentlyPlayedCache = TtlCache<String, List<JellyfinMediaEntity>>(10 * 60 * 1000L)
+        fun updateProgress(progress: SyncProgress) = MediaSyncRepository.updateProgress(progress)
 
-        fun invalidateServerCaches() {
-            serverContinueWatchingCache.clear()
-            serverRecentlyPlayedCache.clear()
-            serverLatestCache.clear()
-            serverTopMoviesCache.clear()
-            serverTopSeriesCache.clear()
-        }
-
-        fun updateProgress(progress: SyncProgress) {
-            _syncProgress.value = progress
-        }
-
-        fun checkActiveWorkerSync(context: Context, localCount: Int = 0) {
-            try {
-                val workInfos = WorkManager.getInstance(context)
-                    .getWorkInfosForUniqueWork(JellyfinSyncWorker.WORK_NAME)
-                    .get()
-                val activeWork = workInfos.firstOrNull { !it.state.isFinished }
-                if (activeWork != null && !_syncProgress.value.isSyncing) {
-                    val grand = maxOf(1000, localCount)
-                    _syncProgress.value = SyncProgress(
-                        isSyncing = true,
-                        current = localCount,
-                        total = grand,
-                        message = "Sincronizando en segundo plano..."
-                    )
-                }
-            } catch (_: Exception) {}
-        }
-    }
-    private var cachedAllowedIds: Set<String>? = null
-    private var cachedAllowedUserId: String? = null
-
-    private suspend fun getAllowedIdsSet(): Set<String>? {
-        val userId = userPreferencesRepository?.userPreferencesFlow?.firstOrNull()?.jellyfinUserId ?: return null
-        if (userId.isBlank()) return null
-        
-        if (cachedAllowedUserId == userId && cachedAllowedIds != null) {
-            return cachedAllowedIds
-        }
-        
-        val ctx = userPreferencesRepository?.applicationContext ?: return null
-        val file = java.io.File(ctx.filesDir, "allowed_ids_$userId.txt")
-        if (file.exists()) {
-            val lines = file.readLines().toSet()
-            cachedAllowedIds = lines
-            cachedAllowedUserId = userId
-            return cachedAllowedIds
-        }
-        return null
+        fun checkActiveWorkerSync(context: Context, localCount: Int = 0) =
+            MediaSyncRepository.checkActiveWorkerSync(context, localCount)
     }
 
-    private fun saveAllowedIds(userId: String, ids: Set<String>) {
-        val ctx = userPreferencesRepository?.applicationContext ?: return
-        val file = java.io.File(ctx.filesDir, "allowed_ids_$userId.txt")
-        file.writeText(ids.joinToString("\n"))
-        cachedAllowedIds = ids
-        cachedAllowedUserId = userId
-    }
+    // =========================================================================
+    // SINCRONIZACIÓN
+    // =========================================================================
 
-    private suspend fun List<JellyfinMediaEntity>.filterAllowed(): List<JellyfinMediaEntity> {
-        val allowed = getAllowedIdsSet() ?: return this
-        return this.filter { allowed.contains(it.id) }
-    }
-
-    private val isEnrichingOverviews = java.util.concurrent.atomic.AtomicBoolean(false)
-
-    fun startBackgroundOverviewEnrichment(serverUrl: String, userId: String, token: String) {
-        if (serverUrl.isBlank() || userId.isBlank() || token.isBlank()) return
-        if (isEnrichingOverviews.getAndSet(true)) return
-
-        syncScope.launch(Dispatchers.IO) {
-            try {
-                val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
-                val authHeader = buildJellyfinAuthHeader(token = token)
-
-                var processedCount = 0
-                while (processedCount < 10000) {
-                    val missingIds = jellyfinDao.getIdsMissingOverview(limit = 40)
-                    if (missingIds.isEmpty()) break
-
-                    val idsParam = missingIds.joinToString(",")
-                    val response = runCatching {
-                        api.getLibraryItems(
-                            authHeader = authHeader,
-                            userId = userId,
-                            ids = idsParam,
-                            fields = "Overview,PrimaryImageTag",
-                            limit = 40,
-                            enableTotalRecordCount = false
-                        )
-                    }.getOrNull()
-
-                    if (response != null && response.items.isNotEmpty()) {
-                        for (item in response.items) {
-                            if (!item.overview.isNullOrBlank()) {
-                                jellyfinDao.updateOverview(item.id, item.overview)
-                            }
-                            val posterTag = item.primaryImageTag ?: item.imageTags?.get("Primary")
-                            if (!posterTag.isNullOrBlank()) {
-                                jellyfinDao.updatePrimaryImageTag(item.id, posterTag)
-                            }
-                        }
-                        processedCount += missingIds.size
-                    } else {
-                        break
-                    }
-                    delay(1200L)
-                }
-
-                // Enriquecimiento de pósteres faltantes mediante TMDB API
-                val tmdbApi = NetworkClientFactory.createService("https://api.themoviedb.org/3/", TmdbApiService::class.java)
-                val prefs = userPreferencesRepository?.userPreferencesFlow?.firstOrNull()
-                val tmdbKey = prefs?.tmdbApiKey?.takeIf { it.isNotBlank() } ?: com.example.tujelly.data.local.DEFAULT_TMDB_API_KEY
-
-                val missingPosters = jellyfinDao.getItemsMissingPoster(limit = 40)
-                for (media in missingPosters) {
-                    val tmdbLong = media.tmdbId?.toLongOrNull() ?: continue
-                    val isTv = media.type.equals("Series", ignoreCase = true)
-                    val posterPath: String? = runCatching {
-                        if (isTv) {
-                            tmdbApi.getTvDetails(seriesId = tmdbLong, apiKey = tmdbKey).posterPath
-                        } else {
-                            tmdbApi.getMovieDetails(movieId = tmdbLong, apiKey = tmdbKey).posterPath
-                        }
-                    }.getOrNull()
-
-                    if (!posterPath.isNullOrBlank()) {
-                        jellyfinDao.updatePrimaryImageTag(media.id, "tmdb:$posterPath")
-                    }
-                    delay(200L)
-                }
-            } catch (_: Exception) {
-            } finally {
-                isEnrichingOverviews.set(false)
-            }
-        }
-    }
+    fun startBackgroundOverviewEnrichment(serverUrl: String, userId: String, token: String) =
+        sync.startBackgroundOverviewEnrichment(serverUrl, userId, token)
 
     fun startBackgroundSync(
         serverUrl: String,
@@ -246,198 +78,10 @@ class MediaRepository(
         forceFullSync: Boolean = false,
         context: Context? = null,
         onSyncCompleted: ((String) -> Unit)? = null
-    ) {
-        if (serverUrl.isBlank() || userId.isBlank() || token.isBlank()) return
+    ) = sync.startBackgroundSync(serverUrl, userId, token, lastSyncTimestamp, forceFullSync, context, onSyncCompleted)
 
-        val targetContext = context ?: userPreferencesRepository?.applicationContext
-        if (targetContext != null) {
-            val constraints = Constraints.Builder()
-                .setRequiredNetworkType(NetworkType.CONNECTED)
-                .build()
-
-            val inputData = workDataOf(
-                JellyfinSyncWorker.KEY_SERVER_URL to serverUrl,
-                JellyfinSyncWorker.KEY_USER_ID to userId,
-                JellyfinSyncWorker.KEY_TOKEN to token,
-                JellyfinSyncWorker.KEY_FORCE_FULL_SYNC to forceFullSync
-            )
-
-            val syncWorkRequest = OneTimeWorkRequestBuilder<JellyfinSyncWorker>()
-                .setConstraints(constraints)
-                .setInputData(inputData)
-                .build()
-
-            WorkManager.getInstance(targetContext).enqueueUniqueWork(
-                JellyfinSyncWorker.WORK_NAME,
-                if (forceFullSync) ExistingWorkPolicy.REPLACE else ExistingWorkPolicy.KEEP,
-                syncWorkRequest
-            )
-        } else {
-            if (_syncProgress.value.isSyncing || syncMutex.isLocked) return
-            syncScope.launch {
-                syncJellyfinLibrary(
-                    serverUrl = serverUrl,
-                    userId = userId,
-                    token = token,
-                    lastSyncTimestamp = lastSyncTimestamp,
-                    forceFullSync = forceFullSync,
-                    onSyncCompleted = { newTs ->
-                        onSyncCompleted?.invoke(newTs)
-                    }
-                )
-            }
-        }
-    }
-    private fun buildJellyfinAuthHeader(clientName: String = "Tujelly", deviceId: String = "TujellyTV", version: String = "1.0.0", token: String = ""): String {
-        return "MediaBrowser Client=\"$clientName\", Device=\"AndroidTV\", DeviceId=\"$deviceId\", Version=\"$version\"" +
-                if (token.isNotEmpty()) ", Token=\"$token\"" else ""
-    }
-
-    suspend fun searchAndCache(serverUrl: String, userId: String, token: String, title: String, year: Int? = null, tmdbId: String? = null, imdbId: String? = null): JellyfinMediaEntity? {
-        // 1. Check local Room database first
-        val local = findLocal(tmdbId = tmdbId, imdbId = imdbId, title = title, year = year)
-        if (local != null) return local
-
-        // 2. Query remote Jellyfin with fast indexed search
-        return runCatching {
-            val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
-            val authHeader = buildJellyfinAuthHeader(token = token)
-            val cleanTitle = title.trim()
-                .substringBefore(":")
-                .substringBefore("-")
-                .trim()
-            if (cleanTitle.isEmpty()) return null
-
-            val response = api.searchLibraryItems(
-                authHeader = authHeader,
-                userId = userId,
-                searchTerm = cleanTitle,
-                limit = 5
-            )
-
-            val matches = response.items.map { it.toEntity() }
-            if (matches.isNotEmpty()) {
-                jellyfinDao.insertOrUpdateAll(matches)
-            }
-
-            matches.firstOrNull { entity ->
-                val titleMatch = entity.title.contains(cleanTitle, ignoreCase = true) ||
-                        cleanTitle.contains(entity.title, ignoreCase = true)
-                val yearMatch = year == null || entity.productionYear == null || Math.abs(entity.productionYear - year) <= 1
-                val idMatch = (tmdbId != null && entity.tmdbId == tmdbId) || (imdbId != null && entity.imdbId == imdbId)
-                idMatch || (titleMatch && yearMatch)
-            } ?: matches.firstOrNull()
-        }.getOrNull()
-    }
-
-    suspend fun searchRemoteAndCache(
-        serverUrl: String,
-        userId: String,
-        token: String,
-        query: String,
-        limit: Int = 30
-    ): Result<List<JellyfinMediaEntity>> {
-        val cleanQuery = query.trim()
-        if (serverUrl.isBlank() || userId.isBlank() || token.isBlank() || cleanQuery.isBlank()) {
-            return Result.success(emptyList())
-        }
-        return runCatching {
-            val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
-            val authHeader = buildJellyfinAuthHeader(token = token)
-            val response = api.searchLibraryItems(
-                authHeader = authHeader,
-                userId = userId,
-                searchTerm = cleanQuery,
-                limit = limit
-            )
-            val matches = response.items.map { it.toEntity() }
-            if (matches.isNotEmpty()) {
-                jellyfinDao.insertOrUpdateAll(matches)
-            }
-            matches
-        }
-    }
-
-    suspend fun getUserViews(serverUrl: String, userId: String, token: String): Result<List<JellyfinItemDto>> {
-        return runCatching {
-            val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
-            val authHeader = buildJellyfinAuthHeader(token = token)
-            api.getUserViews(authHeader = authHeader, userId = userId).items
-        }
-    }
-
-    suspend fun syncQuickInit(serverUrl: String, userId: String, token: String): Result<Unit> {
-        return runCatching {
-            val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
-            val authHeader = buildJellyfinAuthHeader(token = token)
-
-            var playedEntities: List<JellyfinMediaEntity> = emptyList()
-
-            coroutineScope {
-                // 1. Sync Continue Watching (Resume Items)
-                launch {
-                    try {
-                        val resume = api.getResumeItems(authHeader = authHeader, userId = userId, limit = 30)
-                        val resumeEntities = resume.items.map { it.toEntity() }
-                        if (resumeEntities.isNotEmpty()) {
-                            jellyfinDao.insertOrUpdateAll(resumeEntities)
-                        }
-                    } catch (_: Exception) {}
-                }
-
-                // 2. Sync Recent Items (Fast, immediately populates UI with up to 50 items)
-                launch {
-                    try {
-                        val latest = api.getLatestItems(authHeader = authHeader, userId = userId, limit = 50)
-                        val latestEntities = latest.map { it.toEntity() }
-                        if (latestEntities.isNotEmpty()) {
-                            jellyfinDao.insertOrUpdateAll(latestEntities)
-                        }
-                    } catch (e: Exception) {
-                        android.util.Log.e("MediaRepository", "Error syncing latest items: ${e.message}", e)
-                    }
-                }
-
-                // 3. Sync Favorites (Fast, critical)
-                launch {
-                    try {
-                        val favResponse = api.getFavoriteItems(authHeader = authHeader, userId = userId)
-                        val favEntities = favResponse.items.map { it.toEntity().copy(isFavorite = true) }
-                        if (favEntities.isNotEmpty()) {
-                            jellyfinDao.insertOrUpdateAll(favEntities)
-                        }
-                    } catch (e: Exception) {
-                        android.util.Log.e("MediaRepository", "Error syncing favorites: ${e.message}", e)
-                    }
-                }
-
-                // 4. Sync Recently Played items (Fast, marks watched/progress in local DB)
-                launch {
-                    try {
-                        val playedResponse = api.getRecentlyPlayedItems(authHeader = authHeader, userId = userId, limit = 100)
-                        playedEntities = playedResponse.items.map { it.toEntity() }
-                        if (playedEntities.isNotEmpty()) {
-                            jellyfinDao.insertOrUpdateAll(playedEntities)
-                        }
-                    } catch (_: Exception) {}
-                }
-            }
-
-            // 5. Pre-cache parent series for any synced episodes so full series details exist in Room
-            try {
-                val seriesIds = playedEntities
-                    .filter { it.type.equals("Episode", ignoreCase = true) && !it.seriesId.isNullOrBlank() }
-                    .mapNotNull { it.seriesId }
-                    .distinct()
-                for (sId in seriesIds) {
-                    try {
-                        val seriesDto = api.getItemDetail(authHeader = authHeader, userId = userId, itemId = sId)
-                        jellyfinDao.insertOrUpdate(seriesDto.toEntity())
-                    } catch (_: Exception) {}
-                }
-            } catch (_: Exception) {}
-        }
-    }
+    suspend fun syncQuickInit(serverUrl: String, userId: String, token: String): Result<Unit> =
+        sync.syncQuickInit(serverUrl, userId, token)
 
     suspend fun syncJellyfinLibrary(
         serverUrl: String,
@@ -446,1237 +90,71 @@ class MediaRepository(
         lastSyncTimestamp: String? = null,
         forceFullSync: Boolean = false,
         onSyncCompleted: (suspend (String) -> Unit)? = null
-    ): Result<Unit> {
-        if (serverUrl.isBlank() || userId.isBlank() || token.isBlank()) {
-            return Result.success(Unit)
-        }
-        if (!syncMutex.tryLock()) {
-            // Sincronización ya en curso: evitar duplicar peticiones y saturar el servidor
-            return Result.success(Unit)
-        }
-        return try {
-            runCatching {
-                val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
-                val authHeader = buildJellyfinAuthHeader(token = token)
+    ): Result<Unit> = sync.syncJellyfinLibrary(serverUrl, userId, token, lastSyncTimestamp, forceFullSync, onSyncCompleted)
 
-                // Purga entradas caducadas (>24h) de la caché de votos TMDB para que no crezca sin límite.
-                runCatching { tmdbVoteCacheDao?.deleteExpired() }
+    // =========================================================================
+    // JELLYFIN (remoto)
+    // =========================================================================
 
-                val currentLocal = getLocalCount()
-
-                val effectiveLastSync = if (forceFullSync) null else {
-                    lastSyncTimestamp?.ifBlank { null }
-                        ?: userPreferencesRepository?.userPreferencesFlow?.firstOrNull()?.jellyfinLastSync?.ifBlank { null }
-                        ?: if (currentLocal >= 500) {
-                            val now = java.time.Instant.now().truncatedTo(java.time.temporal.ChronoUnit.SECONDS).toString()
-                            userPreferencesRepository?.updateJellyfinLastSync(now)
-                            now
-                        } else null
-                }
-
-                // 1. Prioridad: refrescar de inmediato los elementos de portada (< 500ms)
-                syncQuickInit(serverUrl, userId, token)
-
-                // 2. Obtener vistas del usuario (Películas, Series, etc.)
-                val userViews = runCatching {
-                    api.getUserViews(authHeader = authHeader, userId = userId).items
-                }.getOrDefault(emptyList())
-
-                val mediaViews = userViews.filter { view ->
-                    val cType = view.collectionType?.lowercase()
-                    cType == "movies" || cType == "tvshows" || (cType == null && !view.name.orEmpty().contains("playlist", ignoreCase = true) && !view.name.orEmpty().contains("coleccion", ignoreCase = true))
-                }
-
-                // =========================================================================
-                // RECONCILIACIÓN / FILTRADO DE RESTRICCIONES (forceFullSync o primera vez)
-                // =========================================================================
-                if (forceFullSync || getAllowedIdsSet() == null) {
-                    _syncProgress.value = SyncProgress(
-                        isSyncing = true,
-                        current = 0,
-                        total = currentLocal,
-                        message = "Comprobando restricciones parentales..."
-                    )
-                    runCatching {
-                        // Reconciliación paginada: antes se pedían hasta 60.000 ítems de una vez
-                        // (respuesta enorme en memoria). Ahora páginas de 500 IDs.
-                        val allowedIds = HashSet<String>()
-                        val pageLimit = 500
-                        var startIndex = 0
-                        while (true) {
-                            val response = api.getLibraryItems(
-                                authHeader = authHeader,
-                                userId = userId,
-                                includeItemTypes = "Movie,Series",
-                                recursive = true,
-                                fields = "",
-                                limit = pageLimit,
-                                startIndex = startIndex,
-                                enableTotalRecordCount = false
-                            )
-                            val items = response.items
-                            if (items.isEmpty()) break
-                            items.forEach { allowedIds.add(it.id) }
-                            if (items.size < pageLimit) break
-                            startIndex += items.size
-                            delay(50L)
-                        }
-                        if (allowedIds.isNotEmpty()) {
-                            saveAllowedIds(userId, allowedIds)
-                        }
-                    }
-                    if (forceFullSync) {
-                        userPreferencesRepository?.clearSyncCheckpoint()
-                    }
-                }
-
-                // =========================================================================
-                // CAMINO 1: SINCRONIZACIÓN INCREMENTAL (DELTA SYNC)
-                // =========================================================================
-                // Si el catálogo local ya tiene elementos y una fecha de sincronización previa completa
-                if (!forceFullSync && currentLocal > 0 && !effectiveLastSync.isNullOrBlank()) {
-                    _syncProgress.value = SyncProgress(
-                        isSyncing = true,
-                        current = currentLocal,
-                        total = currentLocal,
-                        message = "Buscando novedades en Jellyfin..."
-                    )
-
-                    var deltaCount = 0
-                    for (view in mediaViews.ifEmpty { listOf(null) }) {
-                        val isSeries = view?.collectionType.equals("tvshows", ignoreCase = true) || view?.name.equals("Series", ignoreCase = true)
-                        val viewFields = if (isSeries) {
-                            "Overview,ProviderIds,PrimaryImageTag,CommunityRating,OfficialRating,Genres,Tags,UserData,RecursiveItemCount"
-                        } else {
-                            "Overview,ProviderIds,PrimaryImageTag,CommunityRating,OfficialRating,Genres,Tags,UserData"
-                        }
-                        var deltaOffset = 0
-                        do {
-                            val deltaResponse = runCatching {
-                                api.getLibraryItems(
-                                    authHeader = authHeader,
-                                    userId = userId,
-                                    parentId = view?.id,
-                                    includeItemTypes = if (isSeries) "Series" else "Movie",
-                                    fields = viewFields,
-                                    recursive = !isSeries,
-                                    limit = 200,
-                                    startIndex = deltaOffset,
-                                    minDateLastSaved = effectiveLastSync
-                                )
-                            }.getOrNull()
-
-                            val deltaItems = deltaResponse?.items ?: emptyList()
-                            if (deltaItems.isNotEmpty()) {
-                                val cachedOverviews = jellyfinDao.getCachedOverviews().associateBy { it.id }
-                                val entities = deltaItems.map { dto ->
-                                    val entity = dto.toEntity()
-                                    val cached = cachedOverviews[entity.id]
-                                    if (cached != null && entity.overview.isNullOrBlank()) {
-                                        entity.copy(
-                                            overview = cached.overview,
-                                            backdropImageTag = entity.backdropImageTag ?: cached.backdropImageTag
-                                        )
-                                    } else {
-                                        entity
-                                    }
-                                }
-                                jellyfinDao.insertOrUpdateAll(entities)
-                                
-                                val currentAllowed = getAllowedIdsSet()?.toMutableSet() ?: mutableSetOf()
-                                currentAllowed.addAll(entities.map { it.id })
-                                saveAllowedIds(userId, currentAllowed)
-                                
-                                deltaCount += entities.size
-                                deltaOffset += deltaItems.size
-                            }
-                            if (deltaItems.size < 200) break
-                            delay(100L)
-                        } while (true)
-                    }
-
-                    val nowTimestamp = java.time.Instant.now().truncatedTo(java.time.temporal.ChronoUnit.SECONDS).toString()
-                    userPreferencesRepository?.updateJellyfinLastSync(nowTimestamp)
-                    onSyncCompleted?.invoke(nowTimestamp)
-
-                    val updatedLocal = getLocalCount()
-                    _syncProgress.value = SyncProgress(
-                        isSyncing = false,
-                        current = updatedLocal,
-                        total = updatedLocal,
-                        message = if (deltaCount > 0) "Catálogo actualizado (+$deltaCount novedades)" else "Catálogo al día ($updatedLocal títulos)"
-                    )
-                    return@runCatching
-                }
-
-                // =========================================================================
-                // CAMINO 2: SINCRONIZACIÓN COMPLETA GLOBAL CON RESUMEN / CHECKPOINTS
-                // =========================================================================
-                val pageSize = 200
-
-                // Leer checkpoint previo si no es forzada desde cero
-                val checkpoint = if (!forceFullSync) userPreferencesRepository?.getSyncCheckpoint() else null
-                val savedViewIndex = checkpoint?.first ?: 0
-                val savedOffset = checkpoint?.second ?: 0
-                val savedTotalSynced = checkpoint?.third ?: 0
-
-                var totalSynced = if (savedTotalSynced > 0) savedTotalSynced else 0
-                var grandTotal = maxOf(currentLocal, totalSynced)
-
-                _syncProgress.value = SyncProgress(
-                    isSyncing = true,
-                    current = totalSynced,
-                    total = grandTotal,
-                    message = if (totalSynced > 0) "Reanudando sincronización: $totalSynced / $grandTotal" else "Sincronizando: 0 / $grandTotal"
-                )
-
-                val viewsToSync = if (mediaViews.isNotEmpty()) mediaViews else listOf(null)
-                var cumulativeViewTotal = 0
-
-                for ((viewIndex, view) in viewsToSync.withIndex()) {
-                    if (viewIndex < savedViewIndex) {
-                        // Vista ya procesada en ejecución anterior
-                        continue
-                    }
-
-                    val viewId = view?.id
-                    val isSeries = view?.collectionType.equals("tvshows", ignoreCase = true) || view?.name.equals("Series", ignoreCase = true)
-                    val itemType = if (isSeries) "Series" else if (view != null) "Movie" else "Movie,Series"
-                    val isRecursive = !isSeries // Series son hijas directas del CollectionFolder, Movies pueden estar en subcarpetas
-                    val viewFields = if (isSeries) {
-                        "Overview,ProviderIds,PrimaryImageTag,CommunityRating,OfficialRating,Genres,Tags,UserData,RecursiveItemCount"
-                    } else {
-                        "Overview,ProviderIds,PrimaryImageTag,CommunityRating,OfficialRating,Genres,Tags,UserData"
-                    }
-
-                    var startIndex = if (viewIndex == savedViewIndex) savedOffset else 0
-                    var viewTotal = 0
-
-                    do {
-                        var response: JellyfinItemsResponse? = null
-                        var attempt = 0
-                        var lastError: Exception? = null
-
-                        while (attempt < 4 && response == null) {
-                            try {
-                                response = api.getLibraryItems(
-                                    authHeader = authHeader,
-                                    userId = userId,
-                                    parentId = viewId,
-                                    includeItemTypes = itemType,
-                                    fields = viewFields,
-                                    recursive = isRecursive,
-                                    limit = pageSize,
-                                    startIndex = startIndex,
-                                    sortBy = "SortName",
-                                    sortOrder = "Ascending",
-                                    enableTotalRecordCount = (viewTotal == 0)
-                                )
-                            } catch (e: Exception) {
-                                lastError = e
-                                attempt++
-                                if (e is retrofit2.HttpException && e.code() == 401) throw e
-                                if (attempt < 4) delay(1000L * attempt)
-                            }
-                        }
-
-                        if (response == null) {
-                            android.util.Log.w("MediaRepository", "Failed page $startIndex for view ${view?.name ?: "root"}: ${lastError?.message}")
-                            // Avanzamos al siguiente bloque para no romper toda la sincronización
-                            startIndex += pageSize
-                            continue
-                        }
-
-                        val items = response.items
-                        if (viewTotal == 0 && response.totalRecordCount > 0) {
-                            viewTotal = response.totalRecordCount
-                            cumulativeViewTotal += viewTotal
-                            grandTotal = maxOf(grandTotal, cumulativeViewTotal)
-                        }
-
-                        if (items.isEmpty()) break
-
-                        val entities = items.map { it.toEntity() }
-                        jellyfinDao.insertOrUpdateAll(entities)
-
-                        startIndex += items.size
-                        totalSynced += items.size
-
-                        // Guardar checkpoint en DataStore tras cada bloque persistido
-                        userPreferencesRepository?.saveSyncCheckpoint(
-                            viewIndex = viewIndex,
-                            offset = startIndex,
-                            totalSynced = totalSynced
-                        )
-
-                        val effectiveTotal = maxOf(grandTotal, totalSynced)
-                        _syncProgress.value = SyncProgress(
-                            isSyncing = true,
-                            current = totalSynced,
-                            total = effectiveTotal,
-                            message = "Sincronizando: $totalSynced / $effectiveTotal"
-                        )
-
-                        if (viewTotal > 0 && startIndex >= viewTotal) break
-                        if (items.size < pageSize) break
-
-                        // Pausa de 200ms para mantener el servidor Jellyfin fluido sin congelarse
-                        delay(200L)
-                    } while (viewTotal == 0 || startIndex < viewTotal)
-                }
-
-                userPreferencesRepository?.clearSyncCheckpoint()
-
-                val nowTimestamp = java.time.Instant.now().truncatedTo(java.time.temporal.ChronoUnit.SECONDS).toString()
-                userPreferencesRepository?.updateJellyfinLastSync(nowTimestamp)
-                onSyncCompleted?.invoke(nowTimestamp)
-
-                val finalCount = getLocalCount()
-                _syncProgress.value = SyncProgress(
-                    isSyncing = false,
-                    current = finalCount,
-                    total = finalCount,
-                    message = "Catálogo actualizado ($finalCount títulos)"
-                )
-            }.onFailure { e ->
-                android.util.Log.e("MediaRepository", "Error during Jellyfin library sync: ${e.message}", e)
-                val is401 = (e as? retrofit2.HttpException)?.code() == 401
-                val errorMessage = if (is401) {
-                    "Sesión caducada (401). Reconecta en Ajustes"
-                } else {
-                    "Error al sincronizar: ${e.localizedMessage ?: "Error de conexión"}"
-                }
-                _syncProgress.value = SyncProgress(
-                    isSyncing = false,
-                    current = getLocalCount(),
-                    total = getLocalCount(),
-                    message = errorMessage
-                )
-            }
-        } finally {
-            syncMutex.unlock()
-        }
-    }
-
-    suspend fun getContinueWatching(serverUrl: String, userId: String, token: String): Result<List<JellyfinMediaEntity>> {
-        val cacheKey = "$serverUrl-$userId"
-        serverContinueWatchingCache.get(cacheKey)?.let { return Result.success(it) }
-
-        return runCatching {
-            val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
-            val authHeader = buildJellyfinAuthHeader(token = token)
-
-            coroutineScope {
-                val resumeDeferred = async {
-                    runCatching {
-                        api.getResumeItems(authHeader = authHeader, userId = userId).items.map { it.toEntity() }
-                    }.getOrDefault(emptyList())
-                }
-                val nextUpDeferred = async {
-                    runCatching {
-                        api.getNextUpItems(authHeader = authHeader, userId = userId).items.map { it.toEntity() }
-                    }.getOrDefault(emptyList())
-                }
-
-                val resumeEntities = resumeDeferred.await()
-                val nextUpEntities = nextUpDeferred.await()
-
-                val allFetched = (resumeEntities + nextUpEntities)
-                if (allFetched.isNotEmpty()) {
-                    jellyfinDao.insertOrUpdateAll(allFetched)
-                }
-
-                val seenKeys = mutableSetOf<String>()
-                val combined = mutableListOf<JellyfinMediaEntity>()
-
-                for (item in resumeEntities) {
-                    val key = item.seriesId ?: item.id
-                    if (seenKeys.add(key)) {
-                        combined.add(item)
-                    }
-                }
-
-                for (item in nextUpEntities) {
-                    val key = item.seriesId ?: item.id
-                    if (seenKeys.add(key)) {
-                        combined.add(item)
-                    }
-                }
-
-                val deduplicated = combined.deduplicateMediaEntities()
-                if (deduplicated.isNotEmpty()) {
-                    serverContinueWatchingCache.put(cacheKey, deduplicated)
-                }
-                deduplicated
-            }
-        }
-    }
-
-    suspend fun getNextUp(serverUrl: String, userId: String, token: String): Result<List<JellyfinMediaEntity>> {
-        return runCatching {
-            val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
-            val authHeader = buildJellyfinAuthHeader(token = token)
-            val response = api.getNextUpItems(authHeader = authHeader, userId = userId)
-            val entities = response.items.map { it.toEntity() }
-            if (entities.isNotEmpty()) {
-                jellyfinDao.insertOrUpdateAll(entities)
-            }
-            entities.deduplicateMediaEntities()
-        }
-    }
-
-    suspend fun getLatest(serverUrl: String, userId: String, token: String): Result<List<JellyfinMediaEntity>> {
-        val cacheKey = "$serverUrl-$userId"
-        serverLatestCache.get(cacheKey)?.let { return Result.success(it) }
-
-        return runCatching {
-            val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
-            val authHeader = buildJellyfinAuthHeader(token = token)
-            val response = api.getLatestItems(authHeader = authHeader, userId = userId)
-            val entities = response.map { it.toEntity() }
-            if (entities.isNotEmpty()) {
-                jellyfinDao.insertOrUpdateAll(entities)
-            }
-            val deduplicated = entities.deduplicateMediaEntities()
-            if (deduplicated.isNotEmpty()) {
-                serverLatestCache.put(cacheKey, deduplicated)
-            }
-            deduplicated
-        }
-    }
-
-    suspend fun getItemDetail(serverUrl: String, userId: String, token: String, itemId: String): Result<JellyfinMediaEntity> {
-        return runCatching {
-            val local = jellyfinDao.getItemById(itemId)
-            if (local != null && !local.overview.isNullOrBlank()) return@runCatching local
-            val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
-            val authHeader = buildJellyfinAuthHeader(token = token)
-            val dto = api.getItemDetail(authHeader = authHeader, userId = userId, itemId = itemId)
-            val entity = dto.toEntity()
-            if (entity.title.isNotBlank()) {
-                val mergedEntity = if (local != null) {
-                    entity.copy(
-                        overview = if (entity.overview.isNullOrBlank()) local.overview else entity.overview,
-                        genres = if (entity.genres.isNullOrBlank()) local.genres else entity.genres,
-                        officialRating = if (entity.officialRating.isNullOrBlank()) local.officialRating else entity.officialRating
-                    )
-                } else entity
-                jellyfinDao.insertOrUpdate(mergedEntity)
-                return@runCatching mergedEntity
-            }
-            local ?: entity
-        }
-    }
-
-    suspend fun getTraktRecommendations(traktToken: String, clientId: String): Result<List<TraktMediaDto>> {
-        return runCatching {
-            val api = NetworkClientFactory.createService("https://api.trakt.tv/", TraktApiService::class.java)
-            val authHeader = "Bearer $traktToken"
-            val movies = runCatching { api.getRecommendedMovies(authHeader, clientId) }.getOrDefault(emptyList())
-            val shows = runCatching { api.getRecommendedShows(authHeader, clientId) }.getOrDefault(emptyList())
-            movies + shows
-        }
-    }
-
-    suspend fun getTraktTrending(clientId: String): Result<List<TraktMediaDto>> {
-        return runCatching {
-            val api = NetworkClientFactory.createService("https://api.trakt.tv/", TraktApiService::class.java)
-            val movies = runCatching { api.getTrendingMovies(clientId) }.getOrDefault(emptyList()).mapNotNull { it.movie }
-            val shows = runCatching { api.getTrendingShows(clientId) }.getOrDefault(emptyList()).mapNotNull { it.show }
-            movies + shows
-        }
-    }
-
-    suspend fun getTraktWatchlist(traktToken: String, clientId: String): Result<List<TraktMediaDto>> {
-        return runCatching {
-            val api = NetworkClientFactory.createService("https://api.trakt.tv/", TraktApiService::class.java)
-            val authHeader = "Bearer $traktToken"
-            val items = api.getWatchlist(authHeader, clientId)
-            items.mapNotNull { it.movie ?: it.show }
-        }
-    }
-
-    suspend fun getTraktUserProfile(traktToken: String, clientId: String): Result<com.example.tujelly.data.remote.trakt.TraktUserDto> {
-        return runCatching {
-            val api = NetworkClientFactory.createService("https://api.trakt.tv/", TraktApiService::class.java)
-            val authHeader = "Bearer $traktToken"
-            api.getUserProfile(authHeader = authHeader, clientId = clientId)
-        }
-    }
-
-    suspend fun getTraktUserLists(traktToken: String, clientId: String): Result<List<com.example.tujelly.data.remote.trakt.TraktUserListDto>> {
-        return runCatching {
-            val api = NetworkClientFactory.createService("https://api.trakt.tv/", TraktApiService::class.java)
-            val authHeader = "Bearer $traktToken"
-
-            val personalLists = runCatching {
-                api.getUserLists(authHeader = authHeader, clientId = clientId)
-            }.onFailure {
-                android.util.Log.w("TraktRepo", "Error fetching user personal lists: ${it.localizedMessage}")
-            }.getOrDefault(emptyList())
-
-            val likedLists = runCatching {
-                api.getLikedLists(authHeader = authHeader, clientId = clientId)
-            }.onFailure {
-                android.util.Log.w("TraktRepo", "Error fetching user liked lists: ${it.localizedMessage}")
-            }.getOrDefault(emptyList()).map { it.list }
-
-            val combined = (personalLists + likedLists)
-                .filter { it.name.isNotBlank() }
-                .distinctBy { it.ids.trakt?.toString() ?: it.ids.slug ?: it.name }
-
-            android.util.Log.d("TraktRepo", "Found ${personalLists.size} personal lists and ${likedLists.size} liked lists (total: ${combined.size})")
-            combined
-        }
-    }
-
-    suspend fun getTraktCustomListItems(
-        traktToken: String,
-        clientId: String,
-        listId: String,
-        username: String? = null
-    ): Result<List<TraktMediaDto>> {
-        return runCatching {
-            val api = NetworkClientFactory.createService("https://api.trakt.tv/", TraktApiService::class.java)
-            val authHeader = "Bearer $traktToken"
-
-            val targetUser = username?.takeIf { it.isNotBlank() } ?: "me"
-
-            // 1. Intentar endpoint de usuario (/users/{user}/lists/{list_id}/items) que soporta tanto slugs como IDs
-            val userItems = runCatching {
-                api.getUserListItems(authHeader = authHeader, clientId = clientId, user = targetUser, listId = listId)
-            }.onFailure {
-                android.util.Log.w("TraktRepo", "Error fetching user list items ($targetUser / $listId): ${it.localizedMessage}")
-            }.getOrNull()
-
-            val items = if (!userItems.isNullOrEmpty()) {
-                userItems
-            } else {
-                // 2. Fallback a endpoint global de listas (/lists/{list_id}/items)
-                runCatching {
-                    api.getCustomListItems(authHeader = authHeader, clientId = clientId, listId = listId)
-                }.onFailure {
-                    android.util.Log.w("TraktRepo", "Fallback error fetching list items ($listId): ${it.localizedMessage}")
-                }.getOrDefault(emptyList())
-            }
-
-            android.util.Log.d("TraktRepo", "List $listId (user: $targetUser) returned ${items.size} raw items")
-            items.mapNotNull { it.movie ?: it.show }
-        }
-    }
-
-    suspend fun getRecentlyPlayed(serverUrl: String, userId: String, token: String): Result<List<JellyfinMediaEntity>> {
-        val cacheKey = "$serverUrl-$userId"
-        serverRecentlyPlayedCache.get(cacheKey)?.let { return Result.success(it) }
-
-        return runCatching {
-            val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
-            val authHeader = buildJellyfinAuthHeader(token = token)
-            val response = api.getRecentlyPlayedItems(authHeader = authHeader, userId = userId)
-            val entities = response.items.map { it.toEntity() }
-            if (entities.isNotEmpty()) {
-                jellyfinDao.insertOrUpdateAll(entities)
-                serverRecentlyPlayedCache.put(cacheKey, entities)
-            }
-            entities
-        }
-    }
-
-    suspend fun getTmdbTrending(apiKey: String): Result<List<TmdbItemDto>> {
-        tmdbTrendingCache.get(apiKey)?.let { return Result.success(it) }
-        return runCatching {
-            val api = NetworkClientFactory.createService("https://api.themoviedb.org/3/", TmdbApiService::class.java)
-            val response = api.getTrending(apiKey = apiKey)
-            if (response.results.isNotEmpty()) {
-                tmdbTrendingCache.put(apiKey, response.results)
-            }
-            response.results
-        }
-    }
-
-    suspend fun getTmdbTrendingDay(apiKey: String): Result<List<TmdbItemDto>> {
-        tmdbTrendingDayCache.get(apiKey)?.let { return Result.success(it) }
-        return runCatching {
-            val api = NetworkClientFactory.createService("https://api.themoviedb.org/3/", TmdbApiService::class.java)
-            val response = api.getTrendingDay(apiKey = apiKey)
-            if (response.results.isNotEmpty()) {
-                tmdbTrendingDayCache.put(apiKey, response.results)
-            }
-            response.results
-        }
-    }
-
-    suspend fun getTmdbRecommendations(apiKey: String, tmdbId: Long, isTv: Boolean = false): Result<List<TmdbItemDto>> {
-        val cacheKey = "$tmdbId-$isTv"
-        tmdbRecommendationsCache.get(cacheKey)?.let { return Result.success(it) }
-
-        return runCatching {
-            val api = NetworkClientFactory.createService("https://api.themoviedb.org/3/", TmdbApiService::class.java)
-            val results = if (isTv) {
-                api.getTvRecommendations(seriesId = tmdbId, apiKey = apiKey).results
-            } else {
-                api.getMovieRecommendations(movieId = tmdbId, apiKey = apiKey).results
-            }
-            if (results.isNotEmpty()) {
-                tmdbRecommendationsCache.put(cacheKey, results)
-            }
-            results
-        }
-    }
-
-    data class TmdbVoteStats(val voteCount: Int, val voteAverage: Float)
-
-    /**
-     * Devuelve stats de votación de TMDB con caché de 24h.
-     *
-     * Antes: una request HTTP por cada película/serie (N+1, hasta 200 requests/sesión).
-     * Ahora: SQLite lookup en ~0.1ms si el dato es fresco; HTTP solo si está expirado.
-     */
-    suspend fun getTmdbVoteStats(apiKey: String, tmdbId: Long, isTv: Boolean = false): TmdbVoteStats? {
-        // 1. Intentar desde caché local (0.1ms)
-        val cached = tmdbVoteCacheDao?.get(tmdbId, isTv)
-        if (cached != null && !cached.isExpired()) {
-            return TmdbVoteStats(voteCount = cached.voteCount, voteAverage = cached.voteAverage)
-        }
-
-        // 2. Cache miss o expirado → ir a red
-        return runCatching {
-            val api = NetworkClientFactory.createService("https://api.themoviedb.org/3/", TmdbApiService::class.java)
-            val stats = if (isTv) {
-                val d = api.getTvDetails(seriesId = tmdbId, apiKey = apiKey)
-                TmdbVoteStats(voteCount = d.voteCount ?: 0, voteAverage = d.voteAverage ?: 0f)
-            } else {
-                val d = api.getMovieDetails(movieId = tmdbId, apiKey = apiKey)
-                TmdbVoteStats(voteCount = d.voteCount ?: 0, voteAverage = d.voteAverage ?: 0f)
-            }
-            // Guardar en caché para las próximas 24h
-            tmdbVoteCacheDao?.upsert(
-                TmdbVoteCacheEntity(
-                    tmdbId = tmdbId,
-                    isTv = isTv,
-                    voteAverage = stats.voteAverage,
-                    voteCount = stats.voteCount
-                )
-            )
-            stats
-        }.getOrNull()
-    }
-
-    suspend fun getTmdbTrailerUrl(apiKey: String, tmdbId: Long, isTv: Boolean = false): String? {
-        return runCatching {
-            val api = NetworkClientFactory.createService("https://api.themoviedb.org/3/", TmdbApiService::class.java)
-            val response = if (isTv) {
-                api.getTvVideos(seriesId = tmdbId, apiKey = apiKey)
-            } else {
-                api.getMovieVideos(movieId = tmdbId, apiKey = apiKey)
-            }
-            val trailer = response.results.firstOrNull { it.type.equals("Trailer", ignoreCase = true) && it.site.equals("YouTube", ignoreCase = true) }
-                ?: response.results.firstOrNull { it.site.equals("YouTube", ignoreCase = true) }
-            trailer?.key?.let { key -> "https://www.youtube.com/watch?v=$key" }
-        }.getOrNull()
-    }
-
-    suspend fun getTmdbByGenre(apiKey: String, genreId: String, isTv: Boolean = false): Result<List<TmdbItemDto>> {
-        val cacheKey = "$genreId-$isTv"
-        tmdbGenreCache.get(cacheKey)?.let { return Result.success(it) }
-
-        return runCatching {
-            val api = NetworkClientFactory.createService("https://api.themoviedb.org/3/", TmdbApiService::class.java)
-            val results = if (isTv) {
-                api.discoverTvByGenre(apiKey = apiKey, genreId = genreId).results
-            } else {
-                api.discoverMoviesByGenre(apiKey = apiKey, genreId = genreId).results
-            }
-            if (results.isNotEmpty()) {
-                tmdbGenreCache.put(cacheKey, results)
-            }
-            results
-        }
-    }
-
-    suspend fun getTmdbByProvider(apiKey: String, providerId: String, region: String = "ES"): Result<List<TmdbItemDto>> {
-        val cacheKey = "$providerId-$region"
-        tmdbProviderCache.get(cacheKey)?.let { return Result.success(it) }
-
-        return runCatching {
-            val api = NetworkClientFactory.createService("https://api.themoviedb.org/3/", TmdbApiService::class.java)
-            val (movies, tv) = coroutineScope {
-                val m = async {
-                    runCatching { api.discoverMoviesByProvider(apiKey = apiKey, providerId = providerId, watchRegion = region) }
-                        .getOrNull()?.results ?: emptyList()
-                }
-                val t = async {
-                    runCatching { api.discoverTvByProvider(apiKey = apiKey, providerId = providerId, watchRegion = region) }
-                        .getOrNull()?.results ?: emptyList()
-                }
-                Pair(m.await(), t.await())
-            }
-            val combined = movies + tv
-            if (combined.isNotEmpty()) {
-                tmdbProviderCache.put(cacheKey, combined)
-            }
-            combined
-        }
-    }
-
-    suspend fun getTmdbMovieDetail(apiKey: String, movieId: Long): com.example.tujelly.data.remote.tmdb.TmdbMovieDetailDto? {
-        return runCatching {
-            val api = NetworkClientFactory.createService("https://api.themoviedb.org/3/", TmdbApiService::class.java)
-            api.getMovieDetails(movieId = movieId, apiKey = apiKey)
-        }.getOrNull()
-    }
-
-    suspend fun getTmdbTvDetail(apiKey: String, seriesId: Long): com.example.tujelly.data.remote.tmdb.TmdbTvDetailDto? {
-        return runCatching {
-            val api = NetworkClientFactory.createService("https://api.themoviedb.org/3/", TmdbApiService::class.java)
-            api.getTvDetails(seriesId = seriesId, apiKey = apiKey)
-        }.getOrNull()
-    }
-
-    suspend fun getTmdbTopRated(apiKey: String): Result<List<TmdbItemDto>> {
-        tmdbTopRatedCache.get(apiKey)?.let { return Result.success(it) }
-
-        return runCatching {
-            val api = NetworkClientFactory.createService("https://api.themoviedb.org/3/", TmdbApiService::class.java)
-            val (movies, tv) = coroutineScope {
-                val m = async {
-                    runCatching { api.getTopRatedMovies(apiKey = apiKey) }.getOrNull()?.results ?: emptyList()
-                }
-                val t = async {
-                    runCatching { api.getTopRatedTv(apiKey = apiKey) }.getOrNull()?.results ?: emptyList()
-                }
-                Pair(m.await(), t.await())
-            }
-            val combined = movies + tv
-            if (combined.isNotEmpty()) {
-                tmdbTopRatedCache.put(apiKey, combined)
-            }
-            combined
-        }
-    }
-
-    /**
-     * Selección dinámica de películas para la cabecera — lógica estilo streaming.
-     *
-     * Prioridad (igual que Netflix/Disney+):
-     *   1. Añadidas recientemente que NO has visto → lo más relevante: es nuevo y pendiente
-     *   2. Tus favoritas que NO has visto (o que no terminas) → lo que tú mismo has marcado
-     *   3. Fallback: lo mejor valorado que aún no has visto → descubrir joyas pendientes
-     *
-     * NO muestra películas que ya has visto completamente (IsPlayed).
-     * NO hace random puro (daría viejas películas sin criterio).
-     */
-    suspend fun getTopRatedMoviesServer(serverUrl: String, userId: String, token: String, limit: Int = 20): List<JellyfinMediaEntity> {
-        if (serverUrl.isBlank() || token.isBlank()) return jellyfinDao.getTopMoviesLocal(limit).filterAllowed()
-        val cacheKey = "$serverUrl-$userId-$limit"
-        serverTopMoviesCache.get(cacheKey)?.let { return it }
-
-        return runCatching {
-            val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
-            val authHeader = buildJellyfinAuthHeader(token = token)
-            val fields = "Overview,ProviderIds,PrimaryImageTag,BackdropImageTags,CommunityRating,OfficialRating,UserData,Genres,Tags"
-
-            // 1. Añadidas recientemente y NO vistas → lo más fresco de tu biblioteca pendiente
-            val recentUnplayed = api.getLibraryItems(
-                authHeader = authHeader,
-                userId = userId,
-                includeItemTypes = "Movie",
-                fields = fields,
-                recursive = true,
-                limit = 40, // reducido de 100: solo necesitamos 20, 40 da margen suficiente
-                sortBy = "DateCreated",
-                sortOrder = "Descending",
-                filters = "IsUnplayed"
-            ).items.map { it.toEntity() }
-                .filter { !it.backdropImageTag.isNullOrEmpty() && (it.communityRating ?: 0f) >= 6.5f }
-
-            // 2. Favoritas no vistas → preferencia explícita del usuario pendiente de ver
-            val favoritesUnplayed = runCatching {
-                api.getLibraryItems(
-                    authHeader = authHeader,
-                    userId = userId,
-                    includeItemTypes = "Movie",
-                    fields = fields,
-                    recursive = true,
-                    limit = 15,
-                    sortBy = "DateCreated",
-                    sortOrder = "Descending",
-                    filters = "IsFavorite,IsUnplayed"
-                ).items.map { it.toEntity() }
-                    .filter { !it.backdropImageTag.isNullOrEmpty() }
-            }.getOrDefault(emptyList())
-
-            // 3. Fallback: mejor valoradas sin ver → descubrir pendientes de calidad
-            val topUnplayed = if ((favoritesUnplayed + recentUnplayed).distinctBy { it.id }.size < limit) {
-                runCatching {
-                    api.getLibraryItems(
-                        authHeader = authHeader,
-                        userId = userId,
-                        includeItemTypes = "Movie",
-                        fields = fields,
-                        recursive = true,
-                        limit = limit * 2,
-                        sortBy = "CommunityRating",
-                        sortOrder = "Descending",
-                        filters = "IsUnplayed"
-                    ).items.map { it.toEntity() }
-                        .filter { !it.backdropImageTag.isNullOrEmpty() && (it.communityRating ?: 0f) >= 7.0f }
-                }.getOrDefault(emptyList())
-            } else emptyList()
-
-            // Favoritas primero, luego recientes, luego top valoradas — sin duplicados
-            val merged = (favoritesUnplayed + recentUnplayed + topUnplayed)
-                .distinctBy { it.id }
-                .take(limit)
-
-            if (merged.isNotEmpty()) {
-                jellyfinDao.insertOrUpdateAll(merged)
-                serverTopMoviesCache.put(cacheKey, merged)
-                merged
-            } else {
-                jellyfinDao.getTopMoviesLocal(limit).filterAllowed()
-            }
-        }.getOrDefault(jellyfinDao.getTopMoviesLocal(limit).filterAllowed())
-    }
-
-    /**
-     * Selección dinámica de series para la cabecera — misma lógica que películas.
-     *
-     * Prioridad:
-     *   1. Series añadidas recientemente que NO has empezado
-     *   2. Tus series favoritas no vistas
-     *   3. Fallback: series mejor valoradas sin ver
-     */
-    suspend fun getTopRatedSeriesServer(serverUrl: String, userId: String, token: String, limit: Int = 20): List<JellyfinMediaEntity> {
-        if (serverUrl.isBlank() || token.isBlank()) return jellyfinDao.getTopSeriesLocal(limit).filterAllowed()
-        val cacheKey = "$serverUrl-$userId-$limit"
-        serverTopSeriesCache.get(cacheKey)?.let { return it }
-
-        return runCatching {
-            val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
-            val authHeader = buildJellyfinAuthHeader(token = token)
-            val fields = "Overview,ProviderIds,PrimaryImageTag,BackdropImageTags,CommunityRating,OfficialRating,UserData,Genres,Tags"
-
-            // 1. Series añadidas recientemente y no empezadas
-            val recentUnplayed = api.getLibraryItems(
-                authHeader = authHeader,
-                userId = userId,
-                includeItemTypes = "Series",
-                fields = fields,
-                recursive = true,
-                limit = 40, // reducido de 100
-                sortBy = "DateCreated",
-                sortOrder = "Descending",
-                filters = "IsUnplayed"
-            ).items.map { it.toEntity() }
-                .filter { !it.backdropImageTag.isNullOrEmpty() && (it.communityRating ?: 0f) >= 6.5f }
-
-            // 2. Favoritas no empezadas
-            val favoritesUnplayed = runCatching {
-                api.getLibraryItems(
-                    authHeader = authHeader,
-                    userId = userId,
-                    includeItemTypes = "Series",
-                    fields = fields,
-                    recursive = true,
-                    limit = 15,
-                    sortBy = "DateCreated",
-                    sortOrder = "Descending",
-                    filters = "IsFavorite,IsUnplayed"
-                ).items.map { it.toEntity() }
-                    .filter { !it.backdropImageTag.isNullOrEmpty() }
-            }.getOrDefault(emptyList())
-
-            // 3. Fallback: mejor valoradas sin empezar
-            val topUnplayed = if ((favoritesUnplayed + recentUnplayed).distinctBy { it.id }.size < limit) {
-                runCatching {
-                    api.getLibraryItems(
-                        authHeader = authHeader,
-                        userId = userId,
-                        includeItemTypes = "Series",
-                        fields = fields,
-                        recursive = true,
-                        limit = limit * 2,
-                        sortBy = "CommunityRating",
-                        sortOrder = "Descending",
-                        filters = "IsUnplayed"
-                    ).items.map { it.toEntity() }
-                        .filter { !it.backdropImageTag.isNullOrEmpty() && (it.communityRating ?: 0f) >= 7.0f }
-                }.getOrDefault(emptyList())
-            } else emptyList()
-
-            val merged = (favoritesUnplayed + recentUnplayed + topUnplayed)
-                .distinctBy { it.id }
-                .take(limit)
-
-            if (merged.isNotEmpty()) {
-                jellyfinDao.insertOrUpdateAll(merged)
-                serverTopSeriesCache.put(cacheKey, merged)
-                merged
-            } else {
-                jellyfinDao.getTopSeriesLocal(limit).filterAllowed()
-            }
-        }.getOrDefault(jellyfinDao.getTopSeriesLocal(limit).filterAllowed())
-    }
-
-    fun getAllLocalLibrary(): Flow<List<JellyfinMediaEntity>> = jellyfinDao.getAllItems().map { it.filterAllowed() }
-    
-    suspend fun getLocalMovies(): List<JellyfinMediaEntity> = jellyfinDao.getMovies().deduplicateMediaEntities().filterAllowed()
-    suspend fun getLocalSeries(): List<JellyfinMediaEntity> = jellyfinDao.getSeries().deduplicateMediaEntities().filterAllowed()
-    suspend fun getAllCatalog(): List<JellyfinMediaEntity> = jellyfinDao.getAllCatalog().deduplicateMediaEntities().filterAllowed()
-    suspend fun getItemById(id: String): JellyfinMediaEntity? = jellyfinDao.getItemById(id)
-    suspend fun getItemsByIds(ids: List<String>): List<JellyfinMediaEntity> {
-        if (ids.isEmpty()) return emptyList()
-        return jellyfinDao.getItemsByIds(ids).filterAllowed()
-    }
-
-    suspend fun getContinueWatchingLocal(limit: Int = 20): List<JellyfinMediaEntity> {
-        val raw = jellyfinDao.getContinueWatchingLocal(limit * 2)
-        val seenKeys = mutableSetOf<String>()
-        val filtered = raw.filter { item ->
-            val key = item.seriesId ?: item.id
-            seenKeys.add(key)
-        }.take(limit)
-        return filtered.deduplicateMediaEntities().filterAllowed()
-    }
-    suspend fun getLatestLocal(serverUrl: String = "", userId: String = "", limit: Int = 20): List<JellyfinMediaEntity> {
-        val cacheKey = "$serverUrl-$userId"
-        serverLatestCache.get(cacheKey)?.let { return it.take(limit) }
-        return jellyfinDao.getLatestLocal(limit).deduplicateMediaEntities().filterAllowed()
-    }
-    suspend fun getTopMoviesLocal(limit: Int = 20): List<JellyfinMediaEntity> = jellyfinDao.getTopMoviesLocal(limit).deduplicateMediaEntities().filterAllowed()
-    suspend fun getTopSeriesLocal(limit: Int = 20): List<JellyfinMediaEntity> = jellyfinDao.getTopSeriesLocal(limit).deduplicateMediaEntities().filterAllowed()
-    suspend fun getTopRatedLocal(limit: Int = 20): List<JellyfinMediaEntity> = jellyfinDao.getTopRatedLocal(limit).deduplicateMediaEntities().filterAllowed()
-    suspend fun searchLocalMedia(query: String, limit: Int = 40): List<JellyfinMediaEntity> = jellyfinDao.searchLocalMedia(query.trim(), limit).deduplicateMediaEntities().filterAllowed()
-    suspend fun getAllLocalTitles(): List<String> = jellyfinDao.getAllLocalTitles()
-    suspend fun getLocalCount(): Int = jellyfinDao.getCount()
-    fun getLibraryStatsFlow(): Flow<LibraryStats> = jellyfinDao.getLibraryStatsFlow()
-    suspend fun getFavoritesLocal(): List<JellyfinMediaEntity> = jellyfinDao.getFavorites().deduplicateMediaEntities().filterAllowed()
-    fun getFavoritesFlow(): Flow<List<JellyfinMediaEntity>> = jellyfinDao.getFavoritesFlow().map { it.filterAllowed() }
-
-    suspend fun getFavorites(serverUrl: String, userId: String, token: String): Result<List<JellyfinMediaEntity>> {
-        return runCatching {
-            val local = jellyfinDao.getFavorites().deduplicateMediaEntities()
-            if (serverUrl.isBlank() || token.isBlank()) return@runCatching local
-            try {
-                val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
-                val authHeader = buildJellyfinAuthHeader(token = token)
-                val response = api.getFavoriteItems(authHeader = authHeader, userId = userId)
-                val entities = response.items.map { it.toEntity().copy(isFavorite = true) }
-                if (entities.isNotEmpty()) {
-                    jellyfinDao.insertOrUpdateAll(entities)
-                    entities.deduplicateMediaEntities()
-                } else local
-            } catch (e: Exception) {
-                local
-            }
-        }
-    }
-
-    suspend fun toggleFavorite(serverUrl: String, userId: String, token: String, itemId: String, makeFavorite: Boolean): Result<Boolean> {
-        return runCatching {
-            jellyfinDao.updateFavoriteStatus(itemId, makeFavorite)
-            if (serverUrl.isNotBlank() && token.isNotBlank() && userId.isNotBlank()) {
-                val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
-                val authHeader = buildJellyfinAuthHeader(token = token)
-                if (makeFavorite) {
-                    api.markFavorite(authHeader, userId, itemId)
-                } else {
-                    api.unmarkFavorite(authHeader, userId, itemId)
-                }
-            }
-            makeFavorite
-        }
-    }
-
-    suspend fun togglePlayed(serverUrl: String, userId: String, token: String, itemId: String, makePlayed: Boolean): Result<Boolean> {
-        return runCatching {
-            jellyfinDao.updatePlayedStatus(itemId, makePlayed)
-            if (serverUrl.isNotBlank() && token.isNotBlank() && userId.isNotBlank()) {
-                val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
-                val authHeader = buildJellyfinAuthHeader(token = token)
-                if (makePlayed) {
-                    api.markPlayed(authHeader, userId, itemId)
-                } else {
-                    api.unmarkPlayed(authHeader, userId, itemId)
-                }
-            }
-            makePlayed
-        }
-    }
-
-    suspend fun findLocal(tmdbId: String?, imdbId: String?, title: String? = null, year: Int? = null): JellyfinMediaEntity? {
-        val matched = findLocalInternal(tmdbId, imdbId, title, year) ?: return null
-        return resolveToSeriesIfEpisode(matched)
-    }
-
-    private suspend fun findLocalInternal(tmdbId: String?, imdbId: String?, title: String? = null, year: Int? = null): JellyfinMediaEntity? {
-        // 1. Try matching by TMDB or IMDB ID
-        if (tmdbId != null || imdbId != null) {
-            val matchedById = jellyfinDao.findByTmdbOrImdb(tmdbId, imdbId)
-            if (matchedById != null) return matchedById
-        }
-
-        // 2. Fallback: match by title and year
-        if (!title.isNullOrBlank()) {
-            val cleanTitle = title.trim().substringBefore(":").substringBefore("-").trim()
-            if (year != null && year > 1900) {
-                val matchedByTitleAndYear = jellyfinDao.findByTitleAndYear(cleanTitle, year)
-                    ?: jellyfinDao.findByTitleAndYear(title.trim(), year)
-                if (matchedByTitleAndYear != null) return matchedByTitleAndYear
-            }
-            val matchedByTitle = jellyfinDao.findByTitle(cleanTitle)
-                ?: jellyfinDao.findByTitle(title.trim())
-                ?: jellyfinDao.findByFuzzyTitle(cleanTitle)
-            if (matchedByTitle != null) return matchedByTitle
-        }
-
-        return null
-    }
-
-    private suspend fun resolveToSeriesIfEpisode(entity: JellyfinMediaEntity): JellyfinMediaEntity {
-        if (!entity.type.equals("Episode", ignoreCase = true)) {
-            return entity
-        }
-
-        // 1. Look up parent series in local Room DB by seriesId
-        if (!entity.seriesId.isNullOrBlank()) {
-            val parent = jellyfinDao.getItemById(entity.seriesId)
-            if (parent != null) return parent
-        }
-
-        // 2. Look up parent series in local Room DB by seriesName or title
-        val sName = entity.seriesName ?: entity.title.substringBefore("(").substringBefore("-").trim()
-        val parentByName = jellyfinDao.getSeriesByTitle(sName)
-        if (parentByName != null) return parentByName
-
-        // 3. Synthesize Series entity from Episode data
-        val eps = if (!entity.seriesId.isNullOrBlank()) {
-            jellyfinDao.getEpisodesForSeries(entity.seriesId)
-        } else emptyList()
-
-        val uniqueEps = eps.filter { (it.seasonNumber ?: 0) > 0 && (it.episodeNumber ?: 0) > 0 }
-            .groupBy { Pair(it.seasonNumber, it.episodeNumber) }
-        val playedCount = if (uniqueEps.isNotEmpty()) {
-            uniqueEps.count { (_, duplicates) -> duplicates.any { it.isPlayed } }
-        } else {
-            if (entity.isPlayed) 1 else 0
-        }
-        val totalCount = maxOf(
-            entity.totalItemCount ?: 0,
-            if (uniqueEps.isNotEmpty()) uniqueEps.size else 0
-        )
-        val unplayedCount = (totalCount - playedCount).coerceAtLeast(0)
-
-        return JellyfinMediaEntity(
-            id = entity.seriesId ?: entity.id,
-            title = sName,
-            originalTitle = entity.originalTitle,
-            type = "Series",
-            tmdbId = entity.tmdbId,
-            imdbId = entity.imdbId,
-            tvdbId = entity.tvdbId,
-            overview = entity.overview,
-            primaryImageTag = entity.seriesPrimaryImageTag ?: entity.primaryImageTag,
-            backdropImageTag = entity.backdropImageTag,
-            communityRating = entity.communityRating,
-            productionYear = entity.productionYear,
-            genres = entity.genres,
-            isPlayed = unplayedCount == 0 && playedCount > 0,
-            playbackPositionTicks = 0L,
-            isFavorite = entity.isFavorite,
-            seriesId = null,
-            seriesName = null,
-            seriesPrimaryImageTag = null,
-            seasonNumber = null,
-            episodeNumber = null,
-            totalItemCount = totalCount,
-            unplayedItemCount = unplayedCount
-        )
-    }
-
-    suspend fun getMostWatchedGenres(): List<String> {
-        val watchedRaw = runCatching { jellyfinDao.getWatchedGenres() }.getOrDefault(emptyList())
-        val allRaw = if (watchedRaw.size < 5) runCatching { jellyfinDao.getAllGenresRaw() }.getOrDefault(emptyList()) else emptyList()
-
-        val rawList = watchedRaw.ifEmpty { allRaw }
-        val counts = mutableMapOf<String, Int>()
-
-        for (raw in rawList) {
-            if (raw.isNullOrBlank()) continue
-            val parts = raw.split(",", ";").map { it.trim() }.filter { it.isNotBlank() }
-            for (part in parts) {
-                val clean = part.replaceFirstChar { it.uppercase() }
-                counts[clean] = (counts[clean] ?: 0) + 1
-            }
-        }
-
-        val defaultGenres = listOf("Acción", "Comedia", "Drama", "Ciencia ficción", "Terror", "Aventura", "Animación", "Thriller", "Romance", "Fantasía", "Documental")
-        for (g in defaultGenres) {
-            if (!counts.containsKey(g)) {
-                counts[g] = 1
-            }
-        }
-
-        return counts.entries
-            .sortedByDescending { it.value }
-            .map { it.key }
-            .take(12)
-    }
-
-    suspend fun getItemsByGenre(genre: String): List<JellyfinMediaEntity> {
-        return jellyfinDao.getItemsByGenre(genre).filterAllowed()
-    }
-
-    suspend fun getMoviesByGenre(genre: String, limit: Int = 40): List<JellyfinMediaEntity> {
-        return jellyfinDao.getMoviesByGenre(genre, limit).filterAllowed()
-    }
-
-    suspend fun getSeriesByGenre(genre: String, limit: Int = 40): List<JellyfinMediaEntity> {
-        return jellyfinDao.getSeriesByGenre(genre, limit).filterAllowed()
-    }
-
-    suspend fun getRecentMoviesByGenre(genre: String, limit: Int = 20): List<JellyfinMediaEntity> {
-        return jellyfinDao.getRecentMoviesByGenre(genre, limit).filterAllowed()
-    }
-
-    suspend fun getRecentSeriesByGenre(genre: String, limit: Int = 20): List<JellyfinMediaEntity> {
-        return jellyfinDao.getRecentSeriesByGenre(genre, limit).filterAllowed()
-    }
-
-    suspend fun getRecommendedMovies(
-        excludeIds: Set<String>,
-        limit: Int = 20,
-        genres: List<String>? = null
-    ): List<JellyfinMediaEntity> {
-        val topGenres = (genres ?: getMostWatchedGenres()).take(4)
-        val addedIds = mutableSetOf<String>().apply { addAll(excludeIds) }
-
-        // Máximo de ítems por género para garantizar variedad real.
-        // Con 4 géneros × 4 = 16, completamos hasta 20 con el fallback.
-        val maxPerGenre = 4
-
-        // Recoger candidatos de cada género por separado, luego intercalar
-        val buckets: List<List<JellyfinMediaEntity>> = topGenres.map { genre ->
-            jellyfinDao.getItemsByGenre(genre, limit = maxPerGenre * 3).filterAllowed() // pedir más de los que necesitamos para tener margen
-                .filter {
-                    it.type.equals("Movie", ignoreCase = true)
-                        && it.id !in addedIds
-                        && !it.isPlayed  // ya vista → no mostrar
-                        && (it.communityRating ?: 0f) >= 5.5f // calidad mínima
-                }
-                .take(maxPerGenre)
-        }
-
-        // Intercalar: primero un item de cada género, luego el segundo de cada género, etc.
-        // Resultado: Acción, Drama, Thriller, Comedia, Acción, Drama, Thriller, Comedia...
-        // En vez de: Comedia, Comedia, Comedia, Comedia, Acción, Acción...
-        val resultList = mutableListOf<JellyfinMediaEntity>()
-        val maxRound = buckets.maxOfOrNull { it.size } ?: 0
-        for (round in 0 until maxRound) {
-            for (bucket in buckets) {
-                if (round < bucket.size) {
-                    val item = bucket[round]
-                    if (item.id !in addedIds) {
-                        resultList.add(item)
-                        addedIds.add(item.id)
-                        if (resultList.size >= limit) return resultList
-                    }
-                }
-            }
-        }
-
-        // Fallback: rellenar con películas bien valoradas no mostradas aún (evitando escanear toda la DB)
-        if (resultList.size < limit) {
-            jellyfinDao.getTopMoviesLocal(limit = 50).filterAllowed()
-                .filter { it.id !in addedIds && !it.isPlayed && (it.communityRating ?: 0f) >= 6.0f }
-                .take(limit - resultList.size)
-                .forEach {
-                    resultList.add(it)
-                    addedIds.add(it.id)
-                }
-        }
-
-        return resultList
-    }
-
-    suspend fun getSeasons(serverUrl: String, userId: String, token: String, seriesId: String): List<SeasonItem> {
-        return runCatching {
-            val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
-            val authHeader = buildJellyfinAuthHeader(token = token)
-            val response = api.getSeasonsForSeries(authHeader = authHeader, seriesId = seriesId, userId = userId)
-            response.items.mapNotNull { item ->
-                val seasonNum = item.indexNumber ?: 0
-                val defaultName = if (seasonNum == 0) "Especiales" else "Temporada $seasonNum"
-                SeasonItem(
-                    id = item.id,
-                    name = item.name ?: defaultName,
-                    seasonNumber = seasonNum
-                )
-            }.sortedWith(compareBy({ if (it.seasonNumber == 0) 9999 else it.seasonNumber }))
-        }.getOrDefault(emptyList())
-    }
-
-    suspend fun getSeriesEpisodeStats(serverUrl: String, userId: String, token: String, seriesId: String): com.example.tujelly.domain.model.SeriesEpisodeStats? {
-        return runCatching {
-            val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
-            val authHeader = buildJellyfinAuthHeader(token = token)
-            val response = api.getEpisodesForSeries(
-                authHeader = authHeader,
-                seriesId = seriesId,
-                userId = userId,
-                fields = "UserData,IndexNumber,ParentIndexNumber"
-            )
-            val validEpisodes = response.items.filter { (it.parentIndexNumber ?: 0) > 0 && (it.indexNumber ?: 0) > 0 }
-            if (validEpisodes.isEmpty()) return@runCatching null
-
-            // Deduplicate across multi-sources and versions by (seasonNumber, episodeNumber)
-            val uniqueEpisodes = validEpisodes.groupBy { Pair(it.parentIndexNumber ?: 1, it.indexNumber ?: 1) }
-            val total = uniqueEpisodes.size
-            val played = uniqueEpisodes.count { (_, duplicates) ->
-                duplicates.any { it.userData?.isPlayed == true }
-            }
-            val unplayed = (total - played).coerceAtLeast(0)
-
-            jellyfinDao.getItemById(seriesId)?.let { localSeries ->
-                val updated = localSeries.copy(
-                    totalItemCount = total,
-                    unplayedItemCount = unplayed,
-                    isPlayed = unplayed == 0 && total > 0
-                )
-                jellyfinDao.insertOrUpdate(updated)
-            }
-
-            com.example.tujelly.domain.model.SeriesEpisodeStats(
-                totalUniqueEpisodes = total,
-                playedUniqueEpisodes = played,
-                unplayedUniqueEpisodes = unplayed
-            )
-        }.getOrNull()
-    }
-
-    suspend fun getCollectionItems(
+    suspend fun searchAndCache(
         serverUrl: String,
         userId: String,
         token: String,
-        collectionId: String
-    ): List<JellyfinMediaEntity> {
-        if (serverUrl.isBlank() || userId.isBlank() || token.isBlank() || collectionId.isBlank()) return emptyList()
-        return runCatching {
-            val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
-            val authHeader = buildJellyfinAuthHeader(token = token)
-            val response = api.getCollectionItems(
-                authHeader = authHeader,
-                userId = userId,
-                parentId = collectionId
-            )
-            val entities = response.items.map { it.toEntity() }
-            if (entities.isNotEmpty()) {
-                jellyfinDao.insertOrUpdateAll(entities)
-            }
-            entities
-        }.getOrDefault(emptyList())
-    }
+        title: String,
+        year: Int? = null,
+        tmdbId: String? = null,
+        imdbId: String? = null
+    ): JellyfinMediaEntity? = jellyfinRemote.searchAndCache(serverUrl, userId, token, title, year, tmdbId, imdbId)
+
+    suspend fun searchRemoteAndCache(
+        serverUrl: String,
+        userId: String,
+        token: String,
+        query: String,
+        limit: Int = 30
+    ): Result<List<JellyfinMediaEntity>> = jellyfinRemote.searchRemoteAndCache(serverUrl, userId, token, query, limit)
+
+    suspend fun getUserViews(serverUrl: String, userId: String, token: String): Result<List<JellyfinItemDto>> =
+        jellyfinRemote.getUserViews(serverUrl, userId, token)
+
+    suspend fun getContinueWatching(serverUrl: String, userId: String, token: String): Result<List<JellyfinMediaEntity>> =
+        jellyfinRemote.getContinueWatching(serverUrl, userId, token)
+
+    suspend fun getNextUp(serverUrl: String, userId: String, token: String): Result<List<JellyfinMediaEntity>> =
+        jellyfinRemote.getNextUp(serverUrl, userId, token)
+
+    suspend fun getLatest(serverUrl: String, userId: String, token: String): Result<List<JellyfinMediaEntity>> =
+        jellyfinRemote.getLatest(serverUrl, userId, token)
+
+    suspend fun getRecentlyPlayed(serverUrl: String, userId: String, token: String): Result<List<JellyfinMediaEntity>> =
+        jellyfinRemote.getRecentlyPlayed(serverUrl, userId, token)
+
+    suspend fun getItemDetail(serverUrl: String, userId: String, token: String, itemId: String): Result<JellyfinMediaEntity> =
+        jellyfinRemote.getItemDetail(serverUrl, userId, token, itemId)
+
+    suspend fun getFavorites(serverUrl: String, userId: String, token: String): Result<List<JellyfinMediaEntity>> =
+        jellyfinRemote.getFavorites(serverUrl, userId, token)
+
+    suspend fun toggleFavorite(serverUrl: String, userId: String, token: String, itemId: String, makeFavorite: Boolean): Result<Boolean> =
+        jellyfinRemote.toggleFavorite(serverUrl, userId, token, itemId, makeFavorite)
+
+    suspend fun togglePlayed(serverUrl: String, userId: String, token: String, itemId: String, makePlayed: Boolean): Result<Boolean> =
+        jellyfinRemote.togglePlayed(serverUrl, userId, token, itemId, makePlayed)
+
+    suspend fun getTopRatedMoviesServer(serverUrl: String, userId: String, token: String, limit: Int = 20): List<JellyfinMediaEntity> =
+        jellyfinRemote.getTopRatedMoviesServer(serverUrl, userId, token, limit)
+
+    suspend fun getTopRatedSeriesServer(serverUrl: String, userId: String, token: String, limit: Int = 20): List<JellyfinMediaEntity> =
+        jellyfinRemote.getTopRatedSeriesServer(serverUrl, userId, token, limit)
+
+    suspend fun getSeasons(serverUrl: String, userId: String, token: String, seriesId: String): List<SeasonItem> =
+        jellyfinRemote.getSeasons(serverUrl, userId, token, seriesId)
+
+    suspend fun getSeriesEpisodeStats(serverUrl: String, userId: String, token: String, seriesId: String): SeriesEpisodeStats? =
+        jellyfinRemote.getSeriesEpisodeStats(serverUrl, userId, token, seriesId)
+
+    suspend fun getCollectionItems(serverUrl: String, userId: String, token: String, collectionId: String): List<JellyfinMediaEntity> =
+        jellyfinRemote.getCollectionItems(serverUrl, userId, token, collectionId)
 
     suspend fun getEpisodes(
         serverUrl: String,
@@ -1684,262 +162,127 @@ class MediaRepository(
         token: String,
         seriesId: String,
         seasonId: String? = null
-    ): List<EpisodeItem> {
-        return runCatching {
-            val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
-            val authHeader = buildJellyfinAuthHeader(token = token)
-            val response = api.getEpisodesForSeries(
-                authHeader = authHeader,
-                seriesId = seriesId,
-                userId = userId,
-                seasonId = seasonId
-            )
-            val entities = response.items.map { it.toEntity() }
-            if (entities.isNotEmpty()) {
-                jellyfinDao.insertOrUpdateAll(entities)
-            }
-            val rawEpisodes = response.items.map { item ->
-                val epNum = item.indexNumber ?: 1
-                val seasonNum = item.parentIndexNumber ?: 1
-                val durationMin = item.runTimeTicks?.let { (it / 10_000_000L / 60L).toInt() }
-                val imageTag = item.imageTags?.get("Primary")
-                val imageUrl = imageTag?.let {
-                    JellyfinImageUtils.getEpisodeThumbnailUrl(
-                        baseUrl = serverUrl,
-                        itemId = item.id,
-                        imageTag = it,
-                        token = token
-                    )
-                }
+    ): List<EpisodeItem> = jellyfinRemote.getEpisodes(serverUrl, userId, token, seriesId, seasonId)
 
-                EpisodeItem(
-                    id = item.id,
-                    name = item.name ?: "Episodio $epNum",
-                    episodeNumber = epNum,
-                    seasonNumber = seasonNum,
-                    overview = item.overview,
-                    imageUrl = imageUrl,
-                    durationMinutes = durationMin,
-                    isPlayed = item.userData?.isPlayed ?: false,
-                    playbackPositionTicks = item.userData?.playbackPositionTicks ?: 0L
-                )
-            }
+    suspend fun getNextUpEpisode(serverUrl: String, userId: String, token: String, seriesId: String): EpisodeItem? =
+        jellyfinRemote.getNextUpEpisode(serverUrl, userId, token, seriesId)
 
-            // Deduplicate episodes with the same (seasonNumber, episodeNumber)
-            rawEpisodes.groupBy { Pair(it.seasonNumber, it.episodeNumber) }
-                .map { (_, duplicates) ->
-                    if (duplicates.size == 1) {
-                        duplicates.first()
-                    } else {
-                        val bestPlayed = duplicates.any { it.isPlayed }
-                        val maxTicks = duplicates.maxOf { it.playbackPositionTicks }
+    // =========================================================================
+    // TMDB
+    // =========================================================================
 
-                        // Prefer item with clean title (doesn't contain filename formatting like S01E01 or trailing hyphen)
-                        val cleanTitleItem = duplicates.firstOrNull { ep ->
-                            val name = ep.name.trim()
-                            !name.contains("S0", ignoreCase = true) &&
-                            !name.contains("S1", ignoreCase = true) &&
-                            !name.contains("S2", ignoreCase = true) &&
-                            !name.endsWith("-")
-                        } ?: duplicates.first()
+    suspend fun getTmdbTrending(apiKey: String): Result<List<TmdbItemDto>> = tmdb.getTmdbTrending(apiKey)
 
-                        val primaryItem = duplicates.firstOrNull { it.isPlayed || it.playbackPositionTicks > 0 }
-                            ?: cleanTitleItem
+    suspend fun getTmdbTrendingDay(apiKey: String): Result<List<TmdbItemDto>> = tmdb.getTmdbTrendingDay(apiKey)
 
-                        cleanTitleItem.copy(
-                            id = primaryItem.id,
-                            isPlayed = bestPlayed,
-                            playbackPositionTicks = maxTicks,
-                            overview = cleanTitleItem.overview ?: duplicates.firstNotNullOfOrNull { it.overview },
-                            imageUrl = cleanTitleItem.imageUrl ?: duplicates.firstNotNullOfOrNull { it.imageUrl },
-                            durationMinutes = cleanTitleItem.durationMinutes ?: duplicates.firstNotNullOfOrNull { it.durationMinutes }
-                        )
-                    }
-                }
-                .sortedWith(compareBy({ it.seasonNumber }, { it.episodeNumber }))
-        }.getOrDefault(emptyList())
-    }
+    suspend fun getTmdbRecommendations(apiKey: String, tmdbId: Long, isTv: Boolean = false): Result<List<TmdbItemDto>> =
+        tmdb.getTmdbRecommendations(apiKey, tmdbId, isTv)
 
-    suspend fun getSeriesStatus(
-        tmdbApiKey: String,
-        tmdbId: Long?,
-        jellyfinStatus: String?
-    ): SeriesStatus {
-        if (tmdbId != null && tmdbApiKey.isNotBlank()) {
-            val tmdbStatus = runCatching {
-                val tmdbApi = NetworkClientFactory.createService("https://api.themoviedb.org/3/", TmdbApiService::class.java)
-                val detail = tmdbApi.getTvDetails(seriesId = tmdbId, apiKey = tmdbApiKey)
-                detail.status
-            }.getOrNull()
-            if (!tmdbStatus.isNullOrBlank()) {
-                return SeriesStatus.from(tmdbStatus = tmdbStatus, jellyfinStatus = jellyfinStatus)
-            }
-        }
-        return SeriesStatus.from(tmdbStatus = null, jellyfinStatus = jellyfinStatus)
-    }
+    suspend fun getTmdbVoteStats(apiKey: String, tmdbId: Long, isTv: Boolean = false): TmdbVoteStats? =
+        tmdb.getTmdbVoteStats(apiKey, tmdbId, isTv)
 
-    suspend fun getNextUpEpisode(
-        serverUrl: String,
-        userId: String,
-        token: String,
-        seriesId: String
-    ): EpisodeItem? {
-        return runCatching {
-            val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
-            val authHeader = buildJellyfinAuthHeader(token = token)
-            val nextUpResponse = api.getNextUpItems(
-                authHeader = authHeader,
-                userId = userId,
-                seriesId = seriesId,
-                limit = 1
-            )
-            val nextItem = nextUpResponse.items.firstOrNull()
-            if (nextItem != null) {
-                val epNum = nextItem.indexNumber ?: 1
-                val seasonNum = nextItem.parentIndexNumber ?: 1
-                EpisodeItem(
-                    id = nextItem.id,
-                    name = nextItem.name ?: "Episodio $epNum",
-                    episodeNumber = epNum,
-                    seasonNumber = seasonNum,
-                    overview = nextItem.overview,
-                    isPlayed = nextItem.userData?.isPlayed ?: false,
-                    playbackPositionTicks = nextItem.userData?.playbackPositionTicks ?: 0L
-                )
-            } else {
-                null
-            }
-        }.getOrNull()
-    }
+    suspend fun getTmdbTrailerUrl(apiKey: String, tmdbId: Long, isTv: Boolean = false): String? =
+        tmdb.getTmdbTrailerUrl(apiKey, tmdbId, isTv)
 
-    private fun JellyfinItemDto.toEntity(): JellyfinMediaEntity {
-        val totalCount = effectiveItemCount
-        val unplayedCount = userData?.unplayedItemCount
-        val itemType = type ?: "Unknown"
-        val playedStatus = userData?.isPlayedForType(itemType) ?: false
+    suspend fun getTmdbByGenre(apiKey: String, genreId: String, isTv: Boolean = false): Result<List<TmdbItemDto>> =
+        tmdb.getTmdbByGenre(apiKey, genreId, isTv)
 
-        return JellyfinMediaEntity(
-            id = id,
-            title = name ?: "",
-            originalTitle = originalTitle,
-            type = itemType,
-            tmdbId = providerIds?.get("Tmdb") ?: providerIds?.get("tmdb"),
-            imdbId = providerIds?.get("Imdb") ?: providerIds?.get("imdb"),
-            tvdbId = providerIds?.get("Tvdb") ?: providerIds?.get("tvdb"),
-            overview = overview,
-            primaryImageTag = primaryImageTag ?: imageTags?.get("Primary"),
-            backdropImageTag = backdropImageTags?.firstOrNull(),
-            communityRating = communityRating,
-            productionYear = productionYear,
-            genres = genres?.joinToString(", "),
-            officialRating = officialRating,
-            tags = tags?.joinToString(", "),
-            isPlayed = playedStatus,
-            playbackPositionTicks = userData?.effectivePositionTicks ?: 0L,
-            isFavorite = userData?.effectiveIsFavorite ?: false,
-            seriesId = seriesId,
-            seriesName = seriesName,
-            seriesPrimaryImageTag = seriesPrimaryImageTag,
-            seasonNumber = parentIndexNumber,
-            episodeNumber = indexNumber,
-            totalItemCount = totalCount,
-            unplayedItemCount = unplayedCount
-        )
-    }
-}
+    suspend fun getTmdbByProvider(apiKey: String, providerId: String, region: String = "ES"): Result<List<TmdbItemDto>> =
+        tmdb.getTmdbByProvider(apiKey, providerId, region)
 
-fun List<JellyfinMediaEntity>.deduplicateMediaEntities(): List<JellyfinMediaEntity> {
-    if (size <= 1) return this
+    suspend fun getTmdbMovieDetail(apiKey: String, movieId: Long): TmdbMovieDetailDto? =
+        tmdb.getTmdbMovieDetail(apiKey, movieId)
 
-    // Índices agrupados por cada clave de coincidencia (tipo + tmdbId/imdbId/título+año).
-    // Permite agrupar en un paso en lugar del doble bucle O(n²) original.
-    val byTmdb = HashMap<String, MutableList<Int>>()
-    val byImdb = HashMap<String, MutableList<Int>>()
-    val byMovieTitleYear = HashMap<String, MutableList<Int>>()
-    val bySeriesTitle = HashMap<String, MutableList<Int>>()
+    suspend fun getTmdbTvDetail(apiKey: String, seriesId: Long): TmdbTvDetailDto? =
+        tmdb.getTmdbTvDetail(apiKey, seriesId)
 
-    for (i in indices) {
-        val item = this[i]
-        val type = item.type.lowercase()
-        if (!item.tmdbId.isNullOrBlank()) {
-            byTmdb.getOrPut("$type|${item.tmdbId}") { mutableListOf() }.add(i)
-        }
-        if (!item.imdbId.isNullOrBlank()) {
-            byImdb.getOrPut("$type|${item.imdbId}") { mutableListOf() }.add(i)
-        }
-        when {
-            type == "movie" && item.productionYear != null ->
-                byMovieTitleYear.getOrPut("$type|${item.productionYear}|${item.title.trim().lowercase()}") { mutableListOf() }.add(i)
-            type == "series" ->
-                bySeriesTitle.getOrPut("$type|${item.title.trim().lowercase()}") { mutableListOf() }.add(i)
-        }
-    }
+    suspend fun getTmdbTopRated(apiKey: String): Result<List<TmdbItemDto>> = tmdb.getTmdbTopRated(apiKey)
 
-    val processed = BooleanArray(size)
-    val result = ArrayList<JellyfinMediaEntity>(size)
+    suspend fun getSeriesStatus(tmdbApiKey: String, tmdbId: Long?, jellyfinStatus: String?): SeriesStatus =
+        tmdb.getSeriesStatus(tmdbApiKey, tmdbId, jellyfinStatus)
 
-    for (i in indices) {
-        if (processed[i]) continue
-        val itemA = this[i]
-        val type = itemA.type.lowercase()
+    // =========================================================================
+    // TRAKT
+    // =========================================================================
 
-        // Grupo = itemA + los índices posteriores que coinciden con él por cualquier clave.
-        val groupIndices = sortedSetOf(i)
+    suspend fun getTraktRecommendations(traktToken: String, clientId: String): Result<List<TraktMediaDto>> =
+        trakt.getTraktRecommendations(traktToken, clientId)
 
-        if (!itemA.tmdbId.isNullOrBlank()) {
-            byTmdb["$type|${itemA.tmdbId}"]?.forEach { j -> if (j > i && !processed[j]) groupIndices.add(j) }
-        }
-        if (!itemA.imdbId.isNullOrBlank()) {
-            byImdb["$type|${itemA.imdbId}"]?.forEach { j -> if (j > i && !processed[j]) groupIndices.add(j) }
-        }
-        when {
-            type == "movie" && itemA.productionYear != null ->
-                byMovieTitleYear["$type|${itemA.productionYear}|${itemA.title.trim().lowercase()}"]
-                    ?.forEach { j -> if (j > i && !processed[j]) groupIndices.add(j) }
-            type == "series" ->
-                bySeriesTitle["$type|${itemA.title.trim().lowercase()}"]
-                    ?.forEach { j -> if (j > i && !processed[j]) groupIndices.add(j) }
-        }
+    suspend fun getTraktTrending(clientId: String): Result<List<TraktMediaDto>> = trakt.getTraktTrending(clientId)
 
-        groupIndices.forEach { processed[it] = true }
+    suspend fun getTraktWatchlist(traktToken: String, clientId: String): Result<List<TraktMediaDto>> =
+        trakt.getTraktWatchlist(traktToken, clientId)
 
-        if (groupIndices.size == 1) {
-            result.add(itemA)
-            continue
-        }
+    suspend fun getTraktUserProfile(traktToken: String, clientId: String): Result<TraktUserDto> =
+        trakt.getTraktUserProfile(traktToken, clientId)
 
-        val duplicates = groupIndices.map { this[it] }
+    suspend fun getTraktUserLists(traktToken: String, clientId: String): Result<List<TraktUserListDto>> =
+        trakt.getTraktUserLists(traktToken, clientId)
 
-        val bestPlayed = duplicates.any { it.isPlayed }
-        val maxTicks = duplicates.maxOf { it.playbackPositionTicks }
+    suspend fun getTraktCustomListItems(
+        traktToken: String,
+        clientId: String,
+        listId: String,
+        username: String? = null
+    ): Result<List<TraktMediaDto>> = trakt.getTraktCustomListItems(traktToken, clientId, listId, username)
 
-        val cleanTitleItem = duplicates.firstOrNull { item ->
-            val name = item.title.trim()
-            !name.contains("1080p", ignoreCase = true) &&
-            !name.contains("4k", ignoreCase = true) &&
-            !name.contains("hdr", ignoreCase = true) &&
-            !name.contains("remux", ignoreCase = true)
-        } ?: duplicates.first()
+    // =========================================================================
+    // CATÁLOGO LOCAL (Room)
+    // =========================================================================
 
-        val bestTotal = duplicates.mapNotNull { it.totalItemCount }.filter { it > 0 }.minOrNull() ?: cleanTitleItem.totalItemCount
-        val bestUnplayed = duplicates.mapNotNull { it.unplayedItemCount }.minOrNull() ?: cleanTitleItem.unplayedItemCount
+    fun getAllLocalLibrary(): Flow<List<JellyfinMediaEntity>> = local.getAllLocalLibrary()
 
-        val primaryItem = duplicates.firstOrNull { it.isPlayed || it.playbackPositionTicks > 0 }
-            ?: cleanTitleItem
+    suspend fun getLocalMovies(): List<JellyfinMediaEntity> = local.getLocalMovies()
 
-        result.add(
-            cleanTitleItem.copy(
-                id = primaryItem.id,
-                isPlayed = bestPlayed,
-                playbackPositionTicks = maxTicks,
-                totalItemCount = bestTotal,
-                unplayedItemCount = bestUnplayed,
-                overview = cleanTitleItem.overview ?: duplicates.firstNotNullOfOrNull { it.overview },
-                primaryImageTag = cleanTitleItem.primaryImageTag ?: duplicates.firstNotNullOfOrNull { it.primaryImageTag },
-                backdropImageTag = cleanTitleItem.backdropImageTag ?: duplicates.firstNotNullOfOrNull { it.backdropImageTag }
-            )
-        )
-    }
+    suspend fun getLocalSeries(): List<JellyfinMediaEntity> = local.getLocalSeries()
 
-    return result
+    suspend fun getAllCatalog(): List<JellyfinMediaEntity> = local.getAllCatalog()
+
+    suspend fun getItemById(id: String): JellyfinMediaEntity? = local.getItemById(id)
+
+    suspend fun getItemsByIds(ids: List<String>): List<JellyfinMediaEntity> = local.getItemsByIds(ids)
+
+    suspend fun getContinueWatchingLocal(limit: Int = 20): List<JellyfinMediaEntity> = local.getContinueWatchingLocal(limit)
+
+    suspend fun getLatestLocal(serverUrl: String = "", userId: String = "", limit: Int = 20): List<JellyfinMediaEntity> =
+        local.getLatestLocal(serverUrl, userId, limit)
+
+    suspend fun getTopMoviesLocal(limit: Int = 20): List<JellyfinMediaEntity> = local.getTopMoviesLocal(limit)
+
+    suspend fun getTopSeriesLocal(limit: Int = 20): List<JellyfinMediaEntity> = local.getTopSeriesLocal(limit)
+
+    suspend fun getTopRatedLocal(limit: Int = 20): List<JellyfinMediaEntity> = local.getTopRatedLocal(limit)
+
+    suspend fun searchLocalMedia(query: String, limit: Int = 40): List<JellyfinMediaEntity> = local.searchLocalMedia(query, limit)
+
+    suspend fun getAllLocalTitles(): List<String> = local.getAllLocalTitles()
+
+    suspend fun getLocalCount(): Int = local.getLocalCount()
+
+    fun getLibraryStatsFlow(): Flow<LibraryStats> = local.getLibraryStatsFlow()
+
+    suspend fun getFavoritesLocal(): List<JellyfinMediaEntity> = local.getFavoritesLocal()
+
+    fun getFavoritesFlow(): Flow<List<JellyfinMediaEntity>> = local.getFavoritesFlow()
+
+    suspend fun findLocal(tmdbId: String?, imdbId: String?, title: String? = null, year: Int? = null): JellyfinMediaEntity? =
+        local.findLocal(tmdbId, imdbId, title, year)
+
+    suspend fun getMostWatchedGenres(): List<String> = local.getMostWatchedGenres()
+
+    suspend fun getItemsByGenre(genre: String): List<JellyfinMediaEntity> = local.getItemsByGenre(genre)
+
+    suspend fun getMoviesByGenre(genre: String, limit: Int = 40): List<JellyfinMediaEntity> = local.getMoviesByGenre(genre, limit)
+
+    suspend fun getSeriesByGenre(genre: String, limit: Int = 40): List<JellyfinMediaEntity> = local.getSeriesByGenre(genre, limit)
+
+    suspend fun getRecentMoviesByGenre(genre: String, limit: Int = 20): List<JellyfinMediaEntity> = local.getRecentMoviesByGenre(genre, limit)
+
+    suspend fun getRecentSeriesByGenre(genre: String, limit: Int = 20): List<JellyfinMediaEntity> = local.getRecentSeriesByGenre(genre, limit)
+
+    suspend fun getRecommendedMovies(
+        excludeIds: Set<String>,
+        limit: Int = 20,
+        genres: List<String>? = null
+    ): List<JellyfinMediaEntity> = local.getRecommendedMovies(excludeIds, limit, genres)
 }
