@@ -59,7 +59,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.tv.material3.Border
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
@@ -85,7 +85,7 @@ fun DetailScreen(
     onPlay: (String) -> Unit,
     onNavigateToDetail: (String) -> Unit = {},
     onBack: () -> Unit,
-    viewModel: DetailViewModel = viewModel()
+    viewModel: DetailViewModel = hiltViewModel()
 ) {
     var isShowingTrailer by remember { mutableStateOf(false) }
     var isLaunchingPlayer by remember { mutableStateOf(false) }

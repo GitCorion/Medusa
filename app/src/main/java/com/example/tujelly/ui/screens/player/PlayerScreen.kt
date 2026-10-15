@@ -86,7 +86,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
@@ -142,7 +142,7 @@ private data class TrackItem(
 fun PlayerScreen(
     itemId: String,
     onBack: () -> Unit,
-    viewModel: PlayerViewModel = viewModel()
+    viewModel: PlayerViewModel = hiltViewModel()
 ) {
     LaunchedEffect(itemId) {
         android.util.Log.i("PlayerScreen", "PlayerScreen LaunchedEffect for itemId=$itemId")

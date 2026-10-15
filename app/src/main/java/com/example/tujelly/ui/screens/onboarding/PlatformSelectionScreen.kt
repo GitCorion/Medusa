@@ -37,7 +37,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.Card
@@ -53,7 +53,7 @@ import com.example.tujelly.data.model.SUPPORTED_PLATFORMS
 @Composable
 fun PlatformSelectionScreen(
     onDone: () -> Unit,
-    viewModel: PlatformSelectionViewModel = viewModel()
+    viewModel: PlatformSelectionViewModel = hiltViewModel()
 ) {
     val selected by viewModel.selected.collectAsStateWithLifecycle()
 

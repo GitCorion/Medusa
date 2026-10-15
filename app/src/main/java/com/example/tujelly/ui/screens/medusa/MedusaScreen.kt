@@ -55,7 +55,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
@@ -80,7 +80,7 @@ fun MedusaScreen(
     onOpenSettings: () -> Unit,
     onPlayMedia: (String) -> Unit,
     onDetailMedia: (String) -> Unit,
-    viewModel: MedusaViewModel = viewModel()
+    viewModel: MedusaViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val buttonStyleKey by viewModel.buttonStyle.collectAsStateWithLifecycle()
