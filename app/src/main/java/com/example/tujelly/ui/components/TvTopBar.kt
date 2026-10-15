@@ -26,7 +26,7 @@ import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.WarningAmber
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -96,7 +96,7 @@ fun TvTopBar(
     val focusContent = if (isMonochrome) Color(0xFF0F172A) else TvAccent.getFocusedContentColor(accentColorKey)
     val showTopIcons = buttonStyleKey != BUTTON_STYLE_TEXT_ONLY
     val showTopText = buttonStyleKey != BUTTON_STYLE_ICONS_ONLY
-    val autoUpdateInfo by com.example.tujelly.data.remote.github.AppUpdateManager.updateInfo.collectAsState()
+    val autoUpdateInfo by com.example.tujelly.data.remote.github.AppUpdateManager.updateInfo.collectAsStateWithLifecycle()
     val hasAvailableUpdate = autoUpdateInfo?.hasUpdate == true
 
     Row(

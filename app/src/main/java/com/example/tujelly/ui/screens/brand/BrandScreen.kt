@@ -25,7 +25,7 @@ import androidx.compose.ui.layout.ContentScale
 import coil.compose.AsyncImage
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -58,10 +58,10 @@ fun BrandScreen(
     onOpenSettings: () -> Unit = {},
     viewModel: BrandViewModel = viewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    val isMonochrome by viewModel.isMonochrome.collectAsState()
-    val accentColorKey by viewModel.accentColor.collectAsState()
-    val buttonStyleKey by viewModel.buttonStyle.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val isMonochrome by viewModel.isMonochrome.collectAsStateWithLifecycle()
+    val accentColorKey by viewModel.accentColor.collectAsStateWithLifecycle()
+    val buttonStyleKey by viewModel.buttonStyle.collectAsStateWithLifecycle()
     val focusColor = com.example.tujelly.ui.theme.TvAccent.getColor(accentColorKey)
     val focusContent = com.example.tujelly.ui.theme.TvAccent.getFocusedContentColor(accentColorKey)
 

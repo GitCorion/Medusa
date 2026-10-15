@@ -32,7 +32,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -74,10 +74,10 @@ fun SearchScreen(
     onOpenSettings: () -> Unit = {},
     viewModel: SearchViewModel = viewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    val accentColorKey by viewModel.accentColor.collectAsState()
-    val buttonStyleKey by viewModel.buttonStyle.collectAsState()
-    val isMonochrome by viewModel.isMonochrome.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val accentColorKey by viewModel.accentColor.collectAsStateWithLifecycle()
+    val buttonStyleKey by viewModel.buttonStyle.collectAsStateWithLifecycle()
+    val isMonochrome by viewModel.isMonochrome.collectAsStateWithLifecycle()
     val focusColor = TvAccent.getColor(accentColorKey)
     val focusContent = TvAccent.getFocusedContentColor(accentColorKey)
 

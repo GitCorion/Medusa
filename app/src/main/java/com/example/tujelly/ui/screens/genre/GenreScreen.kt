@@ -22,7 +22,7 @@ import androidx.compose.material.icons.rounded.Movie
 import androidx.compose.material.icons.rounded.Tv
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,10 +57,10 @@ fun GenreScreen(
     onOpenSettings: () -> Unit = {},
     viewModel: GenreViewModel = viewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    val accentColorKey by viewModel.accentColor.collectAsState()
-    val isMonochrome by viewModel.isMonochrome.collectAsState()
-    val buttonStyleKey by viewModel.buttonStyle.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val accentColorKey by viewModel.accentColor.collectAsStateWithLifecycle()
+    val isMonochrome by viewModel.isMonochrome.collectAsStateWithLifecycle()
+    val buttonStyleKey by viewModel.buttonStyle.collectAsStateWithLifecycle()
 
     LaunchedEffect(genreName) {
         viewModel.loadGenreFeed(genreName)

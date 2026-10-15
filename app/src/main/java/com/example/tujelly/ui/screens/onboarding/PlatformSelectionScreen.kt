@@ -21,7 +21,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -55,7 +55,7 @@ fun PlatformSelectionScreen(
     onDone: () -> Unit,
     viewModel: PlatformSelectionViewModel = viewModel()
 ) {
-    val selected by viewModel.selected.collectAsState()
+    val selected by viewModel.selected.collectAsStateWithLifecycle()
 
     Box(
         modifier = Modifier

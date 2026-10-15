@@ -55,7 +55,7 @@ import com.example.tujelly.ui.theme.TvAccent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -147,17 +147,17 @@ fun PlayerScreen(
         viewModel.loadStreamUrl(itemId)
     }
 
-    val streamInfo by viewModel.streamInfo.collectAsState()
-    val buttonStyle by viewModel.buttonStyle.collectAsState()
-    val isMonochrome by viewModel.isMonochrome.collectAsState()
-    val accentColorKey by viewModel.accentColor.collectAsState()
+    val streamInfo by viewModel.streamInfo.collectAsStateWithLifecycle()
+    val buttonStyle by viewModel.buttonStyle.collectAsStateWithLifecycle()
+    val isMonochrome by viewModel.isMonochrome.collectAsStateWithLifecycle()
+    val accentColorKey by viewModel.accentColor.collectAsStateWithLifecycle()
     val focusColor = if (isMonochrome) Color.White else TvAccent.getColor(accentColorKey)
     val focusContent = if (isMonochrome) Color(0xFF0F172A) else TvAccent.getFocusedContentColor(accentColorKey)
 
     // Load intro markers + next episode once stream is ready
-    val introMarker by viewModel.introMarker.collectAsState()
-    val creditsMarker by viewModel.creditsMarker.collectAsState()
-    val nextEpisode by viewModel.nextEpisode.collectAsState()
+    val introMarker by viewModel.introMarker.collectAsStateWithLifecycle()
+    val creditsMarker by viewModel.creditsMarker.collectAsStateWithLifecycle()
+    val nextEpisode by viewModel.nextEpisode.collectAsStateWithLifecycle()
 
     val context = androidx.compose.ui.platform.LocalContext.current
     LaunchedEffect(streamInfo) {

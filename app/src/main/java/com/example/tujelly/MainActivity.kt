@@ -22,7 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -93,7 +93,7 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val userPrefsRepo = remember { com.example.tujelly.data.local.UserPreferencesRepository(applicationContext) }
-            val currentPrefs by userPrefsRepo.userPreferencesFlow.collectAsState(initial = null)
+            val currentPrefs by userPrefsRepo.userPreferencesFlow.collectAsStateWithLifecycle(initialValue = null)
 
             val prefs = currentPrefs
             if (prefs == null) {
@@ -168,9 +168,9 @@ fun TujellyApp(
 
     val context = androidx.compose.ui.platform.LocalContext.current
     val appUpdateManager = remember { com.example.tujelly.data.remote.github.AppUpdateManager(context.applicationContext) }
-    val updateInfo by com.example.tujelly.data.remote.github.AppUpdateManager.updateInfo.collectAsState()
-    val isDownloading by com.example.tujelly.data.remote.github.AppUpdateManager.isDownloading.collectAsState()
-    val downloadProgress by com.example.tujelly.data.remote.github.AppUpdateManager.downloadProgress.collectAsState()
+    val updateInfo by com.example.tujelly.data.remote.github.AppUpdateManager.updateInfo.collectAsStateWithLifecycle()
+    val isDownloading by com.example.tujelly.data.remote.github.AppUpdateManager.isDownloading.collectAsStateWithLifecycle()
+    val downloadProgress by com.example.tujelly.data.remote.github.AppUpdateManager.downloadProgress.collectAsStateWithLifecycle()
 
     var showUpdateBanner by remember { mutableStateOf(false) }
     var updateDismissed by remember { mutableStateOf(false) }

@@ -27,7 +27,7 @@ import androidx.compose.material.icons.rounded.Movie
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Tv
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -62,9 +62,9 @@ fun FavoritesScreen(
     onOpenSettings: () -> Unit = {},
     viewModel: FavoritesViewModel = viewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    val accentColorKey by viewModel.accentColor.collectAsState()
-    val buttonStyleKey by viewModel.buttonStyle.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val accentColorKey by viewModel.accentColor.collectAsStateWithLifecycle()
+    val buttonStyleKey by viewModel.buttonStyle.collectAsStateWithLifecycle()
     val isMonochrome = com.example.tujelly.ui.theme.LocalIsMonochromeTheme.current
     val focusColor = if (isMonochrome) Color.White else TvAccent.getColor(accentColorKey)
     val focusContent = if (isMonochrome) Color(0xFF0F172A) else TvAccent.getFocusedContentColor(accentColorKey)

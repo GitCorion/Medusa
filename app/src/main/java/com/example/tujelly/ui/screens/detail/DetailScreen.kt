@@ -39,7 +39,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -99,8 +99,8 @@ fun DetailScreen(
         viewModel.loadDetail(itemId)
     }
 
-    val uiState by viewModel.uiState.collectAsState()
-    val isMonochromeFlow by viewModel.isMonochrome.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val isMonochromeFlow by viewModel.isMonochrome.collectAsStateWithLifecycle()
     val isMonochrome = com.example.tujelly.ui.theme.LocalIsMonochromeTheme.current || isMonochromeFlow
 
     val playButtonFocusRequester = remember { FocusRequester() }

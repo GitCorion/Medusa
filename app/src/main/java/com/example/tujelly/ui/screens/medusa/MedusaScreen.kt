@@ -32,7 +32,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -80,11 +80,11 @@ fun MedusaScreen(
     onDetailMedia: (String) -> Unit,
     viewModel: MedusaViewModel = viewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    val buttonStyleKey by viewModel.buttonStyle.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val buttonStyleKey by viewModel.buttonStyle.collectAsStateWithLifecycle()
 
     // Respetar estrictamente la temática adoptada en Ajustes (LocalIsMonochromeTheme y LocalAccentColor)
-    val isMonochromeByVm by viewModel.isMonochrome.collectAsState()
+    val isMonochromeByVm by viewModel.isMonochrome.collectAsStateWithLifecycle()
     val isMonochrome = LocalIsMonochromeTheme.current || isMonochromeByVm
     val accentColorKey = LocalAccentColor.current
     val accentColor = remember(accentColorKey, isMonochrome) {
