@@ -118,16 +118,22 @@ class LocalMediaRepository(
 
         // 2. Fallback: match by title and year
         if (!title.isNullOrBlank()) {
-            val cleanTitle = title.trim().substringBefore(":").substringBefore("-").trim()
+            val trimmedTitle = title.trim()
+            val cleanTitle = trimmedTitle.substringBefore(":").substringBefore("-").trim()
+            // Evita repetir el mismo escaneo cuando colon/guion no cambian el título.
+            val titleVariants = if (cleanTitle == trimmedTitle) listOf(cleanTitle) else listOf(cleanTitle, trimmedTitle)
             if (year != null && year > 1900) {
-                val matchedByTitleAndYear = jellyfinDao.findByTitleAndYear(cleanTitle, year)
-                    ?: jellyfinDao.findByTitleAndYear(title.trim(), year)
-                if (matchedByTitleAndYear != null) return matchedByTitleAndYear
+                for (candidate in titleVariants) {
+                    val matchedByTitleAndYear = jellyfinDao.findByTitleAndYear(candidate, year)
+                    if (matchedByTitleAndYear != null) return matchedByTitleAndYear
+                }
             }
-            val matchedByTitle = jellyfinDao.findByTitle(cleanTitle)
-                ?: jellyfinDao.findByTitle(title.trim())
-                ?: jellyfinDao.findByFuzzyTitle(cleanTitle)
-            if (matchedByTitle != null) return matchedByTitle
+            for (candidate in titleVariants) {
+                val matchedByTitle = jellyfinDao.findByTitle(candidate)
+                if (matchedByTitle != null) return matchedByTitle
+            }
+            val matchedByFuzzy = jellyfinDao.findByFuzzyTitle(cleanTitle)
+            if (matchedByFuzzy != null) return matchedByFuzzy
         }
 
         return null

@@ -5,18 +5,27 @@ import com.example.tujelly.data.remote.tmdb.TmdbItemDto
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Caché en memoria genérica con TTL por defecto.
+ * Caché en memoria genérica con TTL por defecto y cota de tamaño.
  *
- * Nota: no tiene cota de tamaño ni purga global de expirados (las claves usadas están
- * acotadas hoy). Ver §2.7 de MEMORIA_ANALISIS_RENDIMIENTO.md.
+ * - Al insertar por encima de [maxSize] se purgan primero las entradas caducadas y, si aún se
+ *   supera el límite, se desaloja la más antigua.
+ * - [timeSource] permite inyectar un reloj en tests.
+ *
+ * Ver §2.7 de MEMORIA_ANALISIS_RENDIMIENTO.md.
  */
-class TtlCache<K : Any, V : Any>(private val defaultTtlMillis: Long) {
+class TtlCache<K : Any, V : Any>(
+    private val defaultTtlMillis: Long,
+    private val maxSize: Int = 512,
+    private val timeSource: () -> Long = { System.currentTimeMillis() }
+) {
     private data class CacheEntry<V>(val data: V, val timestamp: Long)
     private val map = ConcurrentHashMap<K, CacheEntry<V>>()
 
+    val size: Int get() = map.size
+
     fun get(key: K): V? {
         val entry = map[key] ?: return null
-        if (System.currentTimeMillis() - entry.timestamp > defaultTtlMillis) {
+        if (timeSource() - entry.timestamp > defaultTtlMillis) {
             map.remove(key)
             return null
         }
@@ -24,7 +33,13 @@ class TtlCache<K : Any, V : Any>(private val defaultTtlMillis: Long) {
     }
 
     fun put(key: K, data: V) {
-        map[key] = CacheEntry(data, System.currentTimeMillis())
+        if (map.size >= maxSize && !map.containsKey(key)) {
+            purgeExpired()
+            if (map.size >= maxSize) {
+                map.minByOrNull { it.value.timestamp }?.let { map.remove(it.key) }
+            }
+        }
+        map[key] = CacheEntry(data, timeSource())
     }
 
     fun remove(key: K) {
@@ -33,6 +48,12 @@ class TtlCache<K : Any, V : Any>(private val defaultTtlMillis: Long) {
 
     fun clear() {
         map.clear()
+    }
+
+    /** Elimina todas las entradas caducadas. */
+    fun purgeExpired() {
+        val now = timeSource()
+        map.entries.removeIf { now - it.value.timestamp > defaultTtlMillis }
     }
 }
 
