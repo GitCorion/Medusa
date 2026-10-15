@@ -240,6 +240,35 @@ class MedusaTagMatrixEngineTest {
     }
 
     @Test
+    fun testUpdatePriorityTagsBoostsFavoritesWithoutReindexing() {
+        val catalog = listOf(
+            createMovie("1", "A", "Terror", "Monstruos, Espacio"),
+            createMovie("2", "B", "Terror", "Juguetes, Espacio"),
+            createMovie("3", "C", "Terror", "Juguetes, Monstruos")
+        )
+
+        engine.initialize(catalog)
+
+        val before = engine.generateMosaicTags(emptyList(), MediaFormat.ALL, targetCapacity = 20)
+        val posJuguetesBefore = before.indexOfFirst { it.rawTag == "juguetes" }
+        val posMonstruosBefore = before.indexOfFirst { it.rawTag == "monstruos" }
+        // Sin prioridades, "Monstruos" (antes en el catálogo) queda por delante de "Juguetes".
+        assertTrue(posJuguetesBefore > posMonstruosBefore)
+
+        // Marca "Juguetes" como favorito (bonus) SIN volver a indexar el catálogo.
+        engine.updatePriorityTags(
+            favorites = listOf(createMovie("3", "C", "Terror", "Juguetes"))
+        )
+
+        val after = engine.generateMosaicTags(emptyList(), MediaFormat.ALL, targetCapacity = 20)
+        assertTrue(after.indexOfFirst { it.rawTag == "juguetes" } < after.indexOfFirst { it.rawTag == "monstruos" })
+
+        // El índice invertido sigue intacto tras updatePriorityTags (no se re-indexa).
+        val terrorTag = MedusaMosaicTag("t", "Terror", "terror", 3, "Terror", true)
+        assertEquals(3, engine.getMatchingMovies(listOf(terrorTag), MediaFormat.ALL).size)
+    }
+
+    @Test
     fun testHighPerformanceWithLargeCatalog() {
         // Simular un catálogo grande de 5.000 títulos
         val largeCatalog = ArrayList<JellyfinMediaEntity>(5000)

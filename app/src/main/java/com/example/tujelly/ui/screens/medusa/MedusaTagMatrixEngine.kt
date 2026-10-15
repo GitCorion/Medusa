@@ -205,6 +205,39 @@ class MedusaTagMatrixEngine {
         }
     }
 
+    /**
+     * Recalcula SOLO las etiquetas prioritarias (bonus de TMDB/tendencias/recientes/favoritos)
+     * sobre un índice ya construido por [initialize], sin volver a ordenar el catálogo (O(n·log n))
+     * ni reconstruir el índice invertido. Se usa tras el enriquecido asíncrono con TMDB para no
+     * repetir el coste completo de [initialize] sobre las ~33k filas.
+     */
+    fun updatePriorityTags(
+        tmdbTopRated: List<JellyfinMediaEntity> = emptyList(),
+        tmdbTrending: List<JellyfinMediaEntity> = emptyList(),
+        recentWatched: List<JellyfinMediaEntity> = emptyList(),
+        favorites: List<JellyfinMediaEntity> = emptyList()
+    ) {
+        canonTags.clear()
+        canonTags.addAll(tmdbTopRated.flatMap { extractCanonicalTags(it) })
+        trendingTags.clear()
+        trendingTags.addAll(tmdbTrending.flatMap { extractCanonicalTags(it) })
+        recentTags.clear()
+        recentTags.addAll(recentWatched.flatMap { extractCanonicalTags(it) })
+        favTags.clear()
+        favTags.addAll(favorites.flatMap { extractCanonicalTags(it) })
+
+        val updates = HashMap<String, PrecomputedTag>()
+        for ((tag, info) in tagMetadataMap) {
+            var bonus = 0f
+            if (favTags.contains(tag)) bonus += 6f
+            if (trendingTags.contains(tag)) bonus += 5f
+            if (canonTags.contains(tag)) bonus += 4f
+            if (recentTags.contains(tag)) bonus += 3f
+            if (bonus != info.bonusScore) updates[tag] = info.copy(bonusScore = bonus)
+        }
+        tagMetadataMap.putAll(updates)
+    }
+
     private fun resolveMatchingIndices(
         chain: List<MedusaMosaicTag>,
         format: MediaFormat

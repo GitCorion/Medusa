@@ -91,7 +91,7 @@ class MedusaViewModel @Inject constructor(
 
             val (catalog, localTop) = coroutineScope {
                 val catD = async(Dispatchers.IO) {
-                    runCatching { jellyfinDao.getAllCatalog() }.getOrDefault(emptyList())
+                    runCatching { jellyfinDao.getCatalogForMatrix() }.getOrDefault(emptyList())
                 }
                 val topD = async(Dispatchers.IO) {
                     runCatching { jellyfinDao.getTopRatedLocal(30) }.getOrDefault(emptyList())
@@ -156,8 +156,9 @@ class MedusaViewModel @Inject constructor(
                         lastTmdbCanon = matchedCanon
                         lastTmdbTrending = matchedTrending
                         val updatedTags = withContext(Dispatchers.Default) {
-                            matrixEngine.initialize(
-                                catalog = rawCatalog,
+                            // No se re-indexa el catálogo: solo se recalculan los bonus de prioridad
+                            // (antes se repetía el initialize() completo sobre 33k filas aquí).
+                            matrixEngine.updatePriorityTags(
                                 tmdbTopRated = matchedCanon.ifEmpty { localTop },
                                 tmdbTrending = matchedTrending.ifEmpty { localTop },
                                 recentWatched = recentWatched,

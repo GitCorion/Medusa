@@ -79,6 +79,29 @@ interface JellyfinDao {
     @Query("SELECT * FROM jellyfin_media WHERE type IN ('Movie', 'Series')")
     suspend fun getAllCatalog(): List<JellyfinMediaEntity>
 
+    /**
+     * Catálogo ligero para el motor de etiquetas de Medusa. El índice de co-ocurrencia necesita
+     * TODAS las filas (Movie/Series) para el recuento y la matriz, pero NO las columnas pesadas:
+     * se omiten `overview` (el grueso del payload, párrafos de texto por cada una de las ~33k
+     * filas), `originalTitle`, los ids de scrapers y `officialRating`. Los ítems resultantes
+     * siguen sirviendo para el motor y para `toOptimizedMediaItem` (que solo lee título, tipo,
+     * imagen, rating, año, progreso, favorito y datos de serie/episodio).
+     */
+    @Query(
+        """
+        SELECT id, title, NULL AS originalTitle, type,
+               NULL AS tmdbId, NULL AS imdbId, NULL AS tvdbId,
+               NULL AS overview, primaryImageTag, backdropImageTag,
+               communityRating, productionYear, genres,
+               NULL AS officialRating, tags, isPlayed, playbackPositionTicks,
+               isFavorite, seriesId, seriesName, seriesPrimaryImageTag,
+               seasonNumber, episodeNumber, totalItemCount, unplayedItemCount
+        FROM jellyfin_media
+        WHERE type IN ('Movie', 'Series')
+        """
+    )
+    suspend fun getCatalogForMatrix(): List<JellyfinMediaEntity>
+
     @Query("SELECT * FROM jellyfin_media WHERE playbackPositionTicks > 0 AND isPlayed = 0 AND type IN ('Movie', 'Episode', 'Series') ORDER BY rowid DESC LIMIT :limit")
     suspend fun getContinueWatchingLocal(limit: Int = 20): List<JellyfinMediaEntity>
 

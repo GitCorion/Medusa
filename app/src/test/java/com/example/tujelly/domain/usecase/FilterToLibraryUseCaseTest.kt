@@ -165,6 +165,13 @@ class FakeJellyfinDao : JellyfinDao {
         return localDb.filter { it.type in listOf("Movie", "Series") }
     }
 
+    override suspend fun getCatalogForMatrix(): List<JellyfinMediaEntity> {
+        // El motor de Medusa omite las columnas pesadas (overview, etc.); el fake las replica.
+        return localDb
+            .filter { it.type in listOf("Movie", "Series") }
+            .map { it.copy(overview = null, originalTitle = null, tmdbId = null, imdbId = null, tvdbId = null, officialRating = null) }
+    }
+
     override suspend fun getContinueWatchingLocal(limit: Int): List<JellyfinMediaEntity> {
         return localDb.filter { it.playbackPositionTicks > 0L && !it.isPlayed }.take(limit)
     }
