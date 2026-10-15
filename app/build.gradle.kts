@@ -30,6 +30,8 @@ android {
         versionCode = 69
         versionName = "2.2.22"
 
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
         // Claves por defecto para TMDB/Trakt. Se pueden sobreescribir en build-time mediante
         // variables de entorno o en keystore.properties (p. ej. en CI con secrets), sin tocar el código.
         buildConfigField("String", "DEFAULT_TMDB_API_KEY", "\"${envOr("TMDB_API_KEY", "82dee22856e0d0ac5f767ec6fb845efc")}\"")
@@ -68,6 +70,17 @@ android {
         compose = true
         buildConfig = true
     }
+
+    sourceSets {
+        // Los esquemas exportados por Room se copian a los assets de androidTest para que
+        // MigrationTestHelper pueda validar las migraciones.
+        getByName("androidTest").assets.srcDir("$projectDir/schemas")
+    }
+}
+
+ksp {
+    // Exporta el esquema de Room a app/schemas (necesario para los tests de migración).
+    arg("room.schemaLocation", "$projectDir/schemas")
 }
 
 baselineProfile {
@@ -127,6 +140,9 @@ dependencies {
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
+    androidTestImplementation(libs.room.testing)
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.test.manifest)

@@ -10,7 +10,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 @Database(
     entities = [JellyfinMediaEntity::class, TmdbVoteCacheEntity::class, HomeSectionCacheEntity::class, JellyfinMediaFts::class],
     version = 13,
-    exportSchema = false
+    exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
 
