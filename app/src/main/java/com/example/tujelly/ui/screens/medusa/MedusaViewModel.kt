@@ -28,10 +28,8 @@ data class MedusaUiState(
     val matchingMovies: List<MediaItem> = emptyList(),
     val format: MediaFormat = MediaFormat.ALL,
     val showMoviesOverlay: Boolean = false,
-    val selectedMovie: MediaItem? = null,
     val totalCatalogCount: Int = 0,
-    val isLoading: Boolean = true,
-    val focusedTag: MedusaMosaicTag? = null
+    val isLoading: Boolean = true
 )
 
 typealias ConstellationUiState = MedusaUiState
@@ -65,6 +63,14 @@ class MedusaViewModel(application: Application) : AndroidViewModel(application) 
 
     private val _uiState = MutableStateFlow(MedusaUiState())
     val uiState: StateFlow<MedusaUiState> = _uiState.asStateFlow()
+
+    // Foco y selección aislados del uiState: cambian con cada movimiento del D-pad y antes
+    // forzaban recomponer toda la pantalla (raíl de etiquetas + LazyRow) en cada pulsación.
+    private val _focusedTag = MutableStateFlow<MedusaMosaicTag?>(null)
+    val focusedTag: StateFlow<MedusaMosaicTag?> = _focusedTag.asStateFlow()
+
+    private val _selectedMovie = MutableStateFlow<MediaItem?>(null)
+    val selectedMovie: StateFlow<MediaItem?> = _selectedMovie.asStateFlow()
 
     init {
         TagTranslations.initCache(application)
@@ -115,11 +121,11 @@ class MedusaViewModel(application: Application) : AndroidViewModel(application) 
                 Pair(tags, movs)
             }
 
+            _selectedMovie.value = initialMovies.firstOrNull()
             _uiState.update { current ->
                 current.copy(
                     mosaicTags = initialTags,
                     matchingMovies = initialMovies,
-                    selectedMovie = initialMovies.firstOrNull(),
                     activeChain = emptyList(),
                     totalCatalogCount = rawCatalog.size,
                     isLoading = false
@@ -185,13 +191,13 @@ class MedusaViewModel(application: Application) : AndroidViewModel(application) 
             val newTags = matrixEngine.generateMosaicTags(newChain, format, targetCapacity = 20)
             val newMovies = matrixEngine.getMatchingMovies(newChain, format, serverUrl, accessToken)
 
+            _selectedMovie.value = newMovies.firstOrNull()
             _uiState.update { current ->
                 current.copy(
                     activeChain = newChain,
                     format = format,
                     mosaicTags = newTags,
-                    matchingMovies = newMovies,
-                    selectedMovie = newMovies.firstOrNull()
+                    matchingMovies = newMovies
                 )
             }
         }
@@ -234,26 +240,23 @@ class MedusaViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun onTagFocused(tag: MedusaMosaicTag) {
-        _uiState.update { it.copy(focusedTag = tag) }
+        _focusedTag.value = tag
     }
 
     fun toggleMoviesOverlay() {
         if (_uiState.value.matchingMovies.isEmpty()) return
         val current = _uiState.value.showMoviesOverlay
-        _uiState.update {
-            it.copy(
-                showMoviesOverlay = !current,
-                selectedMovie = if (!current) it.matchingMovies.firstOrNull() else null
-            )
-        }
+        val next = !current
+        _uiState.update { it.copy(showMoviesOverlay = next) }
+        _selectedMovie.value = if (next) _uiState.value.matchingMovies.firstOrNull() else null
     }
 
     fun selectMovie(movie: MediaItem) {
-        _uiState.update { it.copy(selectedMovie = movie) }
+        _selectedMovie.value = movie
     }
 
     fun dismissMovieSelection() {
-        _uiState.update { it.copy(selectedMovie = null) }
+        _selectedMovie.value = null
     }
 
     /**
@@ -264,8 +267,8 @@ class MedusaViewModel(application: Application) : AndroidViewModel(application) 
      * 4. Si la cadena está vacía -> devuelve false para volver al Home.
      */
     fun onBackPress(): Boolean {
-        if (_uiState.value.selectedMovie != null) {
-            _uiState.update { it.copy(selectedMovie = null) }
+        if (_selectedMovie.value != null) {
+            _selectedMovie.value = null
             return true
         }
 

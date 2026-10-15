@@ -60,6 +60,7 @@ import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import com.example.tujelly.domain.model.MediaFormatFilter
+import com.example.tujelly.domain.model.MediaItem
 import com.example.tujelly.ui.components.FormatFilterBar
 import com.example.tujelly.ui.components.MediaCard
 import com.example.tujelly.ui.components.TvNavTab
@@ -68,6 +69,7 @@ import com.example.tujelly.ui.theme.LocalAccentColor
 import com.example.tujelly.ui.theme.LocalIsMonochromeTheme
 import com.example.tujelly.ui.theme.TvAccent
 import com.example.tujelly.ui.theme.TvRatingBadge
+import kotlinx.coroutines.flow.StateFlow
 
 @OptIn(ExperimentalTvMaterial3Api::class, androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
@@ -137,19 +139,14 @@ fun MedusaScreen(
             .fillMaxSize()
             .background(Color(0xFF05070B))
     ) {
-        // Fondo: Solo proyectar backdrop si el usuario ha seleccionado alguna temática
+        // Fondo: Solo proyectar backdrop si el usuario ha seleccionado alguna temática.
+        // La selección se lee en su propio composable para no recomponer la pantalla al
+        // mover el foco entre tarjetas.
         if (uiState.activeChain.isNotEmpty()) {
-            val backdropUrl = uiState.selectedMovie?.backdropUrl ?: uiState.matchingMovies.firstOrNull()?.backdropUrl
-            if (!backdropUrl.isNullOrBlank()) {
-                AsyncImage(
-                    model = backdropUrl,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .alpha(0.18f)
-                )
-            }
+            MedusaBackdrop(
+                selectedMovieFlow = viewModel.selectedMovie,
+                fallbackBackdropUrl = uiState.matchingMovies.firstOrNull()?.backdropUrl
+            )
         }
 
         Box(
@@ -322,8 +319,6 @@ fun MedusaScreen(
                             .weight(1f)
                             .padding(top = 4.dp)
                     ) {
-                        val focusedMovie = uiState.selectedMovie ?: uiState.matchingMovies.firstOrNull()
-
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -331,40 +326,14 @@ fun MedusaScreen(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    text = "${uiState.matchingMovies.size} ${formatNounPlural.uppercase()}",
-                                    color = if (isMonochrome) Color.White else accentColor,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    letterSpacing = 1.2.sp,
-                                    fontFamily = FontFamily.SansSerif
-                                )
-
-                                if (focusedMovie != null) {
-                                    Spacer(modifier = Modifier.width(16.dp))
-                                    Text(
-                                        text = focusedMovie.title,
-                                        color = Color.White,
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                    if (focusedMovie.year != null) {
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text(
-                                            text = "(${focusedMovie.year})",
-                                            color = Color(0x8094A3B8),
-                                            fontSize = 11.sp
-                                        )
-                                    }
-                                    if (focusedMovie.rating != null && focusedMovie.rating > 0f) {
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        TvRatingBadge(rating = focusedMovie.rating, compact = true)
-                                    }
-                                }
-                            }
+                            MedusaMoviesHeader(
+                                movieCount = uiState.matchingMovies.size,
+                                formatNounPlural = formatNounPlural,
+                                selectedMovieFlow = viewModel.selectedMovie,
+                                fallbackMovie = uiState.matchingMovies.firstOrNull(),
+                                accentColor = accentColor,
+                                isMonochrome = isMonochrome
+                            )
 
                             Text(
                                 text = if (isFocusedOnMoviesRow) "[ARRIBA] Volver a filtros  ·  [OK] Ver ficha" else "[ABAJO] Navegar películas  ·  [BACK] Deshacer",
@@ -448,6 +417,81 @@ fun MedusaScreen(
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+/**
+ * Backdrop de Medusa. Recibe la selección como flujo y la colecciona aquí para que mover el
+ * foco entre tarjetas recomponga sólo este nodo, no toda la pantalla.
+ */
+@Composable
+private fun MedusaBackdrop(
+    selectedMovieFlow: StateFlow<MediaItem?>,
+    fallbackBackdropUrl: String?
+) {
+    val selectedMovie by selectedMovieFlow.collectAsStateWithLifecycle()
+    val backdropUrl = selectedMovie?.backdropUrl ?: fallbackBackdropUrl
+    if (!backdropUrl.isNullOrBlank()) {
+        AsyncImage(
+            model = backdropUrl,
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .fillMaxSize()
+                .alpha(0.18f)
+        )
+    }
+}
+
+/**
+ * Cabecera con el recuento de resultados y los datos de la película enfocada. Aísla la lectura
+ * de `selectedMovie` para no recomponer raíl ni LazyRow en cada movimiento del D-pad.
+ */
+@Composable
+private fun MedusaMoviesHeader(
+    movieCount: Int,
+    formatNounPlural: String,
+    selectedMovieFlow: StateFlow<MediaItem?>,
+    fallbackMovie: MediaItem?,
+    accentColor: Color,
+    isMonochrome: Boolean
+) {
+    val selectedMovie by selectedMovieFlow.collectAsStateWithLifecycle()
+    val focusedMovie = selectedMovie ?: fallbackMovie
+
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = "$movieCount ${formatNounPlural.uppercase()}",
+            color = if (isMonochrome) Color.White else accentColor,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.2.sp,
+            fontFamily = FontFamily.SansSerif
+        )
+
+        if (focusedMovie != null) {
+            Spacer(modifier = Modifier.width(16.dp))
+            Text(
+                text = focusedMovie.title,
+                color = Color.White,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            if (focusedMovie.year != null) {
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "(${focusedMovie.year})",
+                    color = Color(0x8094A3B8),
+                    fontSize = 11.sp
+                )
+            }
+            if (focusedMovie.rating != null && focusedMovie.rating > 0f) {
+                Spacer(modifier = Modifier.width(8.dp))
+                TvRatingBadge(rating = focusedMovie.rating, compact = true)
             }
         }
     }
