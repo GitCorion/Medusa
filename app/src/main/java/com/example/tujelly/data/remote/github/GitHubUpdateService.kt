@@ -66,13 +66,13 @@ class AppUpdateManager(private val context: Context) {
         private var hasAutoChecked = false
     }
 
-    suspend fun checkAutomatically(owner: String = "GitCorion", repo: String = "Tujelly") {
+    suspend fun checkAutomatically(owner: String = "GitCorion", repo: String = "Medusa") {
         if (hasAutoChecked) return
         hasAutoChecked = true
         checkForUpdates(owner, repo)
     }
 
-    suspend fun checkForUpdates(owner: String = "GitCorion", repo: String = "Tujelly"): Result<UpdateInfo> {
+    suspend fun checkForUpdates(owner: String = "GitCorion", repo: String = "Medusa"): Result<UpdateInfo> {
         return runCatching {
             val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
             val currentVer = pInfo.versionName ?: "1.0"

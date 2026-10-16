@@ -11,6 +11,7 @@ android {
         minSdk = 26
         targetSdk = 35
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        missingDimensionStrategy("distribution", "play")
     }
 
     // El módulo apunta a la app bajo prueba.

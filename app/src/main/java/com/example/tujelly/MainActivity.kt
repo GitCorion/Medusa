@@ -181,11 +181,13 @@ fun TujellyApp(
     val updateButtonFocusRequester = remember { FocusRequester() }
 
     LaunchedEffect(Unit) {
-        appUpdateManager.checkAutomatically()
+        if (BuildConfig.ENABLE_IN_APP_UPDATER) {
+            appUpdateManager.checkAutomatically()
+        }
     }
 
     LaunchedEffect(updateInfo) {
-        if (updateInfo?.hasUpdate == true && !updateDismissed) {
+        if (BuildConfig.ENABLE_IN_APP_UPDATER && updateInfo?.hasUpdate == true && !updateDismissed) {
             showUpdateBanner = true
         }
     }

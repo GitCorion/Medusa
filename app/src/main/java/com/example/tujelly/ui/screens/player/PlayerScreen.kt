@@ -420,11 +420,11 @@ private fun PlayerContent(
                             android.util.Log.e("PlayerScreen", "All ${candidates.size} playback candidates failed!")
                             val httpCode = (error.cause as? androidx.media3.datasource.HttpDataSource.InvalidResponseCodeException)?.responseCode ?: 0
                             val humanMsg = when {
-                                httpCode in 500..599 -> "El proxy Real-Debrid devolvió HTTP $httpCode al resolver los mirrors. Pulsa Reintentar."
+                                httpCode in 500..599 -> "El servidor de streaming devolvió un error (HTTP $httpCode). Pulsa Reintentar."
                                 httpCode == 401 -> "Error de autenticación con el servidor (HTTP 401). Pulsa Reintentar."
                                 error.errorCode == PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS -> "Error del servidor o proxy al obtener el vídeo (HTTP)"
                                 error.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED ||
-                                error.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT -> "Tiempo de espera agotado al conectar con Real-Debrid o el proxy"
+                                error.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT -> "Tiempo de espera agotado al conectar con el servidor de streaming"
                                 error.errorCode == PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED ||
                                 error.errorCode == PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED -> "Formato no compatible o enlace de streaming no disponible"
                                 error.errorCode == PlaybackException.ERROR_CODE_DECODER_INIT_FAILED -> "El dispositivo no soporta este formato de vídeo o audio (HEVC/HDR)"
@@ -525,7 +525,7 @@ private fun PlayerContent(
     LaunchedEffect(info, retryTrigger) {
         delay(75_000L)
         if (exoPlayer.playbackState == Player.STATE_BUFFERING && currentPosition == 0L) {
-            playerErrorMessage = "La resolución en Real-Debrid tardó demasiado tiempo. Pulsa Reintentar."
+            playerErrorMessage = "La resolución del stream tardó demasiado tiempo. Pulsa Reintentar."
             isBuffering = false
         }
     }

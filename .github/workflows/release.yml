@@ -34,8 +34,8 @@ jobs:
         run: |
           echo "${{ secrets.KEYSTORE_B64 }}" | base64 --decode > app/keystore.jks
 
-      - name: Build Release APK
-        run: ./gradlew assembleRelease --no-daemon
+      - name: Build Beta APK and Play Store Bundle
+        run: ./gradlew assembleBetaRelease bundlePlayRelease --no-daemon
         env:
           KEYSTORE_PATH: keystore.jks
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
@@ -46,19 +46,21 @@ jobs:
           TRAKT_CLIENT_ID: ${{ secrets.TRAKT_CLIENT_ID }}
           TRAKT_CLIENT_SECRET: ${{ secrets.TRAKT_CLIENT_SECRET }}
 
-      - name: Prepare APK Artifact
+      - name: Prepare Artifacts
         run: |
           mkdir -p dist
-          cp app/build/outputs/apk/release/app-release.apk dist/Medusa.apk
-          cp app/build/outputs/apk/release/app-release.apk dist/Tujelly.apk
+          cp app/build/outputs/apk/beta/release/app-beta-release.apk dist/Medusa.apk
+          cp app/build/outputs/apk/beta/release/app-beta-release.apk dist/Tujelly.apk
+          cp app/build/outputs/bundle/playRelease/app-play-release.aab dist/Medusa-PlayStore.aab
 
-      - name: Upload APK as Build Artifact
+      - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: Medusa-APK
+          name: Medusa-Builds
           path: |
             dist/Medusa.apk
             dist/Tujelly.apk
+            dist/Medusa-PlayStore.aab
 
       - name: Create GitHub Release (on tag or manual)
         if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
@@ -67,6 +69,7 @@ jobs:
           files: |
             dist/Medusa.apk
             dist/Tujelly.apk
+            dist/Medusa-PlayStore.aab
           name: Medusa ${{ github.ref_name }}
           generate_release_notes: true
           draft: false

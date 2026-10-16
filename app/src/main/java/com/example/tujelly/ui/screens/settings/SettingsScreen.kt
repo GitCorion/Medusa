@@ -854,55 +854,63 @@ private fun AboutCategory(
         value = if (hasUpdate) "Actualización disponible (${updateInfo?.latestVersion})" else "Al día"
     )
 
-    TvSectionHeader(title = "ACTUALIZACIONES")
+    if (com.example.tujelly.BuildConfig.ENABLE_IN_APP_UPDATER) {
+        TvSectionHeader(title = "ACTUALIZACIONES")
 
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        modifier = Modifier.padding(top = 4.dp)
-    ) {
-        Button(
-            onClick = { viewModel.checkForAppUpdates() },
-            colors = ButtonDefaults.colors(
-                containerColor = Color(0x14FFFFFF),
-                contentColor = Color.White,
-                focusedContainerColor = focusColor,
-                focusedContentColor = focusContent
-            ),
-            enabled = !uiState.isCheckingUpdate
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.padding(top = 4.dp)
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Rounded.Refresh, contentDescription = null, modifier = Modifier.size(15.dp))
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = if (uiState.isCheckingUpdate) "Comprobando..." else "Buscar actualizaciones",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-        }
-
-        if (hasUpdate && updateInfo?.apkUrl != null) {
             Button(
-                onClick = { viewModel.downloadAndInstallUpdate() },
+                onClick = { viewModel.checkForAppUpdates() },
                 colors = ButtonDefaults.colors(
-                    containerColor = focusColor,
-                    contentColor = focusContent,
+                    containerColor = Color(0x14FFFFFF),
+                    contentColor = Color.White,
                     focusedContainerColor = focusColor,
                     focusedContentColor = focusContent
-                )
+                ),
+                enabled = !uiState.isCheckingUpdate
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Rounded.CloudDone, contentDescription = null, modifier = Modifier.size(15.dp))
+                    Icon(Icons.Rounded.Refresh, contentDescription = null, modifier = Modifier.size(15.dp))
                     Spacer(modifier = Modifier.width(6.dp))
-                    val progressText = uiState.downloadProgress?.let { " (${(it * 100).toInt()}%)" } ?: ""
                     Text(
-                        text = "Descargar e instalar$progressText",
+                        text = if (uiState.isCheckingUpdate) "Comprobando..." else "Buscar actualizaciones",
                         fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.SemiBold
                     )
                 }
             }
+
+            if (hasUpdate && updateInfo?.apkUrl != null) {
+                Button(
+                    onClick = { viewModel.downloadAndInstallUpdate() },
+                    colors = ButtonDefaults.colors(
+                        containerColor = focusColor,
+                        contentColor = focusContent,
+                        focusedContainerColor = focusColor,
+                        focusedContentColor = focusContent
+                    )
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Rounded.CloudDone, contentDescription = null, modifier = Modifier.size(15.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        val progressText = uiState.downloadProgress?.let { " (${(it * 100).toInt()}%)" } ?: ""
+                        Text(
+                            text = "Descargar e instalar$progressText",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
         }
+    } else {
+        TvSectionHeader(title = "DISTRIBUCIÓN")
+        TvSettingRow(
+            title = "Canal",
+            value = "Google Play Store"
+        )
     }
 
     val notes = updateInfo?.releaseNotes

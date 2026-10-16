@@ -24,7 +24,6 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.example.tujelly"
         minSdk = 26
         targetSdk = 35
         versionCode = 71
@@ -37,6 +36,21 @@ android {
         buildConfigField("String", "DEFAULT_TMDB_API_KEY", "\"${envOr("TMDB_API_KEY", "82dee22856e0d0ac5f767ec6fb845efc")}\"")
         buildConfigField("String", "DEFAULT_TRAKT_CLIENT_ID", "\"${envOr("TRAKT_CLIENT_ID", "***REMOVED***")}\"")
         buildConfigField("String", "DEFAULT_TRAKT_CLIENT_SECRET", "\"${envOr("TRAKT_CLIENT_SECRET", "***REMOVED***")}\"")
+    }
+
+    flavorDimensions += "distribution"
+
+    productFlavors {
+        create("beta") {
+            dimension = "distribution"
+            applicationId = "com.example.tujelly"
+            buildConfigField("boolean", "ENABLE_IN_APP_UPDATER", "true")
+        }
+        create("play") {
+            dimension = "distribution"
+            applicationId = "tv.medusa.app"
+            buildConfigField("boolean", "ENABLE_IN_APP_UPDATER", "false")
+        }
     }
 
     signingConfigs {

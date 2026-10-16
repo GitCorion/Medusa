@@ -26,7 +26,7 @@ object NetworkClientFactory {
 
     /**
      * Trust manager permisivo: acepta certificados self-signed. Se usa **solo** para
-     * hosts locales/privados (LAN, localhost, docker/Real-Debrid) donde el bypass de TLS
+     * hosts locales/privados (LAN, localhost, docker) donde el bypass de TLS
      * es necesario porque el usuario despliega su propio Jellyfin con certificados propios.
      */
     private val trustAllCerts = arrayOf<X509TrustManager>(object : X509TrustManager {
@@ -54,8 +54,6 @@ object NetworkClientFactory {
                 || hostname.endsWith(".local", ignoreCase = true)
                 || hostname.endsWith(".lan", ignoreCase = true)
                 || hostname.endsWith(".home", ignoreCase = true)
-                || hostname.equals("real-debrid.com", ignoreCase = true)
-                || hostname.endsWith(".real-debrid.com", ignoreCase = true)
     }
 
     /**

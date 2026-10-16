@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Política de Privacidad - Medusa</title>
+    <style>
+        :root {
+            --bg-color: #0b0f17;
+            --card-bg: #131b26;
+            --text-primary: #e2e8f0;
+            --text-secondary: #94a3b8;
+            --accent-color: #00e5ff;
+            --border-color: #1e293b;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.6;
+            margin: 0;
+            padding: 24px;
+        }
+        .container {
+            max-width: 780px;
+            margin: 0 auto;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        h1 {
+            color: var(--accent-color);
+            margin-top: 0;
+            font-size: 28px;
+        }
+        h2 {
+            color: #ffffff;
+            font-size: 19px;
+            margin-top: 28px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+        }
+        p, li {
+            color: var(--text-secondary);
+            font-size: 15px;
+        }
+        ul {
+            padding-left: 20px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        .badge {
+            display: inline-block;
+            background: rgba(0, 229, 255, 0.1);
+            color: var(--accent-color);
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+        .footer {
+            margin-top: 36px;
+            font-size: 13px;
+            color: #64748b;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <span class="badge">Última actualización: Octubre 2026</span>
+        <h1>Política de Privacidad de Medusa</h1>
+        <p><strong>Medusa</strong> es una aplicación cliente independiente para servidores multimedia Jellyfin, diseñada para dispositivos Android y Android TV. Esta Política de Privacidad describe cómo se gestiona y protege la información al utilizar la aplicación.</p>
+
+        <h2>1. Principio Fundamental: Privacidad por Diseño</h2>
+        <p>Medusa es una aplicación cliente de código abierto/independiente pensada para conectarse a tu propio servidor privado. <strong>No recopilamos, no almacenamos en servidores propios y no vendemos ningún tipo de dato personal de nuestros usuarios.</strong></p>
+
+        <h2>2. Datos Almacenados en tu Dispositivo</h2>
+        <p>Toda la información necesaria para el funcionamiento de la aplicación se almacena <strong>exclusivamente de forma local en tu dispositivo</strong>:</p>
+        <ul>
+            <li><strong>Credenciales del Servidor:</strong> La dirección de tu servidor Jellyfin, tu nombre de usuario y los tokens de sesión se guardan de forma segura en el almacenamiento local protegido del sistema operativo.</li>
+            <li><strong>Caché y Preferencias:</strong> Preferencias de interfaz (temas, tamaño de texto, configuración de reproducción) e historial de caché de imágenes de tu propio servidor.</li>
+        </ul>
+
+        <h2>3. Comunicaciones de Red</h2>
+        <p>La aplicación solo establece comunicaciones directas con los siguientes puntos:</p>
+        <ul>
+            <li><strong>Tu Servidor Jellyfin:</strong> Las peticiones de catálogo, imágenes y reproducción de vídeo se realizan directamente entre tu dispositivo y el servidor Jellyfin configurado por ti.</li>
+            <li><strong>Servicios Opcionales de Metadatos (TMDB / Trakt):</strong> Si decides activar funciones adicionales como la sincronización con Trakt o consulta de sinopsis en The Movie Database (TMDB), la app se comunicará directamente con sus respectivas APIs públicas bajo sus propias políticas de privacidad.</li>
+        </ul>
+
+        <h2>4. Analíticas y Diagnóstico de Errores</h2>
+        <p>Medusa no incluye rastreadores de publicidad ni servicios de seguimiento de actividad. En caso de caídas o errores críticos del reproductor, la aplicación puede utilizar herramientas estándar anónimas (como Firebase Crashlytics) para registrar el código de error y el modelo del dispositivo, con el único fin de corregir fallos técnicos y mejorar la estabilidad.</p>
+
+        <h2>5. Menores de Edad</h2>
+        <p>Medusa no recopila conscientemente información de identificación personal de niños ni de ningún otro usuario.</p>
+
+        <h2>6. Descargo de Responsabilidad</h2>
+        <p>Medusa es un reproductor cliente y no proporciona, distribuye ni aloja ningún tipo de contenido multimedia. El usuario es el único responsable del contenido al que accede a través de su servidor multimedia.</p>
+
+        <h2>7. Contacto</h2>
+        <p>Si tienes preguntas sobre esta Política de Privacidad, puedes ponerte en contacto a través del repositorio oficial del proyecto o por correo electrónico.</p>
+
+        <div class="footer">
+            Medusa © 2026 - Reproductor multimedia para Jellyfin
+        </div>
+    </div>
+</body>
+</html>
