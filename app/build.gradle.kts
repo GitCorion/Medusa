@@ -35,7 +35,7 @@ android {
 
         // Claves por defecto para TMDB/Trakt. Se pueden sobreescribir en build-time mediante
         // variables de entorno o en keystore.properties (p. ej. en CI con secrets), sin tocar el código.
-        buildConfigField("String", "DEFAULT_TMDB_API_KEY", "\"${envOr("TMDB_API_KEY", "82dee22856e0d0ac5f767ec6fb845efc")}\"")
+        buildConfigField("String", "DEFAULT_TMDB_API_KEY", "\"${envOr("TMDB_API_KEY", "***REMOVED***")}\"")
         buildConfigField("String", "DEFAULT_TRAKT_CLIENT_ID", "\"${envOr("TRAKT_CLIENT_ID", "***REMOVED***")}\"")
         buildConfigField("String", "DEFAULT_TRAKT_CLIENT_SECRET", "\"${envOr("TRAKT_CLIENT_SECRET", "***REMOVED***")}\"")
     }

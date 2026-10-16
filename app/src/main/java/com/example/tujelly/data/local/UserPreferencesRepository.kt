@@ -359,7 +359,7 @@ class UserPreferencesRepository(context: Context) {
 
         private fun Preferences.toUserPreferences(): UserPreferences {
             val rawTmdb = this[Keys.TMDB_API_KEY] ?: ""
-            val tmdbKey = if (rawTmdb.isBlank() || rawTmdb == "b673238641eb86a9f4787f0b5d564177") DEFAULT_TMDB_API_KEY else rawTmdb
+            val tmdbKey = if (rawTmdb.isBlank() || rawTmdb == "b673238641eb86a9f4787f0b5d564177" || rawTmdb == "82dee22856e0d0ac5f767ec6fb845efc") DEFAULT_TMDB_API_KEY else rawTmdb
             val rawTraktId = this[Keys.TRAKT_CLIENT_ID] ?: ""
             val traktId = if (rawTraktId.isBlank() || rawTraktId.startsWith("4376c989")) DEFAULT_TRAKT_CLIENT_ID else rawTraktId
             val rawTraktSecret = this[Keys.TRAKT_CLIENT_SECRET] ?: ""
