@@ -86,3 +86,47 @@ Medusa es una aplicación cliente de terceros desarrollada de forma independient
 * **¿Tu aplicación recopila o comparte datos de usuarios?**  
   👉 **No** (si usas solo almacenamiento local para el servidor Jellyfin).  
   *(Si integras Firebase Crashlytics para fallos técnicos, marcas únicamente: "Datos de diagnóstico de fallos anónimos para depuración técnica, no vinculados a la identidad del usuario")*.
+
+---
+
+## 5. Configuración del Producto Integrado (Compras Integradas en Play Console)
+
+En Google Play Console ve a **Monetizar con Play** > **Productos integrados en la aplicación**:
+
+* **ID de producto:**
+  ```text
+  medusa_pro_lifetime
+  ```
+  *(Debe coincidir exactamente con el configurado en la app)*
+
+* **Nombre del producto:**
+  ```text
+  Medusa Pro Vitalicio
+  ```
+
+* **Descripción:**
+  ```text
+  Desbloqueo de por vida: salto automático manos libres de intros/créditos, explorador por plataformas y soporte de nuevas funciones.
+  ```
+
+* **Precio recomendado:**
+  ```text
+  4,99 €
+  ```
+* **Estado:** Activo.
+
+### Modelo de Prueba Gratuita (7 Días):
+* Los usuarios disponen de 7 días completos de acceso Pro al instalar por primera vez.
+* Finalizados los 7 días, la app sigue funcionando al 100% como reproductor Jellyfin gratuito (con salto manual de intro); las funciones Pro (salto manos libres y carruseles por plataforma) muestran la opción de adquirir Medusa Pro Vitalicio.
+
+---
+
+## 6. Archivo de Producción (AAB) Generado
+
+* **Ruta del bundle listo para subir a Play Console:**
+  ```text
+  app/build/outputs/bundle/playRelease/app-play-release.aab
+  ```
+* **Tamaño:** ~14 MB
+* **Firma:** Release keystore configurado y verificado.
+
