@@ -836,7 +836,7 @@ class SettingsViewModel @Inject constructor(
 
     fun checkForAppUpdates() {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isCheckingUpdate = true, statusMessage = "Buscando actualizaciones en GitHub...")
+            _uiState.value = _uiState.value.copy(isCheckingUpdate = true, statusMessage = "Buscando actualizaciones...")
             val result = appUpdateManager.checkForUpdates()
             result.onSuccess { info ->
                 _uiState.value = _uiState.value.copy(
@@ -856,7 +856,7 @@ class SettingsViewModel @Inject constructor(
     fun downloadAndInstallUpdate() {
         val apkUrl = _uiState.value.updateInfo?.apkUrl ?: return
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(statusMessage = "Descargando actualización de GitHub...")
+            _uiState.value = _uiState.value.copy(statusMessage = "Descargando actualización...")
             val result = appUpdateManager.downloadAndInstall(apkUrl) { progress ->
                 _uiState.value = _uiState.value.copy(downloadProgress = progress)
             }

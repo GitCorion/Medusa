@@ -857,6 +857,11 @@ private fun AboutCategory(
     if (com.example.tujelly.BuildConfig.ENABLE_IN_APP_UPDATER) {
         TvSectionHeader(title = "ACTUALIZACIONES")
 
+        TvSettingRow(
+            title = "Canal",
+            value = "Beta Privada (Firebase OTA)"
+        )
+
         Row(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             modifier = Modifier.padding(top = 4.dp)

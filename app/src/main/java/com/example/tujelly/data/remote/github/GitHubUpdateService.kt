@@ -19,6 +19,14 @@ import java.io.File
 import java.io.FileOutputStream
 
 @Serializable
+data class FirebaseVersionDto(
+    @SerialName("versionCode") val versionCode: Long = 0L,
+    @SerialName("versionName") val versionName: String = "",
+    @SerialName("releaseNotes") val releaseNotes: String? = null,
+    @SerialName("apkUrl") val apkUrl: String? = null
+)
+
+@Serializable
 data class GitHubAssetDto(
     @SerialName("name") val name: String = "",
     @SerialName("browser_download_url") val browserDownloadUrl: String = "",
@@ -32,6 +40,11 @@ data class GitHubReleaseDto(
     @SerialName("body") val body: String? = null,
     @SerialName("assets") val assets: List<GitHubAssetDto> = emptyList()
 )
+
+interface FirebaseUpdateApiService {
+    @GET("api/version.json")
+    suspend fun getLatestVersion(): FirebaseVersionDto
+}
 
 interface GitHubApiService {
     @GET("repos/{owner}/{repo}/releases/latest")
@@ -51,7 +64,8 @@ data class UpdateInfo(
 
 class AppUpdateManager(private val context: Context) {
 
-    private val api: GitHubApiService = NetworkClientFactory.createService("https://api.github.com/", GitHubApiService::class.java)
+    private val firebaseApi: FirebaseUpdateApiService =
+        NetworkClientFactory.createService("https://medusa-fd388.web.app/", FirebaseUpdateApiService::class.java)
 
     companion object {
         private val _updateInfo = MutableStateFlow<UpdateInfo?>(null)
@@ -76,19 +90,26 @@ class AppUpdateManager(private val context: Context) {
         return runCatching {
             val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
             val currentVer = pInfo.versionName ?: "1.0"
-            val release = api.getLatestRelease(owner, repo)
-            val cleanTag = release.tagName.removePrefix("v").trim()
-            val cleanCurrent = currentVer.removePrefix("v").trim()
+            val currentVersionCode = androidx.core.content.pm.PackageInfoCompat.getLongVersionCode(pInfo)
 
-            val apkAsset = release.assets.firstOrNull { it.name.endsWith(".apk", ignoreCase = true) }
-            val isNewer = isVersionNewer(cleanCurrent, cleanTag)
+            val remoteVersion = firebaseApi.getLatestVersion()
+
+            val isNewer = if (remoteVersion.versionCode > 0L) {
+                remoteVersion.versionCode > currentVersionCode
+            } else {
+                val cleanRemote = remoteVersion.versionName.removePrefix("v").trim()
+                val cleanCurrent = currentVer.removePrefix("v").trim()
+                isVersionNewer(cleanCurrent, cleanRemote)
+            }
+
+            val hasValidUrl = !remoteVersion.apkUrl.isNullOrBlank()
 
             val info = UpdateInfo(
-                hasUpdate = isNewer && apkAsset != null,
+                hasUpdate = isNewer && hasValidUrl,
                 currentVersion = currentVer,
-                latestVersion = release.tagName,
-                releaseNotes = release.body,
-                apkUrl = apkAsset?.browserDownloadUrl
+                latestVersion = remoteVersion.versionName.ifBlank { "v${remoteVersion.versionCode}" },
+                releaseNotes = remoteVersion.releaseNotes,
+                apkUrl = remoteVersion.apkUrl
             )
             _updateInfo.value = info
             info
@@ -114,6 +135,19 @@ class AppUpdateManager(private val context: Context) {
         _downloadProgress.value = 0f
         return withContext(Dispatchers.IO) {
             runCatching {
+                val isDirectApk = apkUrl.endsWith(".apk", ignoreCase = true) ||
+                        apkUrl.contains(".apk?", ignoreCase = true) ||
+                        apkUrl.contains("/download", ignoreCase = true)
+
+                if (!isDirectApk && (apkUrl.startsWith("http://") || apkUrl.startsWith("https://"))) {
+                    // Si es enlace web de Firebase App Distribution u otro portal de testers, abrir en navegador/App Tester
+                    val browserIntent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(apkUrl)).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    }
+                    context.startActivity(browserIntent)
+                    return@runCatching
+                }
+
                 val client = OkHttpClient()
                 val request = Request.Builder().url(apkUrl).build()
                 val response = client.newCall(request).execute()
