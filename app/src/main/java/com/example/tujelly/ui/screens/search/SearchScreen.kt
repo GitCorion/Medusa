@@ -91,10 +91,10 @@ fun SearchScreen(
         } catch (_: Exception) {}
     }
 
-    // El botón Atrás del mando borra letras si hay texto; si está vacío, sale de la pantalla
+    // El botón Atrás del mando limpia la búsqueda actual si tiene texto; si ya está limpia, vuelve a Inicio
     BackHandler(enabled = true) {
         if (uiState.query.isNotEmpty()) {
-            viewModel.onBackspace()
+            viewModel.onClear()
         } else {
             onBack()
         }

@@ -99,6 +99,25 @@ fun HomeScreen(
     val focusContent = TvAccent.getFocusedContentColor(accentColorKey)
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var backPressedOnce by remember { mutableStateOf(false) }
+
+    androidx.activity.compose.BackHandler(enabled = true) {
+        if (listState.firstVisibleItemIndex > 0) {
+            coroutineScope.launch {
+                listState.animateScrollToItem(0)
+            }
+        } else if (!backPressedOnce) {
+            backPressedOnce = true
+            android.widget.Toast.makeText(context, "Pulsa Atrás de nuevo para salir", android.widget.Toast.LENGTH_SHORT).show()
+            coroutineScope.launch {
+                kotlinx.coroutines.delay(2000L)
+                backPressedOnce = false
+            }
+        } else {
+            (context as? android.app.Activity)?.finish()
+        }
+    }
     val syncProgress by viewModel.syncProgress.collectAsStateWithLifecycle()
     val localMediaCount by viewModel.localMediaCount.collectAsStateWithLifecycle()
     val currentSuccess = uiState as? HomeUiState.Success

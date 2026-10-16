@@ -2,6 +2,7 @@ package com.example.tujelly
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import dagger.hilt.android.AndroidEntryPoint
 import androidx.compose.foundation.background
@@ -197,6 +198,11 @@ fun TujellyApp(
             delay(200)
             updateButtonFocusRequester.requestFocus()
         }
+    }
+
+    BackHandler(enabled = showUpdateBanner) {
+        showUpdateBanner = false
+        updateDismissed = true
     }
 
     val currentEntry by navController.currentBackStackEntryAsState()

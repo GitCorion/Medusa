@@ -514,6 +514,8 @@ private fun PlayerContent(
             onBack()
         } else if (activeModalTab != PlayerModalTab.NONE) {
             activeModalTab = PlayerModalTab.NONE
+        } else if (showNextEpisodeOverlay) {
+            showNextEpisodeOverlay = false
         } else if (showOverlayControls) {
             showOverlayControls = false
         } else {
