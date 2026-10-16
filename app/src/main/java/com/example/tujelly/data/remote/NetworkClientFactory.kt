@@ -54,6 +54,37 @@ object NetworkClientFactory {
                 || hostname.endsWith(".local", ignoreCase = true)
                 || hostname.endsWith(".lan", ignoreCase = true)
                 || hostname.endsWith(".home", ignoreCase = true)
+                || hostname.equals("real-debrid.com", ignoreCase = true)
+                || hostname.endsWith(".real-debrid.com", ignoreCase = true)
+    }
+
+    /**
+     * Comprueba si el dispositivo tiene una dirección IPv6 global enrutable asignada.
+     * Si no la tiene (como en emulador o redes solo IPv4), no se prioriza IPv6 en el DNS.
+     */
+    private fun hasIpv6Connectivity(): Boolean {
+        return try {
+            val interfaces = java.net.NetworkInterface.getNetworkInterfaces() ?: return false
+            while (interfaces.hasMoreElements()) {
+                val iface = interfaces.nextElement()
+                if (!iface.isUp || iface.isLoopback) continue
+                val addrs = iface.inetAddresses
+                while (addrs.hasMoreElements()) {
+                    val addr = addrs.nextElement()
+                    if (addr is java.net.Inet6Address &&
+                        !addr.isLinkLocalAddress &&
+                        !addr.isLoopbackAddress &&
+                        !addr.isSiteLocalAddress &&
+                        !addr.isMulticastAddress
+                    ) {
+                        return true
+                    }
+                }
+            }
+            false
+        } catch (_: Exception) {
+            false
+        }
     }
 
     /**
@@ -101,11 +132,13 @@ object NetworkClientFactory {
         .dns(object : okhttp3.Dns {
             override fun lookup(hostname: String): List<java.net.InetAddress> {
                 val addresses = okhttp3.Dns.SYSTEM.lookup(hostname)
-                // En dominios públicos priorizamos IPv6 (para saltar bloqueos de operadoras como Digi/LaLiga sobre IPv4)
-                return if (isLocalHost(hostname)) {
-                    addresses.sortedBy { it !is java.net.Inet4Address }
-                } else {
+                // En dominios públicos solo priorizamos IPv6 si el dispositivo tiene salida IPv6 real
+                // (para saltar bloqueos de operadoras como Digi sobre IPv4 sin romper en redes IPv4)
+                val canIpv6 = hasIpv6Connectivity()
+                return if (canIpv6 && !isLocalHost(hostname)) {
                     addresses.sortedBy { it is java.net.Inet4Address }
+                } else {
+                    addresses.sortedBy { it !is java.net.Inet4Address }
                 }
             }
         })
