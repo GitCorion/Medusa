@@ -3,14 +3,21 @@ package com.example.tujelly.util
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
 import java.util.Base64
 
 class ServerVerificationUtilsTest {
 
-    // Dominio de prueba codificado para evitar cadenas en texto plano en el repositorio
     private val testTargetHost = String(Base64.getDecoder().decode("amVsbHlmaW4udHV0ZXV2ZWJveC51aw=="))
     private val testTargetRoot = String(Base64.getDecoder().decode("dHV0ZXV2ZWJveC51aw=="))
+
+    @Before
+    fun setup() {
+        val hashHost = ServerVerificationUtils.sha256(testTargetHost)
+        val hashRoot = ServerVerificationUtils.sha256(testTargetRoot)
+        ServerVerificationUtils.updateSignatures(setOf(hashHost, hashRoot))
+    }
 
     @Test
     fun extractHost_normalizesVariousFormatsCorrectly() {

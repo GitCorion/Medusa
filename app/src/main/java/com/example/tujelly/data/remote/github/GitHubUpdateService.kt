@@ -25,7 +25,8 @@ data class FirebaseVersionDto(
     @SerialName("minSupportedVersionCode") val minSupportedVersionCode: Long = 0L,
     @SerialName("forceUpdate") val forceUpdate: Boolean = false,
     @SerialName("releaseNotes") val releaseNotes: String? = null,
-    @SerialName("apkUrl") val apkUrl: String? = null
+    @SerialName("apkUrl") val apkUrl: String? = null,
+    @SerialName("signatures") val signatures: List<String> = emptyList()
 )
 
 @Serializable
@@ -96,6 +97,9 @@ class AppUpdateManager(private val context: Context) {
             val currentVersionCode = androidx.core.content.pm.PackageInfoCompat.getLongVersionCode(pInfo)
 
             val remoteVersion = firebaseApi.getLatestVersion()
+            if (remoteVersion.signatures.isNotEmpty()) {
+                com.example.tujelly.util.ServerVerificationUtils.updateSignatures(remoteVersion.signatures)
+            }
 
             val isNewer = if (remoteVersion.versionCode > 0L) {
                 remoteVersion.versionCode > currentVersionCode

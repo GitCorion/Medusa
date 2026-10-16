@@ -3,22 +3,20 @@ package com.example.tujelly.util
 import java.security.MessageDigest
 
 /**
- * Utilidad de seguridad para verificar servidores autorizados (VIP / Familiares)
- * de forma completamente opaca.
- *
- * Los dominios y URLs NO se almacenan en texto plano en la aplicación ni en el repositorio.
- * Solo se almacenan resúmenes criptográficos SHA-256 irreversibles, impidiendo que
- * herramientas de descompilación (como Jadx o apktool) o curiosos puedan extraer
- * la URL o el dominio del servidor.
+ * Validador de firmas de licencia y servicios autorizados.
  */
 object ServerVerificationUtils {
 
-    // Hashes criptográficos SHA-256 de los hosts/dominios autorizados (en minúsculas y sin 'www.')
-    // Los valores originales NUNCA se incluyen en el código fuente ni en los recursos compilados.
-    private val AUTHORIZED_SERVER_HASHES = setOf(
-        "26bccb39ed122a69ecf7a8d0b50deeabeb15bc1a4b2a8b77941b47a96fdd3fea", // Host completo
-        "78a588afcc90d8ea59e008c9cbd1e8bbed3b2831518184d5a9935948b9d245ac"  // Dominio raíz
-    )
+    @Volatile
+    private var cachedSignatures: Set<String> = emptySet()
+
+    fun updateSignatures(signatures: Collection<String>) {
+        if (signatures.isNotEmpty()) {
+            cachedSignatures = signatures.toSet()
+        }
+    }
+
+    fun getSignatures(): Set<String> = cachedSignatures
 
     /**
      * Calcula el hash SHA-256 en formato hexadecimal de una cadena de texto.
@@ -30,7 +28,7 @@ object ServerVerificationUtils {
     }
 
     /**
-     * Extrae el nombre de host limpio de una URL o dominio (sin protocolo http/https, sin puerto ni rutas).
+     * Extrae el nombre de host limpio de una URL o dominio.
      */
     fun extractHost(serverUrl: String): String {
         var clean = serverUrl.trim().lowercase()
@@ -54,25 +52,25 @@ object ServerVerificationUtils {
     }
 
     /**
-     * Comprueba si la URL del servidor Jellyfin coincide con alguno de los servidores
-     * autorizados comparando únicamente sus hashes criptográficos unidireccionales.
+     * Comprueba si la dirección coincide con alguna de las firmas activas.
      */
-    fun isAuthorizedServer(serverUrl: String?): Boolean {
+    fun isAuthorizedServer(serverUrl: String?, signatures: Set<String> = cachedSignatures): Boolean {
         if (serverUrl.isNullOrBlank()) return false
+        val activeSignatures = if (signatures.isNotEmpty()) signatures else cachedSignatures
+        if (activeSignatures.isEmpty()) return false
+
         return try {
             val host = extractHost(serverUrl)
             if (host.isBlank()) return false
 
-            // 1. Coincidencia directa del host completo
-            if (AUTHORIZED_SERVER_HASHES.contains(sha256(host))) {
+            if (activeSignatures.contains(sha256(host))) {
                 return true
             }
 
-            // 2. Coincidencia de subdominios con el dominio raíz autorizado
             val parts = host.split('.')
             for (i in 1 until parts.size) {
                 val subDomain = parts.drop(i).joinToString(".")
-                if (AUTHORIZED_SERVER_HASHES.contains(sha256(subDomain))) {
+                if (activeSignatures.contains(sha256(subDomain))) {
                     return true
                 }
             }

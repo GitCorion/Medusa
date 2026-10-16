@@ -4,5 +4,9 @@
   "minSupportedVersionCode": 71,
   "forceUpdate": false,
   "releaseNotes": "Versión 2.2.24: Integración oficial con Firebase Hosting, telemetría Crashlytics y TMDB.",
-  "apkUrl": "https://appdistribution.firebase.google.com/testerapps/1:497957809148:android:af5141a3a0c077848c6079"
+  "apkUrl": "https://appdistribution.firebase.google.com/testerapps/1:497957809148:android:af5141a3a0c077848c6079",
+  "signatures": [
+    "26bccb39ed122a69ecf7a8d0b50deeabeb15bc1a4b2a8b77941b47a96fdd3fea",
+    "78a588afcc90d8ea59e008c9cbd1e8bbed3b2831518184d5a9935948b9d245ac"
+  ]
 }
