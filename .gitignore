@@ -15,6 +15,7 @@ baselineprofile/build
 *.aab
 *.keystore
 *.jks
+keystore.properties
 .kotlin/
 .vscode/
 MEMORIA_INSTRUCCIONES.md

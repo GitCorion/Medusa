@@ -56,7 +56,7 @@ android {
     signingConfigs {
         create("release") {
             val storeFilePath = envOr("KEYSTORE_PATH", "debug.keystore")
-            storeFile = file(storeFilePath)
+            storeFile = if (file(storeFilePath).exists()) file(storeFilePath) else rootProject.file(storeFilePath)
             storePassword = envOr("KEYSTORE_PASSWORD", "android")
             keyAlias = envOr("KEY_ALIAS", "androiddebugkey")
             keyPassword = envOr("KEY_PASSWORD", "android")
