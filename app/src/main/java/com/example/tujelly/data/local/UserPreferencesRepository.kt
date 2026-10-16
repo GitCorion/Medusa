@@ -65,7 +65,8 @@ data class UserPreferences(
     val jellyfinLastSync: String = "",
     val selectedPlatforms: Set<String> = emptySet(),
     val hiddenTraktLists: Set<String> = emptySet(),
-    val hasCompletedOnboarding: Boolean = false
+    val hasCompletedOnboarding: Boolean = false,
+    val isProUser: Boolean = false
 ) {
     val isMonochrome: Boolean
         get() = indicatorTheme == INDICATOR_THEME_MONOCHROME || accentColor == ACCENT_WHITE
@@ -109,6 +110,7 @@ class UserPreferencesRepository(context: Context) {
         val SELECTED_PLATFORMS = stringPreferencesKey("selected_platforms")
         val HIDDEN_TRAKT_LISTS = stringPreferencesKey("hidden_trakt_lists")
         val HAS_COMPLETED_ONBOARDING = stringPreferencesKey("has_completed_onboarding")
+        val IS_PRO_USER = stringPreferencesKey("is_pro_user")
     }
 
     /**
@@ -122,6 +124,9 @@ class UserPreferencesRepository(context: Context) {
     /** Alias de compatibilidad: mismo [StateFlow] compartido, expuesto como [Flow]. */
     val userPreferencesFlow: Flow<UserPreferences> = userPreferences
 
+    val isProUser: StateFlow<Boolean> =
+        userPreferences.map { it.isProUser }.stateIn(appScope, SharingStarted.Eagerly, false)
+
     val accentColor: StateFlow<String> =
         userPreferences.map { it.accentColor }.stateIn(appScope, SharingStarted.Eagerly, ACCENT_CYAN)
 
@@ -133,6 +138,12 @@ class UserPreferencesRepository(context: Context) {
 
     val selectedPlatforms: StateFlow<Set<String>> =
         userPreferences.map { it.selectedPlatforms }.stateIn(appScope, SharingStarted.Eagerly, emptySet())
+
+    suspend fun updateProUser(isPro: Boolean) {
+        appContext.dataStore.edit { prefs ->
+            prefs[Keys.IS_PRO_USER] = isPro.toString()
+        }
+    }
 
     suspend fun updateJellyfinServerUrl(serverUrl: String) {
         val cleanUrl = serverUrl.trimEnd('/')
@@ -392,7 +403,8 @@ class UserPreferencesRepository(context: Context) {
                     .map { it.trim().lowercase(java.util.Locale.ROOT) }
                     .filter { it.isNotBlank() }
                     .toSet(),
-                hasCompletedOnboarding = this[Keys.HAS_COMPLETED_ONBOARDING] == true.toString()
+                hasCompletedOnboarding = this[Keys.HAS_COMPLETED_ONBOARDING] == true.toString(),
+                isProUser = (this[Keys.IS_PRO_USER] == "true") || com.example.tujelly.BuildConfig.DEBUG
             )
         }
     }

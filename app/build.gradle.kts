@@ -160,6 +160,9 @@ dependencies {
     implementation(libs.firebase.crashlytics)
     implementation(libs.firebase.firestore)
 
+    // Google Play In-App Billing (Medusa Pro)
+    implementation(libs.play.billing)
+
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
     androidTestImplementation(libs.room.testing)
