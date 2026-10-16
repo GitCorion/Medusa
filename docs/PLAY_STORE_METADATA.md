@@ -65,7 +65,7 @@ Medusa es una aplicación cliente de terceros desarrollada de forma independient
 * **Etiquetas:** `Jellyfin`, `Reproductor de vídeo`, `Android TV`, `Media Center`.
 * **Correo electrónico de contacto:** *(Tu correo donde recibir dudas de usuarios)*.
 * **URL de Política de Privacidad:**  
-  `https://gitcorion.github.io/Medusa/privacy.html`
+  `https://medusa-fd388.web.app/privacy.html` (o `https://medusa-fd388.web.app`)
 
 ---
 
