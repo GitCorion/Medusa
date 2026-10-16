@@ -28,6 +28,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Card
 import androidx.tv.material3.CardDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
@@ -37,7 +38,8 @@ import com.example.tujelly.data.model.SUPPORTED_PLATFORMS
 fun BrandTileRow(
     onSelectBrand: (String) -> Unit,
     modifier: Modifier = Modifier,
-    visiblePlatforms: Set<String>? = null
+    visiblePlatforms: Set<String>? = null,
+    isProUser: Boolean = true
 ) {
     val platforms = remember(visiblePlatforms) {
         if (visiblePlatforms != null) {
@@ -60,6 +62,7 @@ fun BrandTileRow(
             items(platforms, key = { it.id }) { platform ->
                 BrandCard(
                     brand = platform,
+                    isLocked = !isProUser,
                     onClick = { onSelectBrand(platform.id) }
                 )
             }
@@ -71,6 +74,7 @@ fun BrandTileRow(
 @Composable
 private fun BrandCard(
     brand: com.example.tujelly.data.model.StreamPlatform,
+    isLocked: Boolean = false,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -108,15 +112,32 @@ private fun BrandCard(
             modifier = Modifier
                 .fillMaxSize()
                 .background(if (isFocused) Color(0xFF1E222D) else Color(0xFF111319))
-                .padding(horizontal = 14.dp, vertical = 8.dp),
-            contentAlignment = Alignment.Center
+                .padding(horizontal = 14.dp, vertical = 8.dp)
         ) {
             Image(
                 painter = painterResource(id = iconRes),
                 contentDescription = brand.name,
                 contentScale = ContentScale.Fit,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier
+                    .fillMaxSize()
+                    .align(Alignment.Center)
             )
+
+            if (isLocked) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .background(Color(0xE6D97706), RoundedCornerShape(4.dp))
+                        .padding(horizontal = 5.dp, vertical = 2.dp)
+                ) {
+                    androidx.tv.material3.Text(
+                        text = "PRO",
+                        color = Color.White,
+                        fontSize = 8.sp,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.Black
+                    )
+                }
+            }
         }
     }
 }

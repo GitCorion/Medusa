@@ -232,6 +232,7 @@ private fun PlayerContent(
 ) {
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
+    val isProUser by viewModel.isProUser.collectAsStateWithLifecycle()
 
     var showOverlayControls by remember { mutableStateOf(true) }
     var seekIndicatorText by remember { mutableStateOf<String?>(null) }
@@ -622,38 +623,49 @@ private fun PlayerContent(
 
     // ─── Intro / Credits banner: usa los campos del plugin fielmente ────────────
     // introMarker.showAtMs = ShowSkipPromptAt del plugin
-    // introMarker.hideAtMs = HideSkipPromptAt del plugin
-    // snapshotFlow() lee la posición fuera de composición → no recompone PlayerContent.
-    LaunchedEffect(introMarker) {
+    // ─── Intro / Credits banner: usa los campos del plugin fielmente ────────────
+    // Si el usuario es Pro, realiza el salto automático de forma desatendida.
+    // Si es Free, muestra el botón manual en pantalla para que el usuario decida si saltar.
+    LaunchedEffect(introMarker, isProUser) {
         val marker = introMarker
         if (marker == null) {
             showSkipIntroBanner = false
             return@LaunchedEffect
         }
+        var hasAutoSkipped = false
         snapshotFlow { currentPosition }.collect { pos ->
-            // El banner es visible exactamente en el rango que el plugin especifica
             val inWindow = pos in marker.showAtMs..marker.hideAtMs
-            if (inWindow != showSkipIntroBanner) showSkipIntroBanner = inWindow
+            if (isProUser && inWindow && !hasAutoSkipped) {
+                hasAutoSkipped = true
+                showSkipIntroBanner = false
+                exoPlayer.seekTo(marker.skipToMs)
+            } else if (!isProUser) {
+                if (inWindow != showSkipIntroBanner) showSkipIntroBanner = inWindow
+            }
         }
     }
 
-    LaunchedEffect(creditsMarker) {
+    LaunchedEffect(creditsMarker, isProUser) {
         val marker = creditsMarker
         if (marker == null) {
             showSkipCreditsBanner = false
             return@LaunchedEffect
         }
+        var hasAutoSkipped = false
         snapshotFlow { currentPosition }.collect { pos ->
             val inWindow = pos in marker.showAtMs..marker.hideAtMs
-            if (inWindow != showSkipCreditsBanner) showSkipCreditsBanner = inWindow
+            if (isProUser && inWindow && !hasAutoSkipped && nextEpisode == null) {
+                hasAutoSkipped = true
+                showSkipCreditsBanner = false
+                exoPlayer.seekTo(marker.skipToMs)
+            } else if (!isProUser) {
+                if (inWindow != showSkipCreditsBanner) showSkipCreditsBanner = inWindow
+            }
         }
     }
 
     // ─── Next episode overlay ────────────────────────────────────────────
-    // Caso A: creditsMarker presente (del plugin) → showAt=StartTicks, hideAt=EndTicks
-    //         countdown = (hideAtMs - currentPosition) / 1000 en vivo
-    // Caso B: sin marker → sólo cuando STATE_ENDED (ver listener arriba)
-    LaunchedEffect(creditsMarker, nextEpisode) {
+    LaunchedEffect(creditsMarker, nextEpisode, isProUser) {
         val next = nextEpisode
         if (next == null) {
             if (showNextEpisodeOverlay) showNextEpisodeOverlay = false
@@ -662,17 +674,21 @@ private fun PlayerContent(
 
         val marker = creditsMarker
         if (marker != null) {
-            // Rango del overlay = el mismo rango que el plugin indica para el outro
             snapshotFlow { currentPosition }.collect { pos ->
                 val inRange = pos in marker.showAtMs..marker.hideAtMs
                 if (inRange) {
-                    // Cuenta atrás = ticks reales que quedan hasta el fin del outro
-                    nextEpisodeCountdown = ((marker.hideAtMs - pos) / 1000L).toInt().coerceAtLeast(0)
+                    nextEpisodeCountdown = if (isProUser) {
+                        ((marker.hideAtMs - pos) / 1000L).toInt().coerceAtLeast(0)
+                    } else {
+                        -1
+                    }
                     if (!showNextEpisodeOverlay) showNextEpisodeOverlay = true
                 } else if (pos > marker.hideAtMs) {
                     if (showNextEpisodeOverlay) {
                         showNextEpisodeOverlay = false
-                        onPlayNextEpisode(next)
+                        if (isProUser) {
+                            onPlayNextEpisode(next)
+                        }
                     }
                 } else {
                     if (showNextEpisodeOverlay) showNextEpisodeOverlay = false
@@ -682,8 +698,8 @@ private fun PlayerContent(
     }
 
     // Cuando el countdown llega a 0 (caso A: créditos terminaron), lanzar siguiente episodio
-    LaunchedEffect(nextEpisodeCountdown) {
-        if (nextEpisodeCountdown == 0 && showNextEpisodeOverlay && nextEpisode != null) {
+    LaunchedEffect(nextEpisodeCountdown, isProUser) {
+        if (isProUser && nextEpisodeCountdown == 0 && showNextEpisodeOverlay && nextEpisode != null) {
             showNextEpisodeOverlay = false
             onPlayNextEpisode(nextEpisode!!)
         }

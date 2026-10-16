@@ -92,6 +92,8 @@ fun HomeScreen(
     val isMonochrome by viewModel.isMonochrome.collectAsStateWithLifecycle()
     val buttonStyleKey by viewModel.buttonStyle.collectAsStateWithLifecycle()
     val selectedPlatforms by viewModel.selectedPlatforms.collectAsStateWithLifecycle()
+    val isProUser by viewModel.isProUser.collectAsStateWithLifecycle()
+    var showProDialog by remember { mutableStateOf(false) }
     val showTopIcons = buttonStyleKey != BUTTON_STYLE_TEXT_ONLY
     val showTopText = buttonStyleKey != BUTTON_STYLE_ICONS_ONLY
 
@@ -410,9 +412,14 @@ fun HomeScreen(
                     item {
                         BrandTileRow(
                             onSelectBrand = { brandId ->
-                                onOpenBrand(brandId)
+                                if (isProUser) {
+                                    onOpenBrand(brandId)
+                                } else {
+                                    showProDialog = true
+                                }
                             },
                             visiblePlatforms = selectedPlatforms.takeIf { it.isNotEmpty() },
+                            isProUser = isProUser,
                             modifier = Modifier.onFocusChanged { focusState ->
                                 if (focusState.hasFocus) {
                                     viewModel.setFocusedItem(null)
@@ -438,7 +445,15 @@ fun HomeScreen(
             }
         }
     }
-}
+
+        val billingManager = com.example.tujelly.ui.theme.LocalBillingManager.current
+        if (showProDialog && billingManager != null) {
+            com.example.tujelly.ui.components.MedusaProDialog(
+                billingManager = billingManager,
+                onDismiss = { showProDialog = false }
+            )
+        }
+    }
 }
 
 /**

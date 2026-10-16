@@ -57,6 +57,7 @@ class HomeViewModel @Inject constructor(
     val isMonochrome: StateFlow<Boolean> = userPreferencesRepository.isMonochrome
     val buttonStyle: StateFlow<String> = userPreferencesRepository.buttonStyle
     val selectedPlatforms: StateFlow<Set<String>> = userPreferencesRepository.selectedPlatforms
+    val isProUser: StateFlow<Boolean> = userPreferencesRepository.isProUser
 
     val syncProgress: StateFlow<com.example.tujelly.data.repository.SyncProgress> = MediaRepository.syncProgress
     val localMediaCount: StateFlow<Int> = mediaRepository.getLibraryStatsFlow()

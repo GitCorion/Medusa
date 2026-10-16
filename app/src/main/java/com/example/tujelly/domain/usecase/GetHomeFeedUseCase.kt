@@ -369,7 +369,7 @@ class GetHomeFeedUseCase(
             // JOB 3: PLATAFORMAS OFICIALES DE STREAMING (CONCURRENTE CON STREAMING)
             // ---------------------------------------------------------------------
             launch {
-                if (effectiveTmdbKey.isNotBlank()) {
+                if (effectiveTmdbKey.isNotBlank() && prefs.isProUser) {
                     val selected = prefs.selectedPlatforms
                     val activeProviders = (if (selected.isEmpty()) {
                         com.example.tujelly.data.model.SUPPORTED_PLATFORMS

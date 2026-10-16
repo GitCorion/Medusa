@@ -74,6 +74,7 @@ class PlayerViewModel @Inject constructor(
     val buttonStyle: StateFlow<String> = userPreferencesRepository.buttonStyle
     val isMonochrome: StateFlow<Boolean> = userPreferencesRepository.isMonochrome
     val accentColor: StateFlow<String> = userPreferencesRepository.accentColor
+    val isProUser: StateFlow<Boolean> = userPreferencesRepository.isProUser
 
     private var currentPlayableId: String = ""
     private var jellyfinBaseUrl: String = ""

@@ -32,6 +32,7 @@ import androidx.compose.material.icons.rounded.Dns
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Public
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material.icons.rounded.SyncAlt
 import androidx.compose.material.icons.rounded.SystemUpdate
@@ -119,6 +120,7 @@ fun SettingsScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val focusColor = if (uiState.isMonochrome) Color.White else TvAccent.getColor(uiState.accentColor)
     val focusContent = if (uiState.isMonochrome) Color(0xFF0F172A) else TvAccent.getFocusedContentColor(uiState.accentColor)
+    var showProDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(uiState.isSuccess) {
         if (uiState.isSuccess) {
@@ -248,7 +250,7 @@ fun SettingsScreen(
                             1 -> TraktCategory(uiState, viewModel, focusColor, focusContent)
                             2 -> PlatformsCategory(uiState, viewModel, focusColor, focusContent)
                             3 -> AppearanceCategory(uiState, viewModel, focusColor, focusContent)
-                            4 -> AboutCategory(uiState, viewModel, focusColor, focusContent)
+                            4 -> AboutCategory(uiState, viewModel, focusColor, focusContent, onOpenProDialog = { showProDialog = true })
                         }
 
                         if (uiState.statusMessage != null) {
@@ -293,6 +295,14 @@ fun SettingsScreen(
                 onDismiss = { viewModel.dismissDialog() },
                 focusColor = focusColor,
                 focusContent = focusContent
+            )
+        }
+
+        val billingManager = com.example.tujelly.ui.theme.LocalBillingManager.current
+        if (showProDialog && billingManager != null) {
+            com.example.tujelly.ui.components.MedusaProDialog(
+                billingManager = billingManager,
+                onDismiss = { showProDialog = false }
             )
         }
     }
@@ -832,7 +842,8 @@ private fun AboutCategory(
     uiState: SettingsUiState,
     viewModel: SettingsViewModel,
     focusColor: Color,
-    focusContent: Color
+    focusContent: Color,
+    onOpenProDialog: () -> Unit
 ) {
     val updateInfo = uiState.updateInfo
     val hasUpdate = updateInfo?.hasUpdate == true
@@ -851,13 +862,40 @@ private fun AboutCategory(
 
     val editionText = when {
         uiState.isFamilyVipUser -> "Medusa Pro (Servidor Autorizado) 👑"
-        uiState.isProUser -> "Medusa Pro Vitalicio 👑"
+        uiState.hasPurchasedPro -> "Medusa Pro Vitalicio 👑"
+        uiState.isTrialActive -> "Medusa Pro (Prueba: quedan ${uiState.trialDaysRemaining} días) ⏳"
         else -> "Medusa Estándar (Gratis)"
     }
     TvSettingRow(
         title = "Edición",
         value = editionText
     )
+
+    if (!uiState.hasPurchasedPro && !uiState.isFamilyVipUser) {
+        Row(
+            modifier = Modifier.padding(top = 4.dp, bottom = 8.dp)
+        ) {
+            Button(
+                onClick = onOpenProDialog,
+                colors = ButtonDefaults.colors(
+                    containerColor = Color(0xFFD97706),
+                    contentColor = Color.White,
+                    focusedContainerColor = focusColor,
+                    focusedContentColor = focusContent
+                )
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Rounded.Star, contentDescription = null, modifier = Modifier.size(15.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = if (uiState.isTrialActive) "Obtener Pro Vitalicio (4,99 €)" else "Desbloquear Medusa Pro (4,99 €)",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+    }
 
     TvSettingRow(
         title = "Estado",

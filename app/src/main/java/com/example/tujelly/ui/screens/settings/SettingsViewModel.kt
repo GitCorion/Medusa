@@ -119,7 +119,10 @@ data class SettingsUiState(
     val isSyncingCatalog: Boolean = false,
     val lastSyncTimestamp: String? = null,
     val isProUser: Boolean = false,
-    val isFamilyVipUser: Boolean = false
+    val hasPurchasedPro: Boolean = false,
+    val isFamilyVipUser: Boolean = false,
+    val isTrialActive: Boolean = false,
+    val trialDaysRemaining: Int = 0
 ) {
     val isMonochrome: Boolean
         get() = indicatorTheme == com.example.tujelly.data.local.INDICATOR_THEME_MONOCHROME || accentColor == com.example.tujelly.data.local.ACCENT_WHITE
@@ -177,7 +180,10 @@ class SettingsViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(
                     lastSyncTimestamp = prefs.jellyfinLastSync,
                     isProUser = prefs.isProUser,
-                    isFamilyVipUser = prefs.isFamilyVipUser
+                    hasPurchasedPro = prefs.hasPurchasedPro,
+                    isFamilyVipUser = prefs.isFamilyVipUser,
+                    isTrialActive = prefs.isTrialActive,
+                    trialDaysRemaining = prefs.trialDaysRemaining
                 )
             }
         }
@@ -208,7 +214,10 @@ class SettingsViewModel @Inject constructor(
                 isJellyfinConnected = isJfConnected,
                 isTraktConnected = prefs.traktAccessToken.isNotBlank(),
                 isProUser = prefs.isProUser,
-                isFamilyVipUser = prefs.isFamilyVipUser
+                hasPurchasedPro = prefs.hasPurchasedPro,
+                isFamilyVipUser = prefs.isFamilyVipUser,
+                isTrialActive = prefs.isTrialActive,
+                trialDaysRemaining = prefs.trialDaysRemaining
             )
             if (prefs.traktAccessToken.isNotBlank()) {
                 validateTraktToken(prefs.traktAccessToken, prefs.traktClientId)

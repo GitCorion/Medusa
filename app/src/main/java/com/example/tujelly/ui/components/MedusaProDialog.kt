@@ -23,6 +23,7 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.FastForward
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Sync
+import androidx.compose.material.icons.rounded.Tv
 import androidx.compose.material.icons.rounded.WorkspacePremium
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -162,6 +163,11 @@ fun MedusaProDialog(
                         icon = Icons.Rounded.AutoAwesome,
                         title = "Siguiente Episodio Interactivo",
                         description = "Tarjeta flotante con cuenta atrás personalizable."
+                    )
+                    ProFeatureRow(
+                        icon = Icons.Rounded.Tv,
+                        title = "Hubs de Marcas de Streaming",
+                        description = "Filtros y listas en el inicio de Netflix, Disney+, Max, Apple TV+ y más."
                     )
                     ProFeatureRow(
                         icon = Icons.Rounded.Sync,

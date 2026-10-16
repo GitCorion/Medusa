@@ -15,6 +15,8 @@ private val AccentSecondary = Color(0xFF8054C8)
 private val TextWhite = Color(0xFFF5F5FA)
 private val TextMuted = Color(0xFFB0B0C4)
 
+val LocalBillingManager = androidx.compose.runtime.staticCompositionLocalOf<com.example.tujelly.data.billing.BillingManager?> { null }
+
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 fun TujellyTheme(

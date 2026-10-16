@@ -69,6 +69,9 @@ import com.example.tujelly.ui.theme.TujellyTheme
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    @javax.inject.Inject
+    lateinit var billingManager: com.example.tujelly.data.billing.BillingManager
+
     private var pendingPlayItemId by mutableStateOf<String?>(null)
 
     @OptIn(ExperimentalTvMaterial3Api::class)
@@ -129,7 +132,8 @@ class MainActivity : ComponentActivity() {
                         com.example.tujelly.ui.theme.LocalIsMonochromeTheme provides isMonochrome,
                         com.example.tujelly.ui.theme.LocalIndicatorTheme provides indicatorTheme,
                         com.example.tujelly.ui.theme.LocalPlatformLogoStyle provides platformLogoStyle,
-                        com.example.tujelly.ui.theme.LocalAccentColor provides accentColor
+                        com.example.tujelly.ui.theme.LocalAccentColor provides accentColor,
+                        com.example.tujelly.ui.theme.LocalBillingManager provides billingManager
                     ) {
                         TujellyApp(
                             startOnboarding = !prefs.hasCompletedOnboarding,

@@ -5,11 +5,13 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -67,7 +69,10 @@ data class UserPreferences(
     val hiddenTraktLists: Set<String> = emptySet(),
     val hasCompletedOnboarding: Boolean = false,
     val isProUser: Boolean = false,
-    val isFamilyVipUser: Boolean = false
+    val hasPurchasedPro: Boolean = false,
+    val isFamilyVipUser: Boolean = false,
+    val isTrialActive: Boolean = false,
+    val trialDaysRemaining: Int = 0
 ) {
     val isMonochrome: Boolean
         get() = indicatorTheme == INDICATOR_THEME_MONOCHROME || accentColor == ACCENT_WHITE
@@ -84,6 +89,19 @@ data class UserPreferences(
 class UserPreferencesRepository(context: Context) {
 
     private val appContext = context.applicationContext
+
+    init {
+        appScope.launch {
+            appContext.dataStore.edit { prefs ->
+                if ((prefs[Keys.FIRST_INSTALL_TIME] ?: 0L) <= 0L) {
+                    val osTime = runCatching {
+                        appContext.packageManager.getPackageInfo(appContext.packageName, 0).firstInstallTime
+                    }.getOrDefault(System.currentTimeMillis())
+                    prefs[Keys.FIRST_INSTALL_TIME] = if (osTime > 0L) osTime else System.currentTimeMillis()
+                }
+            }
+        }
+    }
 
     /** Contexto de aplicación (sin riesgo de leak) para acceder a ficheros, etc. */
     val applicationContext: Context get() = appContext
@@ -112,6 +130,7 @@ class UserPreferencesRepository(context: Context) {
         val HIDDEN_TRAKT_LISTS = stringPreferencesKey("hidden_trakt_lists")
         val HAS_COMPLETED_ONBOARDING = stringPreferencesKey("has_completed_onboarding")
         val IS_PRO_USER = stringPreferencesKey("is_pro_user")
+        val FIRST_INSTALL_TIME = longPreferencesKey("first_install_time_ms")
     }
 
     /**
@@ -127,6 +146,12 @@ class UserPreferencesRepository(context: Context) {
 
     val isProUser: StateFlow<Boolean> =
         userPreferences.map { it.isProUser }.stateIn(appScope, SharingStarted.Eagerly, false)
+
+    val isTrialActive: StateFlow<Boolean> =
+        userPreferences.map { it.isTrialActive }.stateIn(appScope, SharingStarted.Eagerly, false)
+
+    val trialDaysRemaining: StateFlow<Int> =
+        userPreferences.map { it.trialDaysRemaining }.stateIn(appScope, SharingStarted.Eagerly, 0)
 
     val isFamilyVipUser: StateFlow<Boolean> =
         userPreferences.map { it.isFamilyVipUser }.stateIn(appScope, SharingStarted.Eagerly, false)
@@ -404,6 +429,22 @@ class UserPreferencesRepository(context: Context) {
             val serverUrl = this[Keys.JELLYFIN_SERVER_URL] ?: ""
             val token = this[Keys.JELLYFIN_ACCESS_TOKEN] ?: ""
             val isFamilyVip = com.example.tujelly.util.ServerVerificationUtils.isAuthorizedServer(serverUrl) && token.isNotBlank()
+            val hasPurchased = (this[Keys.IS_PRO_USER] == "true")
+
+            val now = System.currentTimeMillis()
+            val trialDurationMs = 7L * 24L * 60L * 60L * 1000L // 7 días
+            val recordedInstallTime = this[Keys.FIRST_INSTALL_TIME] ?: 0L
+            val baseInstallTime = if (recordedInstallTime > 0L) recordedInstallTime else now
+            val elapsed = now - baseInstallTime
+            val trialActive = !hasPurchased && !isFamilyVip && (elapsed in 0L..trialDurationMs)
+            val daysRemaining = if (trialActive) {
+                val remMs = trialDurationMs - elapsed
+                ((remMs / (24L * 60L * 60L * 1000L)) + 1).toInt().coerceIn(1, 7)
+            } else {
+                0
+            }
+
+            val isPro = hasPurchased || isFamilyVip || trialActive || com.example.tujelly.BuildConfig.DEBUG
 
             return UserPreferences(
                 jellyfinServerUrl = serverUrl,
@@ -433,8 +474,11 @@ class UserPreferencesRepository(context: Context) {
                     .filter { it.isNotBlank() }
                     .toSet(),
                 hasCompletedOnboarding = this[Keys.HAS_COMPLETED_ONBOARDING] == true.toString(),
+                isProUser = isPro,
+                hasPurchasedPro = hasPurchased,
                 isFamilyVipUser = isFamilyVip,
-                isProUser = (this[Keys.IS_PRO_USER] == "true") || com.example.tujelly.BuildConfig.DEBUG || isFamilyVip
+                isTrialActive = trialActive,
+                trialDaysRemaining = daysRemaining
             )
         }
     }
