@@ -117,7 +117,9 @@ data class SettingsUiState(
     val syncedSeriesCount: Int = 0,
     val syncedEpisodesCount: Int = 0,
     val isSyncingCatalog: Boolean = false,
-    val lastSyncTimestamp: String? = null
+    val lastSyncTimestamp: String? = null,
+    val isProUser: Boolean = false,
+    val isFamilyVipUser: Boolean = false
 ) {
     val isMonochrome: Boolean
         get() = indicatorTheme == com.example.tujelly.data.local.INDICATOR_THEME_MONOCHROME || accentColor == com.example.tujelly.data.local.ACCENT_WHITE
@@ -172,7 +174,11 @@ class SettingsViewModel @Inject constructor(
         }
         viewModelScope.launch {
             userPreferencesRepository.userPreferencesFlow.collect { prefs ->
-                _uiState.value = _uiState.value.copy(lastSyncTimestamp = prefs.jellyfinLastSync)
+                _uiState.value = _uiState.value.copy(
+                    lastSyncTimestamp = prefs.jellyfinLastSync,
+                    isProUser = prefs.isProUser,
+                    isFamilyVipUser = prefs.isFamilyVipUser
+                )
             }
         }
         checkForAppUpdates()
@@ -200,12 +206,26 @@ class SettingsViewModel @Inject constructor(
                 selectedPlatforms = prefs.selectedPlatforms,
                 hiddenTraktLists = prefs.hiddenTraktLists,
                 isJellyfinConnected = isJfConnected,
-                isTraktConnected = prefs.traktAccessToken.isNotBlank()
+                isTraktConnected = prefs.traktAccessToken.isNotBlank(),
+                isProUser = prefs.isProUser,
+                isFamilyVipUser = prefs.isFamilyVipUser
             )
             if (prefs.traktAccessToken.isNotBlank()) {
                 validateTraktToken(prefs.traktAccessToken, prefs.traktClientId)
                 loadTraktUserLists(prefs.traktAccessToken, prefs.traktClientId)
             }
+        }
+    }
+
+    fun redeemPromoCode(code: String, onResult: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val success = userPreferencesRepository.redeemPromoCode(code)
+            if (success) {
+                _uiState.value = _uiState.value.copy(
+                    statusMessage = "¡Medusa Pro activado correctamente! 👑"
+                )
+            }
+            onResult(success)
         }
     }
 

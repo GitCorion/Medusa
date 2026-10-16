@@ -66,7 +66,8 @@ data class UserPreferences(
     val selectedPlatforms: Set<String> = emptySet(),
     val hiddenTraktLists: Set<String> = emptySet(),
     val hasCompletedOnboarding: Boolean = false,
-    val isProUser: Boolean = false
+    val isProUser: Boolean = false,
+    val isFamilyVipUser: Boolean = false
 ) {
     val isMonochrome: Boolean
         get() = indicatorTheme == INDICATOR_THEME_MONOCHROME || accentColor == ACCENT_WHITE
@@ -127,6 +128,9 @@ class UserPreferencesRepository(context: Context) {
     val isProUser: StateFlow<Boolean> =
         userPreferences.map { it.isProUser }.stateIn(appScope, SharingStarted.Eagerly, false)
 
+    val isFamilyVipUser: StateFlow<Boolean> =
+        userPreferences.map { it.isFamilyVipUser }.stateIn(appScope, SharingStarted.Eagerly, false)
+
     val accentColor: StateFlow<String> =
         userPreferences.map { it.accentColor }.stateIn(appScope, SharingStarted.Eagerly, ACCENT_CYAN)
 
@@ -142,6 +146,27 @@ class UserPreferencesRepository(context: Context) {
     suspend fun updateProUser(isPro: Boolean) {
         appContext.dataStore.edit { prefs ->
             prefs[Keys.IS_PRO_USER] = isPro.toString()
+        }
+    }
+
+    /**
+     * Valida y canjea un código promocional u operado por familia.
+     * Los códigos solo se comprueban mediante hashes SHA-256 para evitar que figuren en texto plano.
+     */
+    suspend fun redeemPromoCode(code: String): Boolean {
+        val trimmed = code.trim().uppercase()
+        if (trimmed.isBlank()) return false
+        val hash = com.example.tujelly.util.ServerVerificationUtils.sha256(trimmed)
+        val validHashes = setOf(
+            "2debaffca0c97c243e36962184e4a3b1844847931790990f4cd0fe5af754b820", // VIP 1
+            "524540576cf95fe4d888b0a98b1d14411be0a6576c333e62910e49944db29537", // VIP 2
+            "140d7031f62e662310b9da56506f05ec8845386affc3d945c14f26bcadfefe67"  // VIP 3
+        )
+        return if (validHashes.contains(hash)) {
+            updateProUser(true)
+            true
+        } else {
+            false
         }
     }
 
@@ -376,12 +401,16 @@ class UserPreferencesRepository(context: Context) {
             val rawTraktSecret = this[Keys.TRAKT_CLIENT_SECRET] ?: ""
             val traktSecret = if (rawTraktSecret.isBlank()) DEFAULT_TRAKT_CLIENT_SECRET else rawTraktSecret
 
+            val serverUrl = this[Keys.JELLYFIN_SERVER_URL] ?: ""
+            val token = this[Keys.JELLYFIN_ACCESS_TOKEN] ?: ""
+            val isFamilyVip = com.example.tujelly.util.ServerVerificationUtils.isAuthorizedServer(serverUrl) && token.isNotBlank()
+
             return UserPreferences(
-                jellyfinServerUrl = this[Keys.JELLYFIN_SERVER_URL] ?: "",
+                jellyfinServerUrl = serverUrl,
                 jellyfinUserId = this[Keys.JELLYFIN_USER_ID] ?: "",
                 jellyfinUsername = this[Keys.JELLYFIN_USERNAME] ?: "",
                 jellyfinPassword = this[Keys.JELLYFIN_PASSWORD] ?: "",
-                jellyfinAccessToken = this[Keys.JELLYFIN_ACCESS_TOKEN] ?: "",
+                jellyfinAccessToken = token,
                 traktAccessToken = this[Keys.TRAKT_ACCESS_TOKEN] ?: "",
                 traktClientId = traktId,
                 traktClientSecret = traktSecret,
@@ -404,7 +433,8 @@ class UserPreferencesRepository(context: Context) {
                     .filter { it.isNotBlank() }
                     .toSet(),
                 hasCompletedOnboarding = this[Keys.HAS_COMPLETED_ONBOARDING] == true.toString(),
-                isProUser = (this[Keys.IS_PRO_USER] == "true") || com.example.tujelly.BuildConfig.DEBUG
+                isFamilyVipUser = isFamilyVip,
+                isProUser = (this[Keys.IS_PRO_USER] == "true") || com.example.tujelly.BuildConfig.DEBUG || isFamilyVip
             )
         }
     }

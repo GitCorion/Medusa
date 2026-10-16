@@ -849,6 +849,16 @@ private fun AboutCategory(
         value = "${updateInfo?.currentVersion ?: "2.0.2"} (Build 38)"
     )
 
+    val editionText = when {
+        uiState.isFamilyVipUser -> "Medusa Pro (Servidor Autorizado) 👑"
+        uiState.isProUser -> "Medusa Pro Vitalicio 👑"
+        else -> "Medusa Estándar (Gratis)"
+    }
+    TvSettingRow(
+        title = "Edición",
+        value = editionText
+    )
+
     TvSettingRow(
         title = "Estado",
         value = if (hasUpdate) "Actualización disponible (${updateInfo?.latestVersion})" else "Al día"
@@ -857,9 +867,14 @@ private fun AboutCategory(
     if (com.example.tujelly.BuildConfig.ENABLE_IN_APP_UPDATER) {
         TvSectionHeader(title = "ACTUALIZACIONES")
 
+        val channelText = if (uiState.isFamilyVipUser) {
+            "Beta Privada (Servidor Autorizado)"
+        } else {
+            "Beta Privada (Firebase OTA)"
+        }
         TvSettingRow(
             title = "Canal",
-            value = "Beta Privada (Firebase OTA)"
+            value = channelText
         )
 
         Row(
