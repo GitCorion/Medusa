@@ -22,6 +22,8 @@ import java.io.FileOutputStream
 data class FirebaseVersionDto(
     @SerialName("versionCode") val versionCode: Long = 0L,
     @SerialName("versionName") val versionName: String = "",
+    @SerialName("minSupportedVersionCode") val minSupportedVersionCode: Long = 0L,
+    @SerialName("forceUpdate") val forceUpdate: Boolean = false,
     @SerialName("releaseNotes") val releaseNotes: String? = null,
     @SerialName("apkUrl") val apkUrl: String? = null
 )
@@ -56,6 +58,7 @@ interface GitHubApiService {
 
 data class UpdateInfo(
     val hasUpdate: Boolean,
+    val isForceUpdate: Boolean = false,
     val currentVersion: String,
     val latestVersion: String,
     val releaseNotes: String?,
@@ -102,10 +105,14 @@ class AppUpdateManager(private val context: Context) {
                 isVersionNewer(cleanCurrent, cleanRemote)
             }
 
+            val isForceUpdate = (remoteVersion.minSupportedVersionCode > 0L && currentVersionCode < remoteVersion.minSupportedVersionCode) ||
+                    (remoteVersion.forceUpdate && isNewer)
+
             val hasValidUrl = !remoteVersion.apkUrl.isNullOrBlank()
 
             val info = UpdateInfo(
-                hasUpdate = isNewer && hasValidUrl,
+                hasUpdate = (isNewer || isForceUpdate) && hasValidUrl,
+                isForceUpdate = isForceUpdate,
                 currentVersion = currentVer,
                 latestVersion = remoteVersion.versionName.ifBlank { "v${remoteVersion.versionCode}" },
                 releaseNotes = remoteVersion.releaseNotes,

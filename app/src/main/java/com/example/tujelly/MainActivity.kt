@@ -200,9 +200,15 @@ fun TujellyApp(
         }
     }
 
+    val isForceUpdate = updateInfo?.isForceUpdate == true
+
     BackHandler(enabled = showUpdateBanner) {
-        showUpdateBanner = false
-        updateDismissed = true
+        if (!isForceUpdate) {
+            showUpdateBanner = false
+            updateDismissed = true
+        } else {
+            (context as? android.app.Activity)?.finish()
+        }
     }
 
     val currentEntry by navController.currentBackStackEntryAsState()
@@ -500,6 +506,7 @@ fun TujellyApp(
                         .padding(28.dp)
                 ) {
                     val coroutineScope = rememberCoroutineScope()
+                    val isForce = updateInfo?.isForceUpdate == true
                     Column(modifier = Modifier.fillMaxWidth()) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -508,11 +515,11 @@ fun TujellyApp(
                             Box(
                                 modifier = Modifier
                                     .size(10.dp)
-                                    .background(Color(0xFF10B981), androidx.compose.foundation.shape.CircleShape)
+                                    .background(if (isForce) Color(0xFFEF4444) else Color(0xFF10B981), androidx.compose.foundation.shape.CircleShape)
                             )
                             Text(
-                                text = "ACTUALIZACIÓN DISPONIBLE",
-                                color = Color(0xFF00E5FF),
+                                text = if (isForce) "ACTUALIZACIÓN OBLIGATORIA" else "ACTUALIZACIÓN DISPONIBLE",
+                                color = if (isForce) Color(0xFFF87171) else Color(0xFF00E5FF),
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 letterSpacing = 1.2.sp
@@ -522,7 +529,7 @@ fun TujellyApp(
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Text(
-                            text = "Nueva versión ${updateInfo?.latestVersion}",
+                            text = if (isForce) "Esta versión beta ha caducado" else "Nueva versión ${updateInfo?.latestVersion}",
                             color = Color.White,
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold
@@ -587,8 +594,8 @@ fun TujellyApp(
                                 enabled = !isDownloading,
                                 modifier = Modifier.focusRequester(updateButtonFocusRequester),
                                 colors = androidx.tv.material3.ButtonDefaults.colors(
-                                    containerColor = Color(0xFF00E5FF),
-                                    contentColor = Color(0xFF05070B),
+                                    containerColor = if (isForce) Color(0xFFEF4444) else Color(0xFF00E5FF),
+                                    contentColor = if (isForce) Color.White else Color(0xFF05070B),
                                     focusedContainerColor = Color.White,
                                     focusedContentColor = Color.Black
                                 ),
@@ -601,25 +608,27 @@ fun TujellyApp(
                                 )
                             }
 
-                            androidx.tv.material3.Button(
-                                onClick = {
-                                    showUpdateBanner = false
-                                    updateDismissed = true
-                                },
-                                enabled = !isDownloading,
-                                colors = androidx.tv.material3.ButtonDefaults.colors(
-                                    containerColor = Color(0x18FFFFFF),
-                                    contentColor = Color(0xFFCBD5E1),
-                                    focusedContainerColor = Color(0x40FFFFFF),
-                                    focusedContentColor = Color.White
-                                ),
-                                shape = androidx.tv.material3.ButtonDefaults.shape(RoundedCornerShape(12.dp))
-                            ) {
-                                Text(
-                                    text = "Más tarde",
-                                    fontWeight = FontWeight.Medium,
-                                    fontSize = 13.sp
-                                )
+                            if (!isForce) {
+                                androidx.tv.material3.Button(
+                                    onClick = {
+                                        showUpdateBanner = false
+                                        updateDismissed = true
+                                    },
+                                    enabled = !isDownloading,
+                                    colors = androidx.tv.material3.ButtonDefaults.colors(
+                                        containerColor = Color(0x18FFFFFF),
+                                        contentColor = Color(0xFFCBD5E1),
+                                        focusedContainerColor = Color(0x40FFFFFF),
+                                        focusedContentColor = Color.White
+                                    ),
+                                    shape = androidx.tv.material3.ButtonDefaults.shape(RoundedCornerShape(12.dp))
+                                ) {
+                                    Text(
+                                        text = "Más tarde",
+                                        fontWeight = FontWeight.Medium,
+                                        fontSize = 13.sp
+                                    )
+                                }
                             }
                         }
                     }
