@@ -3,6 +3,7 @@ package tv.medusa.app.domain.usecase
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.min
 import tv.medusa.app.data.local.DEFAULT_TMDB_API_KEY
+import tv.medusa.app.data.remote.ApiConfig
 import tv.medusa.app.data.local.DEFAULT_TRAKT_CLIENT_ID
 import tv.medusa.app.data.model.SUPPORTED_PLATFORMS
 import tv.medusa.app.data.local.UserPreferences
@@ -251,7 +252,7 @@ class GetHomeFeedUseCase(
         // se consultan en paralelo y emiten de forma inmediata al UI al completar.
         // =========================================================================
         val effectiveTmdbKey = prefs.tmdbApiKey.takeIf { it.isNotBlank() } ?: DEFAULT_TMDB_API_KEY
-        val effectiveWatchRegion = prefs.watchRegion.takeIf { it.isNotBlank() } ?: "ES"
+        val effectiveWatchRegion = prefs.watchRegion.takeIf { it.isNotBlank() } ?: ApiConfig.TMDB_WATCH_REGION
         var sharedResumeReference: JellyfinMediaEntity? = null
         var sharedRecentReference: JellyfinMediaEntity? = null
 

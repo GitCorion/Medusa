@@ -81,7 +81,7 @@ interface TmdbApiService {
     suspend fun discoverMoviesByProvider(
         @Query("api_key") apiKey: String,
         @Query("with_watch_providers", encoded = true) providerId: String,
-        @Query("watch_region") watchRegion: String = "ES",
+        @Query("watch_region") watchRegion: String = ApiConfig.TMDB_WATCH_REGION,
         @Query("sort_by") sortBy: String = "popularity.desc",
         @Query("vote_count.gte") voteCountGte: Int? = null,
         @Query("page") page: Int = 1,
@@ -92,7 +92,7 @@ interface TmdbApiService {
     suspend fun discoverTvByProvider(
         @Query("api_key") apiKey: String,
         @Query("with_watch_providers", encoded = true) providerId: String,
-        @Query("watch_region") watchRegion: String = "ES",
+        @Query("watch_region") watchRegion: String = ApiConfig.TMDB_WATCH_REGION,
         @Query("sort_by") sortBy: String = "popularity.desc",
         @Query("vote_count.gte") voteCountGte: Int? = null,
         @Query("page") page: Int = 1,

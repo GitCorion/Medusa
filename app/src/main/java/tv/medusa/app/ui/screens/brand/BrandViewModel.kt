@@ -140,7 +140,7 @@ class BrandViewModel @Inject constructor(
         viewModelScope.launch {
             val prefs = userPreferencesRepository.userPreferencesFlow.first()
             val effectiveApiKey = prefs.tmdbApiKey.takeIf { it.isNotBlank() } ?: DEFAULT_TMDB_API_KEY
-            val effectiveRegion = prefs.watchRegion.takeIf { it.isNotBlank() } ?: "ES"
+            val effectiveRegion = prefs.watchRegion.takeIf { it.isNotBlank() } ?: ApiConfig.TMDB_WATCH_REGION
 
             val platform = platformById(brandId)
                 ?: SUPPORTED_PLATFORMS.first()

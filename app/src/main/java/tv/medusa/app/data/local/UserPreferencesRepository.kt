@@ -2,6 +2,7 @@ package tv.medusa.app.data.local
 
 import java.util.Locale
 import tv.medusa.app.BuildConfig
+import tv.medusa.app.data.remote.ApiConfig
 import tv.medusa.app.util.DeviceUtils
 import tv.medusa.app.util.ServerVerificationUtils
 import android.content.Context
@@ -64,7 +65,7 @@ data class UserPreferences(
     val traktClientId: String = DEFAULT_TRAKT_CLIENT_ID,
     val traktClientSecret: String = DEFAULT_TRAKT_CLIENT_SECRET,
     val tmdbApiKey: String = DEFAULT_TMDB_API_KEY,
-    val watchRegion: String = "ES",
+    val watchRegion: String = ApiConfig.TMDB_WATCH_REGION,
     val buttonStyle: String = BUTTON_STYLE_ICONS_ONLY,
     val accentColor: String = ACCENT_CYAN,
     val indicatorTheme: String = INDICATOR_THEME_COLOR,
@@ -355,7 +356,7 @@ class UserPreferencesRepository(context: Context) {
         traktClientId: String,
         traktClientSecret: String = "",
         tmdbApiKey: String,
-        watchRegion: String = "ES"
+        watchRegion: String = ApiConfig.TMDB_WATCH_REGION
     ) {
         val cleanUrl = serverUrl.trimEnd('/')
         appContext.dataStore.edit { prefs ->
@@ -470,7 +471,7 @@ class UserPreferencesRepository(context: Context) {
                 traktClientId = traktId,
                 traktClientSecret = traktSecret,
                 tmdbApiKey = tmdbKey,
-                watchRegion = this[Keys.WATCH_REGION] ?: "ES",
+                watchRegion = this[Keys.WATCH_REGION] ?: ApiConfig.TMDB_WATCH_REGION,
                 buttonStyle = this[Keys.BUTTON_STYLE] ?: BUTTON_STYLE_ICONS_ONLY,
                 accentColor = this[Keys.ACCENT_COLOR] ?: ACCENT_CYAN,
                 indicatorTheme = this[Keys.INDICATOR_THEME] ?: INDICATOR_THEME_COLOR,

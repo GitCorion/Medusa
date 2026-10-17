@@ -49,4 +49,18 @@ object ApiConfig {
      */
     val TMDB_LANGUAGE: String
         get() = if (Locale.getDefault().language == "es") "es-ES" else "en-US"
+
+    /**
+     * Región para la disponibilidad en plataformas de streaming (`watch_region`), tomada de la
+     * configuración regional del dispositivo (`ES`, `MX`, `GB`…). Si el locale no declara país se
+     * aplica el mismo criterio que [TMDB_LANGUAGE]: español → `ES`, cualquier otro → `US`.
+     *
+     * Es solo el valor **por defecto**: el ajuste «Región» de la pantalla de Ajustes manda en cuanto
+     * el usuario lo elige (se guarda en DataStore y sobrevive al cambio de región del sistema).
+     */
+    val TMDB_WATCH_REGION: String
+        get() = Locale.getDefault().country
+            .takeIf { it.length == 2 && it.all(Char::isLetter) }
+            ?.uppercase()
+            ?: if (Locale.getDefault().language == "es") "ES" else "US"
 }

@@ -2,6 +2,7 @@ package tv.medusa.app.ui.screens.settings
 
 import java.util.Locale
 import tv.medusa.app.BuildConfig
+import tv.medusa.app.data.remote.ApiConfig
 import tv.medusa.app.ui.components.MedusaProDialog
 import tv.medusa.app.ui.theme.LocalBillingManager
 import androidx.compose.foundation.BorderStroke
@@ -730,7 +731,9 @@ private fun PlatformsCategory(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         modifier = Modifier.padding(top = 4.dp, bottom = 10.dp)
     ) {
-        listOf("ES", "MX", "US", "AR", "CO").forEach { code ->
+        // La región del sistema va primera: es el valor por defecto y así siempre se puede
+        // recuperar con el mando después de haber elegido otra (si no, solo se podría escribiendo).
+        (listOf(ApiConfig.TMDB_WATCH_REGION) + listOf("ES", "MX", "US", "AR", "CO")).distinct().forEach { code ->
             val isCurrent = uiState.watchRegion.equals(code, ignoreCase = true)
             Surface(
                 onClick = { viewModel.updateWatchRegion(code) },

@@ -89,7 +89,7 @@ data class SettingsUiState(
     val traktClientId: String = DEFAULT_TRAKT_CLIENT_ID,
     val traktClientSecret: String = DEFAULT_TRAKT_CLIENT_SECRET,
     val tmdbApiKey: String = "",
-    val watchRegion: String = "ES",
+    val watchRegion: String = ApiConfig.TMDB_WATCH_REGION,
     val buttonStyle: String = BUTTON_STYLE_ICONS_ONLY,
     val accentColor: String = ACCENT_CYAN,
     val indicatorTheme: String = INDICATOR_THEME_COLOR,
@@ -437,7 +437,7 @@ class SettingsViewModel @Inject constructor(
                 }
             }
             SettingField.WATCH_REGION -> {
-                val region = value.ifBlank { "ES" }.uppercase()
+                val region = value.ifBlank { ApiConfig.TMDB_WATCH_REGION }.uppercase()
                 _uiState.value = _uiState.value.copy(watchRegion = region)
                 viewModelScope.launch {
                     userPreferencesRepository.updateTmdbConfig(

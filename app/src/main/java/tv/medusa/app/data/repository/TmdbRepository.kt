@@ -131,7 +131,7 @@ class TmdbRepository(
         }
     }
 
-    suspend fun getTmdbByProvider(apiKey: String, providerId: String, region: String = "ES"): Result<List<TmdbItemDto>> {
+    suspend fun getTmdbByProvider(apiKey: String, providerId: String, region: String = ApiConfig.TMDB_WATCH_REGION): Result<List<TmdbItemDto>> {
         val cacheKey = "$providerId-$region"
         MediaCaches.tmdbProviderCache.get(cacheKey)?.let { return Result.success(it) }
 
