@@ -8,7 +8,7 @@ plugins {
     alias(libs.plugins.androidx.baselineprofile)
     alias(libs.plugins.google.services)
     alias(libs.plugins.firebase.crashlytics)
-    id("com.google.devtools.ksp")
+    alias(libs.plugins.ksp)
 }
 
 val keystoreProperties = Properties().apply {
@@ -22,14 +22,14 @@ fun envOr(key: String, default: String): String =
     System.getenv(key)?.takeIf { it.isNotBlank() } ?: keystoreProperties.getProperty(key) ?: default
 
 android {
-    namespace = "com.example.tujelly"
+    namespace = "tv.medusa.app"
     compileSdk = 35
 
     defaultConfig {
         minSdk = 26
         targetSdk = 35
-        versionCode = 71
-        versionName = "2.2.24"
+        versionCode = 72
+        versionName = "2.2.25"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -45,7 +45,7 @@ android {
     productFlavors {
         create("beta") {
             dimension = "distribution"
-            applicationId = "com.example.tujelly"
+            applicationId = "tv.medusa.app"
             buildConfigField("boolean", "ENABLE_IN_APP_UPDATER", "true")
         }
         create("play") {

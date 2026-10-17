@@ -16,6 +16,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Tujelly"
+rootProject.name = "Medusa"
 include(":app")
 include(":baselineprofile")

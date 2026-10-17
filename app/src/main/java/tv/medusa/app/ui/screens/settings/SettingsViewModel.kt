@@ -1,0 +1,913 @@
+package tv.medusa.app.ui.screens.settings
+
+import java.net.ConnectException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
+import tv.medusa.app.data.local.ACCENT_CYAN
+import tv.medusa.app.data.local.ACCENT_WHITE
+import tv.medusa.app.data.local.APP_THEME_MONOCHROME
+import tv.medusa.app.data.local.INDICATOR_THEME_COLOR
+import tv.medusa.app.data.local.INDICATOR_THEME_MONOCHROME
+import tv.medusa.app.data.local.PERFORMANCE_MODE_AUTO
+import tv.medusa.app.data.local.PLATFORM_LOGO_COLOR
+import tv.medusa.app.data.local.PLATFORM_LOGO_MONOCHROME
+import tv.medusa.app.data.remote.update.UpdateInfo
+import tv.medusa.app.data.remote.trakt.TraktUserListDto
+import tv.medusa.app.ui.screens.brand.BrandViewModel
+import android.content.Context
+import androidx.annotation.StringRes
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import tv.medusa.app.R
+import tv.medusa.app.data.local.BUTTON_STYLE_ICONS_ONLY
+import tv.medusa.app.data.local.DEFAULT_TRAKT_CLIENT_ID
+import tv.medusa.app.data.local.DEFAULT_TRAKT_CLIENT_SECRET
+import tv.medusa.app.data.local.UserPreferencesRepository
+import tv.medusa.app.data.remote.ApiConfig
+import tv.medusa.app.data.remote.NetworkClientFactory
+import tv.medusa.app.data.remote.update.AppUpdateManager
+import tv.medusa.app.data.remote.jellyfin.JellyfinApiService
+import tv.medusa.app.data.remote.jellyfin.JellyfinAuthRequest
+import tv.medusa.app.data.remote.trakt.TraktApiService
+import tv.medusa.app.data.remote.trakt.TraktDeviceCodeRequest
+import tv.medusa.app.data.remote.trakt.TraktDeviceTokenRequest
+import tv.medusa.app.data.repository.MediaRepository
+import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import java.net.URLEncoder
+import javax.inject.Inject
+
+enum class SettingField(
+    @StringRes val titleRes: Int,
+    @StringRes val placeholderRes: Int,
+    val isPassword: Boolean = false
+) {
+    SERVER_URL(
+        R.string.settings_field_server_url,
+        R.string.settings_field_server_url_placeholder
+    ),
+    USERNAME(
+        R.string.settings_field_username,
+        R.string.settings_field_username_placeholder
+    ),
+    PASSWORD(
+        R.string.settings_field_password,
+        R.string.settings_field_password_placeholder,
+        isPassword = true
+    ),
+    TRAKT_CLIENT_ID(
+        R.string.settings_field_trakt_client_id,
+        R.string.settings_field_trakt_client_id_placeholder
+    ),
+    TRAKT_CLIENT_SECRET(
+        R.string.settings_field_trakt_client_secret,
+        R.string.settings_field_trakt_client_secret_placeholder,
+        isPassword = true
+    ),
+    TRAKT_MANUAL_TOKEN(
+        R.string.settings_field_trakt_token,
+        R.string.settings_field_trakt_token_placeholder
+    ),
+    WATCH_REGION(
+        R.string.settings_field_watch_region,
+        R.string.settings_field_watch_region_placeholder
+    )
+}
+
+data class SettingsUiState(
+    val serverUrl: String = "",
+    val username: String = "",
+    val password: String = "",
+    val traktToken: String = "",
+    val traktClientId: String = DEFAULT_TRAKT_CLIENT_ID,
+    val traktClientSecret: String = DEFAULT_TRAKT_CLIENT_SECRET,
+    val tmdbApiKey: String = "",
+    val watchRegion: String = "ES",
+    val buttonStyle: String = BUTTON_STYLE_ICONS_ONLY,
+    val accentColor: String = ACCENT_CYAN,
+    val indicatorTheme: String = INDICATOR_THEME_COLOR,
+    val platformLogoStyle: String = PLATFORM_LOGO_COLOR,
+    val performanceMode: String = PERFORMANCE_MODE_AUTO,
+    val isLoading: Boolean = false,
+    val statusMessage: String? = null,
+    val isSuccess: Boolean = false,
+    val activeCategory: Int = 0,
+    val serverName: String? = null,
+    val serverVersion: String? = null,
+    val isJellyfinConnected: Boolean = false,
+    // Trakt QR Device Flow & Status
+    val isTraktConnected: Boolean = false,
+    val traktUsername: String? = null,
+    val traktUserCode: String? = null,
+    val traktQrUrl: String? = null,
+    val isWaitingTraktAuth: Boolean = false,
+    // Jellyfin Quick Connect Flow
+    val jellyfinQuickConnectCode: String? = null,
+    val jellyfinQrUrl: String? = null,
+    val isWaitingJellyfinQuickConnect: Boolean = false,
+    // TV Dialog Edit State
+    val activeDialogField: SettingField? = null,
+    val activeDialogValue: String = "",
+    // GitHub App Updates
+    val isCheckingUpdate: Boolean = false,
+    val updateInfo: UpdateInfo? = null,
+    val downloadProgress: Float? = null,
+    val selectedPlatforms: Set<String> = emptySet(),
+    val hiddenTraktLists: Set<String> = emptySet(),
+    val traktUserLists: List<TraktUserListDto> = emptyList(),
+    val isLoadingTraktLists: Boolean = false,
+    // Sincronización y Catálogo
+    val syncedMoviesCount: Int = 0,
+    val syncedSeriesCount: Int = 0,
+    val syncedEpisodesCount: Int = 0,
+    val isSyncingCatalog: Boolean = false,
+    val lastSyncTimestamp: String? = null,
+    val isProUser: Boolean = false,
+    val hasPurchasedPro: Boolean = false,
+    val isFamilyVipUser: Boolean = false,
+    val isTrialActive: Boolean = false,
+    val trialDaysRemaining: Int = 0
+) {
+    val isMonochrome: Boolean
+        get() = indicatorTheme == INDICATOR_THEME_MONOCHROME || accentColor == ACCENT_WHITE
+}
+
+@HiltViewModel
+class SettingsViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
+    private val userPreferencesRepository: UserPreferencesRepository,
+    private val appUpdateManager: AppUpdateManager,
+    private val mediaRepository: MediaRepository
+) : ViewModel() {
+
+    private val _uiState = MutableStateFlow(SettingsUiState())
+    val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
+
+    private var traktPollJob: Job? = null
+    private var jellyfinQuickConnectJob: Job? = null
+    private var serverUrlWriteJob: Job? = null
+
+    init {
+        loadCurrentPreferences()
+        viewModelScope.launch {
+            AppUpdateManager.updateInfo.collect { info ->
+                if (info != null) {
+                    _uiState.value = _uiState.value.copy(
+                        updateInfo = info,
+                        statusMessage = if (info.hasUpdate) context.getString(R.string.settings_update_available_toast, info.latestVersion) else context.getString(R.string.settings_up_to_date_toast, info.currentVersion)
+                    )
+                }
+            }
+        }
+        viewModelScope.launch {
+            AppUpdateManager.downloadProgress.collect { progress ->
+                if (progress != null) {
+                    _uiState.value = _uiState.value.copy(downloadProgress = progress)
+                }
+            }
+        }
+        viewModelScope.launch {
+            mediaRepository.getLibraryStatsFlow().collect { stats ->
+                _uiState.value = _uiState.value.copy(
+                    syncedMoviesCount = stats.movies,
+                    syncedSeriesCount = stats.series,
+                    syncedEpisodesCount = stats.episodes
+                )
+            }
+        }
+        viewModelScope.launch {
+            MediaRepository.syncProgress.collect { progress ->
+                _uiState.value = _uiState.value.copy(isSyncingCatalog = progress.isSyncing)
+            }
+        }
+        viewModelScope.launch {
+            userPreferencesRepository.userPreferencesFlow.collect { prefs ->
+                _uiState.value = _uiState.value.copy(
+                    lastSyncTimestamp = prefs.jellyfinLastSync,
+                    isProUser = prefs.isProUser,
+                    hasPurchasedPro = prefs.hasPurchasedPro,
+                    isFamilyVipUser = prefs.isFamilyVipUser,
+                    isTrialActive = prefs.isTrialActive,
+                    trialDaysRemaining = prefs.trialDaysRemaining
+                )
+            }
+        }
+        checkForAppUpdates()
+    }
+
+    private fun loadCurrentPreferences() {
+        viewModelScope.launch {
+            val prefs = userPreferencesRepository.userPreferencesFlow.first()
+            val isJfConnected = prefs.jellyfinAccessToken.isNotBlank() && prefs.jellyfinServerUrl.isNotBlank()
+
+            _uiState.value = _uiState.value.copy(
+                serverUrl = prefs.jellyfinServerUrl,
+                username = prefs.jellyfinUsername,
+                password = prefs.jellyfinPassword,
+                traktToken = prefs.traktAccessToken,
+                traktClientId = prefs.traktClientId,
+                traktClientSecret = prefs.traktClientSecret,
+                tmdbApiKey = prefs.tmdbApiKey,
+                watchRegion = prefs.watchRegion,
+                buttonStyle = prefs.buttonStyle,
+                accentColor = prefs.accentColor,
+                indicatorTheme = prefs.indicatorTheme,
+                platformLogoStyle = prefs.platformLogoStyle,
+                performanceMode = prefs.performanceMode,
+                selectedPlatforms = prefs.selectedPlatforms,
+                hiddenTraktLists = prefs.hiddenTraktLists,
+                isJellyfinConnected = isJfConnected,
+                isTraktConnected = prefs.traktAccessToken.isNotBlank(),
+                isProUser = prefs.isProUser,
+                hasPurchasedPro = prefs.hasPurchasedPro,
+                isFamilyVipUser = prefs.isFamilyVipUser,
+                isTrialActive = prefs.isTrialActive,
+                trialDaysRemaining = prefs.trialDaysRemaining
+            )
+            if (prefs.traktAccessToken.isNotBlank()) {
+                validateTraktToken(prefs.traktAccessToken, prefs.traktClientId)
+                loadTraktUserLists(prefs.traktAccessToken, prefs.traktClientId)
+            }
+        }
+    }
+
+    fun redeemPromoCode(code: String, onResult: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val success = userPreferencesRepository.redeemPromoCode(code)
+            if (success) {
+                _uiState.value = _uiState.value.copy(
+                    statusMessage = context.getString(R.string.settings_promo_activated)
+                )
+            }
+            onResult(success)
+        }
+    }
+
+    fun selectCategory(categoryIndex: Int) {
+        _uiState.value = _uiState.value.copy(activeCategory = categoryIndex)
+    }
+
+    fun updatePerformanceMode(mode: String) {
+        viewModelScope.launch {
+            userPreferencesRepository.updatePerformanceMode(mode)
+            _uiState.value = _uiState.value.copy(performanceMode = mode)
+        }
+    }
+
+    fun updateButtonStyle(style: String) {
+        viewModelScope.launch {
+            userPreferencesRepository.updateButtonStyle(style)
+            _uiState.value = _uiState.value.copy(buttonStyle = style)
+        }
+    }
+
+    fun updateAccentColor(accent: String) {
+        viewModelScope.launch {
+            userPreferencesRepository.updateAccentColor(accent)
+            _uiState.value = _uiState.value.copy(accentColor = accent)
+        }
+    }
+
+    fun updateIndicatorTheme(theme: String) {
+        viewModelScope.launch {
+            userPreferencesRepository.updateIndicatorTheme(theme)
+            _uiState.value = _uiState.value.copy(indicatorTheme = theme)
+        }
+    }
+
+    fun updatePlatformLogoStyle(style: String) {
+        viewModelScope.launch {
+            userPreferencesRepository.updatePlatformLogoStyle(style)
+            _uiState.value = _uiState.value.copy(platformLogoStyle = style)
+        }
+    }
+
+    fun togglePlatform(platformId: String) {
+        val current = _uiState.value.selectedPlatforms
+        val updated = if (platformId in current) current - platformId else current + platformId
+        _uiState.value = _uiState.value.copy(selectedPlatforms = updated)
+        viewModelScope.launch {
+            userPreferencesRepository.updateSelectedPlatforms(updated)
+        }
+    }
+
+    fun loadTraktUserLists(
+        token: String = _uiState.value.traktToken,
+        clientId: String = _uiState.value.traktClientId
+    ) {
+        if (token.isBlank()) return
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoadingTraktLists = true)
+            val repository = mediaRepository
+            val effectiveClientId = clientId.ifBlank { DEFAULT_TRAKT_CLIENT_ID }
+            val listsResult = repository.getTraktUserLists(token, effectiveClientId)
+            val lists = listsResult.getOrDefault(emptyList())
+            _uiState.value = _uiState.value.copy(
+                traktUserLists = lists,
+                isLoadingTraktLists = false
+            )
+        }
+    }
+
+    fun toggleTraktListVisibility(list: TraktUserListDto) {
+        val key = list.ids.trakt?.toString() ?: list.ids.slug ?: list.name
+        viewModelScope.launch {
+            val updated = userPreferencesRepository.toggleHiddenTraktList(key)
+            _uiState.value = _uiState.value.copy(hiddenTraktLists = updated)
+            BrandViewModel.clearCache("trakt")
+        }
+    }
+
+    fun setAppTheme(theme: String) {
+        viewModelScope.launch {
+            userPreferencesRepository.setAppTheme(theme)
+            val isMono = theme == APP_THEME_MONOCHROME
+            _uiState.value = _uiState.value.copy(
+                accentColor = if (isMono) ACCENT_WHITE else ACCENT_CYAN,
+                indicatorTheme = if (isMono) INDICATOR_THEME_MONOCHROME else INDICATOR_THEME_COLOR,
+                platformLogoStyle = if (isMono) PLATFORM_LOGO_MONOCHROME else PLATFORM_LOGO_COLOR
+            )
+        }
+    }
+
+    fun validateTraktToken(
+        token: String = _uiState.value.traktToken,
+        clientId: String = _uiState.value.traktClientId
+    ) {
+        if (token.isBlank()) {
+            _uiState.value = _uiState.value.copy(isTraktConnected = false, traktUsername = null)
+            return
+        }
+        viewModelScope.launch {
+            val repository = mediaRepository
+            val effectiveClientId = clientId.ifBlank { DEFAULT_TRAKT_CLIENT_ID }
+            val result = repository.getTraktUserProfile(token, effectiveClientId)
+            result.onSuccess { user ->
+                val handle = user.username ?: user.name ?: context.getString(R.string.settings_status_connected)
+                _uiState.value = _uiState.value.copy(
+                    isTraktConnected = true,
+                    traktUsername = handle,
+                    statusMessage = context.getString(R.string.settings_trakt_verified, handle)
+                )
+                loadTraktUserLists(token, effectiveClientId)
+            }.onFailure { e ->
+                _uiState.value = _uiState.value.copy(
+                    isTraktConnected = true,
+                    traktUsername = null,
+                    statusMessage = context.getString(R.string.settings_trakt_connected_msg, e.localizedMessage ?: context.getString(R.string.settings_status_active))
+                )
+            }
+        }
+    }
+
+    fun openEditDialog(field: SettingField) {
+        val currentVal = when (field) {
+            SettingField.SERVER_URL -> _uiState.value.serverUrl
+            SettingField.USERNAME -> _uiState.value.username
+            SettingField.PASSWORD -> _uiState.value.password
+            SettingField.TRAKT_CLIENT_ID -> _uiState.value.traktClientId
+            SettingField.TRAKT_CLIENT_SECRET -> _uiState.value.traktClientSecret
+            SettingField.TRAKT_MANUAL_TOKEN -> _uiState.value.traktToken
+            SettingField.WATCH_REGION -> _uiState.value.watchRegion
+        }
+        _uiState.value = _uiState.value.copy(
+            activeDialogField = field,
+            activeDialogValue = currentVal
+        )
+    }
+
+    fun onDialogValueChange(newValue: String) {
+        _uiState.value = _uiState.value.copy(activeDialogValue = newValue)
+    }
+
+    fun commitDialogValue() {
+        val field = _uiState.value.activeDialogField ?: return
+        val value = _uiState.value.activeDialogValue.trim()
+        when (field) {
+            SettingField.SERVER_URL -> {
+                _uiState.value = _uiState.value.copy(serverUrl = value)
+                viewModelScope.launch {
+                    userPreferencesRepository.updateJellyfinServerUrl(value)
+                }
+            }
+            SettingField.USERNAME -> {
+                _uiState.value = _uiState.value.copy(username = value)
+                viewModelScope.launch {
+                    userPreferencesRepository.updateJellyfinUsername(value)
+                }
+            }
+            SettingField.PASSWORD -> {
+                _uiState.value = _uiState.value.copy(password = value)
+                viewModelScope.launch {
+                    userPreferencesRepository.updateJellyfinPassword(value)
+                }
+            }
+            SettingField.TRAKT_CLIENT_ID -> {
+                _uiState.value = _uiState.value.copy(traktClientId = value)
+                viewModelScope.launch {
+                    userPreferencesRepository.updateTraktConfig(
+                        token = _uiState.value.traktToken,
+                        clientId = value,
+                        clientSecret = _uiState.value.traktClientSecret
+                    )
+                }
+            }
+            SettingField.TRAKT_CLIENT_SECRET -> {
+                _uiState.value = _uiState.value.copy(traktClientSecret = value)
+                viewModelScope.launch {
+                    userPreferencesRepository.updateTraktConfig(
+                        token = _uiState.value.traktToken,
+                        clientId = _uiState.value.traktClientId,
+                        clientSecret = value
+                    )
+                }
+            }
+            SettingField.TRAKT_MANUAL_TOKEN -> {
+                val isConnected = value.isNotBlank()
+                _uiState.value = _uiState.value.copy(
+                    traktToken = value,
+                    isTraktConnected = isConnected,
+                    statusMessage = if (isConnected) context.getString(R.string.settings_saving_trakt_token) else context.getString(R.string.settings_trakt_token_removed)
+                )
+                viewModelScope.launch {
+                    userPreferencesRepository.updateTraktConfig(
+                        token = value,
+                        clientId = _uiState.value.traktClientId,
+                        clientSecret = _uiState.value.traktClientSecret
+                    )
+                    BrandViewModel.clearCache("trakt")
+                    if (isConnected) {
+                        validateTraktToken(value, _uiState.value.traktClientId)
+                    }
+                }
+            }
+            SettingField.WATCH_REGION -> {
+                val region = value.ifBlank { "ES" }.uppercase()
+                _uiState.value = _uiState.value.copy(watchRegion = region)
+                viewModelScope.launch {
+                    userPreferencesRepository.updateTmdbConfig(
+                        apiKey = _uiState.value.tmdbApiKey,
+                        region = region
+                    )
+                }
+            }
+        }
+        _uiState.value = _uiState.value.copy(activeDialogField = null)
+    }
+
+    fun updateWatchRegion(region: String) {
+        val clean = region.ifBlank { "ES" }.uppercase()
+        _uiState.value = _uiState.value.copy(watchRegion = clean)
+        viewModelScope.launch {
+            userPreferencesRepository.updateTmdbConfig(
+                apiKey = _uiState.value.tmdbApiKey,
+                region = clean
+            )
+        }
+    }
+
+    fun dismissDialog() {
+        _uiState.value = _uiState.value.copy(activeDialogField = null)
+    }
+
+    fun onServerUrlChange(url: String) {
+        _uiState.value = _uiState.value.copy(serverUrl = url)
+        // Debounce: no persistir en cada pulsación de tecla (evita decenas de .edit{}).
+        serverUrlWriteJob?.cancel()
+        serverUrlWriteJob = viewModelScope.launch {
+            delay(500)
+            userPreferencesRepository.updateJellyfinServerUrl(url)
+        }
+    }
+
+    fun disconnectJellyfin() {
+        jellyfinQuickConnectJob?.cancel()
+        viewModelScope.launch {
+            userPreferencesRepository.updateJellyfinConfig(
+                serverUrl = _uiState.value.serverUrl,
+                userId = "",
+                accessToken = "",
+                username = "",
+                password = ""
+            )
+            _uiState.value = _uiState.value.copy(
+                isJellyfinConnected = false,
+                username = "",
+                password = "",
+                serverName = null,
+                serverVersion = null,
+                isSuccess = false,
+                statusMessage = context.getString(R.string.settings_jellyfin_session_closed)
+            )
+        }
+    }
+
+    fun disconnectTrakt() {
+        traktPollJob?.cancel()
+        viewModelScope.launch {
+            userPreferencesRepository.updateTraktConfig("", _uiState.value.traktClientId, _uiState.value.traktClientSecret)
+            BrandViewModel.clearCache("trakt")
+            _uiState.value = _uiState.value.copy(
+                isTraktConnected = false,
+                traktToken = "",
+                traktUsername = null,
+                traktUserCode = null,
+                traktQrUrl = null,
+                isWaitingTraktAuth = false,
+                traktUserLists = emptyList(),
+                statusMessage = context.getString(R.string.settings_trakt_unlinked)
+            )
+        }
+    }
+
+    fun startTraktDeviceFlow() {
+        traktPollJob?.cancel()
+        traktPollJob = viewModelScope.launch {
+            val clientId = _uiState.value.traktClientId.trim().ifBlank { DEFAULT_TRAKT_CLIENT_ID }
+            val clientSecret = _uiState.value.traktClientSecret.trim().ifBlank { DEFAULT_TRAKT_CLIENT_SECRET }
+
+            _uiState.value = _uiState.value.copy(
+                isWaitingTraktAuth = true,
+                statusMessage = context.getString(R.string.settings_requesting_trakt_code)
+            )
+            try {
+                val traktApi = NetworkClientFactory.createService(ApiConfig.TRAKT_BASE_URL, TraktApiService::class.java)
+                val codeResponse = traktApi.getDeviceCode(
+                    apiVersion = "2",
+                    clientIdHeader = clientId,
+                    request = TraktDeviceCodeRequest(clientId = clientId)
+                )
+
+                val verifyUrl = ApiConfig.TRAKT_ACTIVATE_URL
+                val qrUrl = "${ApiConfig.QR_GENERATOR_BASE_URL}?size=350x350&data=" + URLEncoder.encode(verifyUrl, "UTF-8")
+
+                _uiState.value = _uiState.value.copy(
+                    traktUserCode = codeResponse.userCode,
+                    traktQrUrl = qrUrl,
+                    statusMessage = context.getString(R.string.settings_scan_qr)
+                )
+
+                var intervalMs = (codeResponse.interval.coerceAtLeast(5)) * 1000L
+                val maxAttempts = (codeResponse.expiresIn / codeResponse.interval).coerceAtLeast(10)
+
+                for (i in 0 until maxAttempts) {
+                    delay(intervalMs)
+                    try {
+                        val tokenResponse = traktApi.pollDeviceToken(
+                            apiVersion = "2",
+                            clientIdHeader = clientId,
+                            request = TraktDeviceTokenRequest(
+                                code = codeResponse.deviceCode,
+                                clientId = clientId,
+                                clientSecret = clientSecret
+                            )
+                        )
+                        if (tokenResponse.accessToken.isNotBlank()) {
+                            userPreferencesRepository.updateTraktConfig(
+                                token = tokenResponse.accessToken,
+                                clientId = clientId,
+                                clientSecret = clientSecret
+                            )
+                            BrandViewModel.clearCache("trakt")
+                            _uiState.value = _uiState.value.copy(
+                                isWaitingTraktAuth = false,
+                                isTraktConnected = true,
+                                traktToken = tokenResponse.accessToken,
+                                statusMessage = context.getString(R.string.settings_trakt_linked)
+                            )
+                            validateTraktToken(tokenResponse.accessToken, clientId)
+                            loadTraktUserLists(tokenResponse.accessToken, clientId)
+                            break
+                        }
+                    } catch (e: Throwable) {
+                        if (e is retrofit2.HttpException) {
+                            val code = e.code()
+                            val errBody = runCatching { e.response()?.errorBody()?.string() ?: "" }.getOrDefault("")
+                            if (code == 400) {
+                                if (errBody.contains("slow_down")) {
+                                    intervalMs += 2000L
+                                } else if (errBody.contains("authorization_pending")) {
+                                    continue
+                                } else if (errBody.contains("expired_token") || errBody.contains("invalid_grant")) {
+                                    _uiState.value = _uiState.value.copy(
+                                        isWaitingTraktAuth = false,
+                                        statusMessage = context.getString(R.string.settings_trakt_code_expired)
+                                    )
+                                    break
+                                }
+                            } else if (code == 401 || code == 403) {
+                                _uiState.value = _uiState.value.copy(
+                                    isWaitingTraktAuth = false,
+                                    statusMessage = context.getString(R.string.settings_trakt_invalid_credentials)
+                                )
+                                break
+                            } else if (code == 404 || code == 410 || code == 418) {
+                                _uiState.value = _uiState.value.copy(
+                                    isWaitingTraktAuth = false,
+                                    statusMessage = context.getString(R.string.settings_trakt_cancelled)
+                                )
+                                break
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                val errorDetails = if (e is retrofit2.HttpException && e.code() == 401) {
+                    context.getString(R.string.settings_trakt_client_id_not_found)
+                } else {
+                    context.getString(R.string.settings_trakt_link_error, e.localizedMessage)
+                }
+                _uiState.value = _uiState.value.copy(
+                    isWaitingTraktAuth = false,
+                    statusMessage = errorDetails
+                )
+            }
+        }
+    }
+
+    private fun formatNetworkError(e: Throwable, cleanUrl: String): String {
+        val msg = e.localizedMessage ?: ""
+        val isHtmlInsteadOfJson = msg.contains("Expected start of the object", ignoreCase = true)
+                || msg.contains("<!DOCTYPE", ignoreCase = true)
+                || msg.contains("Unexpected JSON token", ignoreCase = true)
+
+        if (isHtmlInsteadOfJson) {
+            return context.getString(R.string.settings_error_html_not_jellyfin)
+        }
+
+        return when (e) {
+            is retrofit2.HttpException -> {
+                when (e.code()) {
+                    400 -> context.getString(R.string.settings_error_400)
+                    401 -> context.getString(R.string.settings_error_401)
+                    403 -> context.getString(R.string.settings_error_403)
+                    404 -> context.getString(R.string.settings_error_404, cleanUrl)
+                    500, 502, 503 -> context.getString(R.string.settings_error_5xx, e.code())
+                    else -> context.getString(R.string.settings_error_http, e.code(), e.message())
+                }
+            }
+            is ConnectException -> context.getString(R.string.settings_error_connect, cleanUrl)
+            is SocketTimeoutException -> context.getString(R.string.settings_error_timeout, cleanUrl)
+            is UnknownHostException -> context.getString(R.string.settings_error_unknown_host, cleanUrl)
+            is javax.net.ssl.SSLHandshakeException -> context.getString(R.string.settings_error_ssl)
+            else -> context.getString(R.string.settings_error_connection, msg.ifBlank { context.getString(R.string.settings_error_unknown) })
+        }
+    }
+
+    fun testServerConnection() {
+        val raw = _uiState.value.serverUrl
+        val cleanUrl = NetworkClientFactory.normalizeUrl(raw)
+        if (cleanUrl.isBlank()) {
+            _uiState.value = _uiState.value.copy(statusMessage = context.getString(R.string.settings_enter_server_url_first))
+            return
+        }
+        _uiState.value = _uiState.value.copy(serverUrl = cleanUrl, isLoading = true, statusMessage = context.getString(R.string.settings_testing_connection, cleanUrl))
+
+        viewModelScope.launch {
+            val api = NetworkClientFactory.createService(cleanUrl, JellyfinApiService::class.java)
+            try {
+                val info = api.getPublicInfo()
+                val serverName = info.effectiveServerName
+                val version = info.effectiveVersion
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    serverName = serverName,
+                    serverVersion = version,
+                    statusMessage = context.getString(R.string.settings_server_detected, serverName, version)
+                )
+            } catch (e: Exception) {
+                val details = formatNetworkError(e, cleanUrl)
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    statusMessage = context.getString(R.string.settings_error_prefix, details)
+                )
+            }
+        }
+    }
+
+    fun startJellyfinQuickConnect() {
+        val raw = _uiState.value.serverUrl
+        val cleanUrl = NetworkClientFactory.normalizeUrl(raw)
+        if (cleanUrl.isBlank()) {
+            _uiState.value = _uiState.value.copy(statusMessage = context.getString(R.string.settings_enter_jellyfin_url))
+            return
+        }
+        _uiState.value = _uiState.value.copy(serverUrl = cleanUrl)
+
+        jellyfinQuickConnectJob?.cancel()
+        jellyfinQuickConnectJob = viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(
+                isWaitingJellyfinQuickConnect = true,
+                statusMessage = context.getString(R.string.settings_starting_quick_connect)
+            )
+
+            val api = NetworkClientFactory.createService(cleanUrl, JellyfinApiService::class.java)
+            val authHeader = "MediaBrowser Client=\"Medusa\", Device=\"AndroidTV\", DeviceId=\"MedusaTV\", Version=\"1.0.0\""
+
+            try {
+                val initResult = api.initiateQuickConnect(authHeader = authHeader)
+
+                val webQuickConnectUrl = "$cleanUrl/web/index.html#!/quickconnect.html"
+                val qrUrl = "${ApiConfig.QR_GENERATOR_BASE_URL}?size=300x300&data=" + URLEncoder.encode(webQuickConnectUrl, "UTF-8")
+
+                _uiState.value = _uiState.value.copy(
+                    jellyfinQuickConnectCode = initResult.effectiveCode,
+                    jellyfinQrUrl = qrUrl,
+                    statusMessage = context.getString(R.string.settings_qc_code, initResult.effectiveCode)
+                )
+
+                for (i in 0 until 180) {
+                    delay(3000L)
+                    try {
+                        val check = api.checkQuickConnect(authHeader = authHeader, secret = initResult.effectiveSecret)
+                        if (check.isAuthed && !check.effectiveToken.isNullOrBlank()) {
+                            val token = check.effectiveToken!!
+                            val authedHeader = "$authHeader, Token=\"$token\""
+                            val me = api.getCurrentUser(authedHeader)
+
+                            // 1. Guardar credenciales inmediatamente en DataStore
+                            userPreferencesRepository.updateJellyfinConfig(
+                                serverUrl = cleanUrl,
+                                userId = me.effectiveId,
+                                accessToken = token,
+                                username = me.effectiveName
+                            )
+
+                            _uiState.value = _uiState.value.copy(
+                                isWaitingJellyfinQuickConnect = false,
+                                username = me.effectiveName,
+                                isJellyfinConnected = true,
+                                statusMessage = context.getString(R.string.settings_authorized_as, me.effectiveName)
+                            )
+
+                            val repository = mediaRepository
+                            // 2. Sincronizar catálogo en segundo plano (no se cancela al salir de la pantalla)
+                            repository.startBackgroundSync(
+                                serverUrl = cleanUrl,
+                                userId = me.effectiveId,
+                                token = token,
+                                forceFullSync = true
+                            )
+                            val count = repository.getLocalCount()
+
+                            _uiState.value = _uiState.value.copy(
+                                isSuccess = true,
+                                isLoading = false,
+                                statusMessage = context.getString(R.string.settings_sync_started, count)
+                            )
+                            break
+                        }
+                    } catch (_: Exception) {
+                        // Esperando autorización
+                    }
+                }
+            } catch (e: Exception) {
+                val details = formatNetworkError(e, cleanUrl)
+                _uiState.value = _uiState.value.copy(
+                    isWaitingJellyfinQuickConnect = false,
+                    statusMessage = context.getString(R.string.settings_error_prefix, details)
+                )
+            }
+        }
+    }
+
+    fun saveAndConnect() {
+        viewModelScope.launch {
+            val state = _uiState.value
+            val cleanUrl = NetworkClientFactory.normalizeUrl(state.serverUrl)
+            _uiState.value = state.copy(serverUrl = cleanUrl)
+
+            val currentPrefs = userPreferencesRepository.userPreferencesFlow.first()
+            val effectiveUsername = state.username.ifBlank { currentPrefs.jellyfinUsername }.trim()
+            val effectivePassword = state.password.ifBlank { currentPrefs.jellyfinPassword }
+
+            if (cleanUrl.isBlank() || effectiveUsername.isBlank()) {
+                _uiState.value = state.copy(statusMessage = context.getString(R.string.settings_enter_url_and_user))
+                return@launch
+            }
+
+            _uiState.value = state.copy(isLoading = true, statusMessage = context.getString(R.string.settings_connecting_with, cleanUrl))
+
+            val api = NetworkClientFactory.createService(cleanUrl, JellyfinApiService::class.java)
+            val authHeader = "MediaBrowser Client=\"Medusa\", Device=\"AndroidTV\", DeviceId=\"MedusaTV\", Version=\"1.0.0\""
+
+            try {
+                val info = api.getPublicInfo()
+                val serverName = info.effectiveServerName
+                _uiState.value = state.copy(isLoading = true, statusMessage = context.getString(R.string.settings_server_authenticating, serverName))
+            } catch (_: Exception) {
+                _uiState.value = state.copy(isLoading = true, statusMessage = context.getString(R.string.settings_authenticating_user, effectiveUsername))
+            }
+
+            try {
+                val response = api.authenticateByName(
+                    authHeader = authHeader,
+                    request = JellyfinAuthRequest(username = effectiveUsername, pw = effectivePassword)
+                )
+
+                val userId = response.effectiveUser.effectiveId
+                val token = response.effectiveToken
+                val authedUser = response.effectiveUser.effectiveName.ifBlank { effectiveUsername }
+
+                // 1. Guardar credenciales inmediatamente en DataStore (una sola escritura)
+                userPreferencesRepository.saveConnectionConfig(
+                    serverUrl = cleanUrl,
+                    userId = userId,
+                    accessToken = token,
+                    username = authedUser,
+                    password = effectivePassword,
+                    traktToken = state.traktToken,
+                    traktClientId = state.traktClientId,
+                    traktClientSecret = state.traktClientSecret,
+                    tmdbApiKey = state.tmdbApiKey,
+                    watchRegion = state.watchRegion
+                )
+
+                val repository = mediaRepository
+
+                // 2. Sincronizar catálogo en segundo plano en syncScope (no se cancela al salir de Ajustes)
+                repository.startBackgroundSync(
+                    serverUrl = cleanUrl,
+                    userId = userId,
+                    token = token,
+                    forceFullSync = true
+                )
+
+                val count = repository.getLocalCount()
+                _uiState.value = state.copy(
+                    isLoading = false,
+                    isSuccess = true,
+                    username = authedUser,
+                    isJellyfinConnected = true,
+                    statusMessage = context.getString(R.string.settings_connected_as, authedUser)
+                )
+            } catch (e: Exception) {
+                val details = formatNetworkError(e, cleanUrl)
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    statusMessage = context.getString(R.string.settings_error_prefix, details)
+                )
+            }
+        }
+    }
+
+    fun forceSyncCatalog() {
+        viewModelScope.launch {
+            val prefs = userPreferencesRepository.userPreferencesFlow.first()
+            if (prefs.jellyfinServerUrl.isBlank() || prefs.jellyfinUserId.isBlank() || prefs.jellyfinAccessToken.isBlank()) {
+                _uiState.value = _uiState.value.copy(statusMessage = context.getString(R.string.settings_connect_first))
+                return@launch
+            }
+            mediaRepository.startBackgroundSync(
+                serverUrl = prefs.jellyfinServerUrl,
+                userId = prefs.jellyfinUserId,
+                token = prefs.jellyfinAccessToken,
+                forceFullSync = true
+            )
+            _uiState.value = _uiState.value.copy(statusMessage = context.getString(R.string.settings_full_sync_started))
+        }
+    }
+
+    fun checkForAppUpdates() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isCheckingUpdate = true, statusMessage = context.getString(R.string.settings_checking_updates))
+            val result = appUpdateManager.checkForUpdates()
+            result.onSuccess { info ->
+                _uiState.value = _uiState.value.copy(
+                    isCheckingUpdate = false,
+                    updateInfo = info,
+                    statusMessage = if (info.hasUpdate) context.getString(R.string.settings_update_available_toast, info.latestVersion) else context.getString(R.string.settings_up_to_date_toast, info.currentVersion)
+                )
+            }.onFailure { e ->
+                _uiState.value = _uiState.value.copy(
+                    isCheckingUpdate = false,
+                    statusMessage = context.getString(R.string.settings_check_failed, e.localizedMessage ?: context.getString(R.string.settings_error_connection_fallback))
+                )
+            }
+        }
+    }
+
+    fun downloadAndInstallUpdate() {
+        val info = _uiState.value.updateInfo ?: return
+        val apkUrl = info.apkUrl ?: return
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(statusMessage = context.getString(R.string.settings_downloading_update))
+            val result = appUpdateManager.downloadAndInstall(apkUrl, info.apkSha256) { progress ->
+                _uiState.value = _uiState.value.copy(downloadProgress = progress)
+            }
+            result.onFailure { e ->
+                _uiState.value = _uiState.value.copy(
+                    downloadProgress = null,
+                    statusMessage = context.getString(R.string.settings_download_error, e.localizedMessage)
+                )
+            }
+        }
+    }
+}

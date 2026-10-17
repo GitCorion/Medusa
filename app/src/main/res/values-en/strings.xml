@@ -1,0 +1,496 @@
+<resources>
+    <string name="app_name">Medusa</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_select_all">Select all</string>
+    <string name="onboarding_deselect_all">Deselect all</string>
+    <string name="onboarding_title">Choose your platforms</string>
+    <string name="onboarding_subtitle">Select the platforms you use. Their new releases and trends will be matched against your Jellyfin library.</string>
+    <string name="onboarding_setup_label">Initial setup</string>
+    <string name="onboarding_platforms_count">%1$d of %2$d platforms active</string>
+    <string name="onboarding_continue">Accept and continue</string>
+
+    <!-- Medusa Pro -->
+    <string name="pro_title">MEDUSA PRO</string>
+    <string name="pro_subtitle">Lifetime license. No monthly fees or subscriptions.</string>
+    <string name="pro_feature_intro_title">Intro &amp; Credits Skip</string>
+    <string name="pro_feature_intro_desc">Automatic detection and skipping without touching the remote.</string>
+    <string name="pro_feature_next_title">Interactive Next Episode</string>
+    <string name="pro_feature_next_desc">Floating card with a customizable countdown.</string>
+    <string name="pro_feature_hubs_title">Streaming Brand Hubs</string>
+    <string name="pro_feature_hubs_desc">Filters and rows on the home screen for Netflix, Disney+, Max, Apple TV+ and more.</string>
+    <string name="pro_feature_trakt_title">Trakt.tv Sync</string>
+    <string name="pro_feature_trakt_desc">Live scrobbling and lists shared across devices.</string>
+    <string name="pro_feature_theme_title">Full Visual Customization</string>
+    <string name="pro_feature_theme_desc">Exclusive themes, particles and advanced customization.</string>
+    <string name="pro_buy">Buy %1$s (Lifetime)</string>
+    <string name="pro_restore">Restore purchase</string>
+    <string name="pro_close">Close</string>
+    <string name="pro_logo_content_description">Medusa Pro</string>
+
+    <!-- Top navigation (TvTopBar) -->
+    <string name="nav_home">Home</string>
+    <string name="nav_discover">Discover</string>
+    <string name="nav_favorites">Favorites</string>
+    <string name="nav_search">Search</string>
+    <string name="nav_settings">Settings</string>
+
+    <!-- Common -->
+    <string name="common_play">Play</string>
+    <string name="common_details">Details</string>
+    <string name="common_close">Close</string>
+    <string name="common_loading">Loading</string>
+    <string name="common_watched">Watched</string>
+    <string name="common_watched_check">✓ Watched</string>
+    <string name="common_favorite">Favorite</string>
+    <string name="common_in_progress">In progress</string>
+    <string name="common_retry">Retry</string>
+    <string name="common_back">Back</string>
+    <string name="common_cancel">Cancel</string>
+
+    <!-- Badges -->
+    <string name="badge_in_progress">IN PROGRESS</string>
+    <string name="badge_favorite">♥ FAVORITE</string>
+    <string name="badge_watched">✓ WATCHED</string>
+
+    <!-- Cards -->
+    <string name="pro_badge">PRO</string>
+
+    <!-- Trailer -->
+    <string name="trailer_load_error">Could not load the trailer for this title.</string>
+    <string name="trailer_close_back">Close trailer (Back)</string>
+
+    <!-- Genres -->
+    <string name="genre_favorites_title">Your Favorite Genres</string>
+
+    <!-- Home -->
+    <string name="home_loading">Loading platform discovery...</string>
+    <string name="home_welcome">Welcome to Medusa</string>
+    <string name="home_setup_desc">Set up your Jellyfin server to enjoy your movies, series and recommendations.</string>
+    <string name="home_config_button">Configure Jellyfin Server</string>
+    <string name="home_server_connected">Server connected</string>
+    <string name="home_empty_library">No movies or series were found on your Jellyfin server.\nCheck that your user has access to the libraries.</string>
+    <string name="home_sync">Sync</string>
+    <string name="home_error">Error: %1$s</string>
+
+    <!-- Detail -->
+    <string name="detail_loading">Loading details...</string>
+    <string name="detail_season_episode">Season %1$s • Episode %2$s</string>
+    <string name="detail_progress">PROGRESS: %1$d/%2$d</string>
+    <string name="detail_watch_trailer">Watch Trailer</string>
+    <string name="detail_synopsis">Synopsis</string>
+    <string name="detail_no_description">No description available for this title.</string>
+    <string name="detail_seasons">SEASONS</string>
+    <string name="detail_episodes_count">EPISODES (%1$d)</string>
+    <string name="detail_loading_episodes">Loading episodes...</string>
+    <string name="detail_no_episodes">No episodes were found on the server for this season.</string>
+    <string name="detail_collection">COLLECTION</string>
+    <string name="detail_collection_titles">TITLES IN THIS COLLECTION (%1$d)</string>
+    <string name="detail_recommended">RECOMMENDED</string>
+    <string name="detail_similar_titles">SIMILAR TITLES</string>
+    <string name="detail_genre">GENRE</string>
+    <string name="detail_more_from_genre">MORE FROM %1$s</string>
+    <string name="detail_starting_player">Starting player...</string>
+    <string name="detail_type_episode">EPISODE • S%1$s:E%2$s</string>
+    <string name="detail_type_series">SERIES</string>
+    <string name="detail_type_movie">MOVIE</string>
+    <string name="detail_status_canceled">🔴 %1$s</string>
+    <string name="detail_status_ended">⚪ %1$s</string>
+    <string name="detail_status_continuing">🟢 %1$s</string>
+    <string name="series_status_canceled">Canceled (no ending)</string>
+    <string name="series_status_ended">Ended</string>
+    <string name="series_status_continuing">Continuing</string>
+
+    <!-- Search -->
+    <string name="search_placeholder">Search...</string>
+    <string name="search_catalog_title">Catalog search</string>
+    <string name="search_no_results">No titles found for \"%1$s\"</string>
+
+    <!-- On-screen keyboard -->
+    <string name="keyboard_space">Space</string>
+    <string name="keyboard_space_label">SPACE</string>
+    <string name="keyboard_delete">Delete</string>
+    <string name="keyboard_delete_label">DELETE</string>
+    <string name="keyboard_clear">Clear</string>
+    <string name="keyboard_clear_label">CLEAR</string>
+
+    <!-- Favorites -->
+    <string name="favorites_syncing">Syncing favorites with Jellyfin...</string>
+    <string name="favorites_collection_count">Favorites Collection (%1$d)</string>
+
+    <!-- Genre -->
+    <string name="genre_loading">Loading %1$s catalog...</string>
+    <string name="genre_header">GENRE • %1$s</string>
+    <string name="genre_empty">No titles for this filter in %1$s.</string>
+
+    <!-- Brand -->
+    <string name="brand_loading">Loading platform catalog...</string>
+    <string name="brand_no_titles">No titles available for %1$s</string>
+    <string name="brand_no_titles_hint">Check your Internet connection or try changing the format filter.</string>
+    <string name="brand_retry_load">Retry loading</string>
+
+    <!-- Player -->
+    <string name="player_loading">Loading...</string>
+    <string name="player_loading_playback">Loading playback...</string>
+    <string name="player_error_cd">Error</string>
+    <string name="player_playback_error">Playback error</string>
+    <string name="player_cannot_play_file">Could not play this file</string>
+    <string name="player_stream_info_placeholder">1080p  •  AAC 5.1  •  Jellyfin Direct</string>
+    <string name="player_rewind_10">Rewind 10 seconds</string>
+    <string name="player_forward_10">Forward 10 seconds</string>
+    <string name="player_pause">Pause</string>
+    <string name="player_audio">Audio</string>
+    <string name="player_subtitles">Subtitles</string>
+    <string name="player_skip_credits">Skip credits</string>
+    <string name="player_play_now">Play now</string>
+    <string name="player_no_audio_tracks">No additional audio tracks were detected.</string>
+    <string name="player_disabled">Disabled</string>
+    <string name="player_playback_speed">Playback Speed</string>
+    <string name="player_speed_normal">1.0x (Normal)</string>
+    <string name="player_aspect_ratio">Aspect Ratio</string>
+    <string name="player_aspect_fit">Fit to Screen (Proportional)</string>
+    <string name="player_aspect_zoom">Crop / Zoom</string>
+    <string name="player_aspect_fill">Stretch / Full Screen</string>
+    <string name="player_resume">Resume (%1$s)</string>
+    <string name="player_from_start">From the beginning</string>
+
+    <!-- ===================================================================== -->
+    <!-- Settings                                                              -->
+    <!-- ===================================================================== -->
+
+    <!-- Edit fields (SettingField) -->
+    <string name="settings_field_server_url">Jellyfin Server URL</string>
+    <string name="settings_field_server_url_placeholder">http://192.168.1.100:8096 or https://jellyfin.example.com</string>
+    <string name="settings_field_username">Jellyfin Username</string>
+    <string name="settings_field_username_placeholder">Enter your username</string>
+    <string name="settings_field_password">Jellyfin Password</string>
+    <string name="settings_field_password_placeholder">Enter your password</string>
+    <string name="settings_field_trakt_client_id">Trakt Client ID</string>
+    <string name="settings_field_trakt_client_id_placeholder">Trakt Client ID</string>
+    <string name="settings_field_trakt_client_secret">Trakt Client Secret</string>
+    <string name="settings_field_trakt_client_secret_placeholder">Trakt Client Secret</string>
+    <string name="settings_field_trakt_token">Direct Trakt Access Token</string>
+    <string name="settings_field_trakt_token_placeholder">Trakt Access Token</string>
+    <string name="settings_field_watch_region">Catalog Region</string>
+    <string name="settings_field_watch_region_placeholder">US</string>
+
+    <!-- Side navigation -->
+    <string name="settings_title">SETTINGS</string>
+    <string name="settings_nav_jellyfin">Jellyfin</string>
+    <string name="settings_nav_trakt">Trakt.tv</string>
+    <string name="settings_nav_platforms">Platforms</string>
+    <string name="settings_nav_appearance">Appearance</string>
+    <string name="settings_nav_about">About</string>
+    <string name="settings_section_appearance_perf">Appearance &amp; Performance</string>
+
+    <!-- Jellyfin -->
+    <string name="settings_section_server_session">SERVER AND SESSION</string>
+    <string name="settings_row_server">Server</string>
+    <string name="settings_row_user">User</string>
+    <string name="settings_row_status">Status</string>
+    <string name="settings_status_connected">Connected</string>
+    <string name="settings_row_library_synced">Library synced</string>
+    <string name="settings_library_count">%1$s titles (%2$s movies, %3$s series)</string>
+    <string name="settings_library_empty">No titles in memory</string>
+    <string name="settings_row_last_sync">Last sync</string>
+    <string name="settings_section_actions">ACTIONS</string>
+    <string name="settings_btn_syncing">Syncing…</string>
+    <string name="settings_btn_sync_library">Sync library</string>
+    <string name="settings_btn_check_connection">Check connection</string>
+    <string name="settings_btn_logout">Log out</string>
+    <string name="settings_section_server_address">SERVER ADDRESS</string>
+    <string name="settings_placeholder_enter_url">Enter URL…</string>
+    <string name="settings_btn_check_server">Check server</string>
+    <string name="settings_section_login_method">SIGN-IN METHOD</string>
+    <string name="settings_login_quick_connect">Quick Connect (QR)</string>
+    <string name="settings_login_user_pass">Username and password</string>
+    <string name="settings_btn_waiting_confirmation">Waiting for confirmation…</string>
+    <string name="settings_btn_generate_qr">Generate QR code</string>
+    <string name="settings_qc_step1">Open in your browser or Jellyfin app &gt; Quick Connect</string>
+    <string name="settings_placeholder_enter_user">Enter username…</string>
+    <string name="settings_row_password">Password</string>
+    <string name="settings_placeholder_enter_password">Enter password…</string>
+    <string name="settings_btn_connecting">Connecting…</string>
+    <string name="settings_btn_login">Sign in</string>
+
+    <!-- Trakt -->
+    <string name="settings_section_account_linked">LINKED ACCOUNT</string>
+    <string name="settings_row_trakt_user">Trakt user</string>
+    <string name="settings_status_linked">Linked</string>
+    <string name="settings_status_active">active</string>
+    <string name="settings_section_lists_collections">LISTS AND COLLECTIONS</string>
+    <string name="settings_trakt_lists_desc">Manage which lists appear in the Trakt carousel and on the home screen. If Trakt duplicated your library movies or series, deselect them to hide them.</string>
+    <string name="settings_loading_trakt_lists">Loading Trakt lists…</string>
+    <string name="settings_trakt_no_lists">No lists were found in your Trakt account.</string>
+    <string name="settings_section_link_account">LINK ACCOUNT</string>
+    <string name="settings_btn_generating_code">Generating code…</string>
+    <string name="settings_btn_link_qr">Link with QR code</string>
+    <string name="settings_trakt_step1">Go to trakt.tv/activate from your phone or PC</string>
+    <string name="settings_section_advanced_api">ADVANCED API SETTINGS</string>
+    <string name="settings_row_client_id">Client ID</string>
+    <string name="settings_row_client_secret">Client Secret</string>
+    <string name="settings_row_manual_token">Manual token</string>
+    <string name="settings_value_default">Default</string>
+    <string name="settings_value_no_token">No token</string>
+    <string name="settings_btn_refresh_lists">Refresh lists</string>
+    <string name="settings_btn_unlink">Unlink account</string>
+
+    <!-- Platforms -->
+    <string name="settings_section_catalog_country">CATALOG COUNTRY</string>
+    <string name="settings_row_region">Catalog region</string>
+    <string name="settings_section_filter_platform">FILTER BY PLATFORM</string>
+
+    <!-- Appearance -->
+    <string name="settings_section_theme">THEME</string>
+    <string name="settings_theme_neon">Medusa Neon</string>
+    <string name="settings_theme_monochrome">Monochrome</string>
+    <string name="settings_section_buttons">BUTTONS ON CARDS</string>
+    <string name="settings_btn_style_icons">Icons only</string>
+    <string name="settings_btn_style_text">Text only</string>
+    <string name="settings_btn_style_both">Icons and text</string>
+    <string name="settings_section_perf">PERFORMANCE &amp; PARTICLES</string>
+    <string name="settings_perf_auto">Automatic</string>
+    <string name="settings_perf_high">High</string>
+    <string name="settings_perf_low">Battery saver</string>
+
+    <!-- About -->
+    <string name="settings_section_system">SYSTEM</string>
+    <string name="settings_row_app">Application</string>
+    <string name="settings_row_version">Installed version</string>
+    <string name="settings_edition_vip">Medusa Pro (Authorized Server) 👑</string>
+    <string name="settings_edition_lifetime">Medusa Pro Lifetime 👑</string>
+    <string name="settings_edition_trial">Medusa Pro (Trial: %1$d days left) ⏳</string>
+    <string name="settings_edition_standard">Medusa Standard (Free)</string>
+    <string name="settings_row_edition">Edition</string>
+    <string name="settings_btn_get_lifetime">Get Pro Lifetime</string>
+    <string name="settings_btn_unlock_pro">Unlock Medusa Pro</string>
+    <string name="settings_status_update_available">Update available (%1$s)</string>
+    <string name="settings_status_up_to_date">Up to date</string>
+    <string name="settings_section_updates">UPDATES</string>
+    <string name="settings_channel_vip">Private Beta (Authorized Server)</string>
+    <string name="settings_channel_ota">Private Beta (Firebase OTA)</string>
+    <string name="settings_row_channel">Channel</string>
+    <string name="settings_btn_checking">Checking…</string>
+    <string name="settings_btn_check_updates">Check for updates</string>
+    <string name="settings_btn_download_install">Download and install%1$s</string>
+    <string name="settings_section_distribution">DISTRIBUTION</string>
+    <string name="settings_channel_play">Google Play Store</string>
+    <string name="settings_section_release_notes">NEW IN VERSION %1$s</string>
+
+    <!-- Edit / activation dialog -->
+    <string name="settings_qr_content_description">QR code</string>
+    <string name="settings_activation_step1">1. %1$s</string>
+    <string name="settings_activation_step2">2. Enter this code:</string>
+    <string name="settings_dialog_clear">Clear text</string>
+    <string name="settings_dialog_hide_password">Hide password</string>
+    <string name="settings_dialog_show_password">Show password</string>
+    <string name="settings_dialog_save">Save</string>
+    <string name="settings_dialog_cancel">Cancel</string>
+
+    <!-- Values / lists -->
+    <string name="settings_value_not_configured">Not configured</string>
+    <string name="settings_list_item_count">%1$d items</string>
+    <string name="settings_list_author">@%1$s</string>
+    <string name="settings_hidden_in_medusa">(Hidden in Medusa)</string>
+    <string name="settings_version_build">%1$s (Build %2$s)</string>
+
+    <!-- Status messages (ViewModel) -->
+    <string name="settings_update_available_toast">New version %1$s available!</string>
+    <string name="settings_up_to_date_toast">Medusa is up to date (%1$s)</string>
+    <string name="settings_promo_activated">Medusa Pro activated successfully! 👑</string>
+    <string name="settings_trakt_verified">Trakt account verified: @%1$s</string>
+    <string name="settings_trakt_connected_msg">Trakt connected (%1$s)</string>
+    <string name="settings_saving_trakt_token">Saving and verifying Trakt token…</string>
+    <string name="settings_trakt_token_removed">Trakt token removed.</string>
+    <string name="settings_jellyfin_session_closed">Jellyfin session closed.</string>
+    <string name="settings_trakt_unlinked">Trakt account unlinked.</string>
+    <string name="settings_requesting_trakt_code">Requesting code from Trakt.tv…</string>
+    <string name="settings_scan_qr">Scan the QR code or go to trakt.tv/activate</string>
+    <string name="settings_trakt_linked">Trakt linked successfully.</string>
+    <string name="settings_trakt_code_expired">Trakt code expired.</string>
+    <string name="settings_trakt_invalid_credentials">Invalid Trakt credentials.</string>
+    <string name="settings_trakt_cancelled">Process canceled by Trakt.</string>
+    <string name="settings_trakt_client_id_not_found">Trakt Client ID not found.</string>
+    <string name="settings_trakt_link_error">Error linking Trakt: %1$s</string>
+    <string name="settings_enter_server_url_first">Enter your server URL first</string>
+    <string name="settings_testing_connection">Testing connection to %1$s…</string>
+    <string name="settings_server_detected">Server detected: %1$s (%2$s)</string>
+    <string name="settings_error_prefix">Error: %1$s</string>
+    <string name="settings_enter_jellyfin_url">Enter your Jellyfin server URL</string>
+    <string name="settings_starting_quick_connect">Starting Quick Connect…</string>
+    <string name="settings_qc_code">Quick Connect code: %1$s</string>
+    <string name="settings_authorized_as">Authorized as %1$s. Syncing catalog…</string>
+    <string name="settings_sync_started">Sync started in the background (%1$d items cached)</string>
+    <string name="settings_enter_url_and_user">Enter the server URL and your username</string>
+    <string name="settings_connecting_with">Connecting to %1$s…</string>
+    <string name="settings_server_authenticating">Server: %1$s. Authenticating…</string>
+    <string name="settings_authenticating_user">Authenticating \'%1$s\'…</string>
+    <string name="settings_connected_as">Connected as %1$s. Syncing catalog…</string>
+    <string name="settings_connect_first">Connect to Jellyfin first</string>
+    <string name="settings_full_sync_started">Full sync started in the background…</string>
+    <string name="settings_checking_updates">Checking for updates…</string>
+    <string name="settings_check_failed">Could not check: %1$s</string>
+    <string name="settings_error_connection_fallback">Connection error</string>
+    <string name="settings_downloading_update">Downloading update…</string>
+    <string name="settings_download_error">Download error: %1$s</string>
+
+    <!-- Network errors (formatNetworkError) -->
+    <string name="settings_error_html_not_jellyfin">The address does not respond as a Jellyfin server (it returned an HTML web page instead of JSON). Check that the URL and port are correct (e.g. http://192.168.1.X:8096) or whether the network has a captive portal/proxy.</string>
+    <string name="settings_error_400">Error 400: Request rejected by Jellyfin. Check your credentials or user permissions.</string>
+    <string name="settings_error_401">Error 401: Incorrect Jellyfin username or password.</string>
+    <string name="settings_error_403">Error 403: Access denied by Jellyfin.</string>
+    <string name="settings_error_404">Error 404: Jellyfin server not found at %1$s.</string>
+    <string name="settings_error_5xx">Error %1$d: Internal server failure.</string>
+    <string name="settings_error_http">HTTP error %1$d: %2$s</string>
+    <string name="settings_error_connect">Could not connect to %1$s. Verify that the server is running.</string>
+    <string name="settings_error_timeout">Timed out while connecting to %1$s.</string>
+    <string name="settings_error_unknown_host">Host \'%1$s\' not found.</string>
+    <string name="settings_error_ssl">SSL certificate error. If you are on a local network use http://.</string>
+    <string name="settings_error_connection">Connection error: %1$s</string>
+    <string name="settings_error_unknown">Unknown failure</string>
+
+    <!-- Feed section titles (resolved in the UI; the domain uses the Spanish text as a stable key) -->
+    <string name="section_continue_watching">Continue Watching</string>
+    <string name="section_recently_added">Recently Added</string>
+    <string name="section_top_movies">Blockbusters in Your Library</string>
+    <string name="section_top_series">Featured Series</string>
+    <string name="section_recommended_movies">Recommended Movies</string>
+    <string name="section_recommended_of">Recommended: %1$s</string>
+    <string name="section_hidden_gems">Hidden Gems in Your Library</string>
+    <string name="section_genre_hidden_gems">Hidden Gems</string>
+    <string name="section_top10_essentials">Top 10 Essentials</string>
+    <string name="section_new_releases">Recent Releases</string>
+    <string name="section_top10_spain">Top 10 in Spain Today</string>
+    <string name="section_platform_popular">Popular on %1$s</string>
+    <string name="section_trakt_community">Recommended by the Trakt Community</string>
+    <string name="section_trakt_watchlist">Your Trakt.tv Watchlist</string>
+    <string name="section_trakt_list">Trakt: %1$s</string>
+    <string name="section_trakt_trending">Trending on Trakt.tv</string>
+    <string name="section_because_watched">Because You Watched %1$s</string>
+    <string name="section_watchlist">Your Watchlist</string>
+    <string name="section_for_you">Recommendations for You</string>
+    <string name="section_trending">Trending</string>
+    <string name="section_acclaimed_cinema">Acclaimed Cinema</string>
+    <string name="section_movies">Movies</string>
+    <string name="section_series">Series</string>
+
+    <!-- Section badges -->
+    <string name="badge_list">LIST</string>
+    <string name="badge_trakt_list">TRAKT LIST</string>
+    <string name="badge_pending">PENDING</string>
+    <string name="badge_for_you">FOR YOU</string>
+    <string name="badge_popular">POPULAR</string>
+
+    <!-- Source labels (HeroBanner) -->
+    <string name="hero_source_trakt_recommended">Trakt Recommended</string>
+    <string name="hero_source_top_today">Top %1$d Today</string>
+    <string name="hero_source_trending">Trending</string>
+    <string name="hero_source_for_you">For you</string>
+    <string name="hero_source_watchlist">Your Watchlist</string>
+    <string name="hero_source_collection">In Your Library</string>
+
+    <!-- Content types -->
+    <string name="type_movie">MOVIE</string>
+    <string name="type_series">SERIES</string>
+
+    <!-- Format filter -->
+    <string name="format_all">All</string>
+    <string name="format_movies">Movies</string>
+    <string name="format_series">Series</string>
+
+    <!-- Search results header -->
+    <string name="search_counter_searching">Searching your Jellyfin server...</string>
+    <string name="search_counter_one">1 title found</string>
+    <string name="search_counter_many">%1$d titles found</string>
+    <string name="search_counter_none">No matches</string>
+
+    <!-- Detail -->
+    <string name="detail_not_found">Item not found in your library</string>
+    <string name="detail_error_loading">Error loading content</string>
+    <string name="detail_play_collection">Play Collection</string>
+    <string name="detail_play">Play</string>
+    <string name="detail_resume_episode">Continue %1$s</string>
+    <string name="detail_play_episode">Play %1$s</string>
+    <string name="detail_play_first_episode">Play S1:E1</string>
+    <string name="detail_continue">Continue</string>
+    <string name="detail_in_favorites">In Favorites</string>
+    <string name="detail_add_favorites">Add to Favorites</string>
+
+    <!-- Player -->
+    <string name="player_playing">Now playing</string>
+    <string name="player_next_in">Next in %1$ds</string>
+    <string name="player_next_episode">Next episode</string>
+    <string name="player_tab_audio">Audio Tracks</string>
+    <string name="player_tab_subtitles">Subtitles</string>
+    <string name="player_tab_settings">Playback Settings</string>
+    <string name="player_decoder_unsupported">This device does not support this video or audio format (HEVC/HDR)</string>
+    <string name="player_error_http_5xx">The streaming server returned an error (HTTP %1$d). Press Retry.</string>
+    <string name="player_error_http_401">Authentication error with the server (HTTP 401). Press Retry.</string>
+    <string name="player_error_bad_http">Server or proxy error while fetching the video (HTTP)</string>
+    <string name="player_error_network">Timed out while connecting to the streaming server</string>
+    <string name="player_error_container">Unsupported format or streaming link unavailable</string>
+    <string name="player_subtitle_default">Subtitle</string>
+    <string name="player_audio_track_default">Audio %1$d</string>
+    <string name="player_track_default">Track %1$d</string>
+    <string name="player_language_unknown">Unknown</string>
+
+    <!-- Updates -->
+    <string name="update_downloading_progress">Downloading update: %1$d%%</string>
+    <string name="update_downloading">Downloading...</string>
+    <string name="update_now">Update now</string>
+    <string name="update_title_forced">MANDATORY UPDATE</string>
+    <string name="update_title_available">UPDATE AVAILABLE</string>
+    <string name="update_beta_expired">This beta version has expired</string>
+    <string name="update_kill_switch_title">SERVICE SUSPENDED</string>
+    <string name="update_kill_switch_body">Access to Medusa has been temporarily suspended. Update to the latest version if available.</string>
+    <string name="update_new_version">New version %1$s</string>
+    <string name="update_later">Later</string>
+
+    <!-- Screen status / errors -->
+    <string name="home_error_connecting">Error connecting to Jellyfin</string>
+    <string name="genre_empty_no_content">No content found for genre \'%1$s\'.</string>
+
+    <!-- Medusa -->
+    <string name="medusa_noun_titles">titles</string>
+    <string name="medusa_noun_movies">movies</string>
+    <string name="medusa_noun_series">series</string>
+    <string name="medusa_available_count">%1$d %2$s available</string>
+    <string name="medusa_hint_movies_short">[UP] Back to filters  ·  [OK] View details</string>
+    <string name="medusa_hint_nav_movies_short">[DOWN] Browse movies  ·  [BACK] Undo</string>
+    <string name="medusa_hint_movies">[UP] Back to filters  ·  [OK] View details  ·  [BACK] Undo</string>
+    <string name="medusa_hint_active_chain">[OK] Remove this theme  ·  [DOWN] Themes rail  ·  [BACK] Back</string>
+    <string name="medusa_hint_chain">[OK] Filter more  ·  [UP] Edit filters  ·  [DOWN] Movies  ·  [BACK] Undo</string>
+    <string name="medusa_hint_default">[OK] Select  ·  [← →] Browse  ·  [BACK] Exit</string>
+
+    <!-- Sync -->
+    <string name="sync_background">Syncing in the background...</string>
+    <string name="sync_checking_restrictions">Checking parental restrictions...</string>
+    <string name="sync_searching_news">Looking for new titles in Jellyfin...</string>
+    <string name="sync_updated_with_news">Catalog updated (+%1$d new)</string>
+    <string name="sync_up_to_date">Catalog up to date (%1$d titles)</string>
+    <string name="sync_resuming">Resuming sync: %1$d / %2$d</string>
+    <string name="sync_progress_zero">Syncing: 0 / %1$d</string>
+    <string name="sync_progress">Syncing: %1$d / %2$d</string>
+    <string name="sync_updated_count">Catalog updated (%1$d titles)</string>
+    <string name="sync_session_expired">Session expired (401). Reconnect in Settings</string>
+    <string name="sync_error_prefix">Sync error: %1$s</string>
+    <string name="sync_error_connection">Connection error</string>
+
+    <!-- Seasons -->
+    <string name="season_specials">Specials</string>
+    <string name="season_default">Season %1$d</string>
+
+    <!-- Specific network errors -->
+    <string name="network_isp_block">Your ISP (Digi) has blocked this server\'s IP under a LaLiga court order. Enable IPv6 on your router, use a VPN (WARP 1.1.1.1) or set the domain to grey cloud.</string>
+
+    <!-- Misc (screens) -->
+    <string name="home_exit_hint">Press Back again to exit</string>
+    <string name="player_resolve_timeout">Resolving the stream took too long. Press Retry.</string>
+    <string name="favorites_empty_hint">Press the favorite button on any movie or series to sync it automatically with Jellyfin.</string>
+    <string name="favorites_filter_hint">Try selecting another filter from the top bar.</string>
+
+    <!-- Updates (APK download) -->
+    <string name="update_error_apk_http">Error downloading APK: HTTP %1$d</string>
+    <string name="update_error_empty_body">Empty response while downloading APK</string>
+    <string name="update_error_integrity">Integrity check failed: the downloaded APK does not match the expected hash.</string>
+</resources>

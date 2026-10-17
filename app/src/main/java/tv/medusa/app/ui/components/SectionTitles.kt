@@ -1,0 +1,64 @@
+package tv.medusa.app.ui.components
+
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
+import tv.medusa.app.R
+import tv.medusa.app.domain.model.HomeSection
+
+/**
+ * Traducción de presentación de los títulos de sección del feed.
+ *
+ * Los títulos se generan en la capa de dominio (GetHomeFeedUseCase, BrandViewModel,
+ * GenreViewModel…) y además de mostrarse se usan como identidad estable (SectionPriority,
+ * `it.title == "Continuar Viendo"`, `distinctBy { it.title }`). Por eso el texto canónico en
+ * español se conserva tal cual en el dominio y la traducción se resuelve aquí, en el único
+ * punto de pintado de las secciones ([MediaRow]).
+ *
+ * Los títulos dinámicos (plataforma, "porque viste", listas de Trakt, géneros recomendados)
+ * se resuelven por prefijo para no perder el fragmento variable.
+ */
+@Composable
+fun localizedSectionTitle(section: HomeSection): String {
+    val title = section.title
+    return when {
+        title == "Continuar Viendo" -> stringResource(R.string.section_continue_watching)
+        title == "Añadido recientemente" -> stringResource(R.string.section_recently_added)
+        title == "Grandes Producciones de tu colección" -> stringResource(R.string.section_top_movies)
+        title == "Series Destacadas" -> stringResource(R.string.section_top_series)
+        title == "Películas Recomendadas" -> stringResource(R.string.section_recommended_movies)
+        title == "Joyas de tu colección" -> stringResource(R.string.section_hidden_gems)
+        title == "Joyas Ocultas" -> stringResource(R.string.section_genre_hidden_gems)
+        title == "Top 10 Imprescindibles" -> stringResource(R.string.section_top10_essentials)
+        title == "Novedades Recientes" -> stringResource(R.string.section_new_releases)
+        title == "Top 10 en España hoy" -> stringResource(R.string.section_top10_spain)
+        title == "Recomendado por la comunidad Trakt" -> stringResource(R.string.section_trakt_community)
+        title == "Tu Watchlist de Trakt.tv" -> stringResource(R.string.section_trakt_watchlist)
+        title == "Tendencias en Trakt.tv" -> stringResource(R.string.section_trakt_trending)
+        title == "Tu Watchlist" -> stringResource(R.string.section_watchlist)
+        title == "Recomendaciones para ti" -> stringResource(R.string.section_for_you)
+        title == "En Tendencia" -> stringResource(R.string.section_trending)
+        title == "Cine Aclamado" -> stringResource(R.string.section_acclaimed_cinema)
+        title == "Películas" -> stringResource(R.string.section_movies)
+        title == "Series" -> stringResource(R.string.section_series)
+        title.startsWith("Recomendados de ") ->
+            stringResource(R.string.section_recommended_of, title.removePrefix("Recomendados de "))
+        title.startsWith("Populares en ") ->
+            stringResource(R.string.section_platform_popular, title.removePrefix("Populares en "))
+        title.startsWith("Porque viste ") ->
+            stringResource(R.string.section_because_watched, title.removePrefix("Porque viste "))
+        title.startsWith("Trakt: ") ->
+            stringResource(R.string.section_trakt_list, title.removePrefix("Trakt: "))
+        else -> title
+    }
+}
+
+@Composable
+fun localizedSectionBadge(badge: String?): String? = when (badge) {
+    null, "" -> null
+    "LISTA" -> stringResource(R.string.badge_list)
+    "TRAKT LISTA" -> stringResource(R.string.badge_trakt_list)
+    "PENDIENTE" -> stringResource(R.string.badge_pending)
+    "PARA TI" -> stringResource(R.string.badge_for_you)
+    "POPULAR" -> stringResource(R.string.badge_popular)
+    else -> badge
+}

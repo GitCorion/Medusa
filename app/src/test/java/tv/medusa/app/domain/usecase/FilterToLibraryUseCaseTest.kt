@@ -1,0 +1,482 @@
+package tv.medusa.app.domain.usecase
+
+import tv.medusa.app.data.local.db.JellyfinDao
+import tv.medusa.app.data.local.db.JellyfinMediaEntity
+import tv.medusa.app.data.local.db.LibraryStats
+import tv.medusa.app.data.remote.tmdb.TmdbItemDto
+import tv.medusa.app.data.remote.trakt.TraktIdsDto
+import tv.medusa.app.data.remote.trakt.TraktMediaDto
+import tv.medusa.app.data.remote.trakt.TraktUserListDto
+import tv.medusa.app.data.repository.MediaRepository
+import tv.medusa.app.data.repository.deduplicateMediaEntities
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class FakeJellyfinDao : JellyfinDao {
+    private val localDb = mutableListOf<JellyfinMediaEntity>()
+
+    fun setLocalItems(items: List<JellyfinMediaEntity>) {
+        localDb.clear()
+        localDb.addAll(items)
+    }
+
+    override suspend fun insertOrUpdateAll(items: List<JellyfinMediaEntity>) {
+        localDb.addAll(items)
+    }
+
+    override fun getAllItems(): Flow<List<JellyfinMediaEntity>> = flowOf(localDb)
+
+    override suspend fun findByTmdbId(tmdbId: String): JellyfinMediaEntity? {
+        return localDb.firstOrNull { it.tmdbId == tmdbId }
+    }
+
+    override suspend fun findByImdbId(imdbId: String): JellyfinMediaEntity? {
+        return localDb.firstOrNull { it.imdbId == imdbId }
+    }
+
+    override suspend fun findByTmdbOrImdb(tmdbId: String?, imdbId: String?): JellyfinMediaEntity? {
+        return localDb.firstOrNull {
+            (tmdbId != null && it.tmdbId == tmdbId) || (imdbId != null && it.imdbId == imdbId)
+        }
+    }
+
+    override suspend fun getItemById(id: String): JellyfinMediaEntity? {
+        return localDb.firstOrNull { it.id == id }
+    }
+
+    override suspend fun getItemsByIds(ids: List<String>): List<JellyfinMediaEntity> {
+        val idSet = ids.toSet()
+        return localDb.filter { it.id in idSet }
+    }
+
+    override suspend fun insertOrUpdate(item: JellyfinMediaEntity) {
+        localDb.removeAll { it.id == item.id }
+        localDb.add(item)
+    }
+
+    override suspend fun findByTitleAndYear(title: String, year: Int): JellyfinMediaEntity? {
+        return localDb.firstOrNull { it.title.equals(title, ignoreCase = true) && it.productionYear == year }
+    }
+
+    override suspend fun findByTitle(title: String): JellyfinMediaEntity? {
+        return localDb.firstOrNull { it.title.equals(title, ignoreCase = true) }
+    }
+
+    override suspend fun findByFuzzyTitle(title: String): JellyfinMediaEntity? {
+        return localDb.firstOrNull { it.title.contains(title, ignoreCase = true) }
+    }
+
+    override suspend fun getEpisodesForSeries(seriesId: String): List<JellyfinMediaEntity> {
+        return localDb.filter { it.seriesId == seriesId && it.type == "Episode" }
+    }
+
+    override suspend fun getSeriesByTitle(title: String): JellyfinMediaEntity? {
+        return localDb.firstOrNull { it.type == "Series" && (it.title.equals(title, ignoreCase = true) || it.originalTitle?.equals(title, ignoreCase = true) == true) }
+    }
+
+    override suspend fun searchLocalMedia(query: String, limit: Int): List<JellyfinMediaEntity> {
+        return localDb.filter { it.title.contains(query, ignoreCase = true) }.take(limit)
+    }
+
+    override suspend fun searchLocalMediaFts(match: String, limit: Int): List<JellyfinMediaEntity> {
+        // El match viene en sintaxis FTS; para el test basta con extraer los términos alfanuméricos.
+        val terms = Regex("[\\p{L}\\p{N}]+").findAll(match).map { it.value }.toList()
+        return localDb.filter { entity ->
+            terms.isEmpty() || terms.all { term ->
+                entity.title.contains(term, ignoreCase = true) ||
+                    entity.originalTitle?.contains(term, ignoreCase = true) == true
+            }
+        }.take(limit)
+    }
+
+    override suspend fun getAllLocalTitles(): List<String> {
+        return localDb.filter { it.type in listOf("Movie", "Series") }.map { it.title }.distinct()
+    }
+
+    override suspend fun getMovies(): List<JellyfinMediaEntity> = localDb.filter { it.type == "Movie" }
+
+    override suspend fun getSeries(): List<JellyfinMediaEntity> = localDb.filter { it.type == "Series" }
+
+    override suspend fun getTopRatedLocal(limit: Int): List<JellyfinMediaEntity> = localDb.take(limit)
+
+    override suspend fun getTopMoviesLocal(limit: Int): List<JellyfinMediaEntity> = localDb.filter { it.type == "Movie" }.take(limit)
+
+    override suspend fun getTopSeriesLocal(limit: Int): List<JellyfinMediaEntity> = localDb.filter { it.type == "Series" }.take(limit)
+
+    override suspend fun getItemsByGenre(genre: String, limit: Int): List<JellyfinMediaEntity> =
+        localDb.filter { it.genres?.contains(genre, ignoreCase = true) == true }.take(limit)
+
+    override suspend fun getMoviesByGenre(genre: String, limit: Int): List<JellyfinMediaEntity> =
+        localDb.filter { it.type == "Movie" && it.genres?.contains(genre, ignoreCase = true) == true }.take(limit)
+
+    override suspend fun getSeriesByGenre(genre: String, limit: Int): List<JellyfinMediaEntity> =
+        localDb.filter { it.type == "Series" && it.genres?.contains(genre, ignoreCase = true) == true }.take(limit)
+
+    override suspend fun getRecentMoviesByGenre(genre: String, limit: Int): List<JellyfinMediaEntity> =
+        localDb.filter { it.type == "Movie" && it.genres?.contains(genre, ignoreCase = true) == true }
+            .sortedByDescending { it.productionYear ?: 0 }.take(limit)
+
+    override suspend fun getRecentSeriesByGenre(genre: String, limit: Int): List<JellyfinMediaEntity> =
+        localDb.filter { it.type == "Series" && it.genres?.contains(genre, ignoreCase = true) == true }
+            .sortedByDescending { it.productionYear ?: 0 }.take(limit)
+
+    override suspend fun getWatchedGenres(): List<String> = emptyList()
+
+    override suspend fun getAllGenresRaw(): List<String> = emptyList()
+
+    override suspend fun getCount(): Int = localDb.size
+
+    override fun getLibraryStatsFlow(): Flow<LibraryStats> = flowOf(
+        LibraryStats(
+            total = localDb.count { it.type == "Movie" || it.type == "Series" },
+            movies = localDb.count { it.type == "Movie" },
+            series = localDb.count { it.type == "Series" },
+            episodesDirect = localDb.count { it.type == "Episode" },
+            totalSeriesEpisodes = localDb.filter { it.type == "Series" }.sumOf { it.totalItemCount ?: 0 }
+        )
+    )
+
+    override suspend fun getFavorites(): List<JellyfinMediaEntity> = localDb.filter { it.isFavorite }
+
+    override fun getFavoritesFlow(): Flow<List<JellyfinMediaEntity>> = flowOf(localDb.filter { it.isFavorite })
+
+    override suspend fun updateFavoriteStatus(itemId: String, isFavorite: Boolean) {
+        val item = getItemById(itemId) ?: return
+        insertOrUpdate(item.copy(isFavorite = isFavorite))
+    }
+
+    override suspend fun updatePlayedStatus(itemId: String, isPlayed: Boolean) {
+        val item = getItemById(itemId) ?: return
+        insertOrUpdate(item.copy(isPlayed = isPlayed, playbackPositionTicks = 0L))
+    }
+
+    override suspend fun getCachedOverviews(): List<tv.medusa.app.data.local.db.CachedOverviewDto> {
+        return localDb.mapNotNull {
+            if (it.overview != null) tv.medusa.app.data.local.db.CachedOverviewDto(it.id, it.overview, it.backdropImageTag) else null
+        }
+    }
+
+    override suspend fun getAllCatalog(): List<JellyfinMediaEntity> {
+        return localDb.filter { it.type in listOf("Movie", "Series") }
+    }
+
+    override suspend fun getCatalogForMatrix(): List<JellyfinMediaEntity> {
+        // El motor de Medusa omite las columnas pesadas (overview, etc.); el fake las replica.
+        return localDb
+            .filter { it.type in listOf("Movie", "Series") }
+            .map { it.copy(overview = null, originalTitle = null, tmdbId = null, imdbId = null, tvdbId = null, officialRating = null) }
+    }
+
+    override suspend fun getContinueWatchingLocal(limit: Int): List<JellyfinMediaEntity> {
+        return localDb.filter { it.playbackPositionTicks > 0L && !it.isPlayed }.take(limit)
+    }
+
+    override suspend fun updatePlaybackPosition(itemId: String, positionTicks: Long, isPlayed: Boolean) {
+        val index = localDb.indexOfFirst { it.id == itemId }
+        if (index >= 0) {
+            localDb[index] = localDb[index].copy(
+                playbackPositionTicks = positionTicks,
+                isPlayed = isPlayed
+            )
+        }
+    }
+
+    override suspend fun getLatestLocal(limit: Int): List<JellyfinMediaEntity> {
+        return localDb.filter { it.type in listOf("Movie", "Series") }.takeLast(limit).reversed()
+    }
+
+    override suspend fun getIdsMissingOverview(limit: Int): List<String> {
+        return localDb.filter { it.overview.isNullOrBlank() }.map { it.id }.take(limit)
+    }
+
+    override suspend fun updateOverview(id: String, overview: String) {
+        val index = localDb.indexOfFirst { it.id == id }
+        if (index >= 0) {
+            localDb[index] = localDb[index].copy(overview = overview)
+        }
+    }
+
+    override suspend fun getItemsMissingPoster(limit: Int): List<JellyfinMediaEntity> {
+        return localDb.filter { it.primaryImageTag.isNullOrBlank() && !it.tmdbId.isNullOrBlank() }.take(limit)
+    }
+
+    override suspend fun updatePrimaryImageTag(id: String, posterTag: String) {
+        val index = localDb.indexOfFirst { it.id == id }
+        if (index >= 0) {
+            localDb[index] = localDb[index].copy(primaryImageTag = posterTag)
+        }
+    }
+
+    override fun getAllItemsRestricted(): Flow<List<JellyfinMediaEntity>> = getAllItems()
+
+    override suspend fun searchLocalMediaRestricted(query: String, limit: Int): List<JellyfinMediaEntity> = searchLocalMedia(query, limit)
+
+    override suspend fun searchLocalMediaFtsRestricted(match: String, limit: Int): List<JellyfinMediaEntity> = searchLocalMediaFts(match, limit)
+
+    override suspend fun getItemsByIdsRestricted(ids: List<String>): List<JellyfinMediaEntity> = getItemsByIds(ids)
+
+    override suspend fun getMoviesRestricted(): List<JellyfinMediaEntity> = getMovies()
+
+    override suspend fun getSeriesRestricted(): List<JellyfinMediaEntity> = getSeries()
+
+    override suspend fun getAllCatalogRestricted(): List<JellyfinMediaEntity> = getAllCatalog()
+
+    override suspend fun getContinueWatchingLocalRestricted(limit: Int): List<JellyfinMediaEntity> = getContinueWatchingLocal(limit)
+
+    override suspend fun getLatestLocalRestricted(limit: Int): List<JellyfinMediaEntity> = getLatestLocal(limit)
+
+    override suspend fun getTopRatedLocalRestricted(limit: Int): List<JellyfinMediaEntity> = getTopRatedLocal(limit)
+
+    override suspend fun getTopMoviesLocalRestricted(limit: Int): List<JellyfinMediaEntity> = getTopMoviesLocal(limit)
+
+    override suspend fun getTopSeriesLocalRestricted(limit: Int): List<JellyfinMediaEntity> = getTopSeriesLocal(limit)
+
+    override suspend fun getItemsByGenreRestricted(genre: String, limit: Int): List<JellyfinMediaEntity> = getItemsByGenre(genre, limit)
+
+    override suspend fun getMoviesByGenreRestricted(genre: String, limit: Int): List<JellyfinMediaEntity> = getMoviesByGenre(genre, limit)
+
+    override suspend fun getSeriesByGenreRestricted(genre: String, limit: Int): List<JellyfinMediaEntity> = getSeriesByGenre(genre, limit)
+
+    override suspend fun getRecentMoviesByGenreRestricted(genre: String, limit: Int): List<JellyfinMediaEntity> = getRecentMoviesByGenre(genre, limit)
+
+    override suspend fun getRecentSeriesByGenreRestricted(genre: String, limit: Int): List<JellyfinMediaEntity> = getRecentSeriesByGenre(genre, limit)
+
+    override suspend fun getFavoritesRestricted(): List<JellyfinMediaEntity> = getFavorites()
+
+    override fun getFavoritesFlowRestricted(): Flow<List<JellyfinMediaEntity>> = getFavoritesFlow()
+
+    override suspend fun clearAll() {
+        localDb.clear()
+    }
+}
+
+class FilterToLibraryUseCaseTest {
+
+    @Test
+    fun `filterTraktItems discards items not available in Jellyfin`() = runTest {
+        val fakeDao = FakeJellyfinDao()
+        val inLibraryEntity = JellyfinMediaEntity(
+            id = "jf-100",
+            title = "Inception",
+            type = "Movie",
+            tmdbId = "27205",
+            imdbId = "tt1375666"
+        )
+        fakeDao.setLocalItems(listOf(inLibraryEntity))
+
+        val repo = MediaRepository(fakeDao)
+        val useCase = FilterToLibraryUseCase(repo)
+
+        val traktItems = listOf(
+            TraktMediaDto(
+                title = "Inception",
+                year = 2010,
+                ids = TraktIdsDto(tmdb = 27205, imdb = "tt1375666")
+            ),
+            TraktMediaDto(
+                title = "Avatar",
+                year = 2009,
+                ids = TraktIdsDto(tmdb = 19995, imdb = "tt0499549") // NOT in library!
+            )
+        )
+
+        val filtered = useCase.filterTraktItems(traktItems)
+
+        assertEquals(1, filtered.size)
+        assertEquals("Inception", filtered[0].title)
+        assertEquals("jf-100", filtered[0].id)
+    }
+
+    @Test
+    fun `filterTmdbItems discards items not available in Jellyfin`() = runTest {
+        val fakeDao = FakeJellyfinDao()
+        val inLibraryEntity = JellyfinMediaEntity(
+            id = "jf-200",
+            title = "Interstellar",
+            type = "Movie",
+            tmdbId = "157336"
+        )
+        fakeDao.setLocalItems(listOf(inLibraryEntity))
+
+        val repo = MediaRepository(fakeDao)
+        val useCase = FilterToLibraryUseCase(repo)
+
+        val tmdbItems = listOf(
+            TmdbItemDto(id = 157336, title = "Interstellar"),
+            TmdbItemDto(id = 999999, title = "Unknown Movie") // NOT in library!
+        )
+
+        val filtered = useCase.filterTmdbItems(tmdbItems)
+
+        assertEquals(1, filtered.size)
+        assertEquals("Interstellar", filtered[0].title)
+        assertEquals("jf-200", filtered[0].id)
+    }
+
+    @Test
+    fun `filterTmdbItems resolves episode match to parent series and keeps isPlayed false when not finished`() = runTest {
+        val fakeDao = FakeJellyfinDao()
+        val playedEpisode = JellyfinMediaEntity(
+            id = "ep-101",
+            title = "Día de la Libertad",
+            type = "Episode",
+            seriesId = "series-silo",
+            seriesName = "Silo",
+            tmdbId = "125988",
+            isPlayed = true,
+            seasonNumber = 1,
+            episodeNumber = 1,
+            totalItemCount = 10,
+            unplayedItemCount = 9
+        )
+        fakeDao.setLocalItems(listOf(playedEpisode))
+
+        val repo = MediaRepository(fakeDao)
+        val useCase = FilterToLibraryUseCase(repo)
+
+        val tmdbItems = listOf(
+            TmdbItemDto(id = 125988, name = "Silo", firstAirDate = "2023-05-05")
+        )
+
+        val filtered = useCase.filterTmdbItems(tmdbItems)
+
+        assertEquals(1, filtered.size)
+        val item = filtered[0]
+        assertEquals("Silo", item.title)
+        assertEquals("Series", item.type)
+        assertEquals(false, item.isPlayed) // Must NOT be marked as fully played
+        assertEquals(10, item.totalItemCount)
+        assertEquals(9, item.unplayedItemCount)
+    }
+
+    @Test
+    fun `filterTmdbItems scans full candidate list and does not truncate before finding library matches`() = runTest {
+        val fakeDao = FakeJellyfinDao()
+        val movieAt35 = JellyfinMediaEntity(
+            id = "movie-deep-match",
+            title = "Deep Match Movie",
+            type = "Movie",
+            tmdbId = "99999"
+        )
+        fakeDao.setLocalItems(listOf(movieAt35))
+
+        val repo = MediaRepository(fakeDao)
+        val useCase = FilterToLibraryUseCase(repo)
+
+        // Generar 40 items TMDB donde el match está en la posición 35
+        val tmdbCandidates = (1..40).map { i ->
+            if (i == 35) {
+                TmdbItemDto(id = 99999, title = "Deep Match Movie")
+            } else {
+                TmdbItemDto(id = i.toLong(), title = "Random TMDB Title $i")
+            }
+        }
+
+        val filtered = useCase.filterTmdbItems(tmdbCandidates, maxCandidates = 20)
+
+        assertEquals(1, filtered.size)
+        assertEquals("movie-deep-match", filtered[0].id)
+    }
+
+    @Test
+    fun `deduplicateMediaEntities merges duplicate versions of same movie without merging sequels`() {
+        val movie1080p = JellyfinMediaEntity(
+            id = "m1-1080p",
+            title = "Dune (1080p)",
+            type = "Movie",
+            tmdbId = "438631",
+            productionYear = 2021,
+            isPlayed = false
+        )
+        val movie4k = JellyfinMediaEntity(
+            id = "m1-4k",
+            title = "Dune",
+            type = "Movie",
+            tmdbId = "438631",
+            productionYear = 2021,
+            isPlayed = true,
+            playbackPositionTicks = 5000000000L
+        )
+        val sequel = JellyfinMediaEntity(
+            id = "m2-dune2",
+            title = "Dune: Parte Dos",
+            type = "Movie",
+            tmdbId = "693134",
+            productionYear = 2024,
+            isPlayed = false
+        )
+
+        val inputList = listOf(movie1080p, movie4k, sequel)
+        val deduplicated = inputList.deduplicateMediaEntities()
+
+        assertEquals(2, deduplicated.size)
+
+        val dune1 = deduplicated.first { it.tmdbId == "438631" }
+        assertEquals("Dune", dune1.title)
+        assertEquals(true, dune1.isPlayed)
+        assertEquals(5000000000L, dune1.playbackPositionTicks)
+
+        val dune2 = deduplicated.first { it.tmdbId == "693134" }
+        assertEquals("Dune: Parte Dos", dune2.title)
+    }
+
+    @Test
+    fun `deduplicateMediaEntities merges series with same title`() {
+        val a = JellyfinMediaEntity(id = "s1-a", title = "The Bear", type = "Series", productionYear = 2022)
+        val b = JellyfinMediaEntity(id = "s1-b", title = "the bear ", type = "Series", productionYear = 2022, isPlayed = true)
+
+        val deduplicated = listOf(a, b).deduplicateMediaEntities()
+
+        assertEquals(1, deduplicated.size)
+        assertEquals(true, deduplicated[0].isPlayed)
+    }
+
+    @Test
+    fun `deduplicateMediaEntities does not merge movies with same title but different year`() {
+        val original = JellyfinMediaEntity(id = "m-a", title = "Dune", type = "Movie", productionYear = 1984)
+        val remake = JellyfinMediaEntity(id = "m-b", title = "Dune", type = "Movie", productionYear = 2021)
+
+        val deduplicated = listOf(original, remake).deduplicateMediaEntities()
+
+        assertEquals(2, deduplicated.size)
+    }
+
+    @Test
+    fun `isUserHidden returns false by default when no hidden lists are configured`() {
+        val moviesList = TraktUserListDto(name = "Películas", ids = TraktIdsDto(trakt = 101, slug = "peliculas"))
+        val seriesList = TraktUserListDto(name = "Series", ids = TraktIdsDto(trakt = 102, slug = "series"))
+        val customList = TraktUserListDto(name = "Top 100 Sci-Fi", ids = TraktIdsDto(trakt = 103, slug = "top-100-sci-fi"))
+
+        val emptyHiddenKeys = emptySet<String>()
+        assertFalse(moviesList.isUserHidden(emptyHiddenKeys))
+        assertFalse(seriesList.isUserHidden(emptyHiddenKeys))
+        assertFalse(customList.isUserHidden(emptyHiddenKeys))
+    }
+
+    @Test
+    fun `isUserHidden matches list by id, slug or name`() {
+        val moviesList = TraktUserListDto(name = "Películas", ids = TraktIdsDto(trakt = 101, slug = "peliculas"))
+        val seriesList = TraktUserListDto(name = "Series", ids = TraktIdsDto(trakt = 102, slug = "series"))
+        val customList = TraktUserListDto(name = "Top 100 Sci-Fi", ids = TraktIdsDto(trakt = 103, slug = "top-100-sci-fi"))
+
+        // Ocultar por nombre exacto normalizado
+        val hiddenByName = setOf("películas")
+        assertTrue(moviesList.isUserHidden(hiddenByName))
+        assertFalse(seriesList.isUserHidden(hiddenByName))
+
+        // Ocultar por slug
+        val hiddenBySlug = setOf("series")
+        assertTrue(seriesList.isUserHidden(hiddenBySlug))
+        assertFalse(moviesList.isUserHidden(hiddenBySlug))
+
+        // Ocultar por ID numérico de Trakt
+        val hiddenById = setOf("103")
+        assertTrue(customList.isUserHidden(hiddenById))
+        assertFalse(moviesList.isUserHidden(hiddenById))
+    }
+}

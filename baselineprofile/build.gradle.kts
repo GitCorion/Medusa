@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.tujelly.baselineprofile"
+    namespace = "tv.medusa.app.baselineprofile"
     compileSdk = 35
 
     defaultConfig {

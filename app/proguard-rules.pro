@@ -1,4 +1,4 @@
-# Reglas de ProGuard/R8 para Tujelly
+# Reglas de ProGuard/R8 para Medusa
 
 # Retrofit & OkHttp
 -keepattributes Signature, InnerClasses, EnclosingMethod, *Annotation*
@@ -11,13 +11,13 @@
     @kotlinx.serialization.Serializable <fields>;
 }
 -keep class kotlinx.serialization.** { *; }
--keep class com.example.tujelly.data.remote.** { *; }
+-keep class tv.medusa.app.data.remote.** { *; }
 
 # Room Database Entities, DAOs and Generated Impl Classes
 -keep class * extends androidx.room.RoomDatabase { *; }
 -keep @androidx.room.Entity class * { *; }
 -keep @androidx.room.Dao interface * { *; }
--keep class com.example.tujelly.data.local.db.** { *; }
+-keep class tv.medusa.app.data.local.db.** { *; }
 -keep class **_Impl { *; }
 
 # Media3 / ExoPlayer
@@ -50,7 +50,7 @@
 
 # ---------------------------------------------------------------------------
 # Kotlinx Serialization: reglas oficiales para serializadores generados.
-# (Los DTOs viven en com.example.tujelly.data.remote.**, ya protegido arriba,
+# (Los DTOs viven en tv.medusa.app.data.remote.**, ya protegido arriba,
 #  pero estas reglas cubren cualquier @Serializable fuera de ese paquete.)
 # ---------------------------------------------------------------------------
 -keepattributes RuntimeVisibleAnnotations,AnnotationDefault
