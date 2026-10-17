@@ -579,12 +579,14 @@ class GetHomeFeedUseCase(
             // ---------------------------------------------------------------------
             launch {
                 val refItem = sharedResumeReference ?: sharedRecentReference
-                if (refItem != null && prefs.tmdbApiKey.isNotBlank()) {
+                // La clave efectiva (la del usuario o la que trae la app): antes se exigía que el
+                // usuario hubiese guardado la suya en Ajustes, así que la sección no aparecía nunca.
+                if (refItem != null && effectiveTmdbKey.isNotBlank()) {
                     runCatching {
                         withTimeoutOrNull(3500L) {
                             val tmdbIdLong = refItem.tmdbId?.toLongOrNull() ?: return@withTimeoutOrNull
                             val isTv = refItem.type.equals("Series", ignoreCase = true) || refItem.type.equals("Episode", ignoreCase = true)
-                            val recsResult = mediaRepository.getTmdbRecommendations(apiKey = prefs.tmdbApiKey, tmdbId = tmdbIdLong, isTv = isTv).getOrDefault(emptyList())
+                            val recsResult = mediaRepository.getTmdbRecommendations(apiKey = effectiveTmdbKey, tmdbId = tmdbIdLong, isTv = isTv).getOrDefault(emptyList())
                             if (recsResult.isNotEmpty()) {
                                 val matchedRecs = filterToLibraryUseCase.filterTmdbItems(
                                     tmdbItems = recsResult,
