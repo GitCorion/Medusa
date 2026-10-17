@@ -89,6 +89,7 @@ import tv.medusa.app.ui.screens.player.PlayerScreen
 import tv.medusa.app.ui.screens.search.SearchScreen
 import tv.medusa.app.ui.screens.settings.SettingsScreen
 import tv.medusa.app.ui.theme.MedusaTheme
+import tv.medusa.app.util.AppForeground
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -178,6 +179,17 @@ class MainActivity : ComponentActivity() {
         intent.getStringExtra("playItemId")?.let {
             pendingPlayItemId = it
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        // El trabajo de fondo (enriquecido de metadatos) baja su ritmo mientras hay app delante.
+        AppForeground.isVisible = true
+    }
+
+    override fun onStop() {
+        AppForeground.isVisible = false
+        super.onStop()
     }
 }
 

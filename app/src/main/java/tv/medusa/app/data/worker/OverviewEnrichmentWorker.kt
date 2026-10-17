@@ -13,6 +13,7 @@ import tv.medusa.app.data.remote.NetworkClientFactory
 import tv.medusa.app.data.remote.jellyfin.JellyfinApiService
 import tv.medusa.app.data.remote.tmdb.TmdbApiService
 import tv.medusa.app.data.repository.buildJellyfinAuthHeader
+import tv.medusa.app.util.AppForeground
 import tv.medusa.app.util.forEachBounded
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
@@ -41,6 +42,16 @@ class OverviewEnrichmentWorker @AssistedInject constructor(
         const val KEY_SERVER_URL = "server_url"
         const val KEY_USER_ID = "user_id"
         const val KEY_TOKEN = "token"
+
+        /**
+         * Peticiones simultáneas al servidor y pausa entre olas. Con la app delante se baja el ritmo
+         * (la mitad en paralelo y pausa más larga) para no competir con lo que el usuario está
+         * esperando; en segundo plano se usa el ritmo alto.
+         */
+        private const val CONCURRENCY_FOREGROUND = 2
+        private const val CONCURRENCY_BACKGROUND = 4
+        private const val WAVE_PAUSE_FOREGROUND_MS = 3000L
+        private const val WAVE_PAUSE_BACKGROUND_MS = 300L
     }
 
     override suspend fun doWork(): Result {
@@ -67,17 +78,22 @@ class OverviewEnrichmentWorker @AssistedInject constructor(
         val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
         val authHeader = buildJellyfinAuthHeader(token = token)
 
-        // Overviews: Jellyfin (LAN). Se piden olas de batchSize*concurrency ids y se lanzan hasta
-        // 4 lotes en paralelo (antes: secuencial con delay(1200ms) fijo entre lotes).
+        // Overviews: Jellyfin (LAN). Se piden olas de batchSize*concurrency ids y se lanzan varios
+        // lotes en paralelo (antes: secuencial con delay(1200ms) fijo entre lotes).
+        //
+        // Con la app abierta se va más despacio (menos peticiones en paralelo y más pausa entre olas):
+        // el enriquecido compite con las consultas que el usuario está esperando y el servidor doméstico
+        // suele ir justo. En segundo plano recupera el ritmo alto.
         val overviewBatchSize = 40
-        val overviewConcurrency = 4
         val processed = AtomicInteger(0)
         var processedCount = 0
         while (processedCount < 10000) {
-            val missingIds = jellyfinDao.getIdsMissingOverview(limit = overviewBatchSize * overviewConcurrency)
+            val yielding = AppForeground.isVisible
+            val concurrency = if (yielding) CONCURRENCY_FOREGROUND else CONCURRENCY_BACKGROUND
+            val missingIds = jellyfinDao.getIdsMissingOverview(limit = overviewBatchSize * concurrency)
             if (missingIds.isEmpty()) break
 
-            missingIds.chunked(overviewBatchSize).forEachBounded(overviewConcurrency) { batch ->
+            missingIds.chunked(overviewBatchSize).forEachBounded(concurrency) { batch ->
                 val idsParam = batch.joinToString(",")
                 val response = runCatching {
                     api.getLibraryItems(
@@ -108,14 +124,15 @@ class OverviewEnrichmentWorker @AssistedInject constructor(
             // Sin progreso (servidor sin respuesta) se corta; evita esperas inútiles.
             if (advanced == processedCount) break
             processedCount = advanced
-            if (processedCount < 10000) delay(300L)
+            if (processedCount < 10000) delay(if (yielding) WAVE_PAUSE_FOREGROUND_MS else WAVE_PAUSE_BACKGROUND_MS)
         }
 
-        // Pósteres faltantes vía TMDB: peticiones independientes → hasta 4 en paralelo.
+        // Pósteres faltantes vía TMDB: peticiones independientes → varias en paralelo (mismo criterio
+        // que arriba: con la app delante, menos).
         val tmdbApi = NetworkClientFactory.createService(ApiConfig.TMDB_BASE_URL, TmdbApiService::class.java)
         val tmdbKey = tmdbApiKey.takeIf { it.isNotBlank() } ?: DEFAULT_TMDB_API_KEY
 
-        val tmdbConcurrency = 4
+        val tmdbConcurrency = if (AppForeground.isVisible) CONCURRENCY_FOREGROUND else CONCURRENCY_BACKGROUND
         val missingPosters = jellyfinDao.getItemsMissingPoster(limit = 40)
         missingPosters.forEachBounded(tmdbConcurrency) { media ->
             val tmdbLong = media.tmdbId?.toLongOrNull() ?: return@forEachBounded

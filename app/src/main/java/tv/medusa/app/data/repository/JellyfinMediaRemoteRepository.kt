@@ -113,6 +113,20 @@ class JellyfinMediaRemoteRepository(
         val cacheKey = "$serverUrl-$userId"
         MediaCaches.serverContinueWatchingCache.get(cacheKey)?.let { return Result.success(it) }
 
+        // Single-flight: el feed de la Home y el refresco al volver a la pantalla coinciden aquí en
+        // los primeros milisegundos y el segundo no ve la caché (aún vacía). Antes eso eran dos
+        // consultas contra el servidor para lo mismo (Resume + NextUp).
+        return MediaCaches.remoteFetchFlight.run("continueWatching|$cacheKey") {
+            fetchContinueWatching(serverUrl, userId, token, cacheKey)
+        }
+    }
+
+    private suspend fun fetchContinueWatching(
+        serverUrl: String,
+        userId: String,
+        token: String,
+        cacheKey: String
+    ): Result<List<JellyfinMediaEntity>> {
         return runCatching {
             val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
             val authHeader = buildJellyfinAuthHeader(token = token)
@@ -180,6 +194,17 @@ class JellyfinMediaRemoteRepository(
         val cacheKey = "$serverUrl-$userId"
         MediaCaches.serverLatestCache.get(cacheKey)?.let { return Result.success(it) }
 
+        return MediaCaches.remoteFetchFlight.run("latest|$cacheKey") {
+            fetchLatest(serverUrl, userId, token, cacheKey)
+        }
+    }
+
+    private suspend fun fetchLatest(
+        serverUrl: String,
+        userId: String,
+        token: String,
+        cacheKey: String
+    ): Result<List<JellyfinMediaEntity>> {
         return runCatching {
             val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
             val authHeader = buildJellyfinAuthHeader(token = token)
@@ -223,6 +248,17 @@ class JellyfinMediaRemoteRepository(
         val cacheKey = "$serverUrl-$userId"
         MediaCaches.serverRecentlyPlayedCache.get(cacheKey)?.let { return Result.success(it) }
 
+        return MediaCaches.remoteFetchFlight.run("recentlyPlayed|$cacheKey") {
+            fetchRecentlyPlayed(serverUrl, userId, token, cacheKey)
+        }
+    }
+
+    private suspend fun fetchRecentlyPlayed(
+        serverUrl: String,
+        userId: String,
+        token: String,
+        cacheKey: String
+    ): Result<List<JellyfinMediaEntity>> {
         return runCatching {
             val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
             val authHeader = buildJellyfinAuthHeader(token = token)
@@ -303,6 +339,20 @@ class JellyfinMediaRemoteRepository(
         val cacheKey = "$serverUrl-$userId-$limit"
         MediaCaches.serverTopMoviesCache.get(cacheKey)?.let { return it }
 
+        // Son varias consultas de biblioteca completa (orden en servidor); si el feed se reconstruye
+        // mientras la anterior sigue en vuelo, ahora se comparten en vez de multiplicarse.
+        return MediaCaches.remoteFetchFlight.run("topMovies|$cacheKey") {
+            fetchTopRatedMovies(serverUrl, userId, token, limit, cacheKey)
+        }
+    }
+
+    private suspend fun fetchTopRatedMovies(
+        serverUrl: String,
+        userId: String,
+        token: String,
+        limit: Int,
+        cacheKey: String
+    ): List<JellyfinMediaEntity> {
         return runCatching {
             val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
             val authHeader = buildJellyfinAuthHeader(token = token)
@@ -384,6 +434,18 @@ class JellyfinMediaRemoteRepository(
         val cacheKey = "$serverUrl-$userId-$limit"
         MediaCaches.serverTopSeriesCache.get(cacheKey)?.let { return it }
 
+        return MediaCaches.remoteFetchFlight.run("topSeries|$cacheKey") {
+            fetchTopRatedSeries(serverUrl, userId, token, limit, cacheKey)
+        }
+    }
+
+    private suspend fun fetchTopRatedSeries(
+        serverUrl: String,
+        userId: String,
+        token: String,
+        limit: Int,
+        cacheKey: String
+    ): List<JellyfinMediaEntity> {
         return runCatching {
             val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
             val authHeader = buildJellyfinAuthHeader(token = token)

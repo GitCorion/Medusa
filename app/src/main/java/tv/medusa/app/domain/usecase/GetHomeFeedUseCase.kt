@@ -261,6 +261,12 @@ class GetHomeFeedUseCase(
         supervisorScope {
             // ---------------------------------------------------------------------
             // JOB 1: JELLYFIN SERVER (Continuar Viendo remoto, Añadidos y Catálogo)
+            //
+            // Las cuatro consultas van en paralelo a propósito: con un servidor lento, en serie la
+            // última sección esperaba a que terminasen las tres anteriores (medido: "Continuar
+            // Viendo" sola tardó ~108 s, así que "Añadido recientemente" no podía empezar antes).
+            // Como `postSection` está serializado con un mutex y las secciones se ordenan por
+            // prioridad al insertarlas, el orden de la Home no depende de cuál llegue antes.
             // ---------------------------------------------------------------------
             launch {
                 val resumeItems = runCatching {
@@ -276,7 +282,9 @@ class GetHomeFeedUseCase(
                         )
                     )
                 }
+            }
 
+            launch {
                 val latestItems = runCatching {
                     mediaRepository.getLatest(prefs.jellyfinServerUrl, prefs.jellyfinUserId, prefs.jellyfinAccessToken).getOrNull() ?: emptyList()
                 }.getOrDefault(emptyList()).filter {
@@ -291,13 +299,15 @@ class GetHomeFeedUseCase(
                         )
                     )
                 }
+            }
 
-                // Antes aquí se pedían los "vistos" al servidor solo para elegir la referencia de
-                // "Porque viste X": era la consulta más cara del arranque (hasta ~37 s con el
-                // servidor ocupado) y su dato ya está en Room (quick init y sync de fondo). Ahora la
-                // referencia sale de `getRecentlyPlayedLocal`, así que esa consulta desaparece.
-
-                // Top servidor curado
+            // Antes aquí se pedían los "vistos" al servidor solo para elegir la referencia de
+            // "Porque viste X": era la consulta más cara del arranque (hasta ~37 s con el
+            // servidor ocupado) y su dato ya está en Room (quick init y sync de fondo). Ahora la
+            // referencia sale de `getRecentlyPlayedLocal`, así que esa consulta desaparece.
+            //
+            // Top servidor curado
+            launch {
                 val topMoviesServer = runCatching {
                     mediaRepository.getTopRatedMoviesServer(prefs.jellyfinServerUrl, prefs.jellyfinUserId, prefs.jellyfinAccessToken, limit = 20)
                 }.getOrDefault(localTopMovies)
@@ -315,7 +325,9 @@ class GetHomeFeedUseCase(
                         )
                     )
                 }
+            }
 
+            launch {
                 val topSeriesServer = runCatching {
                     mediaRepository.getTopRatedSeriesServer(prefs.jellyfinServerUrl, prefs.jellyfinUserId, prefs.jellyfinAccessToken, limit = 20)
                 }.getOrDefault(localTopSeries)

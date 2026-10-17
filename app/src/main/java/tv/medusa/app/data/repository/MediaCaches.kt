@@ -2,6 +2,7 @@ package tv.medusa.app.data.repository
 
 import tv.medusa.app.data.local.db.JellyfinMediaEntity
 import tv.medusa.app.data.remote.tmdb.TmdbItemDto
+import tv.medusa.app.util.SingleFlight
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -81,6 +82,12 @@ object MediaCaches {
     val serverContinueWatchingCache = TtlCache<String, List<JellyfinMediaEntity>>(3 * 60 * 1000L)
     val serverLatestCache = TtlCache<String, List<JellyfinMediaEntity>>(10 * 60 * 1000L)
     val serverRecentlyPlayedCache = TtlCache<String, List<JellyfinMediaEntity>>(10 * 60 * 1000L)
+
+    /**
+     * Single-flight compartido de las consultas remotas del catálogo: agrupa las peticiones
+     * *simultáneas* idénticas (las cachés con TTL solo cubren las consecutivas). Ver `SingleFlight`.
+     */
+    val remoteFetchFlight = SingleFlight()
 
     fun invalidateServerCaches() {
         serverContinueWatchingCache.clear()
