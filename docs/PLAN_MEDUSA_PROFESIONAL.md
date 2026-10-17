@@ -101,7 +101,8 @@ Este documento detalla la hoja de ruta técnica, de producto y legal para transf
    * Compilación de `app-play-release.aab` con firma de producción (`release.keystore`).
 3. **Ficha de Tienda y Material Gráfico:**
    * Archivo de metadatos completado: [`docs/PLAY_STORE_METADATA.md`](file:///Users/corion/AndroidStudioProjects/Tujelly/docs/PLAY_STORE_METADATA.md).
-   * Generación/preparación de las 4 capturas oficiales para Android TV (1920x1080) usando contenido Creative Commons / dominio público (*Big Buck Bunny* / *Tears of Steel*) para blindar contra rechazos de copyright.
+   * ✅ **7 capturas oficiales para Android TV (1920×1080), en español**, listas en `docs/store_assets/` (`tv_screenshot_01_home_…` → `tv_screenshot_07_settings_…`): portada, biblioteca, **Medusa (filtros)**, detalle, reproductor, búsqueda y ajustes. Tomadas con `adb screencap` desde el emulador *Android TV 1080p* (locale `es-ES`) apuntando a un **Jellyfin local (Docker)** poblado **solo con contenido Creative Commons / dominio público** (cortos de Blender: *Big Buck Bunny*, *Sintel*, *Tears of Steel*, *Elephants Dream*; clásicos de dominio público: *Nosferatu*, *The General*, *His Girl Friday*, *Night of the Living Dead*) para blindar contra rechazos por copyright.
+   * ✅ **AAB firmado** para Play: `app/build/outputs/bundle/playRelease/app-play-release.aab` (~14,7 MB) con `./gradlew :app:bundlePlayRelease`.
 4. **Google Play Console:**
    * Cuenta de desarrollador ($25 pago único a Google).
    * Creación de la app `Medusa` (tv.medusa.app).
