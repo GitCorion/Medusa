@@ -623,51 +623,39 @@ private fun PlayerContent(
 
     // ─── Intro / Credits banner: usa los campos del plugin fielmente ────────────
     // introMarker.showAtMs = ShowSkipPromptAt del plugin
-    // ─── Intro / Credits banner: usa los campos del plugin fielmente ────────────
-    // Si el usuario es Pro, realiza el salto automático de forma desatendida.
-    // Si es Free, muestra el botón manual en pantalla para que el usuario decida si saltar.
+    // ─── Intro / Credits banner: función exclusiva de Medusa Pro (Netflix style) ─
     LaunchedEffect(introMarker, isProUser) {
         val marker = introMarker
-        if (marker == null) {
+        if (marker == null || !isProUser) {
             showSkipIntroBanner = false
             return@LaunchedEffect
         }
-        var hasAutoSkipped = false
         snapshotFlow { currentPosition }.collect { pos ->
             val inWindow = pos in marker.showAtMs..marker.hideAtMs
-            if (isProUser && inWindow && !hasAutoSkipped) {
-                hasAutoSkipped = true
-                showSkipIntroBanner = false
-                exoPlayer.seekTo(marker.skipToMs)
-            } else if (!isProUser) {
-                if (inWindow != showSkipIntroBanner) showSkipIntroBanner = inWindow
+            if (inWindow != showSkipIntroBanner) {
+                showSkipIntroBanner = inWindow
             }
         }
     }
 
     LaunchedEffect(creditsMarker, isProUser) {
         val marker = creditsMarker
-        if (marker == null) {
+        if (marker == null || !isProUser) {
             showSkipCreditsBanner = false
             return@LaunchedEffect
         }
-        var hasAutoSkipped = false
         snapshotFlow { currentPosition }.collect { pos ->
             val inWindow = pos in marker.showAtMs..marker.hideAtMs
-            if (isProUser && inWindow && !hasAutoSkipped && nextEpisode == null) {
-                hasAutoSkipped = true
-                showSkipCreditsBanner = false
-                exoPlayer.seekTo(marker.skipToMs)
-            } else if (!isProUser) {
-                if (inWindow != showSkipCreditsBanner) showSkipCreditsBanner = inWindow
+            if (nextEpisode == null && inWindow != showSkipCreditsBanner) {
+                showSkipCreditsBanner = inWindow
             }
         }
     }
 
-    // ─── Next episode overlay ────────────────────────────────────────────
+    // ─── Next episode overlay (exclusivo Medusa Pro) ───────────────────────
     LaunchedEffect(creditsMarker, nextEpisode, isProUser) {
         val next = nextEpisode
-        if (next == null) {
+        if (next == null || !isProUser) {
             if (showNextEpisodeOverlay) showNextEpisodeOverlay = false
             return@LaunchedEffect
         }
@@ -677,18 +665,12 @@ private fun PlayerContent(
             snapshotFlow { currentPosition }.collect { pos ->
                 val inRange = pos in marker.showAtMs..marker.hideAtMs
                 if (inRange) {
-                    nextEpisodeCountdown = if (isProUser) {
-                        ((marker.hideAtMs - pos) / 1000L).toInt().coerceAtLeast(0)
-                    } else {
-                        -1
-                    }
+                    nextEpisodeCountdown = ((marker.hideAtMs - pos) / 1000L).toInt().coerceAtLeast(0)
                     if (!showNextEpisodeOverlay) showNextEpisodeOverlay = true
                 } else if (pos > marker.hideAtMs) {
                     if (showNextEpisodeOverlay) {
                         showNextEpisodeOverlay = false
-                        if (isProUser) {
-                            onPlayNextEpisode(next)
-                        }
+                        onPlayNextEpisode(next)
                     }
                 } else {
                     if (showNextEpisodeOverlay) showNextEpisodeOverlay = false
