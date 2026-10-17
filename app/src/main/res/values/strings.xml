@@ -297,7 +297,6 @@
     <!-- Mensajes de estado (ViewModel) -->
     <string name="settings_update_available_toast">¡Nueva versión %1$s disponible!</string>
     <string name="settings_up_to_date_toast">Medusa está al día (%1$s)</string>
-    <string name="settings_promo_activated">¡Medusa Pro activado correctamente! 👑</string>
     <string name="settings_trakt_verified">Cuenta Trakt verificada: @%1$s</string>
     <string name="settings_trakt_connected_msg">Trakt conectado (%1$s)</string>
     <string name="settings_saving_trakt_token">Guardando y verificando Token de Trakt…</string>

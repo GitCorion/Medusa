@@ -238,18 +238,6 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun redeemPromoCode(code: String, onResult: (Boolean) -> Unit) {
-        viewModelScope.launch {
-            val success = userPreferencesRepository.redeemPromoCode(code)
-            if (success) {
-                _uiState.value = _uiState.value.copy(
-                    statusMessage = context.getString(R.string.settings_promo_activated)
-                )
-            }
-            onResult(success)
-        }
-    }
-
     fun selectCategory(categoryIndex: Int) {
         _uiState.value = _uiState.value.copy(activeCategory = categoryIndex)
     }

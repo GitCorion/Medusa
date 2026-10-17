@@ -198,29 +198,6 @@ class UserPreferencesRepository(context: Context) {
         }
     }
 
-    /**
-     * Valida y canjea un código promocional u operado por familia.
-     * Los códigos solo se comprueban mediante hashes SHA-256 para evitar que figuren en texto plano.
-     */
-    suspend fun redeemPromoCode(code: String): Boolean {
-        val trimmed = code.trim().uppercase()
-        if (trimmed.isBlank()) return false
-        val hash = ServerVerificationUtils.sha256(trimmed)
-        val validHashes = setOf(
-            "2debaffca0c97c243e36962184e4a3b1844847931790990f4cd0fe5af754b820", // VIP 1
-            "524540576cf95fe4d888b0a98b1d14411be0a6576c333e62910e49944db29537", // VIP 2
-            "140d7031f62e662310b9da56506f05ec8845386affc3d945c14f26bcadfefe67"  // VIP 3
-        )
-        return if (validHashes.contains(hash)) {
-            appContext.dataStore.edit { prefs ->
-                prefs[Keys.HAS_PROMO_UNLOCK] = true.toString()
-            }
-            true
-        } else {
-            false
-        }
-    }
-
     suspend fun updateJellyfinServerUrl(serverUrl: String) {
         val cleanUrl = serverUrl.trimEnd('/')
         appContext.dataStore.edit { prefs ->
