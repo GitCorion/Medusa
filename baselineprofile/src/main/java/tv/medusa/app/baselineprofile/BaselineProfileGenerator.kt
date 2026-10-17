@@ -12,14 +12,21 @@ import org.junit.runner.RunWith
  * Genera el Baseline Profile de Medusa para `tv.medusa.app`.
  *
  * Cubre el arranque en frío (startup profile) y unos desplazamientos en la pantalla principal
- * para incluir el hot-path de composición/scroll. Se ejecuta en un dispositivo/emulador real con:
+ * para incluir el hot-path de composición/scroll. Se ejecuta en un dispositivo/emulador real, una
+ * vez por flavor:
  *
  * ```
- * ./gradlew :app:generateReleaseBaselineProfile
+ * ./gradlew :app:generateBetaReleaseBaselineProfile   # canal OTA (APK beta)
+ * ./gradlew :app:generatePlayReleaseBaselineProfile   # AAB de Play
  * ```
  *
- * El resultado se guarda en `app/src/release/generated/baselineProfiles/` (ver `saveInSrc`) y AGP lo
- * empaqueta automáticamente en el APK.
+ * El resultado se guarda en `app/src/<flavor>Release/generated/baselineProfiles/` (ver `saveInSrc`) y
+ * AGP lo empaqueta en el APK (`assets/dexopt/baseline.prof`) y en el AAB
+ * (`BUNDLE-METADATA/com.android.tools.build.profiles/baseline.prof`).
+ *
+ * ⚠️ `saveInSrc` escribe en el source set del **flavor**, no en el de build type: un
+ * `baseline-prof.txt` en `app/src/release/` **no** se consume (comprobado: los perfiles combinados
+ * se quedaban sin clases de la app). De ahí que haya un fichero por flavor.
  */
 @RunWith(AndroidJUnit4::class)
 class BaselineProfileGenerator {
