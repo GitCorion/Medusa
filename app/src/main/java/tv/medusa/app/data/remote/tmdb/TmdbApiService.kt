@@ -3,61 +3,62 @@ package tv.medusa.app.data.remote.tmdb
 import retrofit2.http.GET
 import retrofit2.http.Path
 import retrofit2.http.Query
+import tv.medusa.app.data.remote.ApiConfig
 
 interface TmdbApiService {
 
     @GET("trending/all/week")
     suspend fun getTrending(
         @Query("api_key") apiKey: String,
-        @Query("language") language: String = "es-ES"
+        @Query("language") language: String = ApiConfig.TMDB_LANGUAGE
     ): TmdbTrendingResponse
 
     @GET("trending/all/day")
     suspend fun getTrendingDay(
         @Query("api_key") apiKey: String,
-        @Query("language") language: String = "es-ES"
+        @Query("language") language: String = ApiConfig.TMDB_LANGUAGE
     ): TmdbTrendingResponse
 
     @GET("movie/{movie_id}/recommendations")
     suspend fun getMovieRecommendations(
         @Path("movie_id") movieId: Long,
         @Query("api_key") apiKey: String,
-        @Query("language") language: String = "es-ES"
+        @Query("language") language: String = ApiConfig.TMDB_LANGUAGE
     ): TmdbTrendingResponse
 
     @GET("movie/{movie_id}")
     suspend fun getMovieDetails(
         @Path("movie_id") movieId: Long,
         @Query("api_key") apiKey: String,
-        @Query("language") language: String = "es-ES"
+        @Query("language") language: String = ApiConfig.TMDB_LANGUAGE
     ): TmdbMovieDetailDto
 
     @GET("tv/{series_id}/recommendations")
     suspend fun getTvRecommendations(
         @Path("series_id") seriesId: Long,
         @Query("api_key") apiKey: String,
-        @Query("language") language: String = "es-ES"
+        @Query("language") language: String = ApiConfig.TMDB_LANGUAGE
     ): TmdbTrendingResponse
 
     @GET("tv/{series_id}")
     suspend fun getTvDetails(
         @Path("series_id") seriesId: Long,
         @Query("api_key") apiKey: String,
-        @Query("language") language: String = "es-ES"
+        @Query("language") language: String = ApiConfig.TMDB_LANGUAGE
     ): TmdbTvDetailDto
 
     @GET("movie/{movie_id}/videos")
     suspend fun getMovieVideos(
         @Path("movie_id") movieId: Long,
         @Query("api_key") apiKey: String,
-        @Query("language") language: String = "es-ES"
+        @Query("language") language: String = ApiConfig.TMDB_LANGUAGE
     ): TmdbVideosResponse
 
     @GET("tv/{series_id}/videos")
     suspend fun getTvVideos(
         @Path("series_id") seriesId: Long,
         @Query("api_key") apiKey: String,
-        @Query("language") language: String = "es-ES"
+        @Query("language") language: String = ApiConfig.TMDB_LANGUAGE
     ): TmdbVideosResponse
 
     @GET("discover/movie")
@@ -65,7 +66,7 @@ interface TmdbApiService {
         @Query("api_key") apiKey: String,
         @Query("with_genres") genreId: String,
         @Query("sort_by") sortBy: String = "popularity.desc",
-        @Query("language") language: String = "es-ES"
+        @Query("language") language: String = ApiConfig.TMDB_LANGUAGE
     ): TmdbTrendingResponse
 
     @GET("discover/tv")
@@ -73,7 +74,7 @@ interface TmdbApiService {
         @Query("api_key") apiKey: String,
         @Query("with_genres") genreId: String,
         @Query("sort_by") sortBy: String = "popularity.desc",
-        @Query("language") language: String = "es-ES"
+        @Query("language") language: String = ApiConfig.TMDB_LANGUAGE
     ): TmdbTrendingResponse
 
     @GET("discover/movie")
@@ -84,7 +85,7 @@ interface TmdbApiService {
         @Query("sort_by") sortBy: String = "popularity.desc",
         @Query("vote_count.gte") voteCountGte: Int? = null,
         @Query("page") page: Int = 1,
-        @Query("language") language: String = "es-ES"
+        @Query("language") language: String = ApiConfig.TMDB_LANGUAGE
     ): TmdbTrendingResponse
 
     @GET("discover/tv")
@@ -95,18 +96,18 @@ interface TmdbApiService {
         @Query("sort_by") sortBy: String = "popularity.desc",
         @Query("vote_count.gte") voteCountGte: Int? = null,
         @Query("page") page: Int = 1,
-        @Query("language") language: String = "es-ES"
+        @Query("language") language: String = ApiConfig.TMDB_LANGUAGE
     ): TmdbTrendingResponse
 
     @GET("movie/top_rated")
     suspend fun getTopRatedMovies(
         @Query("api_key") apiKey: String,
-        @Query("language") language: String = "es-ES"
+        @Query("language") language: String = ApiConfig.TMDB_LANGUAGE
     ): TmdbTrendingResponse
 
     @GET("tv/top_rated")
     suspend fun getTopRatedTv(
         @Query("api_key") apiKey: String,
-        @Query("language") language: String = "es-ES"
+        @Query("language") language: String = ApiConfig.TMDB_LANGUAGE
     ): TmdbTrendingResponse
 }

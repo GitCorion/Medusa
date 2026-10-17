@@ -1,5 +1,7 @@
 package tv.medusa.app.data.remote
 
+import java.util.Locale
+
 /**
  * URLs base de servicios externos, centralizadas para evitar literales duplicados
  * repartidos por repositorios, ViewModels y workers.
@@ -37,4 +39,14 @@ object ApiConfig {
     /** Diccionario de etiquetas/géneros de Medusa alojado en GitHub. */
     const val MEDUSA_TAGS_JSON_URL =
         "https://raw.githubusercontent.com/GitCorion/Medusa/main/data/medusa_tags_es.json"
+
+    /**
+     * Idioma con el que se piden los metadatos a TMDB, alineado con el idioma de la app: español
+     * si el dispositivo está en español, inglés en cualquier otro caso (los textos de la app solo
+     * están traducidos a es/en, así que no tiene sentido pedir un tercer idioma a TMDB).
+     *
+     * Se lee en cada llamada para que un cambio de idioma del sistema se aplique sin reiniciar.
+     */
+    val TMDB_LANGUAGE: String
+        get() = if (Locale.getDefault().language == "es") "es-ES" else "en-US"
 }
