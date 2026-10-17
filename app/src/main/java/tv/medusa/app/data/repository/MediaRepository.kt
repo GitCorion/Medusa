@@ -86,6 +86,10 @@ class MediaRepository(
     suspend fun syncQuickInit(serverUrl: String, userId: String, token: String): Result<Unit> =
         sync.syncQuickInit(serverUrl, userId, token)
 
+    /** Caché local de portada, en segundo plano y sin bloquear al llamante. */
+    fun primeLocalCache(serverUrl: String, userId: String, token: String, force: Boolean = false) =
+        sync.primeLocalCache(serverUrl, userId, token, force)
+
     suspend fun syncJellyfinLibrary(
         serverUrl: String,
         userId: String,
@@ -246,6 +250,8 @@ class MediaRepository(
     suspend fun getItemsByIds(ids: List<String>): List<JellyfinMediaEntity> = local.getItemsByIds(ids)
 
     suspend fun getContinueWatchingLocal(limit: Int = 20): List<JellyfinMediaEntity> = local.getContinueWatchingLocal(limit)
+
+    suspend fun getRecentlyPlayedLocal(limit: Int = 20): List<JellyfinMediaEntity> = local.getRecentlyPlayedLocal(limit)
 
     suspend fun getLatestLocal(serverUrl: String = "", userId: String = "", limit: Int = 20): List<JellyfinMediaEntity> =
         local.getLatestLocal(serverUrl, userId, limit)

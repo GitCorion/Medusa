@@ -20,6 +20,7 @@ import tv.medusa.app.data.remote.jellyfin.JellyfinApiService
 import tv.medusa.app.data.remote.jellyfin.JellyfinItemsResponse
 import tv.medusa.app.data.worker.JellyfinSyncWorker
 import tv.medusa.app.data.worker.OverviewEnrichmentWorker
+import tv.medusa.app.util.forEachBounded
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -55,6 +56,13 @@ class MediaSyncRepository(
         val syncProgress: StateFlow<SyncProgress> = _syncProgress.asStateFlow()
         private val syncMutex = Mutex()
         private val syncScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+        // El feed de la Home y el sync de fondo piden el quick init casi a la vez (el segundo lo
+        // invoca como primer paso de `syncJellyfinLibrary`). Estas dos guardas evitan repetir las
+        // mismas consultas contra el servidor mientras son recientes o están en curso.
+        private val quickInitMutex = Mutex()
+        @Volatile private var quickInitCompletedAt: Long = 0L
+        private const val QUICK_INIT_FRESH_WINDOW_MS = 60_000L
 
         fun updateProgress(progress: SyncProgress) {
             _syncProgress.value = progress
@@ -157,8 +165,56 @@ class MediaSyncRepository(
         }
     }
 
-    suspend fun syncQuickInit(serverUrl: String, userId: String, token: String): Result<Unit> {
-        return runCatching {
+    /**
+     * Pide la caché local de portada **sin bloquear** a quien la invoca.
+     *
+     * Antes el feed de la Home esperaba (`await`) al quick init y no construía ninguna sección
+     * hasta que terminase: con un catálogo grande eso incluía la consulta de vistos y el detalle
+     * de cada serie (decenas de segundos con el servidor ocupado) antes del primer apartado.
+     * Ahora se lanza en segundo plano y el feed sigue por su cuenta; cuando el sync de fondo
+     * termina, la Home se recarga sola.
+     */
+    fun primeLocalCache(serverUrl: String, userId: String, token: String, force: Boolean = false) {
+        if (serverUrl.isBlank() || userId.isBlank() || token.isBlank()) return
+        if (_syncProgress.value.isSyncing) return
+        syncScope.launch {
+            runCatching {
+                if (force || jellyfinDao.getCount() < 10) {
+                    syncQuickInit(serverUrl, userId, token, force = force)
+                }
+            }
+        }
+    }
+
+    /**
+     * Caché local de portada (continuar viendo, recientes, favoritos y vistos).
+     *
+     * Es *single-flight*: si ya se ejecutó hace menos de [QUICK_INIT_FRESH_WINDOW_MS] o hay otro
+     * en curso, devuelve sin volver a pedir nada. Antes el feed de la Home y el arranque del sync
+     * de fondo (`syncJellyfinLibrary`) lo lanzaban a la vez y duplicaban estas consultas.
+     */
+    suspend fun syncQuickInit(
+        serverUrl: String,
+        userId: String,
+        token: String,
+        force: Boolean = false
+    ): Result<Unit> {
+        if (!force && System.currentTimeMillis() - quickInitCompletedAt < QUICK_INIT_FRESH_WINDOW_MS) {
+            return Result.success(Unit)
+        }
+        if (!quickInitMutex.tryLock()) {
+            return Result.success(Unit)
+        }
+        return try {
+            runCatching { fetchCoverRows(serverUrl, userId, token) }
+                .onSuccess { quickInitCompletedAt = System.currentTimeMillis() }
+        } finally {
+            quickInitMutex.unlock()
+        }
+    }
+
+    private suspend fun fetchCoverRows(serverUrl: String, userId: String, token: String) {
+        runCatching {
             val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
             val authHeader = buildJellyfinAuthHeader(token = token)
 
@@ -220,7 +276,8 @@ class MediaSyncRepository(
                     .filter { it.type.equals("Episode", ignoreCase = true) && !it.seriesId.isNullOrBlank() }
                     .mapNotNull { it.seriesId }
                     .distinct()
-                for (sId in seriesIds) {
+                // En paralelo acotado: antes era un bucle en serie (N series = N peticiones encadenadas)
+                seriesIds.forEachBounded(4) { sId ->
                     try {
                         val seriesDto = api.getItemDetail(authHeader = authHeader, userId = userId, itemId = sId)
                         jellyfinDao.insertOrUpdate(seriesDto.toEntity())

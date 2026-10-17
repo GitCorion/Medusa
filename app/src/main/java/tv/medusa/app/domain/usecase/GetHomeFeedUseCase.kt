@@ -88,17 +88,15 @@ class GetHomeFeedUseCase(
             }
         }
 
-        // Quick init: if local DB is empty (< 10 items), populate latest items & favorites in 0.5s
-        // Never blocks the feed with a full 36,000 item catalog sync!
-        runCatching {
-            if (mediaRepository.getLocalCount() < 10 && !MediaRepository.syncProgress.value.isSyncing) {
-                mediaRepository.syncQuickInit(
-                    serverUrl = prefs.jellyfinServerUrl,
-                    userId = prefs.jellyfinUserId,
-                    token = prefs.jellyfinAccessToken
-                )
-            }
-        }
+        // Caché local de portada en segundo plano. Antes se esperaba aquí (`await`) y la Home no
+        // pintaba ninguna sección hasta que terminase: incluía la consulta de vistos (hasta ~40 s
+        // contra un servidor ocupado) y el detalle de cada serie, uno detrás de otro.
+        mediaRepository.primeLocalCache(
+            serverUrl = prefs.jellyfinServerUrl,
+            userId = prefs.jellyfinUserId,
+            token = prefs.jellyfinAccessToken,
+            force = forceRefresh
+        )
 
         val sections = mutableListOf<HomeSection>()
         val shownMediaIds = ConcurrentHashMap.newKeySet<String>()
@@ -156,6 +154,7 @@ class GetHomeFeedUseCase(
         // El usuario ve de inmediato un inicio completo con 5-7 filas sin esperar a la red.
         // =========================================================================
         val localContinueWatching = runCatching { mediaRepository.getContinueWatchingLocal(20) }.getOrDefault(emptyList())
+        val localRecentlyPlayed = runCatching { mediaRepository.getRecentlyPlayedLocal(20) }.getOrDefault(emptyList())
         val localLatest = runCatching { mediaRepository.getLatestLocal(prefs.jellyfinServerUrl, prefs.jellyfinUserId, 20) }.getOrDefault(emptyList())
         val localTopMovies = mediaRepository.getTopMoviesLocal(30).filterPersonalizedForHeader(emptyList())
         val localTopSeries = mediaRepository.getTopSeriesLocal(30).filterPersonalizedForHeader(emptyList())
@@ -253,8 +252,11 @@ class GetHomeFeedUseCase(
         // =========================================================================
         val effectiveTmdbKey = prefs.tmdbApiKey.takeIf { it.isNotBlank() } ?: DEFAULT_TMDB_API_KEY
         val effectiveWatchRegion = prefs.watchRegion.takeIf { it.isNotBlank() } ?: ApiConfig.TMDB_WATCH_REGION
-        var sharedResumeReference: JellyfinMediaEntity? = null
-        var sharedRecentReference: JellyfinMediaEntity? = null
+        // Referencias locales (instantáneas) para las secciones personalizadas ("Porque viste X").
+        // Antes se rellenaban con sendas consultas remotas dentro de JOB 1, y el trabajo que las
+        // usaba arrancaba antes de que llegasen: en frío la sección se quedaba sin referencia.
+        var sharedResumeReference: JellyfinMediaEntity? = localContinueWatching.firstOrNull { it.tmdbId != null }
+        var sharedRecentReference: JellyfinMediaEntity? = localRecentlyPlayed.firstOrNull { it.tmdbId != null }
 
         supervisorScope {
             // ---------------------------------------------------------------------
@@ -290,10 +292,10 @@ class GetHomeFeedUseCase(
                     )
                 }
 
-                val recentlyPlayed = runCatching {
-                    mediaRepository.getRecentlyPlayed(prefs.jellyfinServerUrl, prefs.jellyfinUserId, prefs.jellyfinAccessToken).getOrNull() ?: emptyList()
-                }.getOrDefault(emptyList())
-                sharedRecentReference = recentlyPlayed.firstOrNull { it.tmdbId != null }
+                // Antes aquí se pedían los "vistos" al servidor solo para elegir la referencia de
+                // "Porque viste X": era la consulta más cara del arranque (hasta ~37 s con el
+                // servidor ocupado) y su dato ya está en Room (quick init y sync de fondo). Ahora la
+                // referencia sale de `getRecentlyPlayedLocal`, así que esa consulta desaparece.
 
                 // Top servidor curado
                 val topMoviesServer = runCatching {

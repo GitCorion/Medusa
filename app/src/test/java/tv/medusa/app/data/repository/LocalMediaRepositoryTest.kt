@@ -4,6 +4,7 @@ import tv.medusa.app.data.local.db.JellyfinDao
 import tv.medusa.app.data.local.db.JellyfinMediaEntity
 import tv.medusa.app.domain.usecase.FakeJellyfinDao
 import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -78,8 +79,25 @@ class LocalMediaRepositoryTest {
     }
 
     @Test
-    fun getTopMoviesLocal_delegatesCorrectly_basedOnRestrictions() = runTest {
-        val fakeDao = TrackingFakeJellyfinDao()
+    fun getRecentlyPlayedLocal_returnsMostRecentlyWatchedFirst_andOnlyWatched() = runTest {
+        val fakeDao = FakeJellyfinDao()
+        fakeDao.setLocalItems(
+            listOf(
+                JellyfinMediaEntity(id = "vista-antes", title = "Vista Antes", type = "Movie", productionYear = 2020, isPlayed = true),
+                JellyfinMediaEntity(id = "sin-ver", title = "Sin Ver", type = "Movie", productionYear = 2021, isPlayed = false),
+                JellyfinMediaEntity(id = "vista-despues", title = "Vista Después", type = "Movie", productionYear = 2022, isPlayed = true)
+            )
+        )
+        val repo = LocalMediaRepository(fakeDao, MediaAccessPolicy(allowedMediaDao = FakeAllowedMediaDao()))
+
+        val result = repo.getRecentlyPlayedLocal(limit = 10)
+
+        // El último insertado es el visto más recientemente; los no vistos no aparecen.
+        assertEquals(listOf("vista-despues", "vista-antes"), result.map { it.id })
+    }
+
+    @Test
+    fun getTopMoviesLocal_delegatesCorrectly_basedOnRestrictions() = runTest {        val fakeDao = TrackingFakeJellyfinDao()
         val fakeAllowedDao = FakeAllowedMediaDao()
         val policy = MediaAccessPolicy(allowedMediaDao = fakeAllowedDao)
         val repo = LocalMediaRepository(fakeDao, policy)

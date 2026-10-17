@@ -78,6 +78,27 @@ class LocalMediaRepository(
         return filtered.deduplicateMediaEntities()
     }
 
+    /**
+     * Vistos recientemente leídos de Room (instantáneo).
+     *
+     * Sustituye a la consulta remota de vistos allí donde solo hacía falta una referencia (p. ej.
+     * las secciones "Porque viste X"): en catálogos grandes esa consulta tardaba decenas de
+     * segundos contra el servidor y llegaba tarde a quien la necesitaba.
+     */
+    suspend fun getRecentlyPlayedLocal(limit: Int = 20): List<JellyfinMediaEntity> {
+        val raw = if (accessPolicy.hasRestrictions()) {
+            jellyfinDao.getRecentlyPlayedLocalRestricted(limit * 2)
+        } else {
+            jellyfinDao.getRecentlyPlayedLocal(limit * 2)
+        }
+        val seenKeys = mutableSetOf<String>()
+        val filtered = raw.filter { item ->
+            val key = item.seriesId ?: item.id
+            seenKeys.add(key)
+        }.take(limit)
+        return filtered.deduplicateMediaEntities()
+    }
+
     suspend fun getLatestLocal(serverUrl: String = "", userId: String = "", limit: Int = 20): List<JellyfinMediaEntity> {
         val cacheKey = "$serverUrl-$userId"
         MediaCaches.serverLatestCache.get(cacheKey)?.let { return it.take(limit) }
