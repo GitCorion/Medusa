@@ -5,6 +5,21 @@
       "firebase.json",
       "**/.*",
       "PLAY_STORE_METADATA.md"
+    ],
+    "headers": [
+      {
+        "source": "/api/version.json",
+        "headers": [
+          { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+        ]
+      },
+      {
+        "source": "**/*.apk",
+        "headers": [
+          { "key": "Content-Type", "value": "application/vnd.android.package-archive" },
+          { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
+        ]
+      }
     ]
   }
 }

@@ -33,11 +33,12 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // Claves por defecto para TMDB/Trakt. Se pueden sobreescribir en build-time mediante
-        // variables de entorno o en keystore.properties (p. ej. en CI con secrets), sin tocar el código.
-        buildConfigField("String", "DEFAULT_TMDB_API_KEY", "\"${envOr("TMDB_API_KEY", "***REMOVED***")}\"")
-        buildConfigField("String", "DEFAULT_TRAKT_CLIENT_ID", "\"${envOr("TRAKT_CLIENT_ID", "***REMOVED***")}\"")
-        buildConfigField("String", "DEFAULT_TRAKT_CLIENT_SECRET", "\"${envOr("TRAKT_CLIENT_SECRET", "***REMOVED***")}\"")
+        // Claves para TMDB/Trakt. Los valores reales se inyectan en build-time vía variables de
+        // entorno o keystore.properties (gitignored); aquí solo hay defaults vacíos. Si falta una
+        // clave, el campo queda vacío y la funcionalidad correspondiente se desactiva en runtime.
+        buildConfigField("String", "DEFAULT_TMDB_API_KEY", "\"${envOr("TMDB_API_KEY", "")}\"")
+        buildConfigField("String", "DEFAULT_TRAKT_CLIENT_ID", "\"${envOr("TRAKT_CLIENT_ID", "")}\"")
+        buildConfigField("String", "DEFAULT_TRAKT_CLIENT_SECRET", "\"${envOr("TRAKT_CLIENT_SECRET", "")}\"")
     }
 
     flavorDimensions += "distribution"
@@ -57,11 +58,17 @@ android {
 
     signingConfigs {
         create("release") {
-            val storeFilePath = envOr("KEYSTORE_PATH", "debug.keystore")
-            storeFile = if (file(storeFilePath).exists()) file(storeFilePath) else rootProject.file(storeFilePath)
-            storePassword = envOr("KEYSTORE_PASSWORD", "android")
-            keyAlias = envOr("KEY_ALIAS", "androiddebugkey")
-            keyPassword = envOr("KEY_PASSWORD", "android")
+            // Sin fallback a debug.keystore: si no hay keystore de release configurado, el build
+            // de release debe fallar en lugar de firmarse con la clave de debug (prohibido en Play).
+            val storeFilePath = envOr("KEYSTORE_PATH", "")
+            storeFile = if (storeFilePath.isNotBlank()) {
+                if (file(storeFilePath).exists()) file(storeFilePath) else rootProject.file(storeFilePath)
+            } else {
+                rootProject.file("release.keystore") // no existirá -> error claro al firmar release
+            }
+            storePassword = envOr("KEYSTORE_PASSWORD", "")
+            keyAlias = envOr("KEY_ALIAS", "")
+            keyPassword = envOr("KEY_PASSWORD", "")
             enableV1Signing = true
             enableV2Signing = true
         }
@@ -172,4 +179,17 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
+}
+
+// ─── Firma de release: fallo temprano y con mensaje claro ────────────────────
+// Evita que un `assembleRelease`/`bundleRelease` se firme silenciosamente con una
+// clave incorrecta cuando falta keystore.properties. Se comprueba en configuración
+// a partir de los nombres de tarea solicitados; los builds de debug no se ven afectados.
+val buildingRelease = gradle.startParameter.taskNames.any { it.contains("Release", ignoreCase = true) }
+if (buildingRelease && envOr("KEYSTORE_PATH", "").isBlank()) {
+    throw GradleException(
+        "Firma de release no configurada. Añade KEYSTORE_PATH, KEYSTORE_PASSWORD, " +
+        "KEY_ALIAS y KEY_PASSWORD a keystore.properties (o como variables de entorno) " +
+        "antes de compilar el release."
+    )
 }
