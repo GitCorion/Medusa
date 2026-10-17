@@ -4,7 +4,8 @@
     "ignore": [
       "firebase.json",
       "**/.*",
-      "PLAY_STORE_METADATA.md"
+      "**/*.md",
+      "store_assets/**"
     ],
     "headers": [
       {
