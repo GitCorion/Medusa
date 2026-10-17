@@ -173,7 +173,9 @@ class FakeJellyfinDao : JellyfinDao {
     }
 
     override suspend fun getContinueWatchingLocal(limit: Int): List<JellyfinMediaEntity> {
-        return localDb.filter { it.playbackPositionTicks > 0L && !it.isPlayed }.take(limit)
+        return localDb.filter { (it.playbackPositionTicks > 0L || it.lastPlayedTicks > 0L) && !it.isPlayed }
+            .sortedByDescending { it.lastPlayedTicks }
+            .take(limit)
     }
 
     override suspend fun getRecentlyPlayedLocal(limit: Int): List<JellyfinMediaEntity> {
@@ -181,12 +183,13 @@ class FakeJellyfinDao : JellyfinDao {
         return localDb.filter { it.isPlayed }.reversed().take(limit)
     }
 
-    override suspend fun updatePlaybackPosition(itemId: String, positionTicks: Long, isPlayed: Boolean) {
+    override suspend fun updatePlaybackPosition(itemId: String, positionTicks: Long, isPlayed: Boolean, lastPlayedTicks: Long) {
         val index = localDb.indexOfFirst { it.id == itemId }
         if (index >= 0) {
             localDb[index] = localDb[index].copy(
                 playbackPositionTicks = positionTicks,
-                isPlayed = isPlayed
+                isPlayed = isPlayed,
+                lastPlayedTicks = lastPlayedTicks
             )
         }
     }

@@ -130,6 +130,7 @@ interface JellyfinDao {
                NULL AS officialRating, tags, isPlayed, playbackPositionTicks,
                isFavorite, seriesId, seriesName, seriesPrimaryImageTag,
                seasonNumber, episodeNumber, totalItemCount, unplayedItemCount,
+               0 AS lastPlayedTicks,
                '' AS titleLower, '' AS originalTitleLower, '' AS seriesNameLower
         FROM jellyfin_media
         WHERE type IN ('Movie', 'Series')
@@ -137,10 +138,10 @@ interface JellyfinDao {
     )
     suspend fun getCatalogForMatrix(): List<JellyfinMediaEntity>
 
-    @Query("SELECT * FROM jellyfin_media WHERE playbackPositionTicks > 0 AND isPlayed = 0 AND type IN ('Movie', 'Episode', 'Series') ORDER BY rowid DESC LIMIT :limit")
+    @Query("SELECT * FROM jellyfin_media WHERE (playbackPositionTicks > 0 OR lastPlayedTicks > 0) AND isPlayed = 0 AND type IN ('Movie', 'Episode', 'Series') ORDER BY lastPlayedTicks DESC, rowid DESC LIMIT :limit")
     suspend fun getContinueWatchingLocal(limit: Int = 20): List<JellyfinMediaEntity>
 
-    @Query("SELECT * FROM jellyfin_media WHERE playbackPositionTicks > 0 AND isPlayed = 0 AND type IN ('Movie', 'Episode', 'Series') AND id IN (SELECT mediaId FROM allowed_media_ids) ORDER BY rowid DESC LIMIT :limit")
+    @Query("SELECT * FROM jellyfin_media WHERE (playbackPositionTicks > 0 OR lastPlayedTicks > 0) AND isPlayed = 0 AND type IN ('Movie', 'Episode', 'Series') AND id IN (SELECT mediaId FROM allowed_media_ids) ORDER BY lastPlayedTicks DESC, rowid DESC LIMIT :limit")
     suspend fun getContinueWatchingLocalRestricted(limit: Int = 20): List<JellyfinMediaEntity>
 
     // Orden por rowid: el sync inserta los vistos en el orden que devuelve el servidor
@@ -151,8 +152,8 @@ interface JellyfinDao {
     @Query("SELECT * FROM jellyfin_media WHERE isPlayed = 1 AND type IN ('Movie', 'Series', 'Episode') AND id IN (SELECT mediaId FROM allowed_media_ids) ORDER BY rowid DESC LIMIT :limit")
     suspend fun getRecentlyPlayedLocalRestricted(limit: Int = 20): List<JellyfinMediaEntity>
 
-    @Query("UPDATE jellyfin_media SET playbackPositionTicks = :positionTicks, isPlayed = :isPlayed WHERE id = :itemId")
-    suspend fun updatePlaybackPosition(itemId: String, positionTicks: Long, isPlayed: Boolean)
+    @Query("UPDATE jellyfin_media SET playbackPositionTicks = :positionTicks, isPlayed = :isPlayed, lastPlayedTicks = :lastPlayedTicks WHERE id = :itemId")
+    suspend fun updatePlaybackPosition(itemId: String, positionTicks: Long, isPlayed: Boolean, lastPlayedTicks: Long = System.currentTimeMillis())
 
     @Query("SELECT * FROM jellyfin_media WHERE type IN ('Movie', 'Series') ORDER BY rowid DESC LIMIT :limit")
     suspend fun getLatestLocal(limit: Int = 20): List<JellyfinMediaEntity>

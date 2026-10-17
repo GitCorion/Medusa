@@ -24,6 +24,7 @@ import tv.medusa.app.util.forEachBounded
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -221,13 +222,24 @@ class MediaSyncRepository(
             var playedEntities: List<JellyfinMediaEntity> = emptyList()
 
             coroutineScope {
-                // 1. Sync Continue Watching (Resume Items)
+                // 1. Sync Continue Watching (Resume + NextUp Items)
                 launch {
                     try {
-                        val resume = api.getResumeItems(authHeader = authHeader, userId = userId, limit = 30)
-                        val resumeEntities = resume.items.map { it.toEntity() }
-                        if (resumeEntities.isNotEmpty()) {
-                            jellyfinDao.insertOrUpdateAll(resumeEntities)
+                        val resumeDeferred = async {
+                            runCatching {
+                                api.getResumeItems(authHeader = authHeader, userId = userId, limit = 30).items.map { it.toEntity() }
+                            }.getOrDefault(emptyList())
+                        }
+                        val nextUpDeferred = async {
+                            runCatching {
+                                api.getNextUpItems(authHeader = authHeader, userId = userId, limit = 30).items.map { it.toEntity() }
+                            }.getOrDefault(emptyList())
+                        }
+                        val resumeEntities = resumeDeferred.await()
+                        val nextUpEntities = nextUpDeferred.await()
+                        val allEntities = resumeEntities + nextUpEntities
+                        if (allEntities.isNotEmpty()) {
+                            jellyfinDao.insertOrUpdateAll(allEntities)
                         }
                     } catch (_: Exception) {}
                 }

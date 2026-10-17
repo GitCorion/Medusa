@@ -155,4 +155,36 @@ class GetHomeFeedUseCaseTest {
                     GetHomeFeedUseCase.sectionPriority("Series Destacadas")
         )
     }
+
+    @Test
+    fun `continueWatching includes nextUp episodes and paused movies sorted by lastPlayedTicks DESC`() = runTest {
+        val now = System.currentTimeMillis()
+        val pausedMovie = JellyfinMediaEntity(
+            id = "movie-paused",
+            title = "Película Pausada",
+            type = "Movie",
+            playbackPositionTicks = 300000000L,
+            lastPlayedTicks = now - 3600_000L, // Hace 1 hora
+            isPlayed = false
+        )
+        val nextUpEpisode = JellyfinMediaEntity(
+            id = "ep-nextup",
+            title = "Siguiente Episodio",
+            type = "Episode",
+            seriesId = "series-1",
+            seriesName = "Serie Reciente",
+            seasonNumber = 1,
+            episodeNumber = 4,
+            playbackPositionTicks = 0L,
+            lastPlayedTicks = now - 60_000L, // Hace 1 minuto
+            isPlayed = false
+        )
+
+        fakeDao.setLocalItems(listOf(pausedMovie, nextUpEpisode))
+
+        val localCW = repository.getContinueWatchingLocal(20)
+        assertEquals(2, localCW.size)
+        assertEquals("ep-nextup", localCW[0].id)
+        assertEquals("movie-paused", localCW[1].id)
+    }
 }

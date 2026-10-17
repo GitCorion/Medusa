@@ -75,7 +75,9 @@ data class JellyfinUserDataDto(
     @SerialName("PlayedPercentage") val playedPercentage: Double? = null,
     @SerialName("UnplayedItemCount") val unplayedItemCount: Int? = null,
     @SerialName("IsFavorite") val isFavorite: Boolean = false,
-    @SerialName("isFavorite") val isFavoriteLower: Boolean = false
+    @SerialName("isFavorite") val isFavoriteLower: Boolean = false,
+    @SerialName("LastPlayedDate") val lastPlayedDate: String? = null,
+    @SerialName("lastPlayedDate") val lastPlayedDateLower: String? = null
 ) {
     val rawPlayed: Boolean
         get() = played || playedLower || isPlayedAlias || isPlayedAliasLower
@@ -101,6 +103,26 @@ data class JellyfinUserDataDto(
 
     val effectiveIsFavorite: Boolean
         get() = isFavorite || isFavoriteLower
+
+    val effectiveLastPlayedDate: String?
+        get() = lastPlayedDate ?: lastPlayedDateLower
+}
+
+/**
+ * Convierte una fecha ISO 8601 (p. ej. "2025-02-18T20:15:00.0000000Z") a timestamp epoch en ms.
+ * Si no se puede parsear o viene vacía, retorna 0L.
+ */
+fun parseIsoToEpochMs(isoString: String?): Long {
+    if (isoString.isNullOrBlank()) return 0L
+    return try {
+        java.time.OffsetDateTime.parse(isoString).toInstant().toEpochMilli()
+    } catch (_: Exception) {
+        try {
+            java.time.Instant.parse(isoString).toEpochMilli()
+        } catch (_: Exception) {
+            0L
+        }
+    }
 }
 
 @Serializable

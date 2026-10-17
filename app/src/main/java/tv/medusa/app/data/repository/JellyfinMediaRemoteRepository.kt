@@ -7,6 +7,7 @@ import tv.medusa.app.R
 import tv.medusa.app.data.remote.NetworkClientFactory
 import tv.medusa.app.data.remote.jellyfin.JellyfinApiService
 import tv.medusa.app.data.remote.jellyfin.JellyfinItemDto
+import tv.medusa.app.data.remote.jellyfin.parseIsoToEpochMs
 import tv.medusa.app.domain.model.EpisodeItem
 import tv.medusa.app.domain.model.SeasonItem
 import tv.medusa.app.domain.model.SeriesEpisodeStats
@@ -146,22 +147,30 @@ class JellyfinMediaRemoteRepository(
                 val resumeEntities = resumeDeferred.await()
                 val nextUpEntities = nextUpDeferred.await()
 
-                val allFetched = (resumeEntities + nextUpEntities)
+                // Si lastPlayedTicks no viene del servidor (0L), asignar marca sintética
+                // preservando el orden en que el servidor Jellyfin devuelve cada endpoint.
+                val nowMs = System.currentTimeMillis()
+                val resumeWithRank = resumeEntities.mapIndexed { index, entity ->
+                    if (entity.lastPlayedTicks > 0L) entity
+                    else entity.copy(lastPlayedTicks = nowMs - index * 1000L)
+                }
+                val nextUpWithRank = nextUpEntities.mapIndexed { index, entity ->
+                    if (entity.lastPlayedTicks > 0L) entity
+                    else entity.copy(lastPlayedTicks = nowMs - (index + 50) * 1000L)
+                }
+
+                val allFetched = (resumeWithRank + nextUpWithRank)
                 if (allFetched.isNotEmpty()) {
                     jellyfinDao.insertOrUpdateAll(allFetched)
                 }
 
+                // Combinar Resume y NextUp ordenando estrictamente por último reproducido DESC
+                val allSorted = allFetched.sortedByDescending { it.lastPlayedTicks }
+
                 val seenKeys = mutableSetOf<String>()
                 val combined = mutableListOf<JellyfinMediaEntity>()
 
-                for (item in resumeEntities) {
-                    val key = item.seriesId ?: item.id
-                    if (seenKeys.add(key)) {
-                        combined.add(item)
-                    }
-                }
-
-                for (item in nextUpEntities) {
+                for (item in allSorted) {
                     val key = item.seriesId ?: item.id
                     if (seenKeys.add(key)) {
                         combined.add(item)
@@ -725,6 +734,7 @@ internal fun JellyfinItemDto.toEntity(): JellyfinMediaEntity {
     val unplayedCount = userData?.unplayedItemCount
     val itemType = type ?: "Unknown"
     val playedStatus = userData?.isPlayedForType(itemType) ?: false
+    val lastPlayedMs = parseIsoToEpochMs(userData?.effectiveLastPlayedDate)
 
     return JellyfinMediaEntity(
         id = id,
@@ -751,6 +761,7 @@ internal fun JellyfinItemDto.toEntity(): JellyfinMediaEntity {
         seasonNumber = parentIndexNumber,
         episodeNumber = indexNumber,
         totalItemCount = totalCount,
-        unplayedItemCount = unplayedCount
+        unplayedItemCount = unplayedCount,
+        lastPlayedTicks = lastPlayedMs
     )
 }

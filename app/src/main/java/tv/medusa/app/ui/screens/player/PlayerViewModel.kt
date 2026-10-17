@@ -749,14 +749,36 @@ class PlayerViewModel @Inject constructor(
             val isTooShort = positionMs < 30_000L && !isCompleted
             val finalTicks = if (isCompleted || isTooShort) 0L else positionMs * 10_000L
             val isPlayed = isCompleted
+            val nowMs = System.currentTimeMillis()
 
             // 1. Actualizar Room localmente de inmediato
             runCatching {
                 database.jellyfinDao().updatePlaybackPosition(
                     itemId = itemId,
                     positionTicks = finalTicks,
-                    isPlayed = isPlayed
+                    isPlayed = isPlayed,
+                    lastPlayedTicks = nowMs
                 )
+            }
+
+            // Si es un episodio completado y se dispone del siguiente capítulo,
+            // se marca localmente en Room con la fecha actual para que aparezca de
+            // inmediato al principio de "Continuar viendo" al volver a Inicio.
+            if (isCompleted) {
+                val nextEpInfo = _nextEpisode.value
+                if (nextEpInfo != null) {
+                    runCatching {
+                        val existingNext = database.jellyfinDao().getItemById(nextEpInfo.itemId)
+                        if (existingNext != null) {
+                            database.jellyfinDao().updatePlaybackPosition(
+                                itemId = nextEpInfo.itemId,
+                                positionTicks = 0L,
+                                isPlayed = false,
+                                lastPlayedTicks = nowMs + 1000L
+                            )
+                        }
+                    }
+                }
             }
 
             // 2. Invalidar cachés de Home para reflejar el estado de inmediato

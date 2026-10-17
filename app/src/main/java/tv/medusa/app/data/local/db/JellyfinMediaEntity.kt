@@ -20,6 +20,7 @@ import androidx.room.PrimaryKey
         Index(value = ["isPlayed", "playbackPositionTicks"]),
         Index(value = ["seriesId", "type"]),
         Index(value = ["playbackPositionTicks"]),
+        Index(value = ["lastPlayedTicks"]),
         Index(value = ["productionYear"])
     ]
 )
@@ -50,6 +51,7 @@ data class JellyfinMediaEntity(
     val episodeNumber: Int? = null,
     val totalItemCount: Int? = null,
     val unplayedItemCount: Int? = null,
+    val lastPlayedTicks: Long = 0L,
     /**
      * Columnas normalizadas (ASCII lower, igual que el `LOWER()` de SQLite) para que las búsquedas
      * exactas por título (`findByTitle*`, `getSeriesByTitle`) usen índice en lugar de un full-scan

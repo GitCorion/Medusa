@@ -89,4 +89,22 @@ class AppDatabaseMigrationTest {
             assertEquals("item-1", cursor.getString(0))
         }
     }
+
+    @Test
+    fun migrate15To16_addsLastPlayedTicksColumn() {
+        helper.createDatabase(TEST_DB, 15).apply {
+            execSQL(
+                "INSERT INTO jellyfin_media (id, title, type, isPlayed, playbackPositionTicks, isFavorite) " +
+                    "VALUES ('m1', 'Test Movie', 'Movie', 0, 0, 0)"
+            )
+            close()
+        }
+
+        val db = helper.runMigrationsAndValidate(TEST_DB, 16, true, AppDatabase.MIGRATION_15_16)
+
+        db.query("SELECT lastPlayedTicks FROM jellyfin_media WHERE id = 'm1'").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(0L, cursor.getLong(0))
+        }
+    }
 }
