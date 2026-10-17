@@ -1,12 +1,12 @@
 {
-  "versionCode": 73,
-  "versionName": "2.2.26",
+  "versionCode": 74,
+  "versionName": "2.2.27",
   "minSupportedVersionCode": 71,
   "forceUpdate": false,
   "killSwitch": false,
-  "releaseNotes": "2.2.26: arranque más rápido (perfil de ejecución regenerado para Android 12+) y sinopsis y catálogo de plataformas en el idioma y la región de tu dispositivo.",
+  "releaseNotes": "2.2.27: limpieza interna (sin cambios de uso).",
   "apkUrl": "https://medusa-fd388.web.app/Medusa.apk",
-  "apkSha256": "c8fedc5fe144c1b5a248f8090e2454c5524f197a67fbbc6e2d9837ed4cd8e487",
+  "apkSha256": "2d5d68e718aa4093321dd6f8dc6be61702e3504ef94056091524febaee4cada3",
   "signatures": [
     "26bccb39ed122a69ecf7a8d0b50deeabeb15bc1a4b2a8b77941b47a96fdd3fea",
     "78a588afcc90d8ea59e008c9cbd1e8bbed3b2831518184d5a9935948b9d245ac"
