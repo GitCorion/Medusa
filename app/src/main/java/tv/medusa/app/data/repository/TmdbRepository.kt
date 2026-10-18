@@ -167,7 +167,7 @@ class TmdbRepository(
                 }
                 Pair(m.await(), t.await())
             }
-            val combined = (movies + tv).distinctBy { it.id }
+            val combined = mergeTmdbByPopularity(movies, tv)
             if (combined.isNotEmpty()) {
                 MediaCaches.tmdbProviderCache.put(cacheKey, combined)
             }
@@ -231,3 +231,19 @@ class TmdbRepository(
 }
 
 data class TmdbVoteStats(val voteCount: Int, val voteAverage: Float)
+
+/**
+ * Fusiona los resultados de películas y series de `discover` en **un único ranking ordenado por
+ * popularidad de TMDB**. Es lo que hace que "Populares en Netflix" sea de verdad una lista
+ * ordenada de la plataforma y no "todas las pelis y después todas las series".
+ *
+ * El desempate por popularidad deja como representante la coincidencia con mayor popularidad
+ * cuando un mismo título llega duplicado.
+ */
+internal fun mergeTmdbByPopularity(
+    movies: List<TmdbItemDto>,
+    tv: List<TmdbItemDto>
+): List<TmdbItemDto> =
+    (movies + tv)
+        .sortedByDescending { it.popularity ?: 0.0 }
+        .distinctBy { it.id }

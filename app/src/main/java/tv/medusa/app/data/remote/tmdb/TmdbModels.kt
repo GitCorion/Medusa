@@ -19,6 +19,13 @@ data class TmdbItemDto(
     @SerialName("backdrop_path") val backdropPath: String? = null,
     @SerialName("vote_average") val voteAverage: Float? = null,
     @SerialName("vote_count") val voteCount: Int? = null,
+    /**
+     * Popularidad que TMDB asigna al título. Es la métrica que define el orden de un ranking
+     * "Populares en X": se usa para fusionar películas y series en una única lista ordenada
+     * (antes se concatenaban: primero todas las pelis y luego todas las series, rompiendo el
+     * ranking de la plataforma).
+     */
+    @SerialName("popularity") val popularity: Double? = null,
     @SerialName("first_air_date") val firstAirDate: String? = null,
     @SerialName("release_date") val releaseDate: String? = null
 )
