@@ -1,12 +1,12 @@
 {
-  "versionCode": 78,
-  "versionName": "2.2.31",
+  "versionCode": 79,
+  "versionName": "2.2.32",
   "minSupportedVersionCode": 71,
   "forceUpdate": false,
   "killSwitch": false,
-  "releaseNotes": "Continuar viendo ya mezcla películas y series por la fecha real de última reproducción (arreglado: los capítulos pendientes heredan la fecha de su serie y no se cuelan arriba con fechas inventadas).",
+  "releaseNotes": "Continuar viendo: las series se ordenan por la recencia real del servidor. La serie que acabas de ver ya no cae al final de la fila aunque Jellyfin no le ponga fecha (se usa la de sus capítulos vistos).",
   "apkUrl": "https://medusa-fd388.web.app/Medusa.apk",
-  "apkSha256": "d4300b19c2136c265aa9c0c42eb868e12b3c3970558a513e6747f2c3791f4510",
+  "apkSha256": "b89701e0e4eee48c9bf0a19c6b8e6ae51e6184790450d3667f133cc1f8ded70d",
   "signatures": [
     "26bccb39ed122a69ecf7a8d0b50deeabeb15bc1a4b2a8b77941b47a96fdd3fea",
     "78a588afcc90d8ea59e008c9cbd1e8bbed3b2831518184d5a9935948b9d245ac"
