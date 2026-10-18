@@ -101,6 +101,8 @@ class FakeJellyfinDao : JellyfinDao {
 
     override suspend fun getAllIds(): List<String> = localDb.map { it.id }
 
+    override fun getCountFlow(): Flow<Int> = flowOf(localDb.size)
+
     override suspend fun getMovies(): List<JellyfinMediaEntity> = localDb.filter { it.type == "Movie" }
 
     override suspend fun getSeries(): List<JellyfinMediaEntity> = localDb.filter { it.type == "Series" }

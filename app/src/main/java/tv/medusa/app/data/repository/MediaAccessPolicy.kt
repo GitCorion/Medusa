@@ -64,6 +64,12 @@ class MediaAccessPolicy(
         return allowedMediaDao?.hasRestrictionsFlow() ?: flowOf(cachedHasRestrictions ?: (cachedAllowedIds != null))
     }
 
+    /** Nº de IDs permitidos almacenados (0 si no hay tabla). */
+    suspend fun allowedCount(): Int = allowedMediaDao?.count() ?: 0
+
+    /** Igual que [allowedCount] pero reactivo, para decidir si filtrar sin bloquear. */
+    fun allowedCountFlow(): Flow<Int> = allowedMediaDao?.countFlow() ?: flowOf(0)
+
     /**
      * Comprueba si un ítem específico está permitido.
      */

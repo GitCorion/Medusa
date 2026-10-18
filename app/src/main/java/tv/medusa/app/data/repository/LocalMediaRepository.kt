@@ -5,6 +5,7 @@ import tv.medusa.app.data.local.db.JellyfinMediaEntity
 import tv.medusa.app.data.local.db.LibraryStats
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 
@@ -19,15 +20,39 @@ class LocalMediaRepository(
     private val jellyfinDao: JellyfinDao,
     private val accessPolicy: MediaAccessPolicy
 ) {
+    /**
+     * ¿Hay que filtrar de verdad por la lista de IDs permitidos?
+     *
+     * La lista se siembra desde el propio catálogo (`getAllIds`), así que una lista **completa**
+     * es un no-op y una lista **parcial** (de versiones antiguas o de un sync interrumpido) solo
+     * puede ocultar títulos que sí están en Room. Si no cubre el catálogo, se ignora: el próximo
+     * sync la reconstruye. Jellyfin ya aplica las restricciones por usuario en el servidor.
+     */
+    private suspend fun restrictionsActive(): Boolean {
+        if (!accessPolicy.hasRestrictions()) return false
+        val catalog = jellyfinDao.getCount()
+        if (catalog <= 0) return false
+        return accessPolicy.allowedCount() >= catalog
+    }
+
+    private fun restrictionsActiveFlow(): Flow<Boolean> =
+        combine(
+            accessPolicy.hasRestrictionsFlow(),
+            jellyfinDao.getCountFlow(),
+            accessPolicy.allowedCountFlow()
+        ) { has, catalog, allowed ->
+            has && catalog > 0 && allowed >= catalog
+        }
+
     @OptIn(ExperimentalCoroutinesApi::class)
     fun getAllLocalLibrary(): Flow<List<JellyfinMediaEntity>> =
-        accessPolicy.hasRestrictionsFlow().flatMapLatest { restricted ->
+        restrictionsActiveFlow().flatMapLatest { restricted ->
             if (restricted) jellyfinDao.getAllItemsRestricted()
             else jellyfinDao.getAllItems()
         }
 
     suspend fun getLocalMovies(): List<JellyfinMediaEntity> {
-        val items = if (accessPolicy.hasRestrictions()) {
+        val items = if (restrictionsActive()) {
             jellyfinDao.getMoviesRestricted()
         } else {
             jellyfinDao.getMovies()
@@ -36,7 +61,7 @@ class LocalMediaRepository(
     }
 
     suspend fun getLocalSeries(): List<JellyfinMediaEntity> {
-        val items = if (accessPolicy.hasRestrictions()) {
+        val items = if (restrictionsActive()) {
             jellyfinDao.getSeriesRestricted()
         } else {
             jellyfinDao.getSeries()
@@ -45,7 +70,7 @@ class LocalMediaRepository(
     }
 
     suspend fun getAllCatalog(): List<JellyfinMediaEntity> {
-        val items = if (accessPolicy.hasRestrictions()) {
+        val items = if (restrictionsActive()) {
             jellyfinDao.getAllCatalogRestricted()
         } else {
             jellyfinDao.getAllCatalog()
@@ -57,7 +82,7 @@ class LocalMediaRepository(
 
     suspend fun getItemsByIds(ids: List<String>): List<JellyfinMediaEntity> {
         if (ids.isEmpty()) return emptyList()
-        return if (accessPolicy.hasRestrictions()) {
+        return if (restrictionsActive()) {
             jellyfinDao.getItemsByIdsRestricted(ids)
         } else {
             jellyfinDao.getItemsByIds(ids)
@@ -65,7 +90,7 @@ class LocalMediaRepository(
     }
 
     suspend fun getContinueWatchingLocal(limit: Int = 20): List<JellyfinMediaEntity> {
-        val raw = if (accessPolicy.hasRestrictions()) {
+        val raw = if (restrictionsActive()) {
             jellyfinDao.getContinueWatchingLocalRestricted(limit * 2)
         } else {
             jellyfinDao.getContinueWatchingLocal(limit * 2)
@@ -86,7 +111,7 @@ class LocalMediaRepository(
      * segundos contra el servidor y llegaba tarde a quien la necesitaba.
      */
     suspend fun getRecentlyPlayedLocal(limit: Int = 20): List<JellyfinMediaEntity> {
-        val raw = if (accessPolicy.hasRestrictions()) {
+        val raw = if (restrictionsActive()) {
             jellyfinDao.getRecentlyPlayedLocalRestricted(limit * 2)
         } else {
             jellyfinDao.getRecentlyPlayedLocal(limit * 2)
@@ -102,7 +127,7 @@ class LocalMediaRepository(
     suspend fun getLatestLocal(serverUrl: String = "", userId: String = "", limit: Int = 20): List<JellyfinMediaEntity> {
         val cacheKey = "$serverUrl-$userId"
         MediaCaches.serverLatestCache.get(cacheKey)?.let { return it.take(limit) }
-        val items = if (accessPolicy.hasRestrictions()) {
+        val items = if (restrictionsActive()) {
             jellyfinDao.getLatestLocalRestricted(limit)
         } else {
             jellyfinDao.getLatestLocal(limit)
@@ -111,21 +136,21 @@ class LocalMediaRepository(
     }
 
     suspend fun getTopMoviesLocal(limit: Int = 20): List<JellyfinMediaEntity> =
-        if (accessPolicy.hasRestrictions()) {
+        if (restrictionsActive()) {
             jellyfinDao.getTopMoviesLocalRestricted(limit).deduplicateMediaEntities()
         } else {
             jellyfinDao.getTopMoviesLocal(limit).deduplicateMediaEntities()
         }
 
     suspend fun getTopSeriesLocal(limit: Int = 20): List<JellyfinMediaEntity> =
-        if (accessPolicy.hasRestrictions()) {
+        if (restrictionsActive()) {
             jellyfinDao.getTopSeriesLocalRestricted(limit).deduplicateMediaEntities()
         } else {
             jellyfinDao.getTopSeriesLocal(limit).deduplicateMediaEntities()
         }
 
     suspend fun getTopRatedLocal(limit: Int = 20): List<JellyfinMediaEntity> =
-        if (accessPolicy.hasRestrictions()) {
+        if (restrictionsActive()) {
             jellyfinDao.getTopRatedLocalRestricted(limit).deduplicateMediaEntities()
         } else {
             jellyfinDao.getTopRatedLocal(limit).deduplicateMediaEntities()
@@ -135,7 +160,7 @@ class LocalMediaRepository(
         val clean = query.trim()
         if (clean.isBlank()) return emptyList()
 
-        val isRestricted = accessPolicy.hasRestrictions()
+        val isRestricted = restrictionsActive()
 
         // Capa rápida: FTS4 (índice de texto completo) sobre título/título original.
         val ftsQuery = buildFtsQuery(clean)
@@ -183,7 +208,7 @@ class LocalMediaRepository(
     fun getLibraryStatsFlow(): Flow<LibraryStats> = jellyfinDao.getLibraryStatsFlow()
 
     suspend fun getFavoritesLocal(): List<JellyfinMediaEntity> {
-        val items = if (accessPolicy.hasRestrictions()) {
+        val items = if (restrictionsActive()) {
             jellyfinDao.getFavoritesRestricted()
         } else {
             jellyfinDao.getFavorites()
@@ -193,7 +218,7 @@ class LocalMediaRepository(
 
     @OptIn(ExperimentalCoroutinesApi::class)
     fun getFavoritesFlow(): Flow<List<JellyfinMediaEntity>> =
-        accessPolicy.hasRestrictionsFlow().flatMapLatest { restricted ->
+        restrictionsActiveFlow().flatMapLatest { restricted ->
             if (restricted) jellyfinDao.getFavoritesFlowRestricted()
             else jellyfinDao.getFavoritesFlow()
         }
@@ -324,23 +349,23 @@ class LocalMediaRepository(
     }
 
     suspend fun getItemsByGenre(genre: String): List<JellyfinMediaEntity> =
-        if (accessPolicy.hasRestrictions()) jellyfinDao.getItemsByGenreRestricted(genre)
+        if (restrictionsActive()) jellyfinDao.getItemsByGenreRestricted(genre)
         else jellyfinDao.getItemsByGenre(genre)
 
     suspend fun getMoviesByGenre(genre: String, limit: Int = 40): List<JellyfinMediaEntity> =
-        if (accessPolicy.hasRestrictions()) jellyfinDao.getMoviesByGenreRestricted(genre, limit)
+        if (restrictionsActive()) jellyfinDao.getMoviesByGenreRestricted(genre, limit)
         else jellyfinDao.getMoviesByGenre(genre, limit)
 
     suspend fun getSeriesByGenre(genre: String, limit: Int = 40): List<JellyfinMediaEntity> =
-        if (accessPolicy.hasRestrictions()) jellyfinDao.getSeriesByGenreRestricted(genre, limit)
+        if (restrictionsActive()) jellyfinDao.getSeriesByGenreRestricted(genre, limit)
         else jellyfinDao.getSeriesByGenre(genre, limit)
 
     suspend fun getRecentMoviesByGenre(genre: String, limit: Int = 20): List<JellyfinMediaEntity> =
-        if (accessPolicy.hasRestrictions()) jellyfinDao.getRecentMoviesByGenreRestricted(genre, limit)
+        if (restrictionsActive()) jellyfinDao.getRecentMoviesByGenreRestricted(genre, limit)
         else jellyfinDao.getRecentMoviesByGenre(genre, limit)
 
     suspend fun getRecentSeriesByGenre(genre: String, limit: Int = 20): List<JellyfinMediaEntity> =
-        if (accessPolicy.hasRestrictions()) jellyfinDao.getRecentSeriesByGenreRestricted(genre, limit)
+        if (restrictionsActive()) jellyfinDao.getRecentSeriesByGenreRestricted(genre, limit)
         else jellyfinDao.getRecentSeriesByGenre(genre, limit)
 
     suspend fun getRecommendedMovies(
@@ -355,7 +380,7 @@ class LocalMediaRepository(
         // Con 4 géneros × 4 = 16, completamos hasta 20 con el fallback.
         val maxPerGenre = 4
 
-        val isRestricted = accessPolicy.hasRestrictions()
+        val isRestricted = restrictionsActive()
 
         // Recoger candidatos de cada género por separado, luego intercalar
         val buckets: List<List<JellyfinMediaEntity>> = topGenres.map { genre ->

@@ -54,6 +54,9 @@ interface AllowedMediaDao {
     @Query("SELECT COUNT(*) FROM allowed_media_ids")
     suspend fun count(): Int
 
+    @Query("SELECT COUNT(*) FROM allowed_media_ids")
+    fun countFlow(): Flow<Int>
+
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertAll(entities: List<AllowedMediaIdEntity>)
 

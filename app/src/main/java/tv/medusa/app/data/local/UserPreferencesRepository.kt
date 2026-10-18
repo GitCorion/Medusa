@@ -149,6 +149,10 @@ class UserPreferencesRepository(context: Context) {
         val FIRST_INSTALL_TIME = longPreferencesKey("first_install_time_ms")
         val NIGHT_MODE_AUDIO = intPreferencesKey("night_mode_audio")
         val AUDIO_VOLUME_BOOST_DB = intPreferencesKey("audio_volume_boost_db")
+        // Versión del algoritmo de sincronización aplicada. Si la almacenada es menor que la
+        // actual, se fuerza un sync completo para reconstruir catálogos truncados por versiones
+        // anteriores (p. ej. paginación que cortaba al recibir páginas más cortas que el límite).
+        val SYNC_ALGORITHM_VERSION = intPreferencesKey("sync_algorithm_version")
     }
 
     /**
@@ -424,6 +428,18 @@ class UserPreferencesRepository(context: Context) {
             prefs[Keys.JELLYFIN_SYNC_CHECKPOINT_OFFSET] ?: 0,
             prefs[Keys.JELLYFIN_SYNC_CHECKPOINT_TOTAL] ?: 0
         )
+    }
+
+    /** Versión del algoritmo de sync ya aplicada sobre el catálogo local (0 = desconocida). */
+    suspend fun getSyncAlgorithmVersion(): Int {
+        val prefs = appContext.dataStore.data.first()
+        return prefs[Keys.SYNC_ALGORITHM_VERSION] ?: 0
+    }
+
+    suspend fun updateSyncAlgorithmVersion(version: Int) {
+        appContext.dataStore.edit { prefs ->
+            prefs[Keys.SYNC_ALGORITHM_VERSION] = version
+        }
     }
 
     companion object {

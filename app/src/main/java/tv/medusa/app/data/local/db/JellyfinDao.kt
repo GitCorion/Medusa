@@ -89,6 +89,9 @@ interface JellyfinDao {
     @Query("SELECT id FROM jellyfin_media")
     suspend fun getAllIds(): List<String>
 
+    @Query("SELECT COUNT(*) FROM jellyfin_media")
+    fun getCountFlow(): Flow<Int>
+
     @Query("SELECT * FROM jellyfin_media WHERE id = :id LIMIT 1")
     suspend fun getItemById(id: String): JellyfinMediaEntity?
 

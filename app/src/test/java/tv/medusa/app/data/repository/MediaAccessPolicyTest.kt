@@ -15,16 +15,22 @@ import org.junit.Test
 class FakeAllowedMediaDao : AllowedMediaDao {
     private val allowed = mutableSetOf<String>()
     private val restrictionsFlow = MutableStateFlow(false)
+    private val countFlowState = MutableStateFlow(0)
+
+    private fun syncFlows() {
+        restrictionsFlow.value = allowed.isNotEmpty()
+        countFlowState.value = allowed.size
+    }
 
     override suspend fun replaceAll(ids: List<String>) {
         allowed.clear()
         allowed.addAll(ids)
-        restrictionsFlow.value = allowed.isNotEmpty()
+        syncFlows()
     }
 
     override suspend fun addAll(entities: List<AllowedMediaIdEntity>) {
         allowed.addAll(entities.map { it.mediaId })
-        restrictionsFlow.value = allowed.isNotEmpty()
+        syncFlows()
     }
 
     override suspend fun hasRestrictions(): Boolean = allowed.isNotEmpty()
@@ -35,14 +41,16 @@ class FakeAllowedMediaDao : AllowedMediaDao {
 
     override suspend fun count(): Int = allowed.size
 
+    override fun countFlow(): Flow<Int> = countFlowState.asStateFlow()
+
     override suspend fun insertAll(entities: List<AllowedMediaIdEntity>) {
         allowed.addAll(entities.map { it.mediaId })
-        restrictionsFlow.value = allowed.isNotEmpty()
+        syncFlows()
     }
 
     override suspend fun clearAll() {
         allowed.clear()
-        restrictionsFlow.value = false
+        syncFlows()
     }
 }
 

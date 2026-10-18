@@ -68,6 +68,16 @@ class MediaSyncRepository(
         @Volatile private var quickInitCompletedAt: Long = 0L
         private const val QUICK_INIT_FRESH_WINDOW_MS = 60_000L
 
+        /**
+         * Versión del algoritmo de sync. Súbela al cambiar la forma de recorrer el catálogo:
+         * las instalaciones con una versión anterior se resincronizan enteras una vez (arregla
+         * catálogos truncados por bugs previos de paginación).
+         */
+        const val SYNC_ALGORITHM_VERSION = 2
+
+        /** Tope de páginas por vista: evita bucles si el servidor ignora `StartIndex`. */
+        private const val MAX_PAGES_PER_VIEW = 1000
+
         fun updateProgress(progress: SyncProgress) {
             _syncProgress.value = progress
         }
@@ -425,7 +435,13 @@ class MediaSyncRepository(
 
                 val currentLocal = jellyfinDao.getCount()
 
-                val effectiveLastSync = if (forceFullSync) null else {
+                // Los catálogos truncados por versiones anteriores (paginación que cortaba con
+                // páginas más cortas que el límite) se reconstruyen una vez al actualizar: si la
+                // versión aplicada es menor que la actual, se fuerza un sync completo.
+                val storedSyncVersion = userPreferencesRepository?.getSyncAlgorithmVersion() ?: 0
+                val needFullResync = forceFullSync || storedSyncVersion < SYNC_ALGORITHM_VERSION
+
+                val effectiveLastSync = if (needFullResync) null else {
                     lastSyncTimestamp?.ifBlank { null }
                         ?: userPreferencesRepository?.userPreferencesFlow?.firstOrNull()?.jellyfinLastSync?.ifBlank { null }
                         ?: if (currentLocal >= 500) {
@@ -463,7 +479,7 @@ class MediaSyncRepository(
                         (cType == null && !view.name.orEmpty().contains("playlist", ignoreCase = true) && !view.name.orEmpty().contains("coleccion", ignoreCase = true) && !view.name.orEmpty().contains("boxset", ignoreCase = true))
                 }
 
-                if (forceFullSync) {
+                if (needFullResync) {
                     userPreferencesRepository?.clearSyncCheckpoint()
                 }
 
@@ -471,7 +487,7 @@ class MediaSyncRepository(
                 // CAMINO 1: SINCRONIZACIÓN INCREMENTAL (DELTA SYNC)
                 // =========================================================================
                 // Si el catálogo local ya tiene elementos y una fecha de sincronización previa completa
-                if (!forceFullSync && currentLocal > 0 && !effectiveLastSync.isNullOrBlank()) {
+                if (!needFullResync && currentLocal > 0 && !effectiveLastSync.isNullOrBlank()) {
                     _syncProgress.value = SyncProgress(
                         isSyncing = true,
                         current = currentLocal,
@@ -488,6 +504,8 @@ class MediaSyncRepository(
                             "Overview,ProviderIds,PrimaryImageTag,CommunityRating,OfficialRating,Genres,Tags,UserData"
                         }
                         var deltaOffset = 0
+                        var deltaTotal = 0
+                        var deltaPages = 0
                         do {
                             val deltaResponse = runCatching {
                                 try {
@@ -525,6 +543,9 @@ class MediaSyncRepository(
                                 }
                             }.getOrNull()
 
+                            if (deltaTotal == 0 && (deltaResponse?.totalRecordCount ?: 0) > 0) {
+                                deltaTotal = deltaResponse!!.totalRecordCount
+                            }
                             val deltaItems = deltaResponse?.items ?: emptyList()
                             if (deltaItems.isNotEmpty()) {
                                 val cachedOverviews = jellyfinDao.getCachedOverviews().associateBy { it.id }
@@ -545,7 +566,11 @@ class MediaSyncRepository(
                                 deltaCount += entities.size
                                 deltaOffset += deltaItems.size
                             }
-                            if (deltaItems.size < 200) break
+                            deltaPages++
+                            // Igual que en el sync completo: no damos la página por última solo
+                            // porque venga más corta de lo pedido si el total dice que queda más.
+                            if (deltaPages > MAX_PAGES_PER_VIEW) break
+                            if (!hasMorePages(deltaItems.size, deltaOffset, 200, deltaTotal)) break
                             delay(100L)
                         } while (true)
                     }
@@ -580,7 +605,7 @@ class MediaSyncRepository(
                 val pageSize = 200
 
                 // Leer checkpoint previo si no es forzada desde cero
-                val checkpoint = if (!forceFullSync) userPreferencesRepository?.getSyncCheckpoint() else null
+                val checkpoint = if (!needFullResync) userPreferencesRepository?.getSyncCheckpoint() else null
                 val savedViewIndex = checkpoint?.first ?: 0
                 val savedOffset = checkpoint?.second ?: 0
                 val savedTotalSynced = checkpoint?.third ?: 0
@@ -687,6 +712,14 @@ class MediaSyncRepository(
                         consecutiveFailedPages = 0
                         successfulPages++
 
+                        if (successfulPages > MAX_PAGES_PER_VIEW) {
+                            Log.w(
+                                "MediaSyncRepository",
+                                "Tope de $MAX_PAGES_PER_VIEW páginas en la vista ${view?.name ?: "raíz"} ($startIndex items); se continúa con la siguiente"
+                            )
+                            break
+                        }
+
                         val items = response.items
                         if (viewTotal == 0 && response.totalRecordCount > 0) {
                             viewTotal = response.totalRecordCount
@@ -717,8 +750,10 @@ class MediaSyncRepository(
                             message = str(R.string.sync_progress, totalSynced, effectiveTotal)
                         )
 
-                        if (viewTotal > 0 && startIndex >= viewTotal) break
-                        if (items.size < pageSize) break
+                        // No basta con "página corta = fin": Jellyfin (o un proxy) puede devolver
+                        // menos items que los pedidos aunque queden más. Solo paramos de verdad
+                        // cuando no queda recorrido según el total, o cuando llegó una página vacía.
+                        if (!hasMorePages(items.size, startIndex, pageSize, viewTotal)) break
 
                         // Pausa de 200ms para mantener el servidor Jellyfin fluido sin congelarse
                         delay(200L)
@@ -739,6 +774,8 @@ class MediaSyncRepository(
 
                 val nowTimestamp = Instant.now().truncatedTo(ChronoUnit.SECONDS).toString()
                 userPreferencesRepository?.updateJellyfinLastSync(nowTimestamp)
+                // Marca la versión de algoritmo aplicada: así no se repite el resync completo.
+                runCatching { userPreferencesRepository?.updateSyncAlgorithmVersion(SYNC_ALGORITHM_VERSION) }
                 onSyncCompleted?.invoke(nowTimestamp)
 
                 val finalCount = jellyfinDao.getCount()
@@ -771,6 +808,29 @@ class MediaSyncRepository(
             syncMutex.unlock()
         }
     }
+}
+
+/**
+ * ¿Quedan más páginas por recorrer en la vista actual?
+ *
+ * Jellyfin (o un proxy delante) puede devolver **menos items que los pedidos** aunque queden
+ * más por llegar (`Limit` máximo del servidor, `MaxItemsPerPage`, etc.). Dar la vista por
+ * terminada con una página corta truncaba el catálogo a las primeras decenas/cientos de
+ * títulos (el caso de "solo me aparecen ~110").
+ *
+ * - Con total conocido ([totalRecordCount] > 0): seguimos mientras quede recorrido.
+ * - Sin total: no nos fiamos de la página corta; se hace una petición más y se corta cuando
+ *   llegue una página vacía.
+ */
+internal fun hasMorePages(
+    itemsOnPage: Int,
+    startIndex: Int,
+    pageSize: Int,
+    totalRecordCount: Int
+): Boolean {
+    if (itemsOnPage <= 0) return false
+    if (totalRecordCount > 0) return startIndex < totalRecordCount
+    return true
 }
 
 data class SyncProgress(
