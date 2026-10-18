@@ -163,6 +163,26 @@ interface JellyfinDao {
     @Query("SELECT id, lastPlayedTicks FROM jellyfin_media WHERE lastPlayedTicks > 0 AND id IN (:ids)")
     suspend fun getKnownLastPlayedTicks(ids: Collection<String>): List<LastPlayedTicksRow>
 
+    /**
+     * Fecha real de última reproducción **por serie**, tomando el máximo entre la propia fila de la
+     * serie y las de sus capítulos ya reproducidos.
+     *
+     * Jellyfin **no** rellena `LastPlayedDate` en las series (`null` aunque se hayan visto
+     * capítulos), así que mirar solo la fila de la serie nunca da fecha. Sin este dato, los ítems de
+     * NextUp —cuyo episodio todavía no se ha reproducido y por tanto no trae fecha propia— se
+     * quedaban sin fecha y caían al final de "Continuar viendo" aunque la serie se hubiera visto
+     * minutos antes (p. ej. un capítulo terminado del todo).
+     */
+    @Query(
+        """
+        SELECT COALESCE(seriesId, id) AS id, MAX(lastPlayedTicks) AS lastPlayedTicks
+        FROM jellyfin_media
+        WHERE lastPlayedTicks > 0 AND (id IN (:seriesIds) OR seriesId IN (:seriesIds))
+        GROUP BY COALESCE(seriesId, id)
+        """
+    )
+    suspend fun getKnownSeriesLastPlayedTicks(seriesIds: Collection<String>): List<LastPlayedTicksRow>
+
     // Orden por rowid: el sync inserta los vistos en el orden que devuelve el servidor
     // (DatePlayed descendente), así que rowid DESC = visto más recientemente primero.
     @Query("SELECT * FROM jellyfin_media WHERE isPlayed = 1 AND type IN ('Movie', 'Series', 'Episode') ORDER BY rowid DESC LIMIT :limit")

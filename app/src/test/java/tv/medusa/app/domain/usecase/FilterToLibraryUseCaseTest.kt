@@ -251,6 +251,13 @@ class FakeJellyfinDao : JellyfinDao {
         localDb.filter { it.id in ids && it.lastPlayedTicks > 0L }
             .map { LastPlayedTicksRow(id = it.id, lastPlayedTicks = it.lastPlayedTicks) }
 
+    override suspend fun getKnownSeriesLastPlayedTicks(seriesIds: Collection<String>): List<LastPlayedTicksRow> =
+        localDb.asSequence()
+            .filter { it.lastPlayedTicks > 0L }
+            .filter { it.id in seriesIds || it.seriesId in seriesIds }
+            .groupBy { it.seriesId ?: it.id }
+            .map { (key, rows) -> LastPlayedTicksRow(id = key, lastPlayedTicks = rows.maxOf { it.lastPlayedTicks }) }
+
     override suspend fun getRecentlyPlayedLocalRestricted(limit: Int): List<JellyfinMediaEntity> = getRecentlyPlayedLocal(limit)
 
     override suspend fun getLatestLocalRestricted(limit: Int): List<JellyfinMediaEntity> = getLatestLocal(limit)

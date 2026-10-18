@@ -241,12 +241,23 @@ class MediaSyncRepository(
                         val nextUpEntities = nextUpDeferred.await()
                         // Los capítulos de NextUp vienen sin fecha (todavía no se han reproducido): se
                         // hereda la de su serie para que ordenen bien, y nunca se escribe una fecha
-                        // inventada. `preserveKnownLastPlayedDates` evita pisar la que ya hubiera
-                        // (el insert es un REPLACE y un 0 borraría el valor real).
+                        // inventada. La fecha de la serie se deduce del máximo de sus capítulos ya
+                        // vistos que ya estén en Room: Jellyfin no fecha las series, así que su fila
+                        // nunca sirve. `preserveKnownLastPlayedDates` evita pisar con un 0 (el insert
+                        // es un REPLACE) la fecha que ya hubiera.
+                        val seriesMissingDate = nextUpEntities
+                            .mapNotNull { it.seriesId }
+                            .distinct()
+                            .filter { seriesId -> resumeEntities.none { it.seriesId == seriesId && it.lastPlayedTicks > 0L } }
+                        val knownFromDb = if (seriesMissingDate.isEmpty()) {
+                            emptyMap()
+                        } else {
+                            jellyfinDao.getKnownSeriesLastPlayedTicks(seriesMissingDate).associate { it.id to it.lastPlayedTicks }
+                        }
                         val allEntities = jellyfinDao.preserveKnownLastPlayedDates(
                             continueWatchingEntitiesToPersist(
                                 items = resumeEntities + nextUpEntities,
-                                seriesDates = seriesLastPlayedDates(resumeEntities, nextUpEntities)
+                                seriesDates = seriesLastPlayedDates(resumeEntities, nextUpEntities, knownFromDb)
                             )
                         )
                         if (allEntities.isNotEmpty()) {

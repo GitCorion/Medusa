@@ -149,16 +149,18 @@ class JellyfinMediaRemoteRepository(
                 val nextUpEntities = nextUpDeferred.await()
 
                 // Fechas reales por serie: las que traen los propios "Continuar viendo" (Resume) y,
-                // para las series que solo salen en NextUp (sus episodios aún no se han reproducido),
-                // la de su fila ya guardada en Room.
-                val seriesWithoutDate = nextUpEntities
+                // para las series que solo salen en NextUp (su episodio aún no se ha reproducido y no
+                // trae fecha propia), la deducida del máximo de sus capítulos ya vistos, que están en
+                // Room. Jellyfin no fecha las series (`LastPlayedDate` viene null), así que mirar solo
+                // su fila nunca daría fecha y el ítem caería al final de la fila.
+                val seriesMissingDate = nextUpEntities
                     .mapNotNull { it.seriesId }
                     .distinct()
                     .filter { seriesId -> resumeEntities.none { it.seriesId == seriesId && it.lastPlayedTicks > 0L } }
-                val knownFromDb = if (seriesWithoutDate.isEmpty()) {
+                val knownFromDb = if (seriesMissingDate.isEmpty()) {
                     emptyMap()
                 } else {
-                    jellyfinDao.getKnownLastPlayedTicks(seriesWithoutDate).associate { it.id to it.lastPlayedTicks }
+                    jellyfinDao.getKnownSeriesLastPlayedTicks(seriesMissingDate).associate { it.id to it.lastPlayedTicks }
                 }
                 val seriesDates = seriesLastPlayedDates(resumeEntities, nextUpEntities, knownFromDb)
 

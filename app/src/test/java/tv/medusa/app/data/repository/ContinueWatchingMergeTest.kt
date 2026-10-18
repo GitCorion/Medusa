@@ -1,14 +1,12 @@
 package tv.medusa.app.data.repository
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import tv.medusa.app.data.local.db.JellyfinMediaEntity
 
 /**
  * Reglas de la mezcla de "Continuar viendo" (Resume + NextUp).
- *
- * Lo que se protege aquí: **no inventar fechas**. Antes, un ítem sin fecha del servidor recibía una
- * marca "ahora", que es más nueva que cualquier fecha real y lo colocaba por delante de todo.
  */
 class ContinueWatchingMergeTest {
 
@@ -59,18 +57,6 @@ class ContinueWatchingMergeTest {
     }
 
     @Test
-    fun `los items sin fecha conocida van al final y conservan el orden del servidor`() {
-        val merged = mergeContinueWatching(
-            resume = listOf(movie("con-fecha", 1_000L)),
-            nextUp = listOf(episode("next-a", seriesId = "A"), episode("next-b", seriesId = "B"))
-        )
-
-        assertEquals(listOf("con-fecha", "next-a", "next-b"), merged.map { it.id })
-        // Los ítems sin fecha siguen sin fecha: no se ha inventado ninguna.
-        assertEquals(listOf(1_000L, 0L, 0L), merged.map { it.lastPlayedTicks })
-    }
-
-    @Test
     fun `en empate gana el episodio que dejaste a medias`() {
         val merged = mergeContinueWatching(
             resume = listOf(episode("cap-pausado", seriesId = "A", lastPlayed = 700L, positionTicks = 42L)),
@@ -106,7 +92,7 @@ class ContinueWatchingMergeTest {
     }
 
     @Test
-    fun `al guardar usa la fecha heredada de la serie pero nunca una inventada`() {
+    fun `al guardar usa la fecha heredada de la serie`() {
         val seriesDates = mapOf("A" to 900L)
 
         val toPersist = continueWatchingEntitiesToPersist(
@@ -119,12 +105,23 @@ class ContinueWatchingMergeTest {
         )
 
         assertEquals(900L, toPersist[0].lastPlayedTicks)
-        assertEquals(0L, toPersist[1].lastPlayedTicks)
-        assertEquals(0L, toPersist[2].lastPlayedTicks)
     }
 
     @Test
-    fun `las fechas por serie salen del Resume y si no de la base de datos`() {
+    fun `una serie sin fecha propia sube por encima de otra mas antigua usando la fecha de sus capitulos`() {
+        val merged = mergeContinueWatching(
+            resume = listOf(episode("cap-en-curso", seriesId = "A", lastPlayed = 100L, positionTicks = 10L)),
+            nextUp = listOf(episode("cap-siguiente-b", seriesId = "B")),
+            seriesDates = mapOf("B" to 9_000L)
+        )
+
+        assertEquals(listOf("cap-siguiente-b", "cap-en-curso"), merged.map { it.id })
+        val toPersist = continueWatchingEntitiesToPersist(merged, mapOf("B" to 9_000L))
+        assertEquals(9_000L, toPersist.first { it.id == "cap-siguiente-b" }.lastPlayedTicks)
+    }
+
+    @Test
+    fun `las fechas por serie salen del Resume y si no de la base de datos o recencia del servidor`() {
         val dates = seriesLastPlayedDates(
             resume = listOf(
                 episode("cap-1", seriesId = "A", lastPlayed = 500L),
@@ -134,8 +131,37 @@ class ContinueWatchingMergeTest {
             knownFromDb = mapOf("A" to 100L, "B" to 800L)
         )
 
-        // A: gana la fecha más reciente de sus propios capítulos; B: la de su fila en Room.
         assertEquals(900L, dates["A"])
         assertEquals(800L, dates["B"])
+    }
+
+    @Test
+    fun `nextUp sin fechas preserva el orden de recencia del servidor`() {
+        val dates = seriesLastPlayedDates(
+            resume = emptyList(),
+            nextUp = listOf(
+                episode("cap-a", seriesId = "A"),
+                episode("cap-b", seriesId = "B"),
+                episode("cap-c", seriesId = "C")
+            )
+        )
+
+        assertTrue("A debe ser mayor que B", dates["A"]!! > dates["B"]!!)
+        assertTrue("B debe ser mayor que C", dates["B"]!! > dates["C"]!!)
+    }
+
+    @Test
+    fun `nextUp recalcula fechas monotonamente si el orden del servidor es mas reciente`() {
+        val dates = seriesLastPlayedDates(
+            resume = emptyList(),
+            nextUp = listOf(
+                episode("cap-a", seriesId = "A"),
+                episode("cap-b", seriesId = "B")
+            ),
+            knownFromDb = mapOf("A" to 100L, "B" to 500L) // A vista más recientemente en el servidor pero B con fecha más vieja guardada
+        )
+
+        assertTrue("A debe ser mayor que B para respetar el orden del servidor", dates["A"]!! > dates["B"]!!)
+        assertEquals(500L, dates["B"])
     }
 }

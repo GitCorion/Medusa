@@ -8,11 +8,12 @@ import tv.medusa.app.data.local.db.JellyfinMediaEntity
  *
  * Reglas:
  * - La fecha de un ítem es la suya propia (`lastPlayedTicks`). Si el servidor no la manda —caso
- *   típico de [NextUp], que son episodios todavía sin reproducir— se **hereda la de su serie**
- *   desde [seriesDates]. Nunca se inventa una fecha "ahora": eso hacía que todos los ítems sin
- *   fecha se colocaran por delante de los que sí la tienen.
- * - Los ítems sin ninguna fecha conocida conservan el orden que devolvió el servidor y quedan
- *   **por debajo** de los que sí la tienen.
+ *   típico de [NextUp], que son episodios todavía sin reproducir— se hereda de la fecha de su serie,
+ *   calculada respetando el orden de recencia que devuelve el servidor para [NextUp].
+ * - Para las series en [NextUp], la lista devuelta por Jellyfin (`NextUp[0], NextUp[1], ...`) ya viene
+ *   ordenada por el servidor por fecha de reproducción más reciente de cada serie. Las fechas se
+ *   ajustan de forma monótona para preservar dicho orden de recencia del servidor sin desordenar por
+ *   fechas obsoletas ni degradar ítems sin fecha al final.
  * - En empate de fecha gana [Resume] (el capítulo que dejaste a medias) frente al siguiente capítulo
  *   de la misma serie.
  * - Se desduplica por serie (`seriesId ?: id`): cada serie aparece una sola vez.
@@ -24,10 +25,14 @@ internal fun mergeContinueWatching(
 ): List<JellyfinMediaEntity> {
     val ranked = ArrayList<RankedContinueWatchingItem>(resume.size + nextUp.size)
     resume.forEachIndexed { index, item ->
-        ranked += RankedContinueWatchingItem(item, item.resolvedLastPlayed(seriesDates), SOURCE_RESUME, index)
+        val date = item.resolvedLastPlayed(seriesDates)
+        val entity = if (date > 0L && item.lastPlayedTicks != date) item.copy(lastPlayedTicks = date) else item
+        ranked += RankedContinueWatchingItem(entity, date, SOURCE_RESUME, index)
     }
     nextUp.forEachIndexed { index, item ->
-        ranked += RankedContinueWatchingItem(item, item.resolvedLastPlayed(seriesDates), SOURCE_NEXT_UP, index)
+        val date = item.resolvedLastPlayed(seriesDates)
+        val entity = if (date > 0L && item.lastPlayedTicks != date) item.copy(lastPlayedTicks = date) else item
+        ranked += RankedContinueWatchingItem(entity, date, SOURCE_NEXT_UP, index)
     }
 
     val dated = ranked
@@ -49,26 +54,31 @@ internal fun mergeContinueWatching(
 
 /**
  * Versión para guardar en Room de lo que acaba de llegar del servidor: pone en cada ítem su fecha
- * real o, si no la trae, la heredada de su serie. Los que no tienen ninguna se dejan tal cual (0),
- * para no escribir una fecha inventada. La fecha que ya había se conserva con
+ * real o, si no la trae, la heredada de su serie. La fecha que ya había se conserva con
  * `JellyfinDao.preserveKnownLastPlayedDates`.
  */
 internal fun continueWatchingEntitiesToPersist(
     items: List<JellyfinMediaEntity>,
     seriesDates: Map<String, Long>
 ): List<JellyfinMediaEntity> = items.map { item ->
-    if (item.lastPlayedTicks > 0L) {
-        item
+    val resolved = item.resolvedLastPlayed(seriesDates)
+    if (resolved > 0L && item.lastPlayedTicks != resolved) {
+        item.copy(lastPlayedTicks = resolved)
     } else {
-        val inherited = item.resolvedLastPlayed(seriesDates)
-        if (inherited > 0L) item.copy(lastPlayedTicks = inherited) else item
+        item
     }
 }
 
 /**
- * Fechas conocidas por **serie**: primero las que traen los propios ítems de [resume] (lo más
- * fiable: es la fecha del capítulo que dejaste a medias), y para las series que solo aparecen en
- * NextUp la de su fila ya guardada en Room ([knownFromDb]).
+ * Fechas conocidas por **serie**:
+ * 1. Primero se extraen las fechas conocidas para cada serie desde [resume], los propios ítems de [nextUp]
+ *    y la base de datos ([knownFromDb]).
+ * 2. Jellyfin devuelve [nextUp] (`nextUp[0]`, `nextUp[1]`, ...) ordenado strictly por la recencia de
+ *    reproducción de cada serie (la serie vista más recientemente es la primera). Se aplica un ajuste
+ *    monótono bidireccional sobre la secuencia de series para garantizar que:
+ *    - Ninguna serie en NextUp se quede sin fecha (0).
+ *    - El orden de recencia enviado por el servidor prevalezca sobre fechas antiguas o desfasadas almacenadas
+ *      previamente en la base de datos local.
  */
 internal fun seriesLastPlayedDates(
     resume: List<JellyfinMediaEntity>,
@@ -76,18 +86,68 @@ internal fun seriesLastPlayedDates(
     knownFromDb: Map<String, Long> = emptyMap()
 ): Map<String, Long> {
     val dates = HashMap<String, Long>()
+
+    // 1. Fechas desde el Resume (lo que el usuario dejó a medias en el servidor)
     resume.forEach { item ->
         val seriesId = item.seriesId ?: return@forEach
         if (item.lastPlayedTicks > 0L) {
             dates[seriesId] = maxOf(dates[seriesId] ?: 0L, item.lastPlayedTicks)
         }
     }
+
+    // 2. Fechas desde NextUp e historia en Room
     nextUp.forEach { item ->
         val seriesId = item.seriesId ?: return@forEach
         if (!dates.containsKey(seriesId)) {
-            knownFromDb[seriesId]?.takeIf { it > 0L }?.let { dates[seriesId] = it }
+            val known = if (item.lastPlayedTicks > 0L) item.lastPlayedTicks else knownFromDb[seriesId]
+            if (known != null && known > 0L) {
+                dates[seriesId] = known
+            }
         }
     }
+
+    // Lista de series de NextUp en el orden exacto de recencia del servidor
+    val seriesList = nextUp.mapNotNull { it.seriesId }.distinct()
+    if (seriesList.isEmpty()) return dates
+
+    val maxResume = resume.maxOfOrNull { it.lastPlayedTicks } ?: 0L
+    val maxKnown = dates.values.maxOrNull() ?: 0L
+    val baseTime = if (maxResume > 0L || maxKnown > 0L) maxOf(maxResume, maxKnown) else System.currentTimeMillis() - 3600_000L
+
+    // Si la primera serie de NextUp (la más reciente del servidor) no tiene fecha, asignarle baseTime
+    val topSeries = seriesList[0]
+    if ((dates[topSeries] ?: 0L) <= 0L) {
+        dates[topSeries] = baseTime
+    }
+
+    // Paso 1: Pasada hacia atrás. Si la serie N tiene fecha de reproducción más reciente que la serie N-1,
+    // significa que la serie N-1 (que el servidor colocó por delante) se vio aún más recientemente
+    // (p. ej. vista en otro dispositivo sin haber guardado todavía la fecha en Room).
+    for (i in seriesList.size - 1 downTo 1) {
+        val currentSeries = seriesList[i]
+        val prevSeries = seriesList[i - 1]
+        val currentDate = dates[currentSeries] ?: 0L
+        val prevDate = dates[prevSeries] ?: 0L
+
+        if (currentDate > 0L && prevDate <= currentDate) {
+            dates[prevSeries] = currentDate + 1000L
+        }
+    }
+
+    // Paso 2: Pasada hacia adelante. Garantizar que cada serie siguiente en NextUp sea monótonamente
+    // menor a la serie anterior (respetando la precedencia de recencia del servidor) y que ninguna
+    // serie en NextUp quede con fecha 0.
+    for (i in 0 until seriesList.size - 1) {
+        val currentSeries = seriesList[i]
+        val nextSeries = seriesList[i + 1]
+        val currentDate = dates[currentSeries] ?: baseTime
+        val nextDate = dates[nextSeries] ?: 0L
+
+        if (nextDate <= 0L || nextDate >= currentDate) {
+            dates[nextSeries] = maxOf(1L, currentDate - 1000L)
+        }
+    }
+
     return dates
 }
 
