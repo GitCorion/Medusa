@@ -28,8 +28,8 @@ android {
     defaultConfig {
         minSdk = 26
         targetSdk = 35
-        versionCode = 91
-        versionName = "2.2.44"
+        versionCode = 92
+        versionName = "2.2.45"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -49,7 +49,7 @@ android {
             applicationId = "tv.medusa.app"
             // Offset de 1.000.000: la beta siempre queda por encima de la build de Play para que
             // la tele reciba la OTA y para distinguir ambos canales en soporte/Crashlytics.
-            versionCode = 1_000_091
+            versionCode = 1_000_092
             versionNameSuffix = "-beta"
             buildConfigField("boolean", "ENABLE_IN_APP_UPDATER", "true")
         }
@@ -158,6 +158,7 @@ dependencies {
     implementation(libs.media3.exoplayer)
     implementation(libs.media3.ui)
     implementation(libs.media3.hls)
+    implementation(libs.media3.datasource.okhttp)
     implementation(libs.media3.ffmpeg.decoder)
 
     // Dependency Injection (Hilt)

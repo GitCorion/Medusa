@@ -180,6 +180,26 @@ La sección de actualizaciones de Ajustes sigue oculta en Play (`ENABLE_IN_APP_U
 - [ ] Quitar dependencia `firebase-firestore` (no se usa).
 - [ ] Actualizar dependencias antiguas (core-ktx, media3, Firebase BOM…).
 
+### Fase 3.5 — Red y latencia (bloqueos ISP / LaLiga / Cloudflare)
+
+Contexto: en España, las órdenes judiciales de LaLiga bloquean rangos de IP compartidos y
+Cloudflare cae como daño colateral. Síntoma: todo va lento o el vídeo se queda cargando.
+
+- [x] **El vídeo usa el mismo OkHttp que la API** (`OkHttpDataSource`): hereda la preferencia
+      IPv6, el pool de conexiones y los timeouts. Antes ExoPlayer resolvía por DNS del sistema
+      (IPv4 primero) y caía por la ruta bloqueada aunque la API fuera por IPv6.
+- [x] Buffer más generoso (min 30 s / max 90 s, 10 s tras rebuffer) para redes inestables.
+- [x] Detección de la página de bloqueo de LaLiga también en el stream (`Videos/`, `Audio/`).
+- [x] No se fuerza `Accept: application/json` en vídeo/audio.
+- [ ] **Servidor (lo importante)**: Jellyfin detrás de Cloudflare **proxied (nube naranja)** es
+      mala idea para vídeo (ToS + latencia + bloqueos). Opciones:
+      - Poner el dominio en **DNS only (nube gris)** para que el cliente vaya directo al origen.
+      - Habilitar **IPv6 extremo a extremo** (AAAA + IPv6 en el servidor + ISP): suele esquivar
+        los bloqueos de LaLiga sobre IPv4.
+      - Usar un host con **IP propia no compartida** (VPS) fuera de rangos de Cloudflare.
+      - Como último recurso, **VPN (WireGuard)** en la tele para saltar el bloqueo del operador.
+- [ ] Decidir si añadir en Ajustes un **servidor alternativo / forzar IPv6**.
+
 ### Fase 4 — Separación opcional de packages
 
 - [ ] `applicationIdSuffix = ".beta"`.
@@ -269,5 +289,16 @@ shasum -a 256 docs/Medusa.apk
 - `targetSdk 35` se mantiene: cumple el mínimo de Android TV (API 34+) y evita las
   regresiones de Android 16 en móvil.
 - Recordatorio Play TV: banner, `LEANBACK_LAUNCHER`, capturas 1920×1080 y ficha de TV.
+
+### 2026-10-18 — 2.2.45-beta: red/latencia
+
+- Reproductor: `OkHttpDataSource` con el cliente OkHttp de la app (preferencia IPv6, pool,
+  timeouts) en lugar de `DefaultHttpDataSource` (DNS del sistema, IPv4 primero).
+- Buffer: min 30 s / max 90 s / 10 s tras rebuffer; back buffer 30 s.
+- `NetworkClientFactory`: detección del bloqueo de LaLiga también en `Videos/`/`Audio/`; no se
+  fuerza `Accept: application/json` en media.
+- OTA publicada y verificada: `2.2.45-beta` / `1000092`, SHA-256
+  `a524c7cd5ffd004b17bd3730019858c7122ad17ccad2427c9e8b1bae3c13752b`.
+
 
 

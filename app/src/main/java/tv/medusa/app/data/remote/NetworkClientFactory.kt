@@ -157,9 +157,16 @@ object NetworkClientFactory {
         .writeTimeout(30, TimeUnit.SECONDS)
         .addInterceptor { chain ->
             val original = chain.request()
+            val isMediaRequest = original.url.encodedPath.contains("Videos/", ignoreCase = true) ||
+                original.url.encodedPath.contains("Audio/", ignoreCase = true)
             val requestBuilder = original.newBuilder()
                 .header("User-Agent", "Mozilla/5.0 (Linux; Android 14; Google TV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-                .header("Accept", "application/json, text/plain, */*")
+
+            // En vídeo/audio NO forzamos Accept: application/json (podía afectar a la negociación
+            // de contenido del stream). Solo en las llamadas de API.
+            if (!isMediaRequest) {
+                requestBuilder.header("Accept", "application/json, text/plain, */*")
+            }
 
             // Jellyfin 12+ compatibility: Jellyfin 12 disables EnableLegacyAuthorization by default,
             // rejecting X-Emby-Authorization and strictly requiring Authorization: MediaBrowser ...
@@ -193,10 +200,14 @@ object NetworkClientFactory {
             val response = chain.proceed(request)
 
             val contentType = response.body?.contentType()?.toString()?.lowercase() ?: ""
+            // Se incluyen las rutas de vídeo/audio para detectar también el bloqueo de LaLiga en
+            // el propio stream (antes solo se miraba la API y el player se quedaba "cargando").
             val isApiCall = request.url.encodedPath.contains("System/Info", ignoreCase = true)
                     || request.url.encodedPath.contains("Users/", ignoreCase = true)
                     || request.url.encodedPath.contains("QuickConnect", ignoreCase = true)
                     || request.url.encodedPath.contains("Items", ignoreCase = true)
+                    || request.url.encodedPath.contains("Videos/", ignoreCase = true)
+                    || request.url.encodedPath.contains("Audio/", ignoreCase = true)
 
             if (isApiCall && contentType.contains("text/html")) {
                 val peekBody = response.peekBody(2048).string()

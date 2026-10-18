@@ -112,7 +112,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.Tracks
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
@@ -134,6 +134,7 @@ import tv.medusa.app.data.local.BUTTON_STYLE_ICONS_AND_TEXT
 import tv.medusa.app.data.local.BUTTON_STYLE_ICONS_ONLY
 import tv.medusa.app.data.local.BUTTON_STYLE_TEXT_ONLY
 import tv.medusa.app.data.remote.jellyfin.NextEpisodeInfo
+import tv.medusa.app.data.remote.NetworkClientFactory
 import tv.medusa.app.data.remote.jellyfin.SkipMarker
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -343,22 +344,28 @@ private fun PlayerContent(
             }
         }
 
-        val httpDataSourceFactory = DefaultHttpDataSource.Factory()
-            .setAllowCrossProtocolRedirects(true)
-            .setConnectTimeoutMs(15_000)
-            .setReadTimeoutMs(60_000)
+        // El vídeo debe usar el MISMO OkHttp que la API: así hereda la preferencia IPv6, el pool
+        // de conexiones y los timeouts. Con DefaultHttpDataSource resolvía por el DNS del sistema
+        // (IPv4 primero) y, en redes con bloqueos de LaLiga sobre rangos de Cloudflare, el stream
+        // caía por la ruta bloqueada aunque la API de Jellyfin fuera bien por IPv6.
+        val httpDataSourceFactory = OkHttpDataSource.Factory(NetworkClientFactory.okHttpClient)
             .setUserAgent("Mozilla/5.0 (Linux; Android 14; Google TV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
             .setDefaultRequestProperties(defaultHeaders)
 
         val mediaSourceFactory = DefaultMediaSourceFactory(httpDataSourceFactory)
 
+        // Buffer más generoso para redes inestables o con latencia alta: aguanta mejor los
+        // microcortes en vez de entrar en bucle de rebuffering. El arranque sigue siendo rápido
+        // (bufferForPlayback 1,5 s) y tras un corte espera 10 s para reanudar con margen.
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(
-                /* minBufferMs = */ 15_000,
-                /* maxBufferMs = */ 50_000,
+                /* minBufferMs = */ 30_000,
+                /* maxBufferMs = */ 90_000,
                 /* bufferForPlaybackMs = */ 1_500,
-                /* bufferForPlaybackAfterRebufferMs = */ 3_000
+                /* bufferForPlaybackAfterRebufferMs = */ 10_000
             )
+            .setPrioritizeTimeOverSizeThresholds(true)
+            .setBackBuffer(30_000, true)
             .build()
 
         val renderersFactory = DefaultRenderersFactory(context)
