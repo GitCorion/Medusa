@@ -12,7 +12,7 @@ interface JellyfinApiService {
 
     @GET("System/Info/Public")
     suspend fun getPublicInfo(
-        @Header("Authorization") authHeader: String = "MediaBrowser Client=\"Medusa\", Device=\"AndroidTV\", DeviceId=\"AndroidTV\", Version=\"1.0.0\""
+        @Header("Authorization") authHeader: String = "MediaBrowser Client=\"Medusa\", Device=\"AndroidTV\", DeviceId=\"MedusaTV\", Version=\"1.0.0\""
     ): JellyfinPublicInfo
 
     @POST("Users/AuthenticateByName")

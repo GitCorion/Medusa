@@ -27,6 +27,7 @@ import tv.medusa.app.data.remote.jellyfin.NextEpisodeInfo
 import tv.medusa.app.data.remote.jellyfin.SkipMarker
 import tv.medusa.app.data.local.db.AppDatabase
 import tv.medusa.app.data.repository.MediaRepository
+import tv.medusa.app.data.repository.buildJellyfinAuthHeader
 import tv.medusa.app.domain.model.MediaItem
 import tv.medusa.app.domain.model.MediaSource
 import tv.medusa.app.domain.usecase.GetHomeFeedUseCase
@@ -89,6 +90,20 @@ class PlayerViewModel @Inject constructor(
     val isMonochrome: StateFlow<Boolean> = userPreferencesRepository.isMonochrome
     val accentColor: StateFlow<String> = userPreferencesRepository.accentColor
     val isProUser: StateFlow<Boolean> = userPreferencesRepository.isProUser
+    val nightModeAudio: StateFlow<Int> = userPreferencesRepository.nightModeAudio
+    val audioVolumeBoostDb: StateFlow<Int> = userPreferencesRepository.audioVolumeBoostDb
+
+    fun setNightModeAudio(level: Int) {
+        viewModelScope.launch {
+            userPreferencesRepository.setNightModeAudio(level)
+        }
+    }
+
+    fun setAudioVolumeBoostDb(db: Int) {
+        viewModelScope.launch {
+            userPreferencesRepository.setAudioVolumeBoostDb(db)
+        }
+    }
 
     private var currentPlayableId: String = ""
     private var jellyfinBaseUrl: String = ""
@@ -339,7 +354,7 @@ class PlayerViewModel @Inject constructor(
             val userId = prefs.jellyfinUserId
 
             jellyfinBaseUrl = baseUrl
-            jellyfinAuthHeader = "MediaBrowser Client=\"Medusa\", Device=\"AndroidTV\", DeviceId=\"AndroidTV\", Version=\"1.0.0\", Token=\"$token\""
+            jellyfinAuthHeader = buildJellyfinAuthHeader(token = token)
 
             val entity = database.jellyfinDao().getItemById(itemId)
 
@@ -386,7 +401,7 @@ class PlayerViewModel @Inject constructor(
                 Log.i("PlayerViewModel", "Playback metadata failed (possible 401). Attempting re-authentication with Jellyfin...")
                 try {
                     val authResp = api.authenticateByName(
-                        authHeader = "MediaBrowser Client=\"Medusa\", Device=\"AndroidTV\", DeviceId=\"MedusaApp\", Version=\"1.0.0\"",
+                        authHeader = buildJellyfinAuthHeader(token = ""),
                         request = JellyfinAuthRequest(
                             username = prefs.jellyfinUsername,
                             pw = prefs.jellyfinPassword
@@ -394,7 +409,7 @@ class PlayerViewModel @Inject constructor(
                     )
                     effectiveToken = authResp.effectiveToken
                     effectiveUserId = authResp.effectiveUser.effectiveId
-                    effectiveAuthHeader = "MediaBrowser Client=\"Medusa\", Device=\"AndroidTV\", DeviceId=\"AndroidTV\", Version=\"1.0.0\", Token=\"$effectiveToken\""
+                    effectiveAuthHeader = buildJellyfinAuthHeader(token = effectiveToken)
                     jellyfinAuthHeader = effectiveAuthHeader
                     userPreferencesRepository.updateJellyfinConfig(
                         serverUrl = baseUrl,
@@ -676,7 +691,7 @@ class PlayerViewModel @Inject constructor(
                             header("Authorization", authHeader)
                             header("X-Emby-Authorization", authHeader)
                         } else if (token.isNotBlank()) {
-                            val genAuth = "MediaBrowser Client=\"Medusa\", Device=\"AndroidTV\", DeviceId=\"MedusaTV\", Version=\"1.0.0\", Token=\"$token\""
+                            val genAuth = buildJellyfinAuthHeader(token = token)
                             header("Authorization", genAuth)
                             header("X-Emby-Authorization", genAuth)
                         }

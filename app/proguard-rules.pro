@@ -71,3 +71,18 @@
     public static <1> INSTANCE;
     kotlinx.serialization.KSerializer serializer(...);
 }
+
+# ---------------------------------------------------------------------------
+# Logging: eliminar Log.d() y Log.v() del bytecode en release para no filtrar
+# información de debug (IDs de items, tokens parciales, metadata) en logcat.
+# Se conservan Log.e(), Log.w() y Log.i() para diagnóstico vía Crashlytics.
+# ---------------------------------------------------------------------------
+-assumenosideeffects class android.util.Log {
+    public static int d(...);
+    public static int v(...);
+}
+
+# OkHttp HttpLoggingInterceptor: eliminar logs de red en release.
+-assumenosideeffects class okhttp3.logging.HttpLoggingInterceptor {
+    public *** log(...);
+}

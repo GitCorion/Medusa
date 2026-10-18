@@ -79,7 +79,9 @@ data class UserPreferences(
     val hasPurchasedPro: Boolean = false,
     val isFamilyVipUser: Boolean = false,
     val isTrialActive: Boolean = false,
-    val trialDaysRemaining: Int = 0
+    val trialDaysRemaining: Int = 0,
+    val nightModeAudio: Int = 0,
+    val audioVolumeBoostDb: Int = 0
 ) {
     val isMonochrome: Boolean
         get() = indicatorTheme == INDICATOR_THEME_MONOCHROME || accentColor == ACCENT_WHITE
@@ -145,6 +147,8 @@ class UserPreferencesRepository(context: Context) {
         // para testear el flujo no-Pro. Solo se lee cuando BuildConfig.DEBUG es true.
         val DEBUG_PRO_OVERRIDE = stringPreferencesKey("debug_pro_override")
         val FIRST_INSTALL_TIME = longPreferencesKey("first_install_time_ms")
+        val NIGHT_MODE_AUDIO = intPreferencesKey("night_mode_audio")
+        val AUDIO_VOLUME_BOOST_DB = intPreferencesKey("audio_volume_boost_db")
     }
 
     /**
@@ -181,6 +185,24 @@ class UserPreferencesRepository(context: Context) {
 
     val selectedPlatforms: StateFlow<Set<String>> =
         userPreferences.map { it.selectedPlatforms }.stateIn(appScope, SharingStarted.Eagerly, emptySet())
+
+    val nightModeAudio: StateFlow<Int> =
+        userPreferences.map { it.nightModeAudio }.stateIn(appScope, SharingStarted.Eagerly, 0)
+
+    val audioVolumeBoostDb: StateFlow<Int> =
+        userPreferences.map { it.audioVolumeBoostDb }.stateIn(appScope, SharingStarted.Eagerly, 0)
+
+    suspend fun setNightModeAudio(level: Int) {
+        appContext.dataStore.edit { prefs ->
+            prefs[Keys.NIGHT_MODE_AUDIO] = level
+        }
+    }
+
+    suspend fun setAudioVolumeBoostDb(db: Int) {
+        appContext.dataStore.edit { prefs ->
+            prefs[Keys.AUDIO_VOLUME_BOOST_DB] = db
+        }
+    }
 
     /** Marca/desmarca la compra de Medusa Pro. Solo debe usarla Google Play Billing. */
     suspend fun updatePurchasedPro(isPurchased: Boolean) {
@@ -496,7 +518,9 @@ class UserPreferencesRepository(context: Context) {
                 hasPurchasedPro = hasPurchased,
                 isFamilyVipUser = isFamilyVip,
                 isTrialActive = trialActive,
-                trialDaysRemaining = daysRemaining
+                trialDaysRemaining = daysRemaining,
+                nightModeAudio = this[Keys.NIGHT_MODE_AUDIO] ?: 0,
+                audioVolumeBoostDb = this[Keys.AUDIO_VOLUME_BOOST_DB] ?: 0
             )
         }
     }

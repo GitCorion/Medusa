@@ -716,13 +716,18 @@ class JellyfinMediaRemoteRepository(
     }
 }
 
-internal fun buildJellyfinAuthHeader(
-    clientName: String = "Medusa",
-    deviceId: String = "MedusaTV",
-    version: String = "1.0.0",
+const val JELLYFIN_CLIENT_NAME = "Medusa"
+const val JELLYFIN_DEVICE_NAME = "AndroidTV"
+const val JELLYFIN_DEVICE_ID = "MedusaTV"
+const val JELLYFIN_VERSION = "1.0.0"
+
+fun buildJellyfinAuthHeader(
+    clientName: String = JELLYFIN_CLIENT_NAME,
+    deviceId: String = JELLYFIN_DEVICE_ID,
+    version: String = JELLYFIN_VERSION,
     token: String = ""
 ): String {
-    return "MediaBrowser Client=\"$clientName\", Device=\"AndroidTV\", DeviceId=\"$deviceId\", Version=\"$version\"" +
+    return "MediaBrowser Client=\"$clientName\", Device=\"$JELLYFIN_DEVICE_NAME\", DeviceId=\"$deviceId\", Version=\"$version\"" +
             if (token.isNotEmpty()) ", Token=\"$token\"" else ""
 }
 

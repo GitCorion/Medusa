@@ -19,6 +19,7 @@ import tv.medusa.app.data.local.db.preserveKnownLastPlayedDate
 import tv.medusa.app.data.local.db.preserveKnownLastPlayedDates
 import tv.medusa.app.data.remote.NetworkClientFactory
 import tv.medusa.app.data.remote.jellyfin.JellyfinApiService
+import tv.medusa.app.data.remote.jellyfin.JellyfinAuthRequest
 import tv.medusa.app.data.remote.jellyfin.JellyfinItemsResponse
 import tv.medusa.app.data.worker.JellyfinSyncWorker
 import tv.medusa.app.data.worker.OverviewEnrichmentWorker
@@ -216,10 +217,50 @@ class MediaSyncRepository(
         }
     }
 
+    private suspend fun trySilentReauthenticate(serverUrl: String): Pair<String, String>? {
+        val prefs = userPreferencesRepository?.userPreferencesFlow?.firstOrNull() ?: return null
+        val username = prefs.jellyfinUsername
+        val password = prefs.jellyfinPassword
+        if (username.isBlank() || password.isBlank()) {
+            Log.w("MediaSyncRepository", "Silent re-auth skipped: username or password not available in preferences")
+            return null
+        }
+        return try {
+            Log.i("MediaSyncRepository", "Attempting silent re-authentication with Jellyfin for user '$username'...")
+            val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
+            val authHeader = buildJellyfinAuthHeader(token = "")
+            val response = api.authenticateByName(
+                authHeader = authHeader,
+                request = JellyfinAuthRequest(username = username, pw = password)
+            )
+            val newToken = response.effectiveToken
+            val newUserId = response.effectiveUser.effectiveId
+            val authedUser = response.effectiveUser.effectiveName.ifBlank { username }
+            if (newToken.isNotBlank()) {
+                userPreferencesRepository?.updateJellyfinConfig(
+                    serverUrl = serverUrl,
+                    userId = newUserId,
+                    accessToken = newToken,
+                    username = authedUser,
+                    password = password
+                )
+                Log.i("MediaSyncRepository", "Silent re-authentication succeeded! New token acquired.")
+                Pair(newToken, newUserId)
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            Log.w("MediaSyncRepository", "Silent re-authentication attempt failed: ${e.message}")
+            null
+        }
+    }
+
     private suspend fun fetchCoverRows(serverUrl: String, userId: String, token: String) {
         runCatching {
+            var activeToken = token
+            var activeUserId = userId
+            var authHeader = buildJellyfinAuthHeader(token = activeToken)
             val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
-            val authHeader = buildJellyfinAuthHeader(token = token)
 
             var playedEntities: List<JellyfinMediaEntity> = emptyList()
 
@@ -228,14 +269,40 @@ class MediaSyncRepository(
                 launch {
                     try {
                         val resumeDeferred = async {
-                            runCatching {
-                                api.getResumeItems(authHeader = authHeader, userId = userId, limit = 30).items.map { it.toEntity() }
-                            }.getOrDefault(emptyList())
+                            val res = runCatching {
+                                api.getResumeItems(authHeader = authHeader, userId = activeUserId, limit = 30).items.map { it.toEntity() }
+                            }
+                            if (res.isFailure && (res.exceptionOrNull() as? retrofit2.HttpException)?.code() == 401) {
+                                val reauthed = trySilentReauthenticate(serverUrl)
+                                if (reauthed != null) {
+                                    activeToken = reauthed.first
+                                    activeUserId = reauthed.second
+                                    authHeader = buildJellyfinAuthHeader(token = activeToken)
+                                    runCatching {
+                                        api.getResumeItems(authHeader = authHeader, userId = activeUserId, limit = 30).items.map { it.toEntity() }
+                                    }.getOrDefault(emptyList())
+                                } else emptyList()
+                            } else {
+                                res.getOrDefault(emptyList())
+                            }
                         }
                         val nextUpDeferred = async {
-                            runCatching {
-                                api.getNextUpItems(authHeader = authHeader, userId = userId, limit = 30).items.map { it.toEntity() }
-                            }.getOrDefault(emptyList())
+                            val res = runCatching {
+                                api.getNextUpItems(authHeader = authHeader, userId = activeUserId, limit = 30).items.map { it.toEntity() }
+                            }
+                            if (res.isFailure && (res.exceptionOrNull() as? retrofit2.HttpException)?.code() == 401) {
+                                val reauthed = trySilentReauthenticate(serverUrl)
+                                if (reauthed != null) {
+                                    activeToken = reauthed.first
+                                    activeUserId = reauthed.second
+                                    authHeader = buildJellyfinAuthHeader(token = activeToken)
+                                    runCatching {
+                                        api.getNextUpItems(authHeader = authHeader, userId = activeUserId, limit = 30).items.map { it.toEntity() }
+                                    }.getOrDefault(emptyList())
+                                } else emptyList()
+                            } else {
+                                res.getOrDefault(emptyList())
+                            }
                         }
                         val resumeEntities = resumeDeferred.await()
                         val nextUpEntities = nextUpDeferred.await()
@@ -342,7 +409,9 @@ class MediaSyncRepository(
         return try {
             runCatching {
                 val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
-                val authHeader = buildJellyfinAuthHeader(token = token)
+                var currentToken = token
+                var currentUserId = userId
+                var authHeader = buildJellyfinAuthHeader(token = currentToken)
 
                 // Purga entradas caducadas (>24h) de la caché de votos TMDB para que no crezca sin límite.
                 runCatching { tmdbVoteCacheDao?.deleteExpired() }
@@ -360,12 +429,26 @@ class MediaSyncRepository(
                 }
 
                 // 1. Prioridad: refrescar de inmediato los elementos de portada (< 500ms)
-                syncQuickInit(serverUrl, userId, token)
+                syncQuickInit(serverUrl, currentUserId, currentToken)
 
-                // 2. Obtener vistas del usuario (Películas, Series, etc.)
-                val userViews = runCatching {
-                    api.getUserViews(authHeader = authHeader, userId = userId).items
-                }.getOrDefault(emptyList())
+                // 2. Obtener vistas del usuario (Películas, Series, etc.) con re-autenticación automática en 401
+                var userViewsResponse = runCatching {
+                    api.getUserViews(authHeader = authHeader, userId = currentUserId).items
+                }
+                if (userViewsResponse.isFailure && (userViewsResponse.exceptionOrNull() as? retrofit2.HttpException)?.code() == 401) {
+                    val reauthed = trySilentReauthenticate(serverUrl)
+                    if (reauthed != null) {
+                        currentToken = reauthed.first
+                        currentUserId = reauthed.second
+                        authHeader = buildJellyfinAuthHeader(token = currentToken)
+                        userViewsResponse = runCatching {
+                            api.getUserViews(authHeader = authHeader, userId = currentUserId).items
+                        }
+                    } else {
+                        throw userViewsResponse.exceptionOrNull()!!
+                    }
+                }
+                val userViews = userViewsResponse.getOrDefault(emptyList())
 
                 val mediaViews = userViews.filter { view ->
                     val cType = view.collectionType?.lowercase()
@@ -389,16 +472,41 @@ class MediaSyncRepository(
                         val pageLimit = 500
                         var startIndex = 0
                         while (true) {
-                            val response = api.getLibraryItems(
-                                authHeader = authHeader,
-                                userId = userId,
-                                includeItemTypes = "Movie,Series",
-                                recursive = true,
-                                fields = "",
-                                limit = pageLimit,
-                                startIndex = startIndex,
-                                enableTotalRecordCount = false
-                            )
+                            val response = try {
+                                api.getLibraryItems(
+                                    authHeader = authHeader,
+                                    userId = currentUserId,
+                                    includeItemTypes = "Movie,Series",
+                                    recursive = true,
+                                    fields = "",
+                                    limit = pageLimit,
+                                    startIndex = startIndex,
+                                    enableTotalRecordCount = false
+                                )
+                            } catch (e: Exception) {
+                                if (e is retrofit2.HttpException && e.code() == 401) {
+                                    val reauthed = trySilentReauthenticate(serverUrl)
+                                    if (reauthed != null) {
+                                        currentToken = reauthed.first
+                                        currentUserId = reauthed.second
+                                        authHeader = buildJellyfinAuthHeader(token = currentToken)
+                                        api.getLibraryItems(
+                                            authHeader = authHeader,
+                                            userId = currentUserId,
+                                            includeItemTypes = "Movie,Series",
+                                            recursive = true,
+                                            fields = "",
+                                            limit = pageLimit,
+                                            startIndex = startIndex,
+                                            enableTotalRecordCount = false
+                                        )
+                                    } else {
+                                        throw e
+                                    }
+                                } else {
+                                    throw e
+                                }
+                            }
                             val items = response.items
                             if (items.isEmpty()) break
                             items.forEach { allowedIds.add(it.id) }
@@ -407,7 +515,7 @@ class MediaSyncRepository(
                             delay(50L)
                         }
                         if (allowedIds.isNotEmpty()) {
-                            accessPolicy.saveAllowedIds(userId, allowedIds)
+                            accessPolicy.saveAllowedIds(currentUserId, allowedIds)
                         }
                     }
                     if (forceFullSync) {
@@ -438,17 +546,39 @@ class MediaSyncRepository(
                         var deltaOffset = 0
                         do {
                             val deltaResponse = runCatching {
-                                api.getLibraryItems(
-                                    authHeader = authHeader,
-                                    userId = userId,
-                                    parentId = view?.id,
-                                    includeItemTypes = if (isSeries) "Series" else "Movie",
-                                    fields = viewFields,
-                                    recursive = !isSeries,
-                                    limit = 200,
-                                    startIndex = deltaOffset,
-                                    minDateLastSaved = effectiveLastSync
-                                )
+                                try {
+                                    api.getLibraryItems(
+                                        authHeader = authHeader,
+                                        userId = currentUserId,
+                                        parentId = view?.id,
+                                        includeItemTypes = if (isSeries) "Series" else "Movie",
+                                        fields = viewFields,
+                                        recursive = !isSeries,
+                                        limit = 200,
+                                        startIndex = deltaOffset,
+                                        minDateLastSaved = effectiveLastSync
+                                    )
+                                } catch (e: Exception) {
+                                    if (e is retrofit2.HttpException && e.code() == 401) {
+                                        val reauthed = trySilentReauthenticate(serverUrl)
+                                        if (reauthed != null) {
+                                            currentToken = reauthed.first
+                                            currentUserId = reauthed.second
+                                            authHeader = buildJellyfinAuthHeader(token = currentToken)
+                                            api.getLibraryItems(
+                                                authHeader = authHeader,
+                                                userId = currentUserId,
+                                                parentId = view?.id,
+                                                includeItemTypes = if (isSeries) "Series" else "Movie",
+                                                fields = viewFields,
+                                                recursive = !isSeries,
+                                                limit = 200,
+                                                startIndex = deltaOffset,
+                                                minDateLastSaved = effectiveLastSync
+                                            )
+                                        } else throw e
+                                    } else throw e
+                                }
                             }.getOrNull()
 
                             val deltaItems = deltaResponse?.items ?: emptyList()
@@ -468,7 +598,7 @@ class MediaSyncRepository(
                                 }
                                 jellyfinDao.insertOrUpdateAll(entities)
 
-                                accessPolicy.addAllowedIds(userId, entities.map { it.id })
+                                accessPolicy.addAllowedIds(currentUserId, entities.map { it.id })
 
                                 deltaCount += entities.size
                                 deltaOffset += deltaItems.size
@@ -544,7 +674,7 @@ class MediaSyncRepository(
                             try {
                                 response = api.getLibraryItems(
                                     authHeader = authHeader,
-                                    userId = userId,
+                                    userId = currentUserId,
                                     parentId = viewId,
                                     includeItemTypes = itemType,
                                     fields = viewFields,
@@ -558,7 +688,17 @@ class MediaSyncRepository(
                             } catch (e: Exception) {
                                 lastError = e
                                 attempt++
-                                if (e is retrofit2.HttpException && e.code() == 401) throw e
+                                if (e is retrofit2.HttpException && e.code() == 401) {
+                                    val reauthed = trySilentReauthenticate(serverUrl)
+                                    if (reauthed != null) {
+                                        currentToken = reauthed.first
+                                        currentUserId = reauthed.second
+                                        authHeader = buildJellyfinAuthHeader(token = currentToken)
+                                        attempt = 0
+                                        continue
+                                    }
+                                    throw e
+                                }
                                 if (attempt < 4) delay(1000L * attempt)
                             }
                         }

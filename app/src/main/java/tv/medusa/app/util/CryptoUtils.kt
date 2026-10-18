@@ -25,6 +25,10 @@ object CryptoUtils {
     private const val TAG_SIZE_BITS = 128
     private const val PREFIX = "enc:"
 
+    // Caché en memoria para evitar pérdida de credenciales por fallos transitorios
+    // del KeyStore durante suspensión o despertar de Android TV (deep sleep / HDMI switch).
+    private val decryptedCache = java.util.concurrent.ConcurrentHashMap<String, String>()
+
     /**
      * Cifra [plaintext]. Devuelve "" si está vacío. Si el Keystore fallara, devuelve el texto en
      * claro como último recurso para no bloquear el guardado (no debería ocurrir en API 26+).
@@ -39,8 +43,11 @@ object CryptoUtils {
             val combined = ByteArray(iv.size + ciphertext.size)
             System.arraycopy(iv, 0, combined, 0, iv.size)
             System.arraycopy(ciphertext, 0, combined, iv.size, ciphertext.size)
-            PREFIX + Base64.encodeToString(combined, Base64.NO_WRAP)
-        } catch (_: Exception) {
+            val result = PREFIX + Base64.encodeToString(combined, Base64.NO_WRAP)
+            decryptedCache[result] = plaintext
+            result
+        } catch (e: Exception) {
+            android.util.Log.w("CryptoUtils", "Error cifrando con Keystore, guardando en claro: ${e.message}")
             plaintext
         }
     }
@@ -49,20 +56,50 @@ object CryptoUtils {
      * Descifra un valor almacenado:
      * - Vacío → "".
      * - Sin prefijo `enc:` → valor legacy en claro, se devuelve tal cual.
-     * - Con prefijo → se descifra; si falla, devuelve "" (obliga a re-autenticar).
+     * - Con prefijo → se descifra con Keystore o se recupera de la caché en memoria.
      */
     fun decryptStored(stored: String): String {
         if (stored.isBlank()) return ""
         if (!stored.startsWith(PREFIX)) return stored
+
+        // 1. Comprobar caché en memoria primero
+        decryptedCache[stored]?.let { return it }
+
+        // 2. Intentar descifrado con Keystore
+        val decrypted = tryDecrypt(stored)
+        if (decrypted != null) {
+            decryptedCache[stored] = decrypted
+            return decrypted
+        }
+
+        // 3. Reintento tras recargar KeyStore si falló por despertar del dispositivo
+        val retryDecrypted = try {
+            KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
+            tryDecrypt(stored)
+        } catch (_: Exception) {
+            null
+        }
+
+        if (retryDecrypted != null) {
+            decryptedCache[stored] = retryDecrypted
+            return retryDecrypted
+        }
+
+        android.util.Log.w("CryptoUtils", "No se pudo descifrar credencial almacenada tras reintento.")
+        return ""
+    }
+
+    private fun tryDecrypt(stored: String): String? {
         return try {
             val combined = Base64.decode(stored.removePrefix(PREFIX), Base64.NO_WRAP)
+            if (combined.size <= IV_SIZE_BYTES) return null
             val iv = combined.copyOfRange(0, IV_SIZE_BYTES)
             val ciphertext = combined.copyOfRange(IV_SIZE_BYTES, combined.size)
             val cipher = Cipher.getInstance(TRANSFORMATION)
             cipher.init(Cipher.DECRYPT_MODE, getOrCreateKey(), GCMParameterSpec(TAG_SIZE_BITS, iv))
             String(cipher.doFinal(ciphertext), Charsets.UTF_8)
         } catch (_: Exception) {
-            ""
+            null
         }
     }
 

@@ -28,8 +28,8 @@ android {
     defaultConfig {
         minSdk = 26
         targetSdk = 35
-        versionCode = 79
-        versionName = "2.2.32"
+        versionCode = 80
+        versionName = "2.2.33"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -71,6 +71,7 @@ android {
             keyPassword = envOr("KEY_PASSWORD", "")
             enableV1Signing = true
             enableV2Signing = true
+            enableV3Signing = true
         }
     }
 

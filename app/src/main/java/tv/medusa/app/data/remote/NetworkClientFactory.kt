@@ -206,9 +206,13 @@ object NetworkClientFactory {
             }
             response
         }
-        .addInterceptor(HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BASIC
-        })
+        .apply {
+            if (tv.medusa.app.BuildConfig.DEBUG) {
+                addInterceptor(HttpLoggingInterceptor().apply {
+                    level = HttpLoggingInterceptor.Level.BASIC
+                })
+            }
+        }
         .build()
 
     private val serviceCache = ConcurrentHashMap<Pair<String, Class<*>>, Any>()

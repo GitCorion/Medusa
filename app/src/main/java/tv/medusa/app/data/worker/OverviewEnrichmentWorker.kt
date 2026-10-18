@@ -49,9 +49,9 @@ class OverviewEnrichmentWorker @AssistedInject constructor(
          * esperando; en segundo plano se usa el ritmo alto.
          */
         private const val CONCURRENCY_FOREGROUND = 2
-        private const val CONCURRENCY_BACKGROUND = 4
+        private const val CONCURRENCY_BACKGROUND = 2
         private const val WAVE_PAUSE_FOREGROUND_MS = 3000L
-        private const val WAVE_PAUSE_BACKGROUND_MS = 300L
+        private const val WAVE_PAUSE_BACKGROUND_MS = 1500L
     }
 
     override suspend fun doWork(): Result {

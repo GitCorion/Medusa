@@ -10,6 +10,7 @@ import androidx.media3.exoplayer.util.EventLogger
 import java.util.Locale
 import kotlin.math.abs
 import tv.medusa.app.data.local.db.AppDatabase
+import tv.medusa.app.data.repository.buildJellyfinAuthHeader
 import tv.medusa.app.ui.components.JellyLoadingIndicator
 import android.app.Activity
 import android.content.Context
@@ -48,6 +49,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Audiotrack
+import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
@@ -60,6 +62,8 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Subtitles
 import androidx.compose.material.icons.filled.SubtitlesOff
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import tv.medusa.app.util.AudioEnhancementManager
 import tv.medusa.app.ui.theme.TvAccent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -78,6 +82,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
@@ -244,6 +249,9 @@ private fun PlayerContent(
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
     val isProUser by viewModel.isProUser.collectAsStateWithLifecycle()
+    val nightModeAudio by viewModel.nightModeAudio.collectAsStateWithLifecycle()
+    val audioVolumeBoostDb by viewModel.audioVolumeBoostDb.collectAsStateWithLifecycle()
+    val audioEnhancementManager = remember { AudioEnhancementManager() }
 
     var showOverlayControls by remember { mutableStateOf(true) }
     var seekIndicatorText by remember { mutableStateOf<String?>(null) }
@@ -306,6 +314,11 @@ private fun PlayerContent(
 
     val playPauseFocusRequester = remember { FocusRequester() }
     val retryFocusRequester = remember { FocusRequester() }
+    val audioButtonFocusRequester = remember { FocusRequester() }
+    val subtitleButtonFocusRequester = remember { FocusRequester() }
+    val settingsButtonFocusRequester = remember { FocusRequester() }
+
+    var previousModalTab by remember { mutableStateOf(PlayerModalTab.NONE) }
 
     val candidates = info.candidateUrls.ifEmpty { listOf(info.primaryStreamUrl) }
 
@@ -323,7 +336,7 @@ private fun PlayerContent(
                 put("Authorization", auth)
                 put("X-Emby-Authorization", auth)
             } else if (token.isNotBlank()) {
-                val genAuth = "MediaBrowser Client=\"Medusa\", Device=\"AndroidTV\", DeviceId=\"MedusaTV\", Version=\"1.0.0\", Token=\"$token\""
+                val genAuth = buildJellyfinAuthHeader(token = token)
                 put("Authorization", genAuth)
                 put("X-Emby-Authorization", genAuth)
             }
@@ -373,8 +386,23 @@ private fun PlayerContent(
                     addAnalyticsListener(EventLogger())
                 }
 
+                val subtitleConfigs = info.subtitles.map { sub ->
+                    val mimeType = when (sub.codec.lowercase()) {
+                        "vtt", "webvtt" -> MimeTypes.TEXT_VTT
+                        "ass", "ssa" -> MimeTypes.TEXT_SSA
+                        else -> MimeTypes.APPLICATION_SUBRIP
+                    }
+                    MediaItem.SubtitleConfiguration.Builder(Uri.parse(sub.url))
+                        .setMimeType(mimeType)
+                        .setLanguage(sub.language)
+                        .setLabel(sub.title)
+                        .setSelectionFlags(if (sub.isDefault) C.SELECTION_FLAG_DEFAULT else 0)
+                        .build()
+                }
+
                 val mediaItem = MediaItem.Builder()
                     .setUri(candidates.first())
+                    .setSubtitleConfigurations(subtitleConfigs)
                     .setMediaMetadata(
                         MediaMetadata.Builder()
                             .setTitle(info.title)
@@ -384,6 +412,7 @@ private fun PlayerContent(
                     .build()
 
                 setMediaItem(mediaItem)
+                audioEnhancementManager.attachToPlayer(this)
 
                 addListener(object : Player.Listener {
                     override fun onIsPlayingChanged(playing: Boolean) {
@@ -417,6 +446,7 @@ private fun PlayerContent(
 
                             val fallbackItem = MediaItem.Builder()
                                 .setUri(nextUrl)
+                                .setSubtitleConfigurations(subtitleConfigs)
                                 .setMediaMetadata(
                                     MediaMetadata.Builder()
                                         .setTitle(info.title)
@@ -458,6 +488,37 @@ private fun PlayerContent(
                     playWhenReady = true
                 }
             }
+    }
+
+    LaunchedEffect(activeModalTab) {
+        if (activeModalTab != PlayerModalTab.NONE) {
+            val (audios, subs) = extractTracksFromExoPlayer(exoPlayer, context)
+            if (audios.isNotEmpty()) audioTracks = audios
+            if (subs.isNotEmpty()) subtitleTracks = subs
+        } else if (previousModalTab != PlayerModalTab.NONE) {
+            delay(100L)
+            runCatching {
+                when (previousModalTab) {
+                    PlayerModalTab.AUDIO -> audioButtonFocusRequester.requestFocus()
+                    PlayerModalTab.SUBTITLES -> subtitleButtonFocusRequester.requestFocus()
+                    PlayerModalTab.SETTINGS -> settingsButtonFocusRequester.requestFocus()
+                    else -> playPauseFocusRequester.requestFocus()
+                }
+            }
+        }
+        previousModalTab = activeModalTab
+    }
+
+    LaunchedEffect(exoPlayer, nightModeAudio, audioVolumeBoostDb) {
+        audioEnhancementManager.attachToPlayer(exoPlayer)
+        audioEnhancementManager.setNightMode(nightModeAudio)
+        audioEnhancementManager.setVolumeBoost(audioVolumeBoostDb)
+    }
+
+    DisposableEffect(exoPlayer) {
+        onDispose {
+            audioEnhancementManager.release()
+        }
     }
 
     var accumulatedSeekOffset by remember { mutableLongStateOf(0L) }
@@ -957,7 +1018,11 @@ private fun PlayerContent(
             exit = fadeOut(),
             modifier = Modifier.fillMaxSize()
         ) {
-            Box(modifier = Modifier.fillMaxSize()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .focusProperties { canFocus = activeModalTab == PlayerModalTab.NONE }
+            ) {
                 // Top Bar: Back Button + Title + Minimal Metadata
                 Row(
                     modifier = Modifier
@@ -1117,7 +1182,8 @@ private fun PlayerContent(
                                     buttonStyle = buttonStyle,
                                     isMonochrome = isMonochrome,
                                     focusColor = focusColor,
-                                    focusContent = focusContent
+                                    focusContent = focusContent,
+                                    modifier = Modifier.focusRequester(audioButtonFocusRequester)
                                 )
 
                                 // 5. Subtitles Selector Button
@@ -1132,7 +1198,8 @@ private fun PlayerContent(
                                     buttonStyle = buttonStyle,
                                     isMonochrome = isMonochrome,
                                     focusColor = focusColor,
-                                    focusContent = focusContent
+                                    focusContent = focusContent,
+                                    modifier = Modifier.focusRequester(subtitleButtonFocusRequester)
                                 )
 
                                 // 6. Settings Selector Button
@@ -1147,7 +1214,8 @@ private fun PlayerContent(
                                     buttonStyle = buttonStyle,
                                     isMonochrome = isMonochrome,
                                     focusColor = focusColor,
-                                    focusContent = focusContent
+                                    focusContent = focusContent,
+                                    modifier = Modifier.focusRequester(settingsButtonFocusRequester)
                                 )
                             }
                         }
@@ -1164,6 +1232,8 @@ private fun PlayerContent(
                 subtitleTracks = subtitleTracks,
                 currentSpeed = currentPlaybackSpeed,
                 currentResizeMode = currentResizeMode,
+                nightModeAudio = nightModeAudio,
+                audioVolumeBoostDb = audioVolumeBoostDb,
                 onSelectAudioTrack = { track ->
                     notifyInteraction()
                     selectAudioTrackInExoPlayer(exoPlayer, track)
@@ -1180,6 +1250,14 @@ private fun PlayerContent(
                 onSelectResizeMode = { mode ->
                     notifyInteraction()
                     currentResizeMode = mode
+                },
+                onSelectNightMode = { level ->
+                    notifyInteraction()
+                    viewModel.setNightModeAudio(level)
+                },
+                onSelectVolumeBoost = { db ->
+                    notifyInteraction()
+                    viewModel.setAudioVolumeBoostDb(db)
                 },
                 onClose = {
                     notifyInteraction()
@@ -1603,15 +1681,26 @@ private fun PlayerCustomModalSheet(
     subtitleTracks: List<TrackItem>,
     currentSpeed: Float,
     currentResizeMode: Int,
+    nightModeAudio: Int = 0,
+    audioVolumeBoostDb: Int = 0,
     onSelectAudioTrack: (TrackItem) -> Unit,
     onSelectSubtitleTrack: (TrackItem?) -> Unit,
     onSelectSpeed: (Float) -> Unit,
     onSelectResizeMode: (Int) -> Unit,
+    onSelectNightMode: (Int) -> Unit = {},
+    onSelectVolumeBoost: (Int) -> Unit = {},
     onClose: () -> Unit,
     isMonochrome: Boolean = false,
     focusColor: Color = Color.White,
     focusContent: Color = Color(0xFF0F172A)
 ) {
+    val firstItemFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(activeTab) {
+        delay(120L)
+        runCatching { firstItemFocusRequester.requestFocus() }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -1624,6 +1713,12 @@ private fun PlayerCustomModalSheet(
                 .fillMaxHeight()
                 .width(420.dp)
                 .clickable(enabled = false) {}
+                .onKeyEvent { keyEvent ->
+                    if (keyEvent.type == KeyEventType.KeyDown && keyEvent.key == Key.DirectionLeft) {
+                        onClose()
+                        true
+                    } else false
+                }
                 .border(1.dp, if (isMonochrome) Color(0x22FFFFFF) else focusColor.copy(alpha = 0.35f), RoundedCornerShape(topStart = 24.dp, bottomStart = 24.dp)),
             shape = RoundedCornerShape(topStart = 24.dp, bottomStart = 24.dp),
             colors = NonInteractiveSurfaceDefaults.colors(
@@ -1700,6 +1795,17 @@ private fun PlayerCustomModalSheet(
                 ) {
                     when (activeTab) {
                         PlayerModalTab.AUDIO -> {
+                            // 1. Pistas de audio
+                            item {
+                                Text(
+                                    text = stringResource(R.string.player_audio_tracks),
+                                    color = Color(0xFFCBD5E1),
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(bottom = 4.dp)
+                                )
+                            }
+
                             if (audioTracks.isEmpty()) {
                                 item {
                                     Text(
@@ -1709,19 +1815,97 @@ private fun PlayerCustomModalSheet(
                                     )
                                 }
                             } else {
-                                itemsIndexed(audioTracks) { _, track ->
+                                itemsIndexed(audioTracks) { index, track ->
                                     TrackOptionItem(
                                         label = track.label,
                                         isSelected = track.isSelected,
                                         isMonochrome = isMonochrome,
                                         focusColor = focusColor,
                                         focusContent = focusContent,
+                                        focusRequester = if (index == 0) firstItemFocusRequester else null,
                                         onClick = {
                                             onSelectAudioTrack(track)
                                             onClose()
                                         }
                                     )
                                 }
+                            }
+
+                            // 2. Modo Nocturno (Compresor DRC / Realce de Diálogos)
+                            item {
+                                Spacer(modifier = Modifier.height(14.dp))
+                                Text(
+                                    text = stringResource(R.string.player_night_mode),
+                                    color = Color(0xFFCBD5E1),
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = stringResource(R.string.player_night_mode_desc),
+                                    color = Color(0x88CBD5E1),
+                                    fontSize = 11.sp,
+                                    modifier = Modifier.padding(bottom = 4.dp)
+                                )
+                            }
+
+                            val nightOptions = listOf(
+                                0 to R.string.player_night_mode_off,
+                                1 to R.string.player_night_mode_soft,
+                                2 to R.string.player_night_mode_strong
+                            )
+
+                            itemsIndexed(nightOptions) { index, (level, strRes) ->
+                                TrackOptionItem(
+                                    label = stringResource(strRes),
+                                    isSelected = nightModeAudio == level,
+                                    icon = if (level > 0) Icons.Default.Bedtime else null,
+                                    isMonochrome = isMonochrome,
+                                    focusColor = focusColor,
+                                    focusContent = focusContent,
+                                    focusRequester = if (audioTracks.isEmpty() && index == 0) firstItemFocusRequester else null,
+                                    onClick = {
+                                        onSelectNightMode(level)
+                                    }
+                                )
+                            }
+
+                            // 3. Amplificador de Volumen (Estilo Kodi)
+                            item {
+                                Spacer(modifier = Modifier.height(14.dp))
+                                Text(
+                                    text = stringResource(R.string.player_volume_boost),
+                                    color = Color(0xFFCBD5E1),
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = stringResource(R.string.player_volume_boost_desc),
+                                    color = Color(0x88CBD5E1),
+                                    fontSize = 11.sp,
+                                    modifier = Modifier.padding(bottom = 4.dp)
+                                )
+                            }
+
+                            val boostOptions = listOf(
+                                0 to R.string.player_volume_boost_original,
+                                3 to R.string.player_volume_boost_low,
+                                6 to R.string.player_volume_boost_medium,
+                                10 to R.string.player_volume_boost_high,
+                                15 to R.string.player_volume_boost_max
+                            )
+
+                            itemsIndexed(boostOptions) { _, (db, strRes) ->
+                                TrackOptionItem(
+                                    label = stringResource(strRes),
+                                    isSelected = audioVolumeBoostDb == db,
+                                    icon = if (db > 0) Icons.AutoMirrored.Filled.VolumeUp else null,
+                                    isMonochrome = isMonochrome,
+                                    focusColor = focusColor,
+                                    focusContent = focusContent,
+                                    onClick = {
+                                        onSelectVolumeBoost(db)
+                                    }
+                                )
                             }
                         }
 
@@ -1735,6 +1919,7 @@ private fun PlayerCustomModalSheet(
                                     isMonochrome = isMonochrome,
                                     focusColor = focusColor,
                                     focusContent = focusContent,
+                                    focusRequester = firstItemFocusRequester,
                                     onClick = {
                                         onSelectSubtitleTrack(null)
                                         onClose()
@@ -1769,7 +1954,7 @@ private fun PlayerCustomModalSheet(
                             }
 
                             val speeds = listOf(0.75f, 1.0f, 1.25f, 1.5f, 2.0f)
-                            itemsIndexed(speeds) { _, speed ->
+                            itemsIndexed(speeds) { index, speed ->
                                 val label = if (speed == 1.0f) stringResource(R.string.player_speed_normal) else "${speed}x"
                                 TrackOptionItem(
                                     label = label,
@@ -1777,6 +1962,7 @@ private fun PlayerCustomModalSheet(
                                     isMonochrome = isMonochrome,
                                     focusColor = focusColor,
                                     focusContent = focusContent,
+                                    focusRequester = if (index == 0) firstItemFocusRequester else null,
                                     onClick = {
                                         onSelectSpeed(speed)
                                     }
@@ -1836,6 +2022,7 @@ private fun TrackOptionItem(
     isMonochrome: Boolean = false,
     focusColor: Color = Color.White,
     focusContent: Color = Color(0xFF0F172A),
+    focusRequester: FocusRequester? = null,
     onClick: () -> Unit
 ) {
     Button(
@@ -1846,7 +2033,9 @@ private fun TrackOptionItem(
             focusedContainerColor = if (isMonochrome) Color.White else focusColor,
             focusedContentColor = if (isMonochrome) Color(0xFF0F172A) else focusContent
         ),
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
     ) {
         Row(
             modifier = Modifier
@@ -2021,6 +2210,7 @@ private fun selectAudioTrackInExoPlayer(exoPlayer: ExoPlayer, trackItem: TrackIt
     exoPlayer.trackSelectionParameters = exoPlayer.trackSelectionParameters
         .buildUpon()
         .setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, false)
+        .clearOverridesOfType(C.TRACK_TYPE_AUDIO)
         .setOverrideForType(
             TrackSelectionOverride(
                 trackItem.group.mediaTrackGroup,
@@ -2042,6 +2232,7 @@ private fun selectSubtitleTrackInExoPlayer(exoPlayer: ExoPlayer, trackItem: Trac
         exoPlayer.trackSelectionParameters = exoPlayer.trackSelectionParameters
             .buildUpon()
             .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
+            .clearOverridesOfType(C.TRACK_TYPE_TEXT)
             .setOverrideForType(
                 TrackSelectionOverride(
                     trackItem.group.mediaTrackGroup,
