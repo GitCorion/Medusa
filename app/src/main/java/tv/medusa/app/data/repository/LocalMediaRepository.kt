@@ -135,6 +135,13 @@ class LocalMediaRepository(
         return items.deduplicateMediaEntities()
     }
 
+    suspend fun getNewReleasesLocal(limit: Int = 20): List<JellyfinMediaEntity> =
+        if (restrictionsActive()) {
+            jellyfinDao.getNewReleasesLocalRestricted(limit).deduplicateMediaEntities()
+        } else {
+            jellyfinDao.getNewReleasesLocal(limit).deduplicateMediaEntities()
+        }
+
     suspend fun getTopMoviesLocal(limit: Int = 20): List<JellyfinMediaEntity> =
         if (restrictionsActive()) {
             jellyfinDao.getTopMoviesLocalRestricted(limit).deduplicateMediaEntities()

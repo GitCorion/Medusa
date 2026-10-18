@@ -359,6 +359,7 @@
     <string name="section_genre_hidden_gems">Joyas Ocultas</string>
     <string name="section_top10_essentials">Top 10 Imprescindibles</string>
     <string name="section_new_releases">Novedades Recientes</string>
+    <string name="section_latest_releases">Últimos estrenos</string>
     <string name="section_top10_spain">Top 10 en España hoy</string>
     <string name="section_platform_popular">Populares en %1$s</string>
     <string name="section_trakt_community">Recomendado por la comunidad Trakt</string>

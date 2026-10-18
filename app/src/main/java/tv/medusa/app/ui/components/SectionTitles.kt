@@ -30,6 +30,7 @@ fun localizedSectionTitle(section: HomeSection): String {
         title == "Joyas Ocultas" -> stringResource(R.string.section_genre_hidden_gems)
         title == "Top 10 Imprescindibles" -> stringResource(R.string.section_top10_essentials)
         title == "Novedades Recientes" -> stringResource(R.string.section_new_releases)
+        title == "Últimos estrenos" -> stringResource(R.string.section_latest_releases)
         title == "Top 10 en España hoy" -> stringResource(R.string.section_top10_spain)
         title == "Recomendado por la comunidad Trakt" -> stringResource(R.string.section_trakt_community)
         title == "Tu Watchlist de Trakt.tv" -> stringResource(R.string.section_trakt_watchlist)

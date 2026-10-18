@@ -49,6 +49,7 @@ class GetHomeFeedUseCase(
 
         fun sectionPriority(title: String): Int = when {
             title == "Continuar Viendo" -> 0
+            title == "Últimos estrenos" -> 5
             title.contains("Top 10", ignoreCase = true) -> 10
             title == "Añadido recientemente" -> 20
             title.startsWith("Porque viste") -> 30
@@ -70,7 +71,6 @@ class GetHomeFeedUseCase(
             title == "Series Destacadas" -> 80
             title == "Películas Recomendadas" -> 90
             title.startsWith("Recomendados de") -> 100
-            title == "Joyas de tu colección" -> 110
             else -> 200
         }
     }
@@ -175,12 +175,20 @@ class GetHomeFeedUseCase(
         val localTopSeries = mediaRepository.getTopSeriesLocal(30).filterPersonalizedForHeader(emptyList())
         val watchedGenres = runCatching { mediaRepository.getMostWatchedGenres() }.getOrDefault(emptyList())
         val localRecommendedMovies = runCatching { mediaRepository.getRecommendedMovies(excludeIds = emptySet(), limit = 20, genres = watchedGenres) }.getOrDefault(emptyList())
-        val localTopRated = runCatching { mediaRepository.getTopRatedLocal(20) }.getOrDefault(emptyList())
+        val localNewReleases = runCatching { mediaRepository.getNewReleasesLocal(20) }.getOrDefault(emptyList())
 
         if (localContinueWatching.isNotEmpty()) {
             updateOrAddSection(HomeSection(
                 title = "Continuar Viendo",
                 items = localContinueWatching.take(20).map { it.toOptimizedMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.JELLYFIN) }
+            ))
+        }
+        // Últimos estrenos: lo más nuevo por año de estreno que hay en la biblioteca. Va arriba,
+        // justo después de Continuar Viendo, para que lo recién estrenado no quede enterrado.
+        if (localNewReleases.isNotEmpty()) {
+            updateOrAddSection(HomeSection(
+                title = "Últimos estrenos",
+                items = localNewReleases.take(20).map { it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.JELLYFIN) }
             ))
         }
         if (localLatest.isNotEmpty()) {
@@ -219,12 +227,6 @@ class GetHomeFeedUseCase(
                     items = valid.take(20).map { it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.JELLYFIN) }
                 ))
             }
-        }
-        if (localTopRated.isNotEmpty()) {
-            updateOrAddSection(HomeSection(
-                title = "Joyas de tu colección",
-                items = localTopRated.take(20).map { it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.JELLYFIN) }
-            ))
         }
 
         // Emisión inmediata local (<50ms)

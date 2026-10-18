@@ -274,6 +274,13 @@ class FakeJellyfinDao : JellyfinDao {
 
     override suspend fun getLatestLocalRestricted(limit: Int): List<JellyfinMediaEntity> = getLatestLocal(limit)
 
+    override suspend fun getNewReleasesLocal(limit: Int): List<JellyfinMediaEntity> =
+        localDb.filter { it.type in listOf("Movie", "Series") }
+            .sortedByDescending { it.productionYear ?: 0 }
+            .take(limit)
+
+    override suspend fun getNewReleasesLocalRestricted(limit: Int): List<JellyfinMediaEntity> = getNewReleasesLocal(limit)
+
     override suspend fun getTopRatedLocalRestricted(limit: Int): List<JellyfinMediaEntity> = getTopRatedLocal(limit)
 
     override suspend fun getTopMoviesLocalRestricted(limit: Int): List<JellyfinMediaEntity> = getTopMoviesLocal(limit)

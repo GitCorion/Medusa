@@ -1,12 +1,12 @@
 {
-  "versionCode": 89,
-  "versionName": "2.2.42",
+  "versionCode": 90,
+  "versionName": "2.2.43",
   "minSupportedVersionCode": 71,
   "forceUpdate": false,
   "killSwitch": false,
-  "releaseNotes": "Ranking real en el Home: las filas de plataforma (Netflix, Prime, Disney+, etc.) ahora van en un unico ranking por popularidad de esa plataforma, mezclando peliculas y series (antes salian todas las pelis y despues todas las series). El Top 10 sigue siendo el ranking de lo que TU tienes.",
+  "releaseNotes": "Nueva fila 'Ultimos estrenos' arriba del Home: lo mas reciente por ano de estreno que hay en tu biblioteca, justo despues de Continuar Viendo. Se elimina la fila duplicada 'Joyas de tu coleccion' (Grandes Producciones y Series Destacadas ya cubrian lo mejor valorado). 'Anadido recientemente' vuelve a ordenar por orden de incorporacion al servidor.",
   "apkUrl": "https://medusa-fd388.web.app/Medusa.apk",
-  "apkSha256": "8cbc2f8e4d061dd72ec159f84de526b209e81353da330b316aa782ad338060e9",
+  "apkSha256": "947320f78849221d112f8b6d46fe10eb2621e8d239983b158c220fc745d16fd6",
   "signatures": [
     "26bccb39ed122a69ecf7a8d0b50deeabeb15bc1a4b2a8b77941b47a96fdd3fea",
     "78a588afcc90d8ea59e008c9cbd1e8bbed3b2831518184d5a9935948b9d245ac"

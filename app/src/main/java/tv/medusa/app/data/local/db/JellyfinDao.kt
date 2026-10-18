@@ -223,11 +223,23 @@ interface JellyfinDao {
     @Query("UPDATE jellyfin_media SET playbackPositionTicks = :positionTicks, isPlayed = :isPlayed, lastPlayedTicks = :lastPlayedTicks WHERE id = :itemId")
     suspend fun updatePlaybackPosition(itemId: String, positionTicks: Long, isPlayed: Boolean, lastPlayedTicks: Long = System.currentTimeMillis())
 
-    @Query("SELECT * FROM jellyfin_media WHERE type IN ('Movie', 'Series') ORDER BY COALESCE(productionYear, 0) DESC, rowid DESC LIMIT :limit")
+    // "Añadido recientemente" = orden de incorporación al servidor (rowid), no año de estreno.
+    @Query("SELECT * FROM jellyfin_media WHERE type IN ('Movie', 'Series') ORDER BY rowid DESC LIMIT :limit")
     suspend fun getLatestLocal(limit: Int = 20): List<JellyfinMediaEntity>
 
-    @Query("SELECT * FROM jellyfin_media WHERE type IN ('Movie', 'Series') AND id IN (SELECT mediaId FROM allowed_media_ids) ORDER BY COALESCE(productionYear, 0) DESC, rowid DESC LIMIT :limit")
+    @Query("SELECT * FROM jellyfin_media WHERE type IN ('Movie', 'Series') AND id IN (SELECT mediaId FROM allowed_media_ids) ORDER BY rowid DESC LIMIT :limit")
     suspend fun getLatestLocalRestricted(limit: Int = 20): List<JellyfinMediaEntity>
+
+    /**
+     * "Últimos estrenos": lo más reciente por **año de estreno** que hay en la biblioteca,
+     * independientemente de cuándo se incorporó al servidor. Es distinto de [getLatestLocal]
+     * (añadido recientemente) y de [getTopRatedLocal] (mejor valorado).
+     */
+    @Query("SELECT * FROM jellyfin_media WHERE type IN ('Movie', 'Series') ORDER BY COALESCE(productionYear, 0) DESC, rowid DESC LIMIT :limit")
+    suspend fun getNewReleasesLocal(limit: Int = 20): List<JellyfinMediaEntity>
+
+    @Query("SELECT * FROM jellyfin_media WHERE type IN ('Movie', 'Series') AND id IN (SELECT mediaId FROM allowed_media_ids) ORDER BY COALESCE(productionYear, 0) DESC, rowid DESC LIMIT :limit")
+    suspend fun getNewReleasesLocalRestricted(limit: Int = 20): List<JellyfinMediaEntity>
 
     @Query("SELECT * FROM jellyfin_media WHERE type IN ('Movie', 'Series') ORDER BY CASE WHEN communityRating IS NOT NULL AND communityRating > 0 THEN communityRating ELSE 0 END DESC, COALESCE(productionYear, 0) DESC, rowid DESC LIMIT :limit")
     suspend fun getTopRatedLocal(limit: Int = 20): List<JellyfinMediaEntity>

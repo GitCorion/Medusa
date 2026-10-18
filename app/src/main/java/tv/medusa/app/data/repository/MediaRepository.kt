@@ -257,6 +257,9 @@ class MediaRepository(
     suspend fun getLatestLocal(serverUrl: String = "", userId: String = "", limit: Int = 20): List<JellyfinMediaEntity> =
         local.getLatestLocal(serverUrl, userId, limit)
 
+    suspend fun getNewReleasesLocal(limit: Int = 20): List<JellyfinMediaEntity> =
+        local.getNewReleasesLocal(limit)
+
     suspend fun getTopMoviesLocal(limit: Int = 20): List<JellyfinMediaEntity> = local.getTopMoviesLocal(limit)
 
     suspend fun getTopSeriesLocal(limit: Int = 20): List<JellyfinMediaEntity> = local.getTopSeriesLocal(limit)

@@ -359,6 +359,7 @@
     <string name="section_genre_hidden_gems">Hidden Gems</string>
     <string name="section_top10_essentials">Top 10 Essentials</string>
     <string name="section_new_releases">Recent Releases</string>
+    <string name="section_latest_releases">Latest Releases</string>
     <string name="section_top10_spain">Top 10 in Spain Today</string>
     <string name="section_platform_popular">Popular on %1$s</string>
     <string name="section_trakt_community">Recommended by the Trakt Community</string>

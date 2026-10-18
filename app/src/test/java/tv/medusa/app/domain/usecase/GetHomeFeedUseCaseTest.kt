@@ -135,8 +135,28 @@ class GetHomeFeedUseCaseTest {
     }
 
     @Test
+    fun `latest releases section sits near the top and is ordered by release year desc`() = runTest {
+        val old = JellyfinMediaEntity(id = "old", title = "Antigua", type = "Movie", productionYear = 1999)
+        val mid = JellyfinMediaEntity(id = "mid", title = "Media", type = "Movie", productionYear = 2015)
+        val new = JellyfinMediaEntity(id = "new", title = "Nueva", type = "Movie", productionYear = 2025)
+        fakeDao.setLocalItems(listOf(old, new, mid))
+
+        val sections = useCase(validPrefs).first()
+        val index = sections.indexOfFirst { it.title == "Últimos estrenos" }
+
+        assertTrue("Debe existir la fila Últimos estrenos", index >= 0)
+        assertEquals(listOf("new", "mid", "old"), sections[index].items.map { it.id })
+
+        val recentIndex = sections.indexOfFirst { it.title == "Añadido recientemente" }
+        if (recentIndex >= 0) {
+            assertTrue("Últimos estrenos debe ir por encima de Añadido recientemente", index < recentIndex)
+        }
+    }
+
+    @Test
     fun `sectionPriority respects established ordering hierarchy`() {
         assertEquals(0, GetHomeFeedUseCase.sectionPriority("Continuar Viendo"))
+        assertEquals(5, GetHomeFeedUseCase.sectionPriority("Últimos estrenos"))
         assertEquals(10, GetHomeFeedUseCase.sectionPriority("Top 10 Películas Global"))
         assertEquals(20, GetHomeFeedUseCase.sectionPriority("Añadido recientemente"))
         assertEquals(30, GetHomeFeedUseCase.sectionPriority("Porque viste Matrix"))
