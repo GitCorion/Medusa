@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -102,7 +103,38 @@ class HomeViewModel @Inject constructor(
                     if (prefs.jellyfinServerUrl.isNotBlank() && prefs.jellyfinAccessToken.isNotBlank() && mediaRepository.getLocalCount() > 0) {
                         GetHomeFeedUseCase.invalidateFeedCache()
                         MediaRepository.invalidateServerCaches()
+                        lastStaticSections = null
+                        lastSections = null
                         loadFeedForPrefs(prefs, forceRefresh = true, startSync = false)
+                    }
+                }
+            }
+        }
+
+        viewModelScope.launch {
+            var lastTriggeredCount = 0
+            localMediaCount.collect { count ->
+                val currentSections = (_uiState.value as? HomeUiState.Success)?.sections ?: emptyList()
+                val isSparse = currentSections.isEmpty() || currentSections.sumOf { it.items.size } < 10
+                val countJump = count - lastTriggeredCount
+                val isSyncing = MediaRepository.syncProgress.value.isSyncing
+                // El refresco progresivo no debe limitarse a la instalación inicial: tras un
+                // resync completo (p. ej. al subir SYNC_ALGORITHM_VERSION) ya existe una fecha de
+                // último sync, así que `isInitialSync` era false y el Home se quedaba congelado
+                // mientras se reconstruía el catálogo. Ahora basta con que haya sync activo y un
+                // salto relevante de ítems.
+                val shouldProgressiveRefresh = isSyncing && (
+                    (isSparse && count >= 20 && countJump >= 50) ||
+                    (count >= 200 && lastTriggeredCount == 0) ||
+                    (countJump >= 500)
+                )
+
+                if (shouldProgressiveRefresh && !isFeedLoading) {
+                    lastTriggeredCount = count
+                    val prefs = userPreferencesRepository.userPreferencesFlow.first()
+                    if (prefs.jellyfinServerUrl.isNotBlank() && prefs.jellyfinAccessToken.isNotBlank()) {
+                        GetHomeFeedUseCase.invalidateFeedCache()
+                        loadFeedForPrefs(prefs, forceRefresh = false, startSync = false)
                     }
                 }
             }
@@ -155,6 +187,9 @@ class HomeViewModel @Inject constructor(
         MediaRepository.invalidateServerCaches()
         lastStaticSections = null
         lastSections = null
+        viewModelScope.launch(Dispatchers.IO) {
+            getHomeFeedUseCase.clearSectionCache()
+        }
         loadHomeFeed(forceRefresh = true)
     }
 
@@ -273,7 +308,7 @@ class HomeViewModel @Inject constructor(
             try {
                 var hasEmitted = false
 
-                getHomeFeedUseCase(prefs, forceRefresh = forceRefresh).collect { sections ->
+                getHomeFeedUseCase(prefs, forceRefresh = forceRefresh).conflate().collect { sections ->
                     if (sections.isNotEmpty()) {
                         hasEmitted = true
                         lastSections = sections

@@ -11,6 +11,8 @@ data class TmdbItemDto(
     @SerialName("id") val id: Long,
     @SerialName("title") val title: String? = null,
     @SerialName("name") val name: String? = null,
+    @SerialName("original_title") val originalTitle: String? = null,
+    @SerialName("original_name") val originalName: String? = null,
     @SerialName("media_type") val mediaType: String? = null,
     @SerialName("overview") val overview: String? = null,
     @SerialName("poster_path") val posterPath: String? = null,
@@ -45,7 +47,8 @@ fun TmdbItemDto.toDirectMediaItem(
 
 @Serializable
 data class TmdbTrendingResponse(
-    @SerialName("results") val results: List<TmdbItemDto> = emptyList()
+    @SerialName("results") val results: List<TmdbItemDto> = emptyList(),
+    @SerialName("total_pages") val totalPages: Int = 1
 )
 
 @Serializable

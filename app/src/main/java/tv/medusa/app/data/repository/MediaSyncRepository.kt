@@ -73,7 +73,7 @@ class MediaSyncRepository(
          * las instalaciones con una versión anterior se resincronizan enteras una vez (arregla
          * catálogos truncados por bugs previos de paginación).
          */
-        const val SYNC_ALGORITHM_VERSION = 2
+        const val SYNC_ALGORITHM_VERSION = 4
 
         /** Tope de páginas por vista: evita bucles si el servidor ignora `StartIndex`. */
         private const val MAX_PAGES_PER_VIEW = 1000
@@ -498,10 +498,12 @@ class MediaSyncRepository(
                     var deltaCount = 0
                     for (view in mediaViews.ifEmpty { listOf(null) }) {
                         val isSeries = view?.collectionType.equals("tvshows", ignoreCase = true) || view?.name.equals("Series", ignoreCase = true)
+                        val isMovies = view?.collectionType.equals("movies", ignoreCase = true) || view?.name.equals("Movies", ignoreCase = true) || view?.name.equals("Películas", ignoreCase = true)
+                        val itemType = if (isSeries) "Series" else if (isMovies) "Movie" else "Movie,Series"
                         val viewFields = if (isSeries) {
-                            "Overview,ProviderIds,PrimaryImageTag,CommunityRating,OfficialRating,Genres,Tags,UserData,RecursiveItemCount"
+                            "Overview,ProviderIds,PrimaryImageTag,BackdropImageTags,CommunityRating,OfficialRating,Genres,Tags,UserData,RecursiveItemCount"
                         } else {
-                            "Overview,ProviderIds,PrimaryImageTag,CommunityRating,OfficialRating,Genres,Tags,UserData"
+                            "Overview,ProviderIds,PrimaryImageTag,BackdropImageTags,CommunityRating,OfficialRating,Genres,Tags,UserData"
                         }
                         var deltaOffset = 0
                         var deltaTotal = 0
@@ -513,9 +515,9 @@ class MediaSyncRepository(
                                         authHeader = authHeader,
                                         userId = currentUserId,
                                         parentId = view?.id,
-                                        includeItemTypes = if (isSeries) "Series" else "Movie",
+                                        includeItemTypes = itemType,
                                         fields = viewFields,
-                                        recursive = !isSeries,
+                                        recursive = true,
                                         limit = 200,
                                         startIndex = deltaOffset,
                                         minDateLastSaved = effectiveLastSync
@@ -531,9 +533,9 @@ class MediaSyncRepository(
                                                 authHeader = authHeader,
                                                 userId = currentUserId,
                                                 parentId = view?.id,
-                                                includeItemTypes = if (isSeries) "Series" else "Movie",
+                                                includeItemTypes = itemType,
                                                 fields = viewFields,
-                                                recursive = !isSeries,
+                                                recursive = true,
                                                 limit = 200,
                                                 startIndex = deltaOffset,
                                                 minDateLastSaved = effectiveLastSync

@@ -251,8 +251,15 @@ class LocalMediaRepository(
                 val matchedByTitle = jellyfinDao.findByTitle(candidate)
                 if (matchedByTitle != null) return matchedByTitle
             }
-            val matchedByFuzzy = jellyfinDao.findByFuzzyTitle(cleanTitle)
-            if (matchedByFuzzy != null) return matchedByFuzzy
+            // Fuzzy SOLO como último recurso y con señal suficiente: títulos muy cortos ("Up",
+            // "It") o de menos de 4 caracteres producen coincidencias por subcadena con cualquier
+            // cosa. El DAO además exige compatibilidad de año, lo que evita contaminaciones como
+            // "Super Mario 3" en la fila de una plataforma que emite un estreno reciente.
+            val fuzzyCandidate = titleVariants.firstOrNull { it.length >= 4 }
+            if (fuzzyCandidate != null) {
+                val matchedByFuzzy = jellyfinDao.findByFuzzyTitle(fuzzyCandidate, year)
+                if (matchedByFuzzy != null) return matchedByFuzzy
+            }
         }
 
         return null
@@ -348,25 +355,126 @@ class LocalMediaRepository(
             .take(12)
     }
 
-    suspend fun getItemsByGenre(genre: String): List<JellyfinMediaEntity> =
-        if (restrictionsActive()) jellyfinDao.getItemsByGenreRestricted(genre)
-        else jellyfinDao.getItemsByGenre(genre)
+    private fun getGenreSynonyms(genre: String): List<String> {
+        val clean = genre.trim().lowercase()
+        val synonyms = mutableListOf(clean)
+        when {
+            clean.contains("acción") || clean.contains("accion") -> synonyms.add("action")
+            clean == "action" -> synonyms.addAll(listOf("acción", "accion"))
 
-    suspend fun getMoviesByGenre(genre: String, limit: Int = 40): List<JellyfinMediaEntity> =
-        if (restrictionsActive()) jellyfinDao.getMoviesByGenreRestricted(genre, limit)
-        else jellyfinDao.getMoviesByGenre(genre, limit)
+            clean.contains("comedia") -> synonyms.add("comedy")
+            clean == "comedy" -> synonyms.add("comedia")
 
-    suspend fun getSeriesByGenre(genre: String, limit: Int = 40): List<JellyfinMediaEntity> =
-        if (restrictionsActive()) jellyfinDao.getSeriesByGenreRestricted(genre, limit)
-        else jellyfinDao.getSeriesByGenre(genre, limit)
+            clean.contains("ciencia ficción") || clean.contains("ciencia ficcion") || clean.contains("sci-fi") || clean.contains("science fiction") ->
+                synonyms.addAll(listOf("sci-fi", "science fiction", "ciencia ficción", "ciencia ficcion"))
 
-    suspend fun getRecentMoviesByGenre(genre: String, limit: Int = 20): List<JellyfinMediaEntity> =
-        if (restrictionsActive()) jellyfinDao.getRecentMoviesByGenreRestricted(genre, limit)
-        else jellyfinDao.getRecentMoviesByGenre(genre, limit)
+            clean.contains("terror") || clean.contains("miedo") -> synonyms.add("horror")
+            clean == "horror" -> synonyms.add("terror")
 
-    suspend fun getRecentSeriesByGenre(genre: String, limit: Int = 20): List<JellyfinMediaEntity> =
-        if (restrictionsActive()) jellyfinDao.getRecentSeriesByGenreRestricted(genre, limit)
-        else jellyfinDao.getRecentSeriesByGenre(genre, limit)
+            clean.contains("aventura") -> synonyms.add("adventure")
+            clean == "adventure" -> synonyms.add("aventura")
+
+            clean.contains("animación") || clean.contains("animacion") -> synonyms.addAll(listOf("animation", "anime"))
+            clean == "animation" || clean == "anime" -> synonyms.addAll(listOf("animación", "animacion"))
+
+            clean.contains("thriller") || clean.contains("suspense") || clean.contains("misterio") ->
+                synonyms.addAll(listOf("thriller", "suspense", "mystery", "misterio"))
+
+            clean.contains("romance") || clean.contains("romántica") || clean.contains("romantica") ->
+                synonyms.addAll(listOf("romance", "romántica", "romantica"))
+
+            clean.contains("fantasía") || clean.contains("fantasia") -> synonyms.add("fantasy")
+            clean == "fantasy" -> synonyms.addAll(listOf("fantasía", "fantasia"))
+
+            clean.contains("documental") || clean.contains("documentary") -> synonyms.addAll(listOf("documentary", "documental"))
+
+            clean.contains("familia") || clean.contains("familiar") || clean.contains("family") -> synonyms.addAll(listOf("family", "familia", "familiar"))
+
+            clean.contains("crimen") || clean.contains("crime") -> synonyms.addAll(listOf("crime", "crimen"))
+            clean.contains("drama") -> synonyms.add("drama")
+        }
+        return synonyms.distinct()
+    }
+
+    suspend fun getItemsByGenre(genre: String): List<JellyfinMediaEntity> {
+        val synonyms = getGenreSynonyms(genre)
+        val combined = mutableListOf<JellyfinMediaEntity>()
+        val seen = mutableSetOf<String>()
+        val isRestricted = restrictionsActive()
+        for (syn in synonyms) {
+            val items = if (isRestricted) jellyfinDao.getItemsByGenreRestricted(syn)
+            else jellyfinDao.getItemsByGenre(syn)
+            for (item in items) {
+                if (seen.add(item.id)) combined.add(item)
+            }
+            if (combined.size >= 40) break
+        }
+        return combined.deduplicateMediaEntities()
+    }
+
+    suspend fun getMoviesByGenre(genre: String, limit: Int = 40): List<JellyfinMediaEntity> {
+        val synonyms = getGenreSynonyms(genre)
+        val combined = mutableListOf<JellyfinMediaEntity>()
+        val seen = mutableSetOf<String>()
+        val isRestricted = restrictionsActive()
+        for (syn in synonyms) {
+            val items = if (isRestricted) jellyfinDao.getMoviesByGenreRestricted(syn, limit)
+            else jellyfinDao.getMoviesByGenre(syn, limit)
+            for (item in items) {
+                if (seen.add(item.id)) combined.add(item)
+            }
+            if (combined.size >= limit) break
+        }
+        return combined.deduplicateMediaEntities()
+    }
+
+    suspend fun getSeriesByGenre(genre: String, limit: Int = 40): List<JellyfinMediaEntity> {
+        val synonyms = getGenreSynonyms(genre)
+        val combined = mutableListOf<JellyfinMediaEntity>()
+        val seen = mutableSetOf<String>()
+        val isRestricted = restrictionsActive()
+        for (syn in synonyms) {
+            val items = if (isRestricted) jellyfinDao.getSeriesByGenreRestricted(syn, limit)
+            else jellyfinDao.getSeriesByGenre(syn, limit)
+            for (item in items) {
+                if (seen.add(item.id)) combined.add(item)
+            }
+            if (combined.size >= limit) break
+        }
+        return combined.deduplicateMediaEntities()
+    }
+
+    suspend fun getRecentMoviesByGenre(genre: String, limit: Int = 20): List<JellyfinMediaEntity> {
+        val synonyms = getGenreSynonyms(genre)
+        val combined = mutableListOf<JellyfinMediaEntity>()
+        val seen = mutableSetOf<String>()
+        val isRestricted = restrictionsActive()
+        for (syn in synonyms) {
+            val items = if (isRestricted) jellyfinDao.getRecentMoviesByGenreRestricted(syn, limit)
+            else jellyfinDao.getRecentMoviesByGenre(syn, limit)
+            for (item in items) {
+                if (seen.add(item.id)) combined.add(item)
+            }
+            if (combined.size >= limit) break
+        }
+        return combined.deduplicateMediaEntities()
+    }
+
+    suspend fun getRecentSeriesByGenre(genre: String, limit: Int = 20): List<JellyfinMediaEntity> {
+        val synonyms = getGenreSynonyms(genre)
+        val combined = mutableListOf<JellyfinMediaEntity>()
+        val seen = mutableSetOf<String>()
+        val isRestricted = restrictionsActive()
+        for (syn in synonyms) {
+            val items = if (isRestricted) jellyfinDao.getRecentSeriesByGenreRestricted(syn, limit)
+            else jellyfinDao.getRecentSeriesByGenre(syn, limit)
+            for (item in items) {
+                if (seen.add(item.id)) combined.add(item)
+            }
+            if (combined.size >= limit) break
+        }
+        return combined.deduplicateMediaEntities()
+    }
 
     suspend fun getRecommendedMovies(
         excludeIds: Set<String>,
@@ -384,22 +492,16 @@ class LocalMediaRepository(
 
         // Recoger candidatos de cada género por separado, luego intercalar
         val buckets: List<List<JellyfinMediaEntity>> = topGenres.map { genre ->
-            val genreItems = if (isRestricted) {
-                jellyfinDao.getItemsByGenreRestricted(genre, limit = maxPerGenre * 3)
-            } else {
-                jellyfinDao.getItemsByGenre(genre, limit = maxPerGenre * 3)
-            }
+            val genreItems = getItemsByGenre(genre)
             genreItems.filter {
                 it.type.equals("Movie", ignoreCase = true)
                     && it.id !in addedIds
                     && !it.isPlayed  // ya vista → no mostrar
-                    && (it.communityRating ?: 0f) >= 5.5f // calidad mínima
+                    && ((it.communityRating ?: 0f) >= 5.0f || it.communityRating == null) // tolerante con contenido sin puntuación
             }.take(maxPerGenre)
         }
 
         // Intercalar: primero un item de cada género, luego el segundo de cada género, etc.
-        // Resultado: Acción, Drama, Thriller, Comedia, Acción, Drama, Thriller, Comedia...
-        // En vez de: Comedia, Comedia, Comedia, Comedia, Acción, Acción...
         val resultList = mutableListOf<JellyfinMediaEntity>()
         val maxRound = buckets.maxOfOrNull { it.size } ?: 0
         for (round in 0 until maxRound) {
@@ -415,14 +517,14 @@ class LocalMediaRepository(
             }
         }
 
-        // Fallback: rellenar con películas bien valoradas no mostradas aún (evitando escanear toda la DB)
+        // Fallback: rellenar con películas locales no mostradas aún
         if (resultList.size < limit) {
             val topCandidates = if (isRestricted) {
                 jellyfinDao.getTopMoviesLocalRestricted(limit = 50)
             } else {
                 jellyfinDao.getTopMoviesLocal(limit = 50)
             }
-            topCandidates.filter { it.id !in addedIds && !it.isPlayed && (it.communityRating ?: 0f) >= 6.0f }
+            topCandidates.filter { it.id !in addedIds && !it.isPlayed }
                 .take(limit - resultList.size)
                 .forEach {
                     resultList.add(it)

@@ -61,15 +61,28 @@ class FilterToLibraryUseCase(
         for (item in tmdbItems) {
             if (results.size >= maxCandidates) break
             val tmdbId = item.id.toString()
-            val title = item.title ?: item.name ?: continue
+            val title = item.title ?: item.name
+            val origTitle = item.originalTitle ?: item.originalName
             val year = (item.releaseDate ?: item.firstAirDate)?.take(4)?.toIntOrNull()
 
-            val entity = mediaRepository.findLocal(
-                tmdbId = tmdbId,
-                imdbId = null,
-                title = title,
-                year = year
-            )
+            var entity = if (!title.isNullOrBlank()) {
+                mediaRepository.findLocal(
+                    tmdbId = tmdbId,
+                    imdbId = null,
+                    title = title,
+                    year = year
+                )
+            } else null
+
+            if (entity == null && !origTitle.isNullOrBlank() && origTitle != title) {
+                entity = mediaRepository.findLocal(
+                    tmdbId = tmdbId,
+                    imdbId = null,
+                    title = origTitle,
+                    year = year
+                )
+            }
+
             if (entity != null && seenIds.add(entity.id)) {
                 var updated = entity
                 if (item.voteAverage != null && item.voteAverage > 0f) {

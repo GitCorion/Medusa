@@ -68,8 +68,16 @@ class FakeJellyfinDao : JellyfinDao {
         return localDb.firstOrNull { it.title.equals(title, ignoreCase = true) }
     }
 
-    override suspend fun findByFuzzyTitle(title: String): JellyfinMediaEntity? {
-        return localDb.firstOrNull { it.title.contains(title, ignoreCase = true) }
+    override suspend fun findByFuzzyTitle(title: String, year: Int?): JellyfinMediaEntity? {
+        return localDb.firstOrNull { entity ->
+            val baseMatch = entity.title.contains(title, ignoreCase = true) ||
+                entity.originalTitle?.contains(title, ignoreCase = true) == true ||
+                entity.seriesName?.contains(title, ignoreCase = true) == true
+            // Replica el filtro de año del DAO real: mismo año, ±1 o desconocido en algún lado.
+            val yearCompatible = year == null || entity.productionYear == null ||
+                kotlin.math.abs(entity.productionYear - year) <= 1
+            baseMatch && yearCompatible
+        }
     }
 
     override suspend fun getEpisodesForSeries(seriesId: String): List<JellyfinMediaEntity> {
@@ -417,6 +425,56 @@ class FilterToLibraryUseCaseTest {
 
         assertEquals(1, filtered.size)
         assertEquals("movie-deep-match", filtered[0].id)
+    }
+
+    @Test
+    fun `filterTmdbItems does not leak unrelated local sequels into a recent trending row`() = runTest {
+        val fakeDao = FakeJellyfinDao()
+        // "Super Mario 3" no tiene tmdbId local: antes el LIKE '%super mario%' lo colaba en la
+        // fila de una plataforma que emitía un estreno reciente.
+        val marioBros3 = JellyfinMediaEntity(
+            id = "jf-mario3",
+            title = "Super Mario 3",
+            type = "Movie",
+            productionYear = 1991
+        )
+        fakeDao.setLocalItems(listOf(marioBros3))
+
+        val repo = MediaRepository(fakeDao)
+        val useCase = FilterToLibraryUseCase(repo)
+
+        val trending = listOf(
+            TmdbItemDto(id = 1_200_000, title = "Super Mario", releaseDate = "2026-04-01")
+        )
+
+        val filtered = useCase.filterTmdbItems(trending)
+
+        assertTrue("Un estreno de 2026 no debe emparejar con una película de 1991", filtered.isEmpty())
+    }
+
+    @Test
+    fun `filterTmdbItems fuzzy matches local title with a year-compatible suffix`() = runTest {
+        val fakeDao = FakeJellyfinDao()
+        val localWithSuffix = JellyfinMediaEntity(
+            id = "jf-mario-bros",
+            title = "Super Mario Bros. La película",
+            type = "Movie",
+            tmdbId = null,
+            productionYear = 2023
+        )
+        fakeDao.setLocalItems(listOf(localWithSuffix))
+
+        val repo = MediaRepository(fakeDao)
+        val useCase = FilterToLibraryUseCase(repo)
+
+        val tmdbItems = listOf(
+            TmdbItemDto(id = 776_503, title = "Super Mario Bros.", releaseDate = "2023-04-05")
+        )
+
+        val filtered = useCase.filterTmdbItems(tmdbItems)
+
+        assertEquals(1, filtered.size)
+        assertEquals("jf-mario-bros", filtered[0].id)
     }
 
     @Test

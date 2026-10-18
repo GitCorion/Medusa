@@ -180,7 +180,8 @@ class MediaRepository(
 
     suspend fun getTmdbTrending(apiKey: String): Result<List<TmdbItemDto>> = tmdb.getTmdbTrending(apiKey)
 
-    suspend fun getTmdbTrendingDay(apiKey: String): Result<List<TmdbItemDto>> = tmdb.getTmdbTrendingDay(apiKey)
+    suspend fun getTmdbTrendingDay(apiKey: String, maxPages: Int = 5): Result<List<TmdbItemDto>> =
+        tmdb.getTmdbTrendingDay(apiKey, maxPages)
 
     suspend fun getTmdbRecommendations(apiKey: String, tmdbId: Long, isTv: Boolean = false): Result<List<TmdbItemDto>> =
         tmdb.getTmdbRecommendations(apiKey, tmdbId, isTv)
@@ -194,8 +195,8 @@ class MediaRepository(
     suspend fun getTmdbByGenre(apiKey: String, genreId: String, isTv: Boolean = false): Result<List<TmdbItemDto>> =
         tmdb.getTmdbByGenre(apiKey, genreId, isTv)
 
-    suspend fun getTmdbByProvider(apiKey: String, providerId: String, region: String = "ES"): Result<List<TmdbItemDto>> =
-        tmdb.getTmdbByProvider(apiKey, providerId, region)
+    suspend fun getTmdbByProvider(apiKey: String, providerId: String, region: String = "ES", maxPages: Int = 4): Result<List<TmdbItemDto>> =
+        tmdb.getTmdbByProvider(apiKey, providerId, region, maxPages)
 
     suspend fun getTmdbMovieDetail(apiKey: String, movieId: Long): TmdbMovieDetailDto? =
         tmdb.getTmdbMovieDetail(apiKey, movieId)

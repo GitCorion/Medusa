@@ -10,6 +10,7 @@ import tv.medusa.app.data.remote.tmdb.TmdbMovieDetailDto
 import tv.medusa.app.data.remote.tmdb.TmdbTvDetailDto
 import tv.medusa.app.domain.model.SeriesStatus
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 
 /**
@@ -33,15 +34,23 @@ class TmdbRepository(
         }
     }
 
-    suspend fun getTmdbTrendingDay(apiKey: String): Result<List<TmdbItemDto>> {
-        MediaCaches.tmdbTrendingDayCache.get(apiKey)?.let { return Result.success(it) }
+    suspend fun getTmdbTrendingDay(apiKey: String, maxPages: Int = 5): Result<List<TmdbItemDto>> {
+        val cacheKey = "trending-day-$apiKey-$maxPages"
+        MediaCaches.tmdbTrendingDayCache.get(cacheKey)?.let { return Result.success(it) }
         return runCatching {
             val api = NetworkClientFactory.createService(ApiConfig.TMDB_BASE_URL, TmdbApiService::class.java)
-            val response = api.getTrendingDay(apiKey = apiKey)
-            if (response.results.isNotEmpty()) {
-                MediaCaches.tmdbTrendingDayCache.put(apiKey, response.results)
+            val pages = coroutineScope {
+                (1..maxPages).map { p ->
+                    async {
+                        runCatching { api.getTrendingDay(apiKey = apiKey, page = p) }.getOrNull()?.results ?: emptyList()
+                    }
+                }.awaitAll()
             }
-            response.results
+            val distinct = pages.flatten().distinctBy { it.id }
+            if (distinct.isNotEmpty()) {
+                MediaCaches.tmdbTrendingDayCache.put(cacheKey, distinct)
+            }
+            distinct
         }
     }
 
@@ -131,24 +140,34 @@ class TmdbRepository(
         }
     }
 
-    suspend fun getTmdbByProvider(apiKey: String, providerId: String, region: String = ApiConfig.TMDB_WATCH_REGION): Result<List<TmdbItemDto>> {
-        val cacheKey = "$providerId-$region"
+    suspend fun getTmdbByProvider(apiKey: String, providerId: String, region: String = ApiConfig.TMDB_WATCH_REGION, maxPages: Int = 4): Result<List<TmdbItemDto>> {
+        val cacheKey = "$providerId-$region-$maxPages"
         MediaCaches.tmdbProviderCache.get(cacheKey)?.let { return Result.success(it) }
 
         return runCatching {
             val api = NetworkClientFactory.createService(ApiConfig.TMDB_BASE_URL, TmdbApiService::class.java)
             val (movies, tv) = coroutineScope {
                 val m = async {
-                    runCatching { api.discoverMoviesByProvider(apiKey = apiKey, providerId = providerId, watchRegion = region) }
-                        .getOrNull()?.results ?: emptyList()
+                    (1..maxPages).map { p ->
+                        async {
+                            runCatching {
+                                api.discoverMoviesByProvider(apiKey = apiKey, providerId = providerId, watchRegion = region, page = p)
+                            }.getOrNull()?.results ?: emptyList()
+                        }
+                    }.awaitAll().flatten()
                 }
                 val t = async {
-                    runCatching { api.discoverTvByProvider(apiKey = apiKey, providerId = providerId, watchRegion = region) }
-                        .getOrNull()?.results ?: emptyList()
+                    (1..maxPages).map { p ->
+                        async {
+                            runCatching {
+                                api.discoverTvByProvider(apiKey = apiKey, providerId = providerId, watchRegion = region, page = p)
+                            }.getOrNull()?.results ?: emptyList()
+                        }
+                    }.awaitAll().flatten()
                 }
                 Pair(m.await(), t.await())
             }
-            val combined = movies + tv
+            val combined = (movies + tv).distinctBy { it.id }
             if (combined.isNotEmpty()) {
                 MediaCaches.tmdbProviderCache.put(cacheKey, combined)
             }

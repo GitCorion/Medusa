@@ -194,7 +194,7 @@ fun HomeScreen(
         ) {
             TvTopBar(
                 selectedTab = TvNavTab.HOME,
-                onNavigateHome = { /* Ya en Inicio */ },
+                onNavigateHome = { viewModel.forceRefreshHomeFeed() },
                 onOpenMedusa = onOpenMedusa,
                 onOpenFavorites = onOpenFavorites,
                 onOpenSearch = onOpenSearch,

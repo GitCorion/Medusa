@@ -36,8 +36,31 @@ interface JellyfinDao {
     @Query("SELECT * FROM jellyfin_media WHERE titleLower = LOWER(:title) OR originalTitleLower = LOWER(:title) OR seriesNameLower = LOWER(:title) ORDER BY CASE WHEN type = 'Series' THEN 0 WHEN type = 'Movie' THEN 1 ELSE 2 END LIMIT 1")
     suspend fun findByTitle(title: String): JellyfinMediaEntity?
 
-    @Query("SELECT * FROM jellyfin_media WHERE LOWER(title) LIKE '%' || LOWER(:title) || '%' OR LOWER(originalTitle) LIKE '%' || LOWER(:title) || '%' OR LOWER(seriesName) LIKE '%' || LOWER(:title) || '%' ORDER BY CASE WHEN type = 'Series' THEN 0 WHEN type = 'Movie' THEN 1 ELSE 2 END LIMIT 1")
-    suspend fun findByFuzzyTitle(title: String): JellyfinMediaEntity?
+    /**
+     * Último recurso de emparejamiento por subcadena de título, **acotado por año**.
+     *
+     * El `LIKE '%título%'` era demasiado laxo: un título de TMDB como "Super Mario" podía colarse
+     * en la fila de una plataforma ajena al coincidir con la subcadena de "Super Mario 3". Ahora
+     * solo se acepta la coincidencia si el año es compatible (mismo año, ±1 o desconocido en
+     * alguno de los dos lados) y, en empate, se prioriza el título local más corto (la coincidencia
+     * más ajustada) sobre la coincidencia más larga.
+     */
+    @Query(
+        """
+        SELECT * FROM jellyfin_media
+        WHERE (LOWER(title) LIKE '%' || LOWER(:title) || '%'
+            OR LOWER(originalTitle) LIKE '%' || LOWER(:title) || '%'
+            OR LOWER(seriesName) LIKE '%' || LOWER(:title) || '%')
+          AND (:year IS NULL OR productionYear IS NULL OR ABS(productionYear - :year) <= 1)
+        ORDER BY
+            CASE WHEN :year IS NOT NULL AND productionYear = :year THEN 0
+                 WHEN productionYear IS NULL THEN 1
+                 ELSE 2 END,
+            LENGTH(title) ASC
+        LIMIT 1
+        """
+    )
+    suspend fun findByFuzzyTitle(title: String, year: Int?): JellyfinMediaEntity?
 
     @Query("SELECT * FROM jellyfin_media WHERE seriesId = :seriesId AND type = 'Episode'")
     suspend fun getEpisodesForSeries(seriesId: String): List<JellyfinMediaEntity>
@@ -200,28 +223,28 @@ interface JellyfinDao {
     @Query("UPDATE jellyfin_media SET playbackPositionTicks = :positionTicks, isPlayed = :isPlayed, lastPlayedTicks = :lastPlayedTicks WHERE id = :itemId")
     suspend fun updatePlaybackPosition(itemId: String, positionTicks: Long, isPlayed: Boolean, lastPlayedTicks: Long = System.currentTimeMillis())
 
-    @Query("SELECT * FROM jellyfin_media WHERE type IN ('Movie', 'Series') ORDER BY rowid DESC LIMIT :limit")
+    @Query("SELECT * FROM jellyfin_media WHERE type IN ('Movie', 'Series') ORDER BY COALESCE(productionYear, 0) DESC, rowid DESC LIMIT :limit")
     suspend fun getLatestLocal(limit: Int = 20): List<JellyfinMediaEntity>
 
-    @Query("SELECT * FROM jellyfin_media WHERE type IN ('Movie', 'Series') AND id IN (SELECT mediaId FROM allowed_media_ids) ORDER BY rowid DESC LIMIT :limit")
+    @Query("SELECT * FROM jellyfin_media WHERE type IN ('Movie', 'Series') AND id IN (SELECT mediaId FROM allowed_media_ids) ORDER BY COALESCE(productionYear, 0) DESC, rowid DESC LIMIT :limit")
     suspend fun getLatestLocalRestricted(limit: Int = 20): List<JellyfinMediaEntity>
 
-    @Query("SELECT * FROM jellyfin_media WHERE type IN ('Movie', 'Series') AND communityRating >= 7.0 AND communityRating <= 9.5 ORDER BY communityRating DESC LIMIT :limit")
+    @Query("SELECT * FROM jellyfin_media WHERE type IN ('Movie', 'Series') ORDER BY CASE WHEN communityRating IS NOT NULL AND communityRating > 0 THEN communityRating ELSE 0 END DESC, COALESCE(productionYear, 0) DESC, rowid DESC LIMIT :limit")
     suspend fun getTopRatedLocal(limit: Int = 20): List<JellyfinMediaEntity>
 
-    @Query("SELECT * FROM jellyfin_media WHERE type IN ('Movie', 'Series') AND communityRating >= 7.0 AND communityRating <= 9.5 AND id IN (SELECT mediaId FROM allowed_media_ids) ORDER BY communityRating DESC LIMIT :limit")
+    @Query("SELECT * FROM jellyfin_media WHERE type IN ('Movie', 'Series') AND id IN (SELECT mediaId FROM allowed_media_ids) ORDER BY CASE WHEN communityRating IS NOT NULL AND communityRating > 0 THEN communityRating ELSE 0 END DESC, COALESCE(productionYear, 0) DESC, rowid DESC LIMIT :limit")
     suspend fun getTopRatedLocalRestricted(limit: Int = 20): List<JellyfinMediaEntity>
 
-    @Query("SELECT * FROM jellyfin_media WHERE type = 'Movie' AND isPlayed = 0 AND playbackPositionTicks = 0 AND communityRating >= 6.8 AND communityRating <= 9.5 ORDER BY communityRating DESC, COALESCE(productionYear, 0) DESC LIMIT :limit")
+    @Query("SELECT * FROM jellyfin_media WHERE type = 'Movie' ORDER BY (isPlayed = 0 AND playbackPositionTicks = 0) DESC, CASE WHEN communityRating IS NOT NULL AND communityRating > 0 THEN communityRating ELSE 0 END DESC, COALESCE(productionYear, 0) DESC, rowid DESC LIMIT :limit")
     suspend fun getTopMoviesLocal(limit: Int = 20): List<JellyfinMediaEntity>
 
-    @Query("SELECT * FROM jellyfin_media WHERE type = 'Movie' AND isPlayed = 0 AND playbackPositionTicks = 0 AND communityRating >= 6.8 AND communityRating <= 9.5 AND id IN (SELECT mediaId FROM allowed_media_ids) ORDER BY communityRating DESC, COALESCE(productionYear, 0) DESC LIMIT :limit")
+    @Query("SELECT * FROM jellyfin_media WHERE type = 'Movie' AND id IN (SELECT mediaId FROM allowed_media_ids) ORDER BY (isPlayed = 0 AND playbackPositionTicks = 0) DESC, CASE WHEN communityRating IS NOT NULL AND communityRating > 0 THEN communityRating ELSE 0 END DESC, COALESCE(productionYear, 0) DESC, rowid DESC LIMIT :limit")
     suspend fun getTopMoviesLocalRestricted(limit: Int = 20): List<JellyfinMediaEntity>
 
-    @Query("SELECT * FROM jellyfin_media WHERE type = 'Series' AND isPlayed = 0 AND playbackPositionTicks = 0 AND communityRating >= 6.8 AND communityRating <= 9.5 ORDER BY communityRating DESC, COALESCE(productionYear, 0) DESC LIMIT :limit")
+    @Query("SELECT * FROM jellyfin_media WHERE type = 'Series' ORDER BY (isPlayed = 0 AND playbackPositionTicks = 0) DESC, CASE WHEN communityRating IS NOT NULL AND communityRating > 0 THEN communityRating ELSE 0 END DESC, COALESCE(productionYear, 0) DESC, rowid DESC LIMIT :limit")
     suspend fun getTopSeriesLocal(limit: Int = 20): List<JellyfinMediaEntity>
 
-    @Query("SELECT * FROM jellyfin_media WHERE type = 'Series' AND isPlayed = 0 AND playbackPositionTicks = 0 AND communityRating >= 6.8 AND communityRating <= 9.5 AND id IN (SELECT mediaId FROM allowed_media_ids) ORDER BY communityRating DESC, COALESCE(productionYear, 0) DESC LIMIT :limit")
+    @Query("SELECT * FROM jellyfin_media WHERE type = 'Series' AND id IN (SELECT mediaId FROM allowed_media_ids) ORDER BY (isPlayed = 0 AND playbackPositionTicks = 0) DESC, CASE WHEN communityRating IS NOT NULL AND communityRating > 0 THEN communityRating ELSE 0 END DESC, COALESCE(productionYear, 0) DESC, rowid DESC LIMIT :limit")
     suspend fun getTopSeriesLocalRestricted(limit: Int = 20): List<JellyfinMediaEntity>
 
     @Query("SELECT * FROM jellyfin_media WHERE type IN ('Movie', 'Series') AND (communityRating IS NULL OR communityRating <= 9.5) AND (LOWER(genres) LIKE '%' || LOWER(:genre) || '%' OR LOWER(title) LIKE '%' || LOWER(:genre) || '%') ORDER BY communityRating DESC LIMIT :limit")

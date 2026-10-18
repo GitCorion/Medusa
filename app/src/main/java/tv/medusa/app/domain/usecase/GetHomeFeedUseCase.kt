@@ -39,6 +39,8 @@ class GetHomeFeedUseCase(
         @Volatile
         private var cachedFeedTimestamp: Long = 0L
         private const val FEED_CACHE_TTL = 15 * 60 * 1000L // 15 minutos
+        @Volatile
+        private var hasCleanedLegacyPlatformCache = false
 
         fun invalidateFeedCache() {
             cachedHomeFeed = null
@@ -73,6 +75,11 @@ class GetHomeFeedUseCase(
         }
     }
 
+    suspend fun clearSectionCache() {
+        invalidateFeedCache()
+        runCatching { homeSectionCacheDao?.clearAll() }
+    }
+
     operator fun invoke(prefs: UserPreferences, forceRefresh: Boolean = false): Flow<List<HomeSection>> = channelFlow {
         if (prefs.jellyfinServerUrl.isBlank() || prefs.jellyfinUserId.isBlank() || prefs.jellyfinAccessToken.isBlank()) {
             send(emptyList())
@@ -88,6 +95,11 @@ class GetHomeFeedUseCase(
             }
         }
 
+        if (forceRefresh) {
+            invalidateFeedCache()
+            runCatching { homeSectionCacheDao?.clearAll() }
+        }
+
         // Caché local de portada en segundo plano. Antes se esperaba aquí (`await`) y la Home no
         // pintaba ninguna sección hasta que terminase: incluía la consulta de vistos (hasta ~40 s
         // contra un servidor ocupado) y el detalle de cada serie, uno detrás de otro.
@@ -101,12 +113,15 @@ class GetHomeFeedUseCase(
         val sections = mutableListOf<HomeSection>()
         val shownMediaIds = ConcurrentHashMap.newKeySet<String>()
 
-        val emitFeed: suspend (List<HomeSection>) -> Unit = { list ->
-            if (list.isNotEmpty()) {
+        var lastEmitTime = 0L
+        val emitFeed: suspend (List<HomeSection>, Boolean) -> Unit = { list, forceImmediate ->
+            val now = System.currentTimeMillis()
+            if (list.isNotEmpty() && (forceImmediate || now - lastEmitTime >= 300L)) {
+                lastEmitTime = now
                 val snapshot = list.toList()
                 if (snapshot.size >= 4) {
                     cachedHomeFeed = snapshot
-                    cachedFeedTimestamp = System.currentTimeMillis()
+                    cachedFeedTimestamp = now
                 }
                 send(snapshot)
             }
@@ -145,7 +160,7 @@ class GetHomeFeedUseCase(
                 if (cacheKey != null && itemIds.isNotEmpty()) {
                     persistSection(cacheKey, cleanSection, itemIds.distinct())
                 }
-                emitFeed(sections)
+                emitFeed(sections, false)
             }
         }
 
@@ -160,90 +175,73 @@ class GetHomeFeedUseCase(
         val localTopSeries = mediaRepository.getTopSeriesLocal(30).filterPersonalizedForHeader(emptyList())
         val watchedGenres = runCatching { mediaRepository.getMostWatchedGenres() }.getOrDefault(emptyList())
         val localRecommendedMovies = runCatching { mediaRepository.getRecommendedMovies(excludeIds = emptySet(), limit = 20, genres = watchedGenres) }.getOrDefault(emptyList())
-        val topGenre = watchedGenres.firstOrNull() ?: "Acción"
-        val localGenrePool = runCatching { mediaRepository.getItemsByGenre(topGenre) }.getOrDefault(emptyList())
         val localTopRated = runCatching { mediaRepository.getTopRatedLocal(20) }.getOrDefault(emptyList())
 
         if (localContinueWatching.isNotEmpty()) {
-            shownMediaIds.addAll(localContinueWatching.map { it.id })
             updateOrAddSection(HomeSection(
                 title = "Continuar Viendo",
-                items = localContinueWatching.map { it.toOptimizedMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.JELLYFIN) }
+                items = localContinueWatching.take(20).map { it.toOptimizedMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.JELLYFIN) }
             ))
         }
         if (localLatest.isNotEmpty()) {
-            val freshLatest = localLatest.filter { it.id !in shownMediaIds }
-            if (freshLatest.isNotEmpty()) {
-                shownMediaIds.addAll(freshLatest.map { it.id })
-                updateOrAddSection(HomeSection(
-                    title = "Añadido recientemente",
-                    items = freshLatest.map { it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.JELLYFIN) }
-                ))
-            }
+            updateOrAddSection(HomeSection(
+                title = "Añadido recientemente",
+                items = localLatest.take(20).map { it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.JELLYFIN) }
+            ))
         }
         if (localTopMovies.isNotEmpty()) {
-            val freshTopMovies = localTopMovies.filter { it.id !in shownMediaIds }
-            if (freshTopMovies.isNotEmpty()) {
-                shownMediaIds.addAll(freshTopMovies.map { it.id })
-                updateOrAddSection(HomeSection(
-                    title = "Grandes Producciones de tu colección",
-                    items = freshTopMovies.map { it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.JELLYFIN) }
-                ))
-            }
+            updateOrAddSection(HomeSection(
+                title = "Grandes Producciones de tu colección",
+                items = localTopMovies.take(20).map { it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.JELLYFIN) }
+            ))
         }
         if (localTopSeries.isNotEmpty()) {
-            val freshTopSeries = localTopSeries.filter { it.id !in shownMediaIds }
-            if (freshTopSeries.isNotEmpty()) {
-                shownMediaIds.addAll(freshTopSeries.map { it.id })
-                updateOrAddSection(HomeSection(
-                    title = "Series Destacadas",
-                    items = freshTopSeries.map { it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.JELLYFIN) }
-                ))
-            }
+            updateOrAddSection(HomeSection(
+                title = "Series Destacadas",
+                items = localTopSeries.take(20).map { it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.JELLYFIN) }
+            ))
         }
         if (localRecommendedMovies.isNotEmpty()) {
-            val freshRec = localRecommendedMovies.filter { it.id !in shownMediaIds }
-            if (freshRec.isNotEmpty()) {
-                shownMediaIds.addAll(freshRec.map { it.id })
-                updateOrAddSection(HomeSection(
-                    title = "Películas Recomendadas",
-                    items = freshRec.map { it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.JELLYFIN) }
-                ))
-            }
+            updateOrAddSection(HomeSection(
+                title = "Películas Recomendadas",
+                items = localRecommendedMovies.take(20).map { it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.JELLYFIN) }
+            ))
         }
-        if (localGenrePool.isNotEmpty()) {
-            val freshGenre = localGenrePool.filter { it.id !in shownMediaIds }
-            if (freshGenre.size >= 3) {
-                shownMediaIds.addAll(freshGenre.map { it.id })
+        // Fila para cada género popular de la biblioteca del usuario (hasta 4 géneros)
+        val genreCandidates = watchedGenres.take(4)
+        for (genre in genreCandidates) {
+            val genreItems = runCatching { mediaRepository.getItemsByGenre(genre) }.getOrDefault(emptyList())
+            val unplayedGenre = genreItems.filter { !it.isPlayed }
+            val valid = if (unplayedGenre.size >= 5) unplayedGenre else genreItems
+            if (valid.size >= 3) {
                 updateOrAddSection(HomeSection(
-                    title = "Recomendados de $topGenre",
-                    items = freshGenre.take(15).map { it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.JELLYFIN) }
+                    title = "Recomendados de $genre",
+                    items = valid.take(20).map { it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.JELLYFIN) }
                 ))
             }
         }
         if (localTopRated.isNotEmpty()) {
-            val freshRated = localTopRated.filter { it.id !in shownMediaIds }
-            if (freshRated.size >= 3) {
-                shownMediaIds.addAll(freshRated.map { it.id })
-                updateOrAddSection(HomeSection(
-                    title = "Joyas de tu colección",
-                    items = freshRated.take(15).map { it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.JELLYFIN) }
-                ))
-            }
+            updateOrAddSection(HomeSection(
+                title = "Joyas de tu colección",
+                items = localTopRated.take(20).map { it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.JELLYFIN) }
+            ))
         }
 
         // Emisión inmediata local (<50ms)
-        if (sections.isNotEmpty()) emitFeed(sections)
+        if (sections.isNotEmpty()) emitFeed(sections, true)
 
         // =========================================================================
         // PASO 0.5: RESTAURAR SECCIONES CACHEADAS EN ROOM (< 30ms)
+        // Solo si NO es un refresco forzado (si es forzado se quiere renovar de red)
         // =========================================================================
-        val cachedSectionsRestored = restoreCachedSections(
-            prefs = prefs,
-            shownMediaIds = shownMediaIds,
-            sections = sections
-        )
-        if (cachedSectionsRestored) emitFeed(sections)
+        if (!forceRefresh) {
+            val cachedSectionsRestored = restoreCachedSections(
+                prefs = prefs,
+                shownMediaIds = shownMediaIds,
+                sections = sections
+            )
+            if (cachedSectionsRestored) emitFeed(sections, true)
+        }
 
         // =========================================================================
         // ACTUALIZACIÓN CONCURRENTE EN SEGUNDO PLANO (SUPERVISORSCOPE STREAMING)
@@ -290,12 +288,13 @@ class GetHomeFeedUseCase(
                 }.getOrDefault(emptyList()).filter {
                     it.type.equals("Movie", ignoreCase = true) || it.type.equals("Series", ignoreCase = true)
                 }
-                if (latestItems.isNotEmpty()) {
-                    shownMediaIds.addAll(latestItems.map { it.id })
+                val mergedLatest = (latestItems + localLatest).distinctBy { it.id }.take(20)
+                if (mergedLatest.isNotEmpty()) {
+                    shownMediaIds.addAll(mergedLatest.map { it.id })
                     postSection(
                         HomeSection(
                             title = "Añadido recientemente",
-                            items = latestItems.take(20).map { it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.JELLYFIN) }
+                            items = mergedLatest.map { it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.JELLYFIN) }
                         )
                     )
                 }
@@ -351,37 +350,49 @@ class GetHomeFeedUseCase(
             // JOB 2: TOP 10 EN ESPAÑA HOY (TMDB TRENDING DAY CON MEDALLAS 1-10)
             // ---------------------------------------------------------------------
             launch {
+                // Top 10 SIEMPRE de "lo que YO tengo": se intenta primero el ranking diario de TMDB
+                // cruzado con la biblioteca y, lo que falte hasta 10, se completa con lo mejor del
+                // catálogo local (películas y series). Antes, si TMDB devolvía pocas coincidencias,
+                // la fila quedaba con 4 ítems o ni se mostraba; ahora el relleno local garantiza los
+                // 10 puestos y también cubre el caso en que TMDB tarde o falle.
+                val trendingMatched = mutableListOf<JellyfinMediaEntity>()
                 if (effectiveTmdbKey.isNotBlank()) {
                     runCatching {
-                        withTimeoutOrNull(4000L) {
-                            val dailyTrending = mediaRepository.getTmdbTrendingDay(apiKey = effectiveTmdbKey).getOrDefault(emptyList())
+                        withTimeoutOrNull(8000L) {
+                            val dailyTrending = mediaRepository
+                                .getTmdbTrendingDay(apiKey = effectiveTmdbKey, maxPages = 5)
+                                .getOrDefault(emptyList())
                             if (dailyTrending.isNotEmpty()) {
-                                val matchedDaily = filterToLibraryUseCase.filterTmdbItems(
-                                    tmdbItems = dailyTrending,
-                                    serverUrl = prefs.jellyfinServerUrl,
-                                    userId = prefs.jellyfinUserId,
-                                    token = prefs.jellyfinAccessToken,
-                                    maxCandidates = 30
+                                trendingMatched.addAll(
+                                    filterToLibraryUseCase.filterTmdbItems(
+                                        tmdbItems = dailyTrending,
+                                        serverUrl = prefs.jellyfinServerUrl,
+                                        userId = prefs.jellyfinUserId,
+                                        token = prefs.jellyfinAccessToken,
+                                        maxCandidates = 50
+                                    )
                                 )
-                                if (matchedDaily.isNotEmpty()) {
-                                    val top10Items = matchedDaily.take(10).mapIndexed { idx, it ->
-                                        it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TMDB_TRENDING).copy(rank = idx + 1)
-                                    }
-                                    val top10Section = HomeSection(
-                                        title = "Top 10 en España hoy",
-                                        items = top10Items,
-                                        badge = null,
-                                        isRanked = true
-                                    )
-                                    postSection(
-                                        top10Section,
-                                        cacheKey = "tmdb_trending_day",
-                                        itemIds = matchedDaily.map { it.id }
-                                    )
-                                }
                             }
                         }
                     }
+                }
+
+                val top10Pool = (trendingMatched + localTopMovies + localTopSeries).distinctBy { it.id }
+                if (top10Pool.size >= 10) {
+                    val top10Items = top10Pool.take(10).mapIndexed { idx, it ->
+                        it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TMDB_TRENDING).copy(rank = idx + 1)
+                    }
+                    val top10Section = HomeSection(
+                        title = "Top 10 en España hoy",
+                        items = top10Items,
+                        badge = null,
+                        isRanked = true
+                    )
+                    postSection(
+                        top10Section,
+                        cacheKey = "tmdb_trending_day",
+                        itemIds = top10Items.map { it.id }
+                    )
                 }
             }
 
@@ -402,11 +413,12 @@ class GetHomeFeedUseCase(
                         launch {
                             semaphore.acquire()
                             try {
-                                withTimeoutOrNull(7000L) {
+                                withTimeoutOrNull(12000L) {
                                     val result = mediaRepository.getTmdbByProvider(
                                         apiKey = effectiveTmdbKey,
                                         providerId = platform.providerId,
-                                        region = effectiveWatchRegion
+                                        region = effectiveWatchRegion,
+                                        maxPages = 6
                                     )
                                     val rawTmdbItems = result.getOrDefault(emptyList())
                                     if (rawTmdbItems.isNotEmpty()) {
@@ -415,26 +427,26 @@ class GetHomeFeedUseCase(
                                             serverUrl = prefs.jellyfinServerUrl,
                                             userId = prefs.jellyfinUserId,
                                             token = prefs.jellyfinAccessToken,
-                                            maxCandidates = 25
+                                            maxCandidates = 50
                                         )
                                         val uniqueMatched = matched.distinctBy { it.id }
-                                        if (uniqueMatched.isNotEmpty()) {
+                                        // Las filas de plataformas SOLO deben contener títulos reales de esa plataforma
+                                        // (nunca rellenar con títulos genéricos de la biblioteca para evitar incongruencias como Super Mario en Netflix).
+                                        if (uniqueMatched.size >= 3) {
                                             val platformItems = uniqueMatched.take(20).map {
                                                 it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TMDB_TRENDING)
                                             }
-                                            if (platformItems.isNotEmpty()) {
-                                                val platformTitle = "Populares en ${platform.name}"
-                                                val platformSection = HomeSection(
-                                                    title = platformTitle,
-                                                    items = platformItems,
-                                                    badge = null
-                                                )
-                                                postSection(
-                                                    platformSection,
-                                                    cacheKey = "platform_${platform.id}",
-                                                    itemIds = platformItems.map { it.id }
-                                                )
-                                            }
+                                            val platformTitle = "Populares en ${platform.name}"
+                                            val platformSection = HomeSection(
+                                                title = platformTitle,
+                                                items = platformItems,
+                                                badge = null
+                                            )
+                                            postSection(
+                                                platformSection,
+                                                cacheKey = "platform_${platform.id}",
+                                                itemIds = platformItems.map { it.id }
+                                            )
                                         }
                                     }
                                 }
@@ -621,6 +633,11 @@ class GetHomeFeedUseCase(
             }
         }
 
+        // Emisión final garantizada cuando todos los trabajos en paralelo concluyen
+        feedMutex.withLock {
+            emitFeed(sections, true)
+        }
+
         if (sections.isEmpty()) {
             send(emptyList())
         }
@@ -708,7 +725,9 @@ class GetHomeFeedUseCase(
             .sortedByDescending { (_, count, avg) -> avg * 10f + min(count, 5000) / 500f }
             .map { it.first }
 
-        return if (passed.isNotEmpty()) passed else validMovies.sortedByDescending { it.communityRating ?: 0f }.take(20)
+        val passedIds = passed.map { it.id }.toSet()
+        val remainder = validMovies.filter { it.id !in passedIds }.sortedByDescending { it.communityRating ?: 0f }
+        return (passed + remainder).take(20)
     }
 
     /**
@@ -747,20 +766,22 @@ class GetHomeFeedUseCase(
             .sortedByDescending { (_, count, avg) -> avg * 10f + min(count, 5000) / 500f }
             .map { it.first }
 
-        return if (passed.isNotEmpty()) passed else validSeries.sortedByDescending { it.communityRating ?: 0f }.take(20)
+        val passedIds = passed.map { it.id }.toSet()
+        val remainder = validSeries.filter { it.id !in passedIds }.sortedByDescending { it.communityRating ?: 0f }
+        return (passed + remainder).take(20)
     }
 
     private fun List<JellyfinMediaEntity>.filterPersonalizedForHeader(watchedGenres: List<String>): List<JellyfinMediaEntity> {
         val userGenresLower = watchedGenres.map { it.lowercase().trim() }
-        return this.filter { entity ->
-            // Strictly exclude played or abandoned in-progress items
-            if (entity.isPlayed || entity.playbackPositionTicks > 0L) return@filter false
+        val unplayed = this.filter { !it.isPlayed && it.playbackPositionTicks <= 0L }
+        val withBackdrop = unplayed.filter { !it.backdropImageTag.isNullOrBlank() }
+        val candidates = when {
+            withBackdrop.size >= 5 -> withBackdrop
+            unplayed.size >= 5 -> unplayed
+            else -> this
+        }
 
-            // Requisito indispensable para la cabecera: poseer imagen de fondo (backdrop)
-            if (entity.backdropImageTag.isNullOrBlank()) return@filter false
-
-            true
-        }.sortedByDescending { entity ->
+        return candidates.sortedByDescending { entity ->
             var score = entity.communityRating ?: 0f
             val year = entity.productionYear ?: 1990
             val genres = entity.genres?.split(",", ";")?.map { it.lowercase().trim() } ?: emptyList()
@@ -821,6 +842,11 @@ class GetHomeFeedUseCase(
         sections: MutableList<HomeSection>
     ): Boolean {
         val dao = homeSectionCacheDao ?: return false
+        if (!hasCleanedLegacyPlatformCache) {
+            hasCleanedLegacyPlatformCache = true
+            runCatching { dao.clearAll() }
+            return false
+        }
         val cached = runCatching { dao.getAllSections() }.getOrDefault(emptyList())
         if (cached.isEmpty()) return false
 
@@ -850,6 +876,8 @@ class GetHomeFeedUseCase(
             // Preservar el orden original y garantizar unicidad
             val entities: List<JellyfinMediaEntity> = ids.mapNotNull { idMap[it] }.distinctBy { it.id }
             if (entities.isEmpty()) continue
+            if (entry.isRanked && entities.size < 10) continue
+            if (!entry.isRanked && entities.size < 5) continue
 
             // Determinar el MediaSource correcto según el tipo de sección
             val source = when {
