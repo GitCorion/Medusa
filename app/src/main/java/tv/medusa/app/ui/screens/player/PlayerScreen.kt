@@ -92,6 +92,7 @@ import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -344,8 +345,8 @@ private fun PlayerContent(
 
         val httpDataSourceFactory = DefaultHttpDataSource.Factory()
             .setAllowCrossProtocolRedirects(true)
-            .setConnectTimeoutMs(30_000)
-            .setReadTimeoutMs(90_000)
+            .setConnectTimeoutMs(15_000)
+            .setReadTimeoutMs(60_000)
             .setUserAgent("Mozilla/5.0 (Linux; Android 14; Google TV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
             .setDefaultRequestProperties(defaultHeaders)
 
@@ -386,23 +387,8 @@ private fun PlayerContent(
                     addAnalyticsListener(EventLogger())
                 }
 
-                val subtitleConfigs = info.subtitles.map { sub ->
-                    val mimeType = when (sub.codec.lowercase()) {
-                        "vtt", "webvtt" -> MimeTypes.TEXT_VTT
-                        "ass", "ssa" -> MimeTypes.TEXT_SSA
-                        else -> MimeTypes.APPLICATION_SUBRIP
-                    }
-                    MediaItem.SubtitleConfiguration.Builder(Uri.parse(sub.url))
-                        .setMimeType(mimeType)
-                        .setLanguage(sub.language)
-                        .setLabel(sub.title)
-                        .setSelectionFlags(if (sub.isDefault) C.SELECTION_FLAG_DEFAULT else 0)
-                        .build()
-                }
-
                 val mediaItem = MediaItem.Builder()
                     .setUri(candidates.first())
-                    .setSubtitleConfigurations(subtitleConfigs)
                     .setMediaMetadata(
                         MediaMetadata.Builder()
                             .setTitle(info.title)
@@ -412,7 +398,6 @@ private fun PlayerContent(
                     .build()
 
                 setMediaItem(mediaItem)
-                audioEnhancementManager.attachToPlayer(this)
 
                 addListener(object : Player.Listener {
                     override fun onIsPlayingChanged(playing: Boolean) {
@@ -446,7 +431,6 @@ private fun PlayerContent(
 
                             val fallbackItem = MediaItem.Builder()
                                 .setUri(nextUrl)
-                                .setSubtitleConfigurations(subtitleConfigs)
                                 .setMediaMetadata(
                                     MediaMetadata.Builder()
                                         .setTitle(info.title)
@@ -1834,76 +1818,76 @@ private fun PlayerCustomModalSheet(
                             // 2. Modo Nocturno (Compresor DRC / Realce de Diálogos)
                             item {
                                 Spacer(modifier = Modifier.height(14.dp))
-                                Text(
-                                    text = stringResource(R.string.player_night_mode),
-                                    color = Color(0xFFCBD5E1),
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Text(
-                                    text = stringResource(R.string.player_night_mode_desc),
-                                    color = Color(0x88CBD5E1),
-                                    fontSize = 11.sp,
-                                    modifier = Modifier.padding(bottom = 4.dp)
-                                )
-                            }
-
-                            val nightOptions = listOf(
-                                0 to R.string.player_night_mode_off,
-                                1 to R.string.player_night_mode_soft,
-                                2 to R.string.player_night_mode_strong
-                            )
-
-                            itemsIndexed(nightOptions) { index, (level, strRes) ->
-                                TrackOptionItem(
-                                    label = stringResource(strRes),
-                                    isSelected = nightModeAudio == level,
-                                    icon = if (level > 0) Icons.Default.Bedtime else null,
+                                val nightLevels = listOf(0, 1, 2)
+                                val currentIdx = nightLevels.indexOf(nightModeAudio).coerceAtLeast(0)
+                                val nightLabel = when (nightModeAudio) {
+                                    1 -> stringResource(R.string.player_night_mode_soft)
+                                    2 -> stringResource(R.string.player_night_mode_strong)
+                                    else -> stringResource(R.string.player_night_mode_off)
+                                }
+                                KodiAudioSliderRow(
+                                    title = stringResource(R.string.player_night_mode),
+                                    subtitle = stringResource(R.string.player_night_mode_desc),
+                                    currentValueLabel = nightLabel,
+                                    progressFraction = currentIdx.toFloat() / (nightLevels.size - 1),
+                                    canDecrease = currentIdx > 0,
+                                    canIncrease = currentIdx < nightLevels.size - 1,
+                                    icon = Icons.Default.Bedtime,
                                     isMonochrome = isMonochrome,
                                     focusColor = focusColor,
-                                    focusContent = focusContent,
-                                    focusRequester = if (audioTracks.isEmpty() && index == 0) firstItemFocusRequester else null,
-                                    onClick = {
-                                        onSelectNightMode(level)
+                                    focusRequester = if (audioTracks.isEmpty()) firstItemFocusRequester else null,
+                                    onDecrease = {
+                                        if (currentIdx > 0) {
+                                            onSelectNightMode(nightLevels[currentIdx - 1])
+                                        }
+                                    },
+                                    onIncrease = {
+                                        if (currentIdx < nightLevels.size - 1) {
+                                            onSelectNightMode(nightLevels[currentIdx + 1])
+                                        }
+                                    },
+                                    onCycleNext = {
+                                        val nextIdx = (currentIdx + 1) % nightLevels.size
+                                        onSelectNightMode(nightLevels[nextIdx])
                                     }
                                 )
                             }
 
                             // 3. Amplificador de Volumen (Estilo Kodi)
                             item {
-                                Spacer(modifier = Modifier.height(14.dp))
-                                Text(
-                                    text = stringResource(R.string.player_volume_boost),
-                                    color = Color(0xFFCBD5E1),
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Text(
-                                    text = stringResource(R.string.player_volume_boost_desc),
-                                    color = Color(0x88CBD5E1),
-                                    fontSize = 11.sp,
-                                    modifier = Modifier.padding(bottom = 4.dp)
-                                )
-                            }
-
-                            val boostOptions = listOf(
-                                0 to R.string.player_volume_boost_original,
-                                3 to R.string.player_volume_boost_low,
-                                6 to R.string.player_volume_boost_medium,
-                                10 to R.string.player_volume_boost_high,
-                                15 to R.string.player_volume_boost_max
-                            )
-
-                            itemsIndexed(boostOptions) { _, (db, strRes) ->
-                                TrackOptionItem(
-                                    label = stringResource(strRes),
-                                    isSelected = audioVolumeBoostDb == db,
-                                    icon = if (db > 0) Icons.AutoMirrored.Filled.VolumeUp else null,
+                                Spacer(modifier = Modifier.height(10.dp))
+                                val boostSteps = listOf(0, 3, 6, 10, 15)
+                                val currentIdx = boostSteps.indexOf(audioVolumeBoostDb).let { if (it >= 0) it else 0 }
+                                val boostLabel = when (audioVolumeBoostDb) {
+                                    3 -> stringResource(R.string.player_volume_boost_low)
+                                    6 -> stringResource(R.string.player_volume_boost_medium)
+                                    10 -> stringResource(R.string.player_volume_boost_high)
+                                    15 -> stringResource(R.string.player_volume_boost_max)
+                                    else -> stringResource(R.string.player_volume_boost_original)
+                                }
+                                KodiAudioSliderRow(
+                                    title = stringResource(R.string.player_volume_boost),
+                                    subtitle = stringResource(R.string.player_volume_boost_desc),
+                                    currentValueLabel = boostLabel,
+                                    progressFraction = currentIdx.toFloat() / (boostSteps.size - 1),
+                                    canDecrease = currentIdx > 0,
+                                    canIncrease = currentIdx < boostSteps.size - 1,
+                                    icon = Icons.AutoMirrored.Filled.VolumeUp,
                                     isMonochrome = isMonochrome,
                                     focusColor = focusColor,
-                                    focusContent = focusContent,
-                                    onClick = {
-                                        onSelectVolumeBoost(db)
+                                    onDecrease = {
+                                        if (currentIdx > 0) {
+                                            onSelectVolumeBoost(boostSteps[currentIdx - 1])
+                                        }
+                                    },
+                                    onIncrease = {
+                                        if (currentIdx < boostSteps.size - 1) {
+                                            onSelectVolumeBoost(boostSteps[currentIdx + 1])
+                                        }
+                                    },
+                                    onCycleNext = {
+                                        val nextIdx = (currentIdx + 1) % boostSteps.size
+                                        onSelectVolumeBoost(boostSteps[nextIdx])
                                     }
                                 )
                             }
@@ -2072,6 +2056,197 @@ private fun TrackOptionItem(
                 tint = if (isSelected) (if (isMonochrome) Color.White else focusColor) else Color(0x33FFFFFF),
                 modifier = Modifier.size(20.dp)
             )
+        }
+    }
+}
+
+@ExperimentalTvMaterial3Api
+@Composable
+private fun KodiAudioSliderRow(
+    title: String,
+    subtitle: String,
+    currentValueLabel: String,
+    progressFraction: Float, // 0f to 1f
+    canDecrease: Boolean,
+    canIncrease: Boolean,
+    icon: ImageVector? = null,
+    isMonochrome: Boolean = false,
+    focusColor: Color = Color.White,
+    focusRequester: FocusRequester? = null,
+    onDecrease: () -> Unit,
+    onIncrease: () -> Unit,
+    onCycleNext: () -> Unit = onIncrease
+) {
+    var isFocused by remember { mutableStateOf(false) }
+
+    Surface(
+        onClick = onCycleNext,
+        shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(12.dp)),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.02f),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = if (progressFraction > 0f) (if (isMonochrome) Color(0x2EFFFFFF) else focusColor.copy(alpha = 0.20f)) else Color(0x14FFFFFF),
+            focusedContainerColor = if (isMonochrome) Color(0x40FFFFFF) else focusColor.copy(alpha = 0.35f),
+            pressedContainerColor = if (isMonochrome) Color(0x55FFFFFF) else focusColor.copy(alpha = 0.45f)
+        ),
+        border = ClickableSurfaceDefaults.border(
+            border = Border(
+                border = BorderStroke(
+                    1.dp,
+                    if (progressFraction > 0f) (if (isMonochrome) Color(0x44FFFFFF) else focusColor.copy(alpha = 0.35f)) else Color(0x18FFFFFF)
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ),
+            focusedBorder = Border(
+                border = BorderStroke(
+                    2.dp,
+                    if (isMonochrome) Color.White else focusColor
+                ),
+                shape = RoundedCornerShape(12.dp)
+            )
+        ),
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
+            .onFocusChanged { isFocused = it.isFocused }
+            .onPreviewKeyEvent { event ->
+                if (event.type == KeyEventType.KeyDown) {
+                    when (event.key) {
+                        Key.DirectionLeft -> {
+                            if (canDecrease) {
+                                onDecrease()
+                                true
+                            } else {
+                                false
+                            }
+                        }
+                        Key.DirectionRight -> {
+                            if (canIncrease) {
+                                onIncrease()
+                                true
+                            } else {
+                                true
+                            }
+                        }
+                        else -> false
+                    }
+                } else false
+            }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // Header: Icon + Title + Value Badge
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.weight(1f, fill = false)
+                ) {
+                    if (icon != null) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                            tint = if (progressFraction > 0f) {
+                                if (isMonochrome) Color.White else focusColor
+                            } else Color(0xFF94A3B8)
+                        )
+                    }
+                    Column {
+                        Text(
+                            text = title,
+                            color = Color.White,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = subtitle,
+                            color = Color(0x88CBD5E1),
+                            fontSize = 11.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+
+                // Value Badge
+                androidx.compose.material3.Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = if (progressFraction > 0f) {
+                        if (isMonochrome) Color.White.copy(alpha = 0.25f) else focusColor.copy(alpha = 0.30f)
+                    } else Color(0x1AFFFFFF),
+                    border = BorderStroke(
+                        1.dp,
+                        if (progressFraction > 0f) {
+                            if (isMonochrome) Color.White.copy(alpha = 0.6f) else focusColor.copy(alpha = 0.7f)
+                        } else Color(0x22FFFFFF)
+                    )
+                ) {
+                    Text(
+                        text = currentValueLabel,
+                        color = if (progressFraction > 0f && !isMonochrome) focusColor else Color.White,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
+                    )
+                }
+            }
+
+            // Slider track (Kodi style) with arrow indicators
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "◀",
+                    fontSize = 11.sp,
+                    color = if (canDecrease) {
+                        if (isFocused) (if (isMonochrome) Color.White else focusColor) else Color.White
+                    } else Color(0x33FFFFFF)
+                )
+
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(Color(0x33FFFFFF))
+                ) {
+                    val activeColor = if (isMonochrome) Color.White else focusColor
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .fillMaxWidth(progressFraction.coerceIn(0f, 1f))
+                            .clip(RoundedCornerShape(3.dp))
+                            .background(
+                                Brush.horizontalGradient(
+                                    listOf(
+                                        activeColor.copy(alpha = 0.7f),
+                                        activeColor
+                                    )
+                                )
+                            )
+                    )
+                }
+
+                Text(
+                    text = "▶",
+                    fontSize = 11.sp,
+                    color = if (canIncrease) {
+                        if (isFocused) (if (isMonochrome) Color.White else focusColor) else Color.White
+                    } else Color(0x33FFFFFF)
+                )
+            }
         }
     }
 }

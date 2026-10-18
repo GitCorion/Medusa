@@ -32,32 +32,26 @@ class AudioEnhancementManager {
         private set
 
     fun attachToPlayer(exoPlayer: ExoPlayer) {
-        val sessionId = exoPlayer.audioSessionId
-        if (sessionId != C.AUDIO_SESSION_ID_UNSET && sessionId > 0) {
-            initSession(sessionId)
+        val sessionId = try {
+            exoPlayer.audioSessionId
+        } catch (_: Throwable) {
+            C.AUDIO_SESSION_ID_UNSET
         }
-        exoPlayer.addAnalyticsListener(object : AnalyticsListener {
-            override fun onAudioSessionIdChanged(eventTime: AnalyticsListener.EventTime, audioSessionId: Int) {
-                if (audioSessionId != C.AUDIO_SESSION_ID_UNSET && audioSessionId > 0 && audioSessionId != currentSessionId) {
-                    initSession(audioSessionId)
-                }
-            }
-        })
-    }
-
-    private fun initSession(sessionId: Int) {
-        if (currentSessionId == sessionId && loudnessEnhancer != null) return
-        release()
-        try {
-            val enhancer = LoudnessEnhancer(sessionId)
-            applyGains(enhancer)
-            loudnessEnhancer = enhancer
+        if (sessionId != C.AUDIO_SESSION_ID_UNSET && sessionId > 0) {
             currentSessionId = sessionId
-            Log.d(TAG, "LoudnessEnhancer conectado exitosamente a audioSessionId: $sessionId")
-        } catch (e: Exception) {
-            Log.w(TAG, "No se pudo inicializar LoudnessEnhancer para la sesión $sessionId: ${e.message}")
-            loudnessEnhancer = null
-            currentSessionId = C.AUDIO_SESSION_ID_UNSET
+            updateEnhancer()
+        }
+        try {
+            exoPlayer.addAnalyticsListener(object : AnalyticsListener {
+                override fun onAudioSessionIdChanged(eventTime: AnalyticsListener.EventTime, audioSessionId: Int) {
+                    if (audioSessionId != C.AUDIO_SESSION_ID_UNSET && audioSessionId > 0 && audioSessionId != currentSessionId) {
+                        currentSessionId = audioSessionId
+                        updateEnhancer()
+                    }
+                }
+            })
+        } catch (t: Throwable) {
+            Log.w(TAG, "No se pudo registrar AnalyticsListener para AudioSessionId: ${t.message}")
         }
     }
 
@@ -71,46 +65,41 @@ class AudioEnhancementManager {
         updateEnhancer()
     }
 
-    private fun updateEnhancer() {
-        val enhancer = loudnessEnhancer ?: return
-        applyGains(enhancer)
+    private fun calculateTotalGainMb(): Int {
+        val nightGainMb = when (nightModeLevel) {
+            1 -> 400  // +4 dB
+            2 -> 800  // +8 dB
+            else -> 0
+        }
+        val boostGainMb = volumeBoostDb * 100 // 1 dB = 100 mB
+        return nightGainMb + boostGainMb
     }
 
-    private fun applyGains(enhancer: LoudnessEnhancer) {
+    private fun updateEnhancer() {
+        val sessionId = currentSessionId
+        val totalGainMb = calculateTotalGainMb()
+
+        // Si la ganancia total es 0 o la sesión no es válida, no inicializamos ningún efecto
+        // para garantizar que la decodificación y el audio passthrough jamás sufran interferencia.
+        if (totalGainMb <= 0 || sessionId == C.AUDIO_SESSION_ID_UNSET || sessionId <= 0) {
+            release()
+            return
+        }
+
         try {
-            // Modo Nocturno (DRC):
-            // 0: 0 dB
-            // 1 (Suave): +4 dB (400 mB) de ganancia sobre señales débiles con limitador de picos
-            // 2 (Fuerte): +8 dB (800 mB) de compresión intensa para noche profunda
-            val nightGainMb = when (nightModeLevel) {
-                1 -> 400
-                2 -> 800
-                else -> 0
+            var enhancer = loudnessEnhancer
+            if (enhancer == null) {
+                enhancer = LoudnessEnhancer(sessionId)
+                loudnessEnhancer = enhancer
             }
-
-            // Amplificador de Volumen estilo Kodi:
-            // Cada 1 dB = 100 mB (milisbelios)
-            // 0 dB: 0 mB (Normal)
-            // +3 dB: 300 mB
-            // +6 dB: 600 mB (Doble de presión sonora percibida)
-            // +10 dB: 1000 mB
-            // +15 dB: 1500 mB
-            val boostGainMb = volumeBoostDb * 100
-
-            val totalGainMb = nightGainMb + boostGainMb
-            if (totalGainMb > 0) {
-                enhancer.setTargetGain(totalGainMb)
-                if (!enhancer.enabled) {
-                    enhancer.enabled = true
-                }
-            } else {
-                if (enhancer.enabled) {
-                    enhancer.enabled = false
-                }
+            enhancer.setTargetGain(totalGainMb)
+            if (!enhancer.enabled) {
+                enhancer.enabled = true
             }
-            Log.d(TAG, "Audio enhancement aplicado: nightMode=$nightModeLevel, volumeBoost=${volumeBoostDb}dB -> totalTargetGain=${totalGainMb}mB (enabled=${totalGainMb > 0})")
-        } catch (e: Exception) {
-            Log.w(TAG, "Error aplicando ganancias a LoudnessEnhancer: ${e.message}")
+            Log.d(TAG, "Audio enhancement activo: nightMode=$nightModeLevel, volumeBoost=${volumeBoostDb}dB -> totalTargetGain=${totalGainMb}mB")
+        } catch (t: Throwable) {
+            Log.w(TAG, "No se pudo inicializar LoudnessEnhancer para la sesión $sessionId: ${t.message}")
+            release()
         }
     }
 
@@ -118,11 +107,10 @@ class AudioEnhancementManager {
         try {
             loudnessEnhancer?.enabled = false
             loudnessEnhancer?.release()
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Log.w(TAG, "Error liberando LoudnessEnhancer: ${e.message}")
         } finally {
             loudnessEnhancer = null
-            currentSessionId = C.AUDIO_SESSION_ID_UNSET
         }
     }
 
@@ -130,3 +118,4 @@ class AudioEnhancementManager {
         private const val TAG = "AudioEnhancementMgr"
     }
 }
+
