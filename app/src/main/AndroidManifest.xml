@@ -16,9 +16,11 @@
     <uses-feature
         android:name="android.hardware.touchscreen"
         android:required="false" />
+    <!-- Lanzamiento TV-only: la app solo se distribuye para Android TV. Play filtra los
+         dispositivos móviles y el target API exigido es el de TV (API 34+), no el de móvil. -->
     <uses-feature
         android:name="android.software.leanback"
-        android:required="false" />
+        android:required="true" />
 
     <queries>
         <package android:name="org.jellyfin.androidtv" />

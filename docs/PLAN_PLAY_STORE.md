@@ -157,8 +157,9 @@ La sección de actualizaciones de Ajustes sigue oculta en Play (`ENABLE_IN_APP_U
 ### Fase 1 — Bloqueadores de Play
 
 - [x] **Billing 7.1.1 → 9.1.0** y adaptación de `queryProductDetailsAsync`.
-- [ ] **API level**: decidir TV-only (mínimo TV 34) o móvil+TV (obligatorio API 36 desde
-      31/08/2026). Si es TV-only, declarar `leanback required=true` y `touchscreen required=false`.
+- [x] **API level**: **TV-only** decidido el 2026-10-18. `targetSdk 35` cumple el mínimo de
+      Android TV (API 34+); no se sube a 36 para evitar regresiones de edge-to-edge/orientación
+      de móvil. Manifest: `leanback required=true`, `touchscreen required=false`.
 - [ ] **Data Safety**: declarar Crashlytics/Analytics; `AD_ID` eliminado del manifest.
 - [x] Quitar el auto-update de Firebase del flavor Play.
 - [ ] Revisar permisos: `WRITE_EPG_DATA` solo si se usa para Watch Next.
@@ -234,7 +235,7 @@ shasum -a 256 docs/Medusa.apk
 
 ## 11. Decisiones pendientes
 
-1. **¿TV-only o móvil+TV?** Determina el target API y la experiencia.
+1. ~~**¿TV-only o móvil+TV?**~~ **Decidido: TV-only** (2026-10-18).
 2. **¿Se migra la beta a `.beta`?** Recomendado a medio plazo; requiere una reinstalación.
 3. **¿Proxy de TMDB/Trakt?** Necesario para no publicar secretos.
 4. **¿Verificación server-side de compras?** Recomendado antes de escalar.
@@ -260,4 +261,13 @@ shasum -a 256 docs/Medusa.apk
 - OTA publicada y verificada: `2.2.44-beta` / `1000091`, SHA-256
   `96bdb70b1f2fffcf38b2f1f903139e30bb76fa9795481cd8229c8e0290be726c`, firma
   `b59b0af2620583b3215da6c3f443067a641618d1f946b7dd997f47dab5e9ca09`.
+
+### 2026-10-18 — TV-only decidido
+
+- Manifest: `android.software.leanback required=true` y `touchscreen required=false`.
+  Play filtrará móviles/tablets; la app se publica en la categoría Android TV.
+- `targetSdk 35` se mantiene: cumple el mínimo de Android TV (API 34+) y evita las
+  regresiones de Android 16 en móvil.
+- Recordatorio Play TV: banner, `LEANBACK_LAUNCHER`, capturas 1920×1080 y ficha de TV.
+
 
