@@ -212,11 +212,16 @@ class HomeViewModel @Inject constructor(
                 token = prefs.jellyfinAccessToken,
                 lastSyncTimestamp = prefs.jellyfinLastSync
             )
-            mediaRepository.startBackgroundOverviewEnrichment(
-                serverUrl = prefs.jellyfinServerUrl,
-                userId = prefs.jellyfinUserId,
-                token = prefs.jellyfinAccessToken
-            )
+            // Solo enriquecer en paralelo si la biblioteca ya tiene contenido sincronizado;
+            // en la sincronización inicial, JellyfinSyncWorker la encolará al terminar
+            // para no saturar el servidor ni competir por el ancho de banda.
+            if (!prefs.jellyfinLastSync.isNullOrBlank() || mediaRepository.getLocalCount() >= 500) {
+                mediaRepository.startBackgroundOverviewEnrichment(
+                    serverUrl = prefs.jellyfinServerUrl,
+                    userId = prefs.jellyfinUserId,
+                    token = prefs.jellyfinAccessToken
+                )
+            }
         }
         viewModelScope.launch {
             try {

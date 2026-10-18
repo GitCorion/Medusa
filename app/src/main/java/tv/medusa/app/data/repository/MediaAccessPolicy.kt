@@ -95,6 +95,19 @@ class MediaAccessPolicy(
     }
 
     /**
+     * Limpia los IDs permitidos (usado en forceFullSync o al cambiar de usuario).
+     */
+    suspend fun clearAllowedIds(userId: String) {
+        cachedHasRestrictions = false
+        cachedAllowedIds = emptySet()
+        cachedAllowedUserId = userId
+        allowedMediaDao?.clearAll()
+        val ctx = userPreferencesRepository?.applicationContext ?: return
+        val file = File(ctx.filesDir, "allowed_ids_$userId.txt")
+        runCatching { if (file.exists()) file.delete() }
+    }
+
+    /**
      * Guarda la lista completa de IDs permitidos tanto en la tabla SQL como en disco.
      */
     suspend fun saveAllowedIds(userId: String, ids: Set<String>) {

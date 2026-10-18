@@ -86,6 +86,9 @@ interface JellyfinDao {
     @Query("SELECT DISTINCT title FROM jellyfin_media WHERE type IN ('Movie', 'Series') AND title IS NOT NULL AND title != '' ORDER BY title ASC")
     suspend fun getAllLocalTitles(): List<String>
 
+    @Query("SELECT id FROM jellyfin_media")
+    suspend fun getAllIds(): List<String>
+
     @Query("SELECT * FROM jellyfin_media WHERE id = :id LIMIT 1")
     suspend fun getItemById(id: String): JellyfinMediaEntity?
 

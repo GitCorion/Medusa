@@ -64,6 +64,8 @@ class JellyfinSyncWorker @AssistedInject constructor(
                         .use { it.moveToFirst() }
                     sqliteDb.execSQL(if (hasStats) "PRAGMA optimize" else "ANALYZE")
                 }
+                // Encolar enriquecimiento de fondo una vez concluida la sincronización con éxito
+                mediaRepository.startBackgroundOverviewEnrichment(serverUrl, userId, token)
                 Result.success()
             } else {
                 val exception = syncResult.exceptionOrNull()

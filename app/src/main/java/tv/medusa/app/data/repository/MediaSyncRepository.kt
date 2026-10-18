@@ -93,6 +93,11 @@ class MediaSyncRepository(
 
     fun startBackgroundOverviewEnrichment(serverUrl: String, userId: String, token: String) {
         if (serverUrl.isBlank() || userId.isBlank() || token.isBlank()) return
+        // No competir con el sync de catálogo. En un servidor lento sus páginas ya rozan el
+        // timeout; si además el enriquecido lanza olas de peticiones en paralelo, las páginas
+        // del sync completo fallan y no se inserta nada. La Home lo relanza cuando el sync
+        // termina (el progreso deja de estar `isSyncing`).
+        if (_syncProgress.value.isSyncing) return
         val context = userPreferencesRepository?.applicationContext ?: return
 
         val constraints = Constraints.Builder()
@@ -147,6 +152,8 @@ class MediaSyncRepository(
                 .setInputData(inputData)
                 .build()
 
+            // KEEP si no es forzada: evita cancelar un sync completo que ya esté avanzando
+            // (p. ej. el de la primera instalación, cuando aún no hay lastSyncTimestamp).
             WorkManager.getInstance(targetContext).enqueueUniqueWork(
                 JellyfinSyncWorker.WORK_NAME,
                 if (forceFullSync) ExistingWorkPolicy.REPLACE else ExistingWorkPolicy.KEEP,
@@ -452,75 +459,12 @@ class MediaSyncRepository(
 
                 val mediaViews = userViews.filter { view ->
                     val cType = view.collectionType?.lowercase()
-                    cType == "movies" || cType == "tvshows" || (cType == null && !view.name.orEmpty().contains("playlist", ignoreCase = true) && !view.name.orEmpty().contains("coleccion", ignoreCase = true))
+                    cType == "movies" || cType == "tvshows" || cType == "mixed" ||
+                        (cType == null && !view.name.orEmpty().contains("playlist", ignoreCase = true) && !view.name.orEmpty().contains("coleccion", ignoreCase = true) && !view.name.orEmpty().contains("boxset", ignoreCase = true))
                 }
 
-                // =========================================================================
-                // RECONCILIACIÓN / FILTRADO DE RESTRICCIONES (forceFullSync o primera vez)
-                // =========================================================================
-                if (forceFullSync || accessPolicy.getAllowedIdsSet() == null) {
-                    _syncProgress.value = SyncProgress(
-                        isSyncing = true,
-                        current = 0,
-                        total = currentLocal,
-                        message = str(R.string.sync_checking_restrictions)
-                    )
-                    runCatching {
-                        // Reconciliación paginada: antes se pedían hasta 60.000 ítems de una vez
-                        // (respuesta enorme en memoria). Ahora páginas de 500 IDs.
-                        val allowedIds = HashSet<String>()
-                        val pageLimit = 500
-                        var startIndex = 0
-                        while (true) {
-                            val response = try {
-                                api.getLibraryItems(
-                                    authHeader = authHeader,
-                                    userId = currentUserId,
-                                    includeItemTypes = "Movie,Series",
-                                    recursive = true,
-                                    fields = "",
-                                    limit = pageLimit,
-                                    startIndex = startIndex,
-                                    enableTotalRecordCount = false
-                                )
-                            } catch (e: Exception) {
-                                if (e is retrofit2.HttpException && e.code() == 401) {
-                                    val reauthed = trySilentReauthenticate(serverUrl)
-                                    if (reauthed != null) {
-                                        currentToken = reauthed.first
-                                        currentUserId = reauthed.second
-                                        authHeader = buildJellyfinAuthHeader(token = currentToken)
-                                        api.getLibraryItems(
-                                            authHeader = authHeader,
-                                            userId = currentUserId,
-                                            includeItemTypes = "Movie,Series",
-                                            recursive = true,
-                                            fields = "",
-                                            limit = pageLimit,
-                                            startIndex = startIndex,
-                                            enableTotalRecordCount = false
-                                        )
-                                    } else {
-                                        throw e
-                                    }
-                                } else {
-                                    throw e
-                                }
-                            }
-                            val items = response.items
-                            if (items.isEmpty()) break
-                            items.forEach { allowedIds.add(it.id) }
-                            if (items.size < pageLimit) break
-                            startIndex += items.size
-                            delay(50L)
-                        }
-                        if (allowedIds.isNotEmpty()) {
-                            accessPolicy.saveAllowedIds(currentUserId, allowedIds)
-                        }
-                    }
-                    if (forceFullSync) {
-                        userPreferencesRepository?.clearSyncCheckpoint()
-                    }
+                if (forceFullSync) {
+                    userPreferencesRepository?.clearSyncCheckpoint()
                 }
 
                 // =========================================================================
@@ -598,8 +542,6 @@ class MediaSyncRepository(
                                 }
                                 jellyfinDao.insertOrUpdateAll(entities)
 
-                                accessPolicy.addAllowedIds(currentUserId, entities.map { it.id })
-
                                 deltaCount += entities.size
                                 deltaOffset += deltaItems.size
                             }
@@ -607,6 +549,11 @@ class MediaSyncRepository(
                             delay(100L)
                         } while (true)
                     }
+
+                    // La lista de IDs permitidos se siembra desde el catálogo local ya sincronizado
+                    // (equivale a la antigua reconciliación del servidor, pero sin descargar todos
+                    // los IDs antes de insertar). Así nunca se filtra por una lista parcial.
+                    accessPolicy.saveAllowedIds(currentUserId, jellyfinDao.getAllIds().toSet())
 
                     val nowTimestamp = Instant.now().truncatedTo(ChronoUnit.SECONDS).toString()
                     userPreferencesRepository?.updateJellyfinLastSync(nowTimestamp)
@@ -625,6 +572,11 @@ class MediaSyncRepository(
                 // =========================================================================
                 // CAMINO 2: SINCRONIZACIÓN COMPLETA GLOBAL CON RESUMEN / CHECKPOINTS
                 // =========================================================================
+                // Al reconstruir el catálogo se parte de una lista de permitidos limpia: si
+                // quedara una lista parcial de una ejecución anterior, la UI filtraría por ella
+                // y volvería a mostrar solo una parte del catálogo mientras dura el sync.
+                accessPolicy.clearAllowedIds(currentUserId)
+
                 val pageSize = 200
 
                 // Leer checkpoint previo si no es forzada desde cero
@@ -644,7 +596,7 @@ class MediaSyncRepository(
                 )
 
                 val viewsToSync = if (mediaViews.isNotEmpty()) mediaViews else listOf(null)
-                var cumulativeViewTotal = 0
+                var cumulativeViewTotal = savedTotalSynced
 
                 for ((viewIndex, view) in viewsToSync.withIndex()) {
                     if (viewIndex < savedViewIndex) {
@@ -654,20 +606,24 @@ class MediaSyncRepository(
 
                     val viewId = view?.id
                     val isSeries = view?.collectionType.equals("tvshows", ignoreCase = true) || view?.name.equals("Series", ignoreCase = true)
-                    val itemType = if (isSeries) "Series" else if (view != null) "Movie" else "Movie,Series"
-                    val isRecursive = !isSeries // Series son hijas directas del CollectionFolder, Movies pueden estar en subcarpetas
+                    val isMovies = view?.collectionType.equals("movies", ignoreCase = true) || view?.name.equals("Movies", ignoreCase = true) || view?.name.equals("Películas", ignoreCase = true)
+                    val itemType = if (isSeries) "Series" else if (isMovies) "Movie" else "Movie,Series"
+                    val isRecursive = true // En Jellyfin un UserView contiene subcarpetas/colecciones; recursive = true es necesario
                     val viewFields = if (isSeries) {
-                        "Overview,ProviderIds,PrimaryImageTag,CommunityRating,OfficialRating,Genres,Tags,UserData,RecursiveItemCount"
+                        "Overview,ProviderIds,PrimaryImageTag,BackdropImageTags,CommunityRating,OfficialRating,Genres,Tags,UserData,RecursiveItemCount"
                     } else {
-                        "Overview,ProviderIds,PrimaryImageTag,CommunityRating,OfficialRating,Genres,Tags,UserData"
+                        "Overview,ProviderIds,PrimaryImageTag,BackdropImageTags,CommunityRating,OfficialRating,Genres,Tags,UserData"
                     }
 
                     var startIndex = if (viewIndex == savedViewIndex) savedOffset else 0
                     var viewTotal = 0
+                    var successfulPages = 0
+                    var consecutiveFailedPages = 0
 
                     do {
                         var response: JellyfinItemsResponse? = null
                         var attempt = 0
+                        var reauthAttempts = 0
                         var lastError: Exception? = null
 
                         while (attempt < 4 && response == null) {
@@ -689,6 +645,11 @@ class MediaSyncRepository(
                                 lastError = e
                                 attempt++
                                 if (e is retrofit2.HttpException && e.code() == 401) {
+                                    // Una sola re-autenticación por página: si el token recién
+                                    // obtenido también da 401, reintentar en bucle saturaba el
+                                    // servidor de logins y dejaba el sync girando sin avanzar.
+                                    if (reauthAttempts >= 1) throw e
+                                    reauthAttempts++
                                     val reauthed = trySilentReauthenticate(serverUrl)
                                     if (reauthed != null) {
                                         currentToken = reauthed.first
@@ -704,11 +665,27 @@ class MediaSyncRepository(
                         }
 
                         if (response == null) {
-                            Log.w("MediaSyncRepository", "Failed page $startIndex for view ${view?.name ?: "root"}: ${lastError?.message}")
-                            // Avanzamos al siguiente bloque para no romper toda la sincronización
+                            consecutiveFailedPages++
+                            Log.w(
+                                "MediaSyncRepository",
+                                "Failed page $startIndex for view ${view?.name ?: "root"} (fallo $consecutiveFailedPages): ${lastError?.message}"
+                            )
+                            // Avanzar de 200 en 200 sin límite cuando una vista no entrega ni una
+                            // página convertía el sync completo en un bucle eterno: no se insertaba
+                            // nada (solo se veía la caché rápida, ~110 filas) y la barra se quedaba
+                            // horas "sincronizando". Ahora se aborta para que WorkManager reintente
+                            // más tarde y el usuario vea el error en lugar de una espera infinita.
+                            if (successfulPages == 0 || consecutiveFailedPages >= 3) {
+                                throw lastError ?: java.io.IOException(
+                                    "No se pudo leer la página $startIndex de la vista ${view?.name ?: "raíz"}"
+                                )
+                            }
                             startIndex += pageSize
                             continue
                         }
+
+                        consecutiveFailedPages = 0
+                        successfulPages++
 
                         val items = response.items
                         if (viewTotal == 0 && response.totalRecordCount > 0) {
@@ -750,6 +727,16 @@ class MediaSyncRepository(
 
                 userPreferencesRepository?.clearSyncCheckpoint()
 
+                // Sembrar los IDs permitidos desde el catálogo local ya completo: sustituye a la
+                // reconciliación paginada contra el servidor y deja la lista siempre coherente
+                // con lo que hay en Room (sin listas parciales de ejecuciones anteriores).
+                runCatching {
+                    val allIds = jellyfinDao.getAllIds()
+                    if (allIds.isNotEmpty()) {
+                        accessPolicy.saveAllowedIds(currentUserId, allIds.toSet())
+                    }
+                }
+
                 val nowTimestamp = Instant.now().truncatedTo(ChronoUnit.SECONDS).toString()
                 userPreferencesRepository?.updateJellyfinLastSync(nowTimestamp)
                 onSyncCompleted?.invoke(nowTimestamp)
@@ -761,6 +748,9 @@ class MediaSyncRepository(
                     total = finalCount,
                     message = str(R.string.sync_updated_count, finalCount)
                 )
+
+                // Encolar enriquecimiento de fondo una vez concluida la sincronización completa del catálogo
+                startBackgroundOverviewEnrichment(serverUrl, currentUserId, currentToken)
             }.onFailure { e ->
                 Log.e("MediaSyncRepository", "Error during Jellyfin library sync: ${e.message}", e)
                 val is401 = (e as? retrofit2.HttpException)?.code() == 401
