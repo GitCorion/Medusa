@@ -15,6 +15,8 @@ import tv.medusa.app.data.local.UserPreferencesRepository
 import tv.medusa.app.data.local.db.JellyfinDao
 import tv.medusa.app.data.local.db.JellyfinMediaEntity
 import tv.medusa.app.data.local.db.TmdbVoteCacheDao
+import tv.medusa.app.data.local.db.preserveKnownLastPlayedDate
+import tv.medusa.app.data.local.db.preserveKnownLastPlayedDates
 import tv.medusa.app.data.remote.NetworkClientFactory
 import tv.medusa.app.data.remote.jellyfin.JellyfinApiService
 import tv.medusa.app.data.remote.jellyfin.JellyfinItemsResponse
@@ -237,7 +239,16 @@ class MediaSyncRepository(
                         }
                         val resumeEntities = resumeDeferred.await()
                         val nextUpEntities = nextUpDeferred.await()
-                        val allEntities = resumeEntities + nextUpEntities
+                        // Los capítulos de NextUp vienen sin fecha (todavía no se han reproducido): se
+                        // hereda la de su serie para que ordenen bien, y nunca se escribe una fecha
+                        // inventada. `preserveKnownLastPlayedDates` evita pisar la que ya hubiera
+                        // (el insert es un REPLACE y un 0 borraría el valor real).
+                        val allEntities = jellyfinDao.preserveKnownLastPlayedDates(
+                            continueWatchingEntitiesToPersist(
+                                items = resumeEntities + nextUpEntities,
+                                seriesDates = seriesLastPlayedDates(resumeEntities, nextUpEntities)
+                            )
+                        )
                         if (allEntities.isNotEmpty()) {
                             jellyfinDao.insertOrUpdateAll(allEntities)
                         }
@@ -248,7 +259,8 @@ class MediaSyncRepository(
                 launch {
                     try {
                         val latest = api.getLatestItems(authHeader = authHeader, userId = userId, limit = 50)
-                        val latestEntities = latest.map { it.toEntity() }
+                        // Sin pisar fechas ya guardadas: el insert es un REPLACE y un 0 borraría el valor real.
+                        val latestEntities = jellyfinDao.preserveKnownLastPlayedDates(latest.map { it.toEntity() })
                         if (latestEntities.isNotEmpty()) {
                             jellyfinDao.insertOrUpdateAll(latestEntities)
                         }
@@ -261,7 +273,9 @@ class MediaSyncRepository(
                 launch {
                     try {
                         val favResponse = api.getFavoriteItems(authHeader = authHeader, userId = userId)
-                        val favEntities = favResponse.items.map { it.toEntity().copy(isFavorite = true) }
+                        val favEntities = jellyfinDao.preserveKnownLastPlayedDates(
+                            favResponse.items.map { it.toEntity().copy(isFavorite = true) }
+                        )
                         if (favEntities.isNotEmpty()) {
                             jellyfinDao.insertOrUpdateAll(favEntities)
                         }
@@ -274,7 +288,7 @@ class MediaSyncRepository(
                 launch {
                     try {
                         val playedResponse = api.getRecentlyPlayedItems(authHeader = authHeader, userId = userId, limit = 100)
-                        playedEntities = playedResponse.items.map { it.toEntity() }
+                        playedEntities = jellyfinDao.preserveKnownLastPlayedDates(playedResponse.items.map { it.toEntity() })
                         if (playedEntities.isNotEmpty()) {
                             jellyfinDao.insertOrUpdateAll(playedEntities)
                         }
@@ -292,7 +306,7 @@ class MediaSyncRepository(
                 seriesIds.forEachBounded(4) { sId ->
                     try {
                         val seriesDto = api.getItemDetail(authHeader = authHeader, userId = userId, itemId = sId)
-                        jellyfinDao.insertOrUpdate(seriesDto.toEntity())
+                        jellyfinDao.insertOrUpdate(jellyfinDao.preserveKnownLastPlayedDate(seriesDto.toEntity()))
                     } catch (_: Exception) {}
                 }
             } catch (_: Exception) {}

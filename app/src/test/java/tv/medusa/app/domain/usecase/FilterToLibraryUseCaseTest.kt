@@ -2,6 +2,7 @@ package tv.medusa.app.domain.usecase
 
 import tv.medusa.app.data.local.db.JellyfinDao
 import tv.medusa.app.data.local.db.JellyfinMediaEntity
+import tv.medusa.app.data.local.db.LastPlayedTicksRow
 import tv.medusa.app.data.local.db.LibraryStats
 import tv.medusa.app.data.remote.tmdb.TmdbItemDto
 import tv.medusa.app.data.remote.trakt.TraktIdsDto
@@ -173,8 +174,18 @@ class FakeJellyfinDao : JellyfinDao {
     }
 
     override suspend fun getContinueWatchingLocal(limit: Int): List<JellyfinMediaEntity> {
-        return localDb.filter { (it.playbackPositionTicks > 0L || it.lastPlayedTicks > 0L) && !it.isPlayed }
-            .sortedByDescending { it.lastPlayedTicks }
+        // Réplica de la consulta SQL: lo que está a medias o tiene fecha de reproducción (NextUp),
+        // sin filas de serie; en empate de fecha gana el que está a medias.
+        return localDb.filter { item ->
+            !item.isPlayed && (
+                item.playbackPositionTicks > 0L ||
+                    (item.lastPlayedTicks > 0L && item.type != "Series")
+                )
+        }
+            .sortedWith(
+                compareByDescending<JellyfinMediaEntity> { it.lastPlayedTicks }
+                    .thenByDescending { it.playbackPositionTicks > 0L }
+            )
             .take(limit)
     }
 
@@ -235,6 +246,10 @@ class FakeJellyfinDao : JellyfinDao {
     override suspend fun getAllCatalogRestricted(): List<JellyfinMediaEntity> = getAllCatalog()
 
     override suspend fun getContinueWatchingLocalRestricted(limit: Int): List<JellyfinMediaEntity> = getContinueWatchingLocal(limit)
+
+    override suspend fun getKnownLastPlayedTicks(ids: Collection<String>): List<LastPlayedTicksRow> =
+        localDb.filter { it.id in ids && it.lastPlayedTicks > 0L }
+            .map { LastPlayedTicksRow(id = it.id, lastPlayedTicks = it.lastPlayedTicks) }
 
     override suspend fun getRecentlyPlayedLocalRestricted(limit: Int): List<JellyfinMediaEntity> = getRecentlyPlayedLocal(limit)
 

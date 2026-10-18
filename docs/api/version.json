@@ -1,12 +1,12 @@
 {
-  "versionCode": 77,
-  "versionName": "2.2.30",
+  "versionCode": 78,
+  "versionName": "2.2.31",
   "minSupportedVersionCode": 71,
   "forceUpdate": false,
   "killSwitch": false,
-  "releaseNotes": "Continuar viendo ahora mezcla películas y series en orden real de última reproducción (Resume + NextUp), sin duplicar series. Al terminar un episodio, el siguiente aparece arriba al instante.",
+  "releaseNotes": "Continuar viendo ya mezcla películas y series por la fecha real de última reproducción (arreglado: los capítulos pendientes heredan la fecha de su serie y no se cuelan arriba con fechas inventadas).",
   "apkUrl": "https://medusa-fd388.web.app/Medusa.apk",
-  "apkSha256": "a4bd4ff8addeb7096b8f094d16527085984e731a9f0a77ea0efe31d18ce7af79",
+  "apkSha256": "d4300b19c2136c265aa9c0c42eb868e12b3c3970558a513e6747f2c3791f4510",
   "signatures": [
     "26bccb39ed122a69ecf7a8d0b50deeabeb15bc1a4b2a8b77941b47a96fdd3fea",
     "78a588afcc90d8ea59e008c9cbd1e8bbed3b2831518184d5a9935948b9d245ac"

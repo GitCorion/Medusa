@@ -138,11 +138,30 @@ interface JellyfinDao {
     )
     suspend fun getCatalogForMatrix(): List<JellyfinMediaEntity>
 
-    @Query("SELECT * FROM jellyfin_media WHERE (playbackPositionTicks > 0 OR lastPlayedTicks > 0) AND isPlayed = 0 AND type IN ('Movie', 'Episode', 'Series') ORDER BY lastPlayedTicks DESC, rowid DESC LIMIT :limit")
+    /**
+     * "Continuar viendo" local: lo que está a medias (`playbackPositionTicks > 0`) **más** los
+     * siguientes capítulos de las series que se están viendo (NextUp, cuya fecha se hereda de su
+     * serie porque el episodio en sí todavía no se ha reproducido).
+     *
+     * Las filas de tipo `Series` quedan fuera del segundo grupo a propósito: su fecha es la de la
+     * serie, no la de un capítulo pendiente, y se colarían como tarjeta de serie en la fila.
+     *
+     * En empate de fecha gana el que está a medias (el capítulo que dejaste por la mitad) frente al
+     * siguiente capítulo de la misma serie; el desduplicado por serie lo hace después el repositorio.
+     */
+    @Query("SELECT * FROM jellyfin_media WHERE isPlayed = 0 AND (playbackPositionTicks > 0 OR (lastPlayedTicks > 0 AND type IN ('Movie', 'Episode'))) AND type IN ('Movie', 'Episode', 'Series') ORDER BY lastPlayedTicks DESC, (playbackPositionTicks > 0) DESC, rowid DESC LIMIT :limit")
     suspend fun getContinueWatchingLocal(limit: Int = 20): List<JellyfinMediaEntity>
 
-    @Query("SELECT * FROM jellyfin_media WHERE (playbackPositionTicks > 0 OR lastPlayedTicks > 0) AND isPlayed = 0 AND type IN ('Movie', 'Episode', 'Series') AND id IN (SELECT mediaId FROM allowed_media_ids) ORDER BY lastPlayedTicks DESC, rowid DESC LIMIT :limit")
+    @Query("SELECT * FROM jellyfin_media WHERE isPlayed = 0 AND (playbackPositionTicks > 0 OR (lastPlayedTicks > 0 AND type IN ('Movie', 'Episode'))) AND type IN ('Movie', 'Episode', 'Series') AND id IN (SELECT mediaId FROM allowed_media_ids) ORDER BY lastPlayedTicks DESC, (playbackPositionTicks > 0) DESC, rowid DESC LIMIT :limit")
     suspend fun getContinueWatchingLocalRestricted(limit: Int = 20): List<JellyfinMediaEntity>
+
+    /**
+     * Fechas reales de última reproducción ya guardadas para esos ids (series o ítems concretos).
+     * Sirve para dos cosas: heredar la fecha de una serie en los capítulos de NextUp, y no pisar con
+     * un `0` la fecha que ya había cuando el servidor no la manda.
+     */
+    @Query("SELECT id, lastPlayedTicks FROM jellyfin_media WHERE lastPlayedTicks > 0 AND id IN (:ids)")
+    suspend fun getKnownLastPlayedTicks(ids: Collection<String>): List<LastPlayedTicksRow>
 
     // Orden por rowid: el sync inserta los vistos en el orden que devuelve el servidor
     // (DatePlayed descendente), así que rowid DESC = visto más recientemente primero.
@@ -288,3 +307,45 @@ data class LibraryStats(
     /** Episodios mostrados: el mayor entre los contados directamente y la suma de episodios de series. */
     val episodes: Int get() = maxOf(episodesDirect, totalSeriesEpisodes)
 }
+
+/** Proyección mínima para leer fechas de última reproducción sin cargar la fila entera. */
+data class LastPlayedTicksRow(
+    val id: String,
+    val lastPlayedTicks: Long
+)
+
+/**
+ * Evita que un ítem que llega **sin** fecha del servidor borre la fecha ya guardada en Room:
+ * `insertOrUpdateAll` es un REPLACE, así que un `lastPlayedTicks = 0` pisaría el valor real.
+ *
+ * Solo copia fechas que **ya existían**: nunca inventa una nueva. Los ids se consultan en bloques
+ * para no acercarse al límite de variables de SQLite (999).
+ */
+internal suspend fun JellyfinDao.preserveKnownLastPlayedDates(
+    items: List<JellyfinMediaEntity>
+): List<JellyfinMediaEntity> {
+    val undated = items.filter { it.lastPlayedTicks <= 0L }
+    if (undated.isEmpty()) return items
+
+    val known = HashMap<String, Long>()
+    undated.map { it.id }.distinct().chunked(MAX_SQL_IDS_PER_QUERY).forEach { batch ->
+        getKnownLastPlayedTicks(batch).forEach { known[it.id] = it.lastPlayedTicks }
+    }
+    if (known.isEmpty()) return items
+
+    return items.map { item ->
+        val saved = known[item.id]
+        if (item.lastPlayedTicks <= 0L && saved != null && saved > 0L) {
+            item.copy(lastPlayedTicks = saved)
+        } else {
+            item
+        }
+    }
+}
+
+/** Variante de un solo ítem, para los sitios que guardan de uno en uno. */
+internal suspend fun JellyfinDao.preserveKnownLastPlayedDate(
+    item: JellyfinMediaEntity
+): JellyfinMediaEntity = preserveKnownLastPlayedDates(listOf(item)).first()
+
+private const val MAX_SQL_IDS_PER_QUERY = 500

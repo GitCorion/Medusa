@@ -3,6 +3,7 @@ package tv.medusa.app.data.repository
 import android.content.Context
 import tv.medusa.app.data.local.db.JellyfinDao
 import tv.medusa.app.data.local.db.JellyfinMediaEntity
+import tv.medusa.app.data.local.db.preserveKnownLastPlayedDates
 import tv.medusa.app.R
 import tv.medusa.app.data.remote.NetworkClientFactory
 import tv.medusa.app.data.remote.jellyfin.JellyfinApiService
@@ -147,37 +148,31 @@ class JellyfinMediaRemoteRepository(
                 val resumeEntities = resumeDeferred.await()
                 val nextUpEntities = nextUpDeferred.await()
 
-                // Si lastPlayedTicks no viene del servidor (0L), asignar marca sintética
-                // preservando el orden en que el servidor Jellyfin devuelve cada endpoint.
-                val nowMs = System.currentTimeMillis()
-                val resumeWithRank = resumeEntities.mapIndexed { index, entity ->
-                    if (entity.lastPlayedTicks > 0L) entity
-                    else entity.copy(lastPlayedTicks = nowMs - index * 1000L)
+                // Fechas reales por serie: las que traen los propios "Continuar viendo" (Resume) y,
+                // para las series que solo salen en NextUp (sus episodios aún no se han reproducido),
+                // la de su fila ya guardada en Room.
+                val seriesWithoutDate = nextUpEntities
+                    .mapNotNull { it.seriesId }
+                    .distinct()
+                    .filter { seriesId -> resumeEntities.none { it.seriesId == seriesId && it.lastPlayedTicks > 0L } }
+                val knownFromDb = if (seriesWithoutDate.isEmpty()) {
+                    emptyMap()
+                } else {
+                    jellyfinDao.getKnownLastPlayedTicks(seriesWithoutDate).associate { it.id to it.lastPlayedTicks }
                 }
-                val nextUpWithRank = nextUpEntities.mapIndexed { index, entity ->
-                    if (entity.lastPlayedTicks > 0L) entity
-                    else entity.copy(lastPlayedTicks = nowMs - (index + 50) * 1000L)
-                }
+                val seriesDates = seriesLastPlayedDates(resumeEntities, nextUpEntities, knownFromDb)
 
-                val allFetched = (resumeWithRank + nextUpWithRank)
-                if (allFetched.isNotEmpty()) {
-                    jellyfinDao.insertOrUpdateAll(allFetched)
-                }
-
-                // Combinar Resume y NextUp ordenando estrictamente por último reproducido DESC
-                val allSorted = allFetched.sortedByDescending { it.lastPlayedTicks }
-
-                val seenKeys = mutableSetOf<String>()
-                val combined = mutableListOf<JellyfinMediaEntity>()
-
-                for (item in allSorted) {
-                    val key = item.seriesId ?: item.id
-                    if (seenKeys.add(key)) {
-                        combined.add(item)
-                    }
+                // Guardar en Room con la fecha real (propia o heredada de la serie) y sin pisar con un
+                // 0 la que ya hubiera: `insertOrUpdateAll` es un REPLACE.
+                val toPersist = jellyfinDao.preserveKnownLastPlayedDates(
+                    continueWatchingEntitiesToPersist(resumeEntities + nextUpEntities, seriesDates)
+                )
+                if (toPersist.isNotEmpty()) {
+                    jellyfinDao.insertOrUpdateAll(toPersist)
                 }
 
-                val deduplicated = combined.deduplicateMediaEntities()
+                val deduplicated = mergeContinueWatching(resumeEntities, nextUpEntities, seriesDates)
+                    .deduplicateMediaEntities()
                 if (deduplicated.isNotEmpty()) {
                     MediaCaches.serverContinueWatchingCache.put(cacheKey, deduplicated)
                 }
