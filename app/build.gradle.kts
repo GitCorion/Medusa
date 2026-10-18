@@ -57,7 +57,7 @@ android {
         create("play") {
             dimension = "distribution"
             applicationId = "tv.medusa.app"
-            // Usa el versionCode base (92) y nunca actualiza fuera de Play.
+            // Usa el versionCode base de `defaultConfig` (93, 94…): nunca actualiza fuera de Play.
             buildConfigField("boolean", "ENABLE_IN_APP_UPDATER", "false")
         }
     }
