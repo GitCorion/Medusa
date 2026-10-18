@@ -421,7 +421,7 @@ class PlayerViewModel @Inject constructor(
                     val updatedPbRequest = pbRequest.copy(userId = effectiveUserId)
                     itemDto = runCatching { api.getItemDetail(authHeader = effectiveAuthHeader, userId = effectiveUserId, itemId = playableId) }.getOrNull()
                     playbackInfo = runCatching { api.getPlaybackInfo(authHeader = effectiveAuthHeader, itemId = playableId, userId = effectiveUserId, request = updatedPbRequest) }.getOrNull()
-                    Log.i("PlayerViewModel", "Re-authentication succeeded! New token obtained: ${effectiveToken.take(6)}...")
+                    Log.i("PlayerViewModel", "Re-authentication succeeded.")
                 } catch (e: Exception) {
                     Log.w("PlayerViewModel", "Re-authentication attempt failed: ${e.message}")
                 }

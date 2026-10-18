@@ -1,7 +1,9 @@
 package tv.medusa.app
 
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.util.Log
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.LinearProgressIndicator
@@ -191,6 +193,21 @@ class MainActivity : ComponentActivity() {
         AppForeground.isVisible = false
         super.onStop()
     }
+}
+
+/**
+ * En el flavor `play` no se descarga ningún APK: se abre la ficha oficial de la tienda.
+ * En el flavor `beta` este helper no se usa (la actualización llega por Firebase OTA).
+ */
+private fun openPlayStoreListing(context: Context) {
+    val packageName = context.packageName
+    val marketIntent = Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$packageName"))
+    val webIntent = Intent(
+        Intent.ACTION_VIEW,
+        Uri.parse("https://play.google.com/store/apps/details?id=$packageName")
+    )
+    runCatching { context.startActivity(marketIntent) }
+        .onFailure { runCatching { context.startActivity(webIntent) } }
 }
 
 @OptIn(ExperimentalTvMaterial3Api::class)
@@ -647,15 +664,25 @@ fun MedusaApp(
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            if (updateInfo?.apkUrl != null) {
+                            val canUpdate = if (BuildConfig.ENABLE_IN_APP_UPDATER) {
+                                updateInfo?.apkUrl != null
+                            } else {
+                                // En Play no hay APK propio: siempre se ofrece la ficha de la tienda.
+                                true
+                            }
+                            if (canUpdate) {
                                 Button(
                                     onClick = {
-                                        val info = updateInfo
-                                        val apkUrl = info?.apkUrl
-                                        if (apkUrl != null) {
-                                            coroutineScope.launch {
-                                                appUpdateManager.downloadAndInstall(apkUrl, info?.apkSha256)
+                                        if (BuildConfig.ENABLE_IN_APP_UPDATER) {
+                                            val info = updateInfo
+                                            val apkUrl = info?.apkUrl
+                                            if (apkUrl != null) {
+                                                coroutineScope.launch {
+                                                    appUpdateManager.downloadAndInstall(apkUrl, info?.apkSha256)
+                                                }
                                             }
+                                        } else {
+                                            openPlayStoreListing(context)
                                         }
                                     },
                                     enabled = !isDownloading,

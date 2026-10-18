@@ -166,7 +166,7 @@ class GetHomeFeedUseCaseTest {
         assertEquals(70, GetHomeFeedUseCase.sectionPriority("Grandes Producciones de tu colección"))
         assertEquals(80, GetHomeFeedUseCase.sectionPriority("Series Destacadas"))
         assertEquals(90, GetHomeFeedUseCase.sectionPriority("Películas Recomendadas"))
-        assertEquals(110, GetHomeFeedUseCase.sectionPriority("Joyas de tu colección"))
+        assertEquals(100, GetHomeFeedUseCase.sectionPriority("Recomendados de Acción"))
         assertEquals(200, GetHomeFeedUseCase.sectionPriority("Otra sección desconocida"))
 
         // La prioridad de 'Continuar Viendo' (0) debe ser menor (más prioritario) que 'Series Destacadas' (80)

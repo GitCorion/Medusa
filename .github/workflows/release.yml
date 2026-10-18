@@ -50,6 +50,9 @@ jobs:
       - name: Decode signing keystore
         run: echo "${{ secrets.KEYSTORE_B64 }}" | base64 --decode > app/keystore.jks
 
+      - name: Run unit tests
+        run: ./gradlew :app:testPlayDebugUnitTest --no-daemon
+
       - name: Build Beta APK and Play bundle
         env:
           KEYSTORE_PATH: keystore.jks

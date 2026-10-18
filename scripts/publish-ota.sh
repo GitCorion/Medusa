@@ -48,12 +48,34 @@ if [ ! -f "$APK_SRC" ]; then
   exit 1
 fi
 
-# Versión desde el build script (fuente de verdad).
-VERSION_CODE="$(grep -oE 'versionCode[[:space:]]*=[[:space:]]*[0-9]+' app/build.gradle.kts | head -1 | grep -oE '[0-9]+')"
-VERSION_NAME="$(grep -oE 'versionName[[:space:]]*=[[:space:]]*"[^"]+"' app/build.gradle.kts | head -1 | sed -E 's/.*"([^"]+)".*/\1/')"
+# La versión se lee del APK beta real, no de `defaultConfig`: el flavor beta usa un
+# versionCode con offset (1_000_000+) y un versionName con sufijo "-beta". Si leyéramos
+# el primer `versionCode` del Gradle, publicaríamos el de Play (91) y la tele beta no
+# detectaría la actualización.
+find_aapt() {
+  if [ -n "${ANDROID_HOME:-}" ] && [ -d "$ANDROID_HOME/build-tools" ]; then
+    ls "$ANDROID_HOME"/build-tools/*/aapt 2>/dev/null | sort -V | tail -1
+  elif [ -n "${ANDROID_SDK_ROOT:-}" ] && [ -d "$ANDROID_SDK_ROOT/build-tools" ]; then
+    ls "$ANDROID_SDK_ROOT"/build-tools/*/aapt 2>/dev/null | sort -V | tail -1
+  elif [ -d "$HOME/Library/Android/sdk/build-tools" ]; then
+    ls "$HOME/Library/Android/sdk/build-tools"/*/aapt 2>/dev/null | sort -V | tail -1
+  fi
+}
+
+AAPT_BIN="$(find_aapt)"
+if [ -n "$AAPT_BIN" ] && [ -x "$AAPT_BIN" ]; then
+  BADGING="$("$AAPT_BIN" dump badging "$APK_SRC" 2>/dev/null | head -1)"
+  VERSION_CODE="$(printf '%s' "$BADGING" | sed -nE "s/.*versionCode='([0-9]+)'.*/\1/p")"
+  VERSION_NAME="$(printf '%s' "$BADGING" | sed -nE "s/.*versionName='([^']+)'.*/\1/p")"
+else
+  # Fallback sin SDK: leer el bloque beta y reconstruir el versionName.
+  VERSION_CODE="$(awk '/create\("beta"\)/{b=1} b && /versionCode[[:space:]]*=/{gsub(/[^0-9]/,"",$0); print; exit}' app/build.gradle.kts)"
+  BASE_VERSION_NAME="$(grep -oE 'versionName[[:space:]]*=[[:space:]]*"[^"]+"' app/build.gradle.kts | head -1 | sed -E 's/.*"([^"]+)".*/\1/')"
+  VERSION_NAME="${BASE_VERSION_NAME}-beta"
+fi
 
 if [ -z "$VERSION_CODE" ] || [ -z "$VERSION_NAME" ]; then
-  echo "✗ No pude leer versionCode/versionName de app/build.gradle.kts" >&2
+  echo "✗ No pude leer versionCode/versionName del APK beta ($APK_SRC)" >&2
   exit 1
 fi
 

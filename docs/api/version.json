@@ -1,12 +1,12 @@
 {
-  "versionCode": 90,
-  "versionName": "2.2.43",
+  "versionCode": 1000091,
+  "versionName": "2.2.44-beta",
   "minSupportedVersionCode": 71,
   "forceUpdate": false,
   "killSwitch": false,
-  "releaseNotes": "Nueva fila 'Ultimos estrenos' arriba del Home: lo mas reciente por ano de estreno que hay en tu biblioteca, justo despues de Continuar Viendo. Se elimina la fila duplicada 'Joyas de tu coleccion' (Grandes Producciones y Series Destacadas ya cubrian lo mejor valorado). 'Anadido recientemente' vuelve a ordenar por orden de incorporacion al servidor.",
+  "releaseNotes": "Canal beta separado de Play: la beta conserva su actualizador OTA y la build de Play ya no descargara APKs de Firebase (abre la ficha de Play). Billing actualizado a la version 9. Incluye los ultimos arreglos del Home (Ultimos estrenos, ranking por popularidad y emparejamiento estricto).",
   "apkUrl": "https://medusa-fd388.web.app/Medusa.apk",
-  "apkSha256": "947320f78849221d112f8b6d46fe10eb2621e8d239983b158c220fc745d16fd6",
+  "apkSha256": "96bdb70b1f2fffcf38b2f1f903139e30bb76fa9795481cd8229c8e0290be726c",
   "signatures": [
     "26bccb39ed122a69ecf7a8d0b50deeabeb15bc1a4b2a8b77941b47a96fdd3fea",
     "78a588afcc90d8ea59e008c9cbd1e8bbed3b2831518184d5a9935948b9d245ac"

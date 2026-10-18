@@ -28,8 +28,8 @@ android {
     defaultConfig {
         minSdk = 26
         targetSdk = 35
-        versionCode = 90
-        versionName = "2.2.43"
+        versionCode = 91
+        versionName = "2.2.44"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -47,11 +47,16 @@ android {
         create("beta") {
             dimension = "distribution"
             applicationId = "tv.medusa.app"
+            // Offset de 1.000.000: la beta siempre queda por encima de la build de Play para que
+            // la tele reciba la OTA y para distinguir ambos canales en soporte/Crashlytics.
+            versionCode = 1_000_091
+            versionNameSuffix = "-beta"
             buildConfigField("boolean", "ENABLE_IN_APP_UPDATER", "true")
         }
         create("play") {
             dimension = "distribution"
             applicationId = "tv.medusa.app"
+            // Usa el versionCode base (91) y nunca actualiza fuera de Play.
             buildConfigField("boolean", "ENABLE_IN_APP_UPDATER", "false")
         }
     }

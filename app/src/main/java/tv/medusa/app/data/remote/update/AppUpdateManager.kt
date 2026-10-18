@@ -15,6 +15,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import okhttp3.Request
 import retrofit2.http.GET
+import tv.medusa.app.BuildConfig
 import tv.medusa.app.R
 import tv.medusa.app.data.remote.ApiConfig
 import tv.medusa.app.data.remote.NetworkClientFactory
@@ -129,12 +130,24 @@ class AppUpdateManager(private val context: Context) {
 
         val isForceUpdate = isKillSwitch ||
             (remoteVersion.minSupportedVersionCode > 0L && currentVersionCode < remoteVersion.minSupportedVersionCode) ||
-            (remoteVersion.forceUpdate && isNewer)
+            (BuildConfig.ENABLE_IN_APP_UPDATER && remoteVersion.forceUpdate && isNewer)
 
         val hasValidUrl = !remoteVersion.apkUrl.isNullOrBlank()
 
+        // El manifiesto OTA describe la beta. La build de Play NO debe interpretar su
+        // versionCode/apkUrl como una actualización: solo comparte el kill-switch y la versión
+        // mínima soportada. Si no, Play vería la beta (1_000_091) como "más nueva" y ofrecería
+        // descargar un APK de Firebase, que es justo lo que Play prohíbe.
+        val hasUpdate = if (BuildConfig.ENABLE_IN_APP_UPDATER) {
+            isKillSwitch || ((isNewer || isForceUpdate) && hasValidUrl)
+        } else {
+            // Play: solo bloqueos globales (kill-switch o versión mínima). Nunca "hay una
+            // versión nueva" basada en el manifiesto de la beta.
+            isForceUpdate
+        }
+
         val info = UpdateInfo(
-            hasUpdate = isKillSwitch || ((isNewer || isForceUpdate) && hasValidUrl),
+            hasUpdate = hasUpdate,
             isForceUpdate = isForceUpdate,
             isKillSwitch = isKillSwitch,
             currentVersion = currentVer,
@@ -165,6 +178,10 @@ class AppUpdateManager(private val context: Context) {
         expectedSha256: String? = null,
         onProgress: (Float) -> Unit = {}
     ): Result<Unit> {
+        // Defensa en profundidad: la build de Play nunca debe descargar/instalar un APK propio.
+        if (!BuildConfig.ENABLE_IN_APP_UPDATER) {
+            return Result.failure(IllegalStateException("Self-update disabled in Play flavor"))
+        }
         _isDownloading.value = true
         _downloadProgress.value = 0f
         return withContext(Dispatchers.IO) {

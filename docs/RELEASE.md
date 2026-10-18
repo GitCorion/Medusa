@@ -21,22 +21,28 @@
 
 ## 2. Fuente de verdad de la versión
 
-- `app/build.gradle.kts`: `versionCode` (entero, **siempre crece**) y `versionName` (`X.Y.Z`).
+- `app/build.gradle.kts`:
+  - `defaultConfig`: versión base de **Play** (`versionCode` bajo, `versionName` sin sufijo).
+  - flavor `beta`: `versionCode = 1_000_000 + base` y `versionNameSuffix = "-beta"`.
 - `docs/api/version.json` es el manifiesto que leen las apps. Lo escribe
-  `scripts/update_version_json.py` con el build recién hecho:
+  `scripts/update_version_json.py` con el build recién hecho. `publish-ota.sh` lee el
+  `versionCode`/`versionName` **del APK beta real** (no del `defaultConfig`), para que el
+  offset y el sufijo `-beta` lleguen bien a la tele.
   - Sobrescribe `versionCode`, `versionName`, `apkUrl`, `apkSha256` (y `releaseNotes` solo si le
     pasas `OTA_RELEASE_NOTES`).
   - **Preserva** los campos de control: `minSupportedVersionCode`, `forceUpdate`, `killSwitch`,
     `signatures`.
-- La app se actualiza solo si el `versionCode` del manifiesto es **mayor** que el instalado y no es
-  menor que `minSupportedVersionCode`.
+- La app beta se actualiza si el `versionCode` del manifiesto es **mayor** que el instalado.
+- La build de **Play ignora** `versionCode`/`apkUrl`/`forceUpdate`: solo usa `killSwitch` y
+  `minSupportedVersionCode`. Nunca descarga APKs.
 
 ## 3. Release de la beta (lo habitual)
 
 Requisitos: `firebase` CLI logueado (`firebase login`) y `keystore.properties` presente (§8).
 
 ```bash
-# 1) Sube la versión en app/build.gradle.kts (versionCode +1, versionName)
+# 1) Sube la versión base en defaultConfig (Play) y el offset de beta (versionCode = 1_000_000 + base)
+#    versionName del defaultConfig; el sufijo "-beta" lo añade el flavor.
 # 2) Compila y publica (calcula SHA-256, escribe version.json y despliega)
 OTA_RELEASE_NOTES="Qué cambia en esta versión" ./scripts/publish-ota.sh
 ```

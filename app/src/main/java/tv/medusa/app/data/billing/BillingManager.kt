@@ -108,9 +108,10 @@ class BillingManager @Inject constructor(
             .setProductList(productList)
             .build()
 
-        billingClient.queryProductDetailsAsync(params) { billingResult, productDetailsList ->
+        billingClient.queryProductDetailsAsync(params) { billingResult, queryResult ->
             if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
-                _proProductDetails.value = productDetailsList.firstOrNull { it.productId == PRODUCT_ID_PRO }
+                _proProductDetails.value = queryResult.productDetailsList
+                    .firstOrNull { it.productId == PRODUCT_ID_PRO }
             }
         }
     }
