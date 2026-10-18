@@ -77,7 +77,14 @@ class HomeViewModel @Inject constructor(
     private var lastSections: List<HomeSection>? = lastStaticSections
     @Volatile
     private var lastGenres: List<String> = lastStaticGenres
+
+    /** Recarga pedida mientras el feed actual seguía cargándose (no se puede descartar). */
+    private data class PendingReload(val forceRefresh: Boolean, val startSync: Boolean)
+
     private var isFeedLoading = false
+    private var pendingReload: PendingReload? = null
+    private var hasObservedPrefs = false
+    private var lastObservedLastSync = ""
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
@@ -93,7 +100,9 @@ class HomeViewModel @Inject constructor(
                     wasSyncing = false
                     val prefs = userPreferencesRepository.userPreferencesFlow.first()
                     if (prefs.jellyfinServerUrl.isNotBlank() && prefs.jellyfinAccessToken.isNotBlank() && mediaRepository.getLocalCount() > 0) {
-                        loadFeedForPrefs(prefs)
+                        GetHomeFeedUseCase.invalidateFeedCache()
+                        MediaRepository.invalidateServerCaches()
+                        loadFeedForPrefs(prefs, forceRefresh = true, startSync = false)
                     }
                 }
             }
@@ -102,9 +111,29 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             userPreferencesRepository.userPreferencesFlow.collect { prefs ->
                 if (prefs.jellyfinServerUrl.isBlank() || prefs.jellyfinAccessToken.isBlank()) {
+                    hasObservedPrefs = true
+                    lastObservedLastSync = prefs.jellyfinLastSync
                     _uiState.value = HomeUiState.EmptySettings
                 } else {
-                    loadFeedForPrefs(prefs)
+                    // `jellyfinLastSync` cambia justo al terminar un sync: hay que reconstruir el
+                    // feed aunque la carga anterior siga en vuelo (antes la recarga se perdía y
+                    // las listas se quedaban vacías hasta pulsar refrescar).
+                    val firstEmission = !hasObservedPrefs
+                    hasObservedPrefs = true
+                    val syncCompleted = !firstEmission &&
+                        prefs.jellyfinLastSync.isNotBlank() &&
+                        prefs.jellyfinLastSync != lastObservedLastSync
+                    lastObservedLastSync = prefs.jellyfinLastSync
+
+                    if (syncCompleted) {
+                        GetHomeFeedUseCase.invalidateFeedCache()
+                        MediaRepository.invalidateServerCaches()
+                    }
+                    loadFeedForPrefs(
+                        prefs = prefs,
+                        forceRefresh = syncCompleted,
+                        startSync = !syncCompleted
+                    )
                 }
             }
         }
@@ -183,8 +212,21 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    private fun loadFeedForPrefs(prefs: UserPreferences, forceRefresh: Boolean = false) {
-        if (isFeedLoading) return
+    private fun loadFeedForPrefs(
+        prefs: UserPreferences,
+        forceRefresh: Boolean = false,
+        startSync: Boolean = true
+    ) {
+        // Si ya hay una carga en curso, la recarga no se puede perder: se encola y se ejecuta
+        // al terminar (p. ej. el sync acaba mientras el primer feed aún resuelve consultas).
+        if (isFeedLoading) {
+            val pending = pendingReload
+            pendingReload = PendingReload(
+                forceRefresh = (pending?.forceRefresh ?: false) || forceRefresh,
+                startSync = (pending?.startSync ?: false) || startSync
+            )
+            return
+        }
         isFeedLoading = true
 
         // Si ya tenemos snapshot previo, lo mostramos de inmediato (sin spinner)
@@ -204,23 +246,27 @@ class HomeViewModel @Inject constructor(
             _uiState.value = HomeUiState.Loading
         }
 
-        // Launch background sync (delta sync if already populated, or full sync if empty)
-        viewModelScope.launch(Dispatchers.IO) {
-            mediaRepository.startBackgroundSync(
-                serverUrl = prefs.jellyfinServerUrl,
-                userId = prefs.jellyfinUserId,
-                token = prefs.jellyfinAccessToken,
-                lastSyncTimestamp = prefs.jellyfinLastSync
-            )
-            // Solo enriquecer en paralelo si la biblioteca ya tiene contenido sincronizado;
-            // en la sincronización inicial, JellyfinSyncWorker la encolará al terminar
-            // para no saturar el servidor ni competir por el ancho de banda.
-            if (!prefs.jellyfinLastSync.isNullOrBlank() || mediaRepository.getLocalCount() >= 500) {
-                mediaRepository.startBackgroundOverviewEnrichment(
+        // Launch background sync (delta sync if already populated, or full sync if empty).
+        // Tras terminar un sync no se relanza otro desde aquí (el cambio de `jellyfinLastSync`
+        // volvería a disparar el collector y encadenaría syncs en bucle); solo se refresca la UI.
+        if (startSync) {
+            viewModelScope.launch(Dispatchers.IO) {
+                mediaRepository.startBackgroundSync(
                     serverUrl = prefs.jellyfinServerUrl,
                     userId = prefs.jellyfinUserId,
-                    token = prefs.jellyfinAccessToken
+                    token = prefs.jellyfinAccessToken,
+                    lastSyncTimestamp = prefs.jellyfinLastSync
                 )
+                // Solo enriquecer en paralelo si la biblioteca ya tiene contenido sincronizado;
+                // en la sincronización inicial, JellyfinSyncWorker la encolará al terminar
+                // para no saturar el servidor ni competir por el ancho de banda.
+                if (!prefs.jellyfinLastSync.isNullOrBlank() || mediaRepository.getLocalCount() >= 500) {
+                    mediaRepository.startBackgroundOverviewEnrichment(
+                        serverUrl = prefs.jellyfinServerUrl,
+                        userId = prefs.jellyfinUserId,
+                        token = prefs.jellyfinAccessToken
+                    )
+                }
             }
         }
         viewModelScope.launch {
@@ -256,6 +302,21 @@ class HomeViewModel @Inject constructor(
                 }
             } finally {
                 isFeedLoading = false
+                pendingReload?.let { pending ->
+                    pendingReload = null
+                    viewModelScope.launch {
+                        val latestPrefs = userPreferencesRepository.userPreferencesFlow.first()
+                        if (latestPrefs.jellyfinServerUrl.isBlank() || latestPrefs.jellyfinAccessToken.isBlank()) {
+                            _uiState.value = HomeUiState.EmptySettings
+                        } else {
+                            loadFeedForPrefs(
+                                prefs = latestPrefs,
+                                forceRefresh = pending.forceRefresh,
+                                startSync = pending.startSync
+                            )
+                        }
+                    }
+                }
             }
         }
     }
