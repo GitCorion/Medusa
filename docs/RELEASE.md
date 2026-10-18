@@ -13,11 +13,12 @@
 | **beta** | `app/build/outputs/apk/beta/release/app-beta-release.apk` → `docs/Medusa.apk` | tu keystore de release | **ON** (`ENABLE_IN_APP_UPDATER=true`) | **Tele de casa y pruebas de beta por OTA** |
 | **play** | `app/build/outputs/bundle/playRelease/app-play-release.aab` | tu keystore al compilar; **Google la re-firma al subirlo a Play** | OFF | Publicar en Play Store |
 
-- Los dos flavors usan el **mismo** `applicationId` (`tv.medusa.app`) → **no puedes tener los dos
-  canales en la misma tele**: la firma de Play es distinta y la instalación falla. Para pasar de uno
-  a otro hay que desinstalar (se pierden sesión y ajustes).
+- La beta usa un **package propio** (`tv.medusa.app.beta`) y Play `tv.medusa.app`. **Pueden
+  convivir en el mismo dispositivo** (datos y actualizaciones independientes).
+- Cambio de canal en un mismo dispositivo: desinstalar el otro (paquetes distintos → no se pisan).
 - OTA pública (Firebase Hosting): APK en `https://medusa-fd388.web.app/Medusa.apk`
   y manifiesto en `https://medusa-fd388.web.app/api/version.json`.
+- Setup de Play y subida automática del AAB por CI: ver `docs/PLAY_CONSOLE_SETUP.md`.
 
 ## 2. Fuente de verdad de la versión
 

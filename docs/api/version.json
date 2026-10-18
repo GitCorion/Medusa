@@ -1,12 +1,12 @@
 {
-  "versionCode": 1000092,
-  "versionName": "2.2.45-beta",
+  "versionCode": 1000093,
+  "versionName": "2.2.46-beta",
   "minSupportedVersionCode": 71,
   "forceUpdate": false,
   "killSwitch": false,
-  "releaseNotes": "Mejoras para redes lentas o con bloqueos (LaLiga/ISP sobre Cloudflare): 1) el video ahora usa el mismo cliente de red que la app, con preferencia IPv6 y pool de conexiones; 2) buffer mas generoso para aguantar microcortes; 3) se detecta la pagina de bloqueo en el propio stream y se muestra el aviso correcto.",
+  "releaseNotes": "Nuevo canal beta profesional: la beta pasa a un paquete propio (tv.medusa.app.beta) para poder convivir con la version de Google Play. Instala esta version UNA vez; luego desinstala la antigua. Incluye las mejoras de red (IPv6/buffer) y Billing 9.",
   "apkUrl": "https://medusa-fd388.web.app/Medusa.apk",
-  "apkSha256": "a524c7cd5ffd004b17bd3730019858c7122ad17ccad2427c9e8b1bae3c13752b",
+  "apkSha256": "f275664ec31d952ea46d17aec7b3b6669384deac0af3b56ca974e3112286038c",
   "signatures": [
     "26bccb39ed122a69ecf7a8d0b50deeabeb15bc1a4b2a8b77941b47a96fdd3fea",
     "78a588afcc90d8ea59e008c9cbd1e8bbed3b2831518184d5a9935948b9d245ac"

@@ -30,39 +30,26 @@ por Play (es sideloaded).
 - El diálogo de actualización obligatoria descarga el APK de Firebase **también en la build de
   Play** → violación de política de Play.
 
-### Modelo adoptado ahora (fase 0)
+### Modelo adoptado (dos packages)
 
-Mantener **el mismo `applicationId`** para no romper la beta instalada en tu tele, pero separar
-lo que importa:
+Son **dos apps distintas del mismo código**, separadas por *flavor*:
 
 | | **beta (Firebase)** | **play (Google Play)** |
 |---|---|---|
-| `applicationId` | `tv.medusa.app` | `tv.medusa.app` |
+| `applicationId` | `tv.medusa.app.beta` | `tv.medusa.app` |
 | Artefacto | `app-beta-release.apk` | `app-play-release.aab` |
 | Firma | Tu keystore | Upload key + **Play App Signing** |
 | Updater propio | **ON** | **OFF** |
-| `versionName` | `2.2.43-beta` | `2.2.43` |
-| `versionCode` | `1_000_091`, `1_000_092`… | `91`, `92`… |
+| `versionName` | `2.2.46-beta` | `2.2.46` |
+| `versionCode` | `1_000_093`… | `93`… |
 | Manifiesto | `docs/api/version.json` completo | Solo `killSwitch` / `minSupportedVersionCode` |
 
-**Consecuencia importante:** al compartir package, la beta y la build de Play **no pueden
-convivir en el mismo dispositivo**. Tu tele se queda siempre en beta; la build de Play va a
-móviles/TV de usuarios. Si algún día quieres probar la de Play en la tele, hay que desinstalar
-la beta (se pierden ajustes) o cambiar de dispositivo.
+- **Conviven en el mismo dispositivo** (datos y actualizaciones independientes).
+- Firebase tiene dados de alta los dos packages; `app/google-services.json` incluye ambos.
+- Único coste: **una reinstalación** de la beta en la tele la primera vez (cambia de package).
 
-### Estado objetivo recomendado (fase 4, opcional)
-
-Separar packages para que puedan convivir:
-
-- Play: `tv.medusa.app`
-- Beta: `tv.medusa.app.beta` (`applicationIdSuffix = ".beta"`)
-
-Requiere dar de alta `tv.medusa.app.beta` en Firebase (Analytics/Crashlytics) y **reinstalar
-una vez** la beta en la tele. Por eso no se hace en la fase 0: primero lanzamos sin tocar tu
-tele y después, si quieres, migramos con calma.
-
-> Regla: el package que se queda para siempre con la identidad pública es `tv.medusa.app`
-> (el de Play). La beta es la que debe moverse si algún día se separan.
+> Regla: la identidad pública para siempre es `tv.medusa.app` (Play). La beta vive aparte en
+> `tv.medusa.app.beta` y puede evolucionar sin afectar a los usuarios de Play.
 
 ---
 
@@ -200,11 +187,15 @@ Cloudflare cae como daño colateral. Síntoma: todo va lento o el vídeo se qued
       - Como último recurso, **VPN (WireGuard)** en la tele para saltar el bloqueo del operador.
 - [ ] Decidir si añadir en Ajustes un **servidor alternativo / forzar IPv6**.
 
-### Fase 4 — Separación opcional de packages
+### Fase 4 — Separación de packages · **HECHO (2026-10-18)**
 
-- [ ] `applicationIdSuffix = ".beta"`.
-- [ ] Alta de `tv.medusa.app.beta` en Firebase + `app/src/beta/google-services.json`.
-- [ ] Reinstalación única de la beta en la tele.
+- [x] `applicationIdSuffix = ".beta"` → beta `tv.medusa.app.beta`, Play `tv.medusa.app`.
+- [x] Alta de `tv.medusa.app.beta` en Firebase (proyecto `medusa-fd388`) y `google-services.json`
+      con ambos clientes.
+- [x] CI: al tag `v*`, sube el AAB a **Play Internal testing** automáticamente
+      (`PLAY_SERVICE_ACCOUNT_JSON`; si falta, se omite y sigue la OTA).
+- [ ] Reinstalación única de la beta en la tele (instalar `https://medusa-fd388.web.app/Medusa.apk`).
+- [ ] Configurar el service account de Play y el secret (ver `docs/PLAY_CONSOLE_SETUP.md`).
 
 ### Fase 5 — Publicación
 
