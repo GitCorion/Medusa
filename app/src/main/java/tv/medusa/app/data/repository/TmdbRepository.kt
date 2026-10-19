@@ -228,6 +228,32 @@ class TmdbRepository(
         }
         return SeriesStatus.from(tmdbStatus = null, jellyfinStatus = jellyfinStatus)
     }
+
+    suspend fun getTmdbSeasonalDiscover(
+        apiKey: String,
+        withGenres: String?,
+        withoutGenres: String?,
+        maxPages: Int = 2
+    ): Result<List<TmdbItemDto>> {
+        return runCatching {
+            val api = NetworkClientFactory.createService(ApiConfig.TMDB_BASE_URL, TmdbApiService::class.java)
+            val pages = coroutineScope {
+                (1..maxPages).map { p ->
+                    async {
+                        runCatching {
+                            api.discoverSeasonalMovies(
+                                apiKey = apiKey,
+                                withGenres = withGenres,
+                                withoutGenres = withoutGenres,
+                                page = p
+                            )
+                        }.getOrNull()?.results ?: emptyList()
+                    }
+                }.awaitAll()
+            }
+            pages.flatten().distinctBy { it.id }
+        }
+    }
 }
 
 data class TmdbVoteStats(val voteCount: Int, val voteAverage: Float)

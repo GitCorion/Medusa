@@ -209,6 +209,13 @@ class MediaRepository(
     suspend fun getSeriesStatus(tmdbApiKey: String, tmdbId: Long?, jellyfinStatus: String?): SeriesStatus =
         tmdb.getSeriesStatus(tmdbApiKey, tmdbId, jellyfinStatus)
 
+    suspend fun getTmdbSeasonalDiscover(
+        apiKey: String,
+        withGenres: String?,
+        withoutGenres: String?,
+        maxPages: Int = 2
+    ): Result<List<TmdbItemDto>> = tmdb.getTmdbSeasonalDiscover(apiKey, withGenres, withoutGenres, maxPages)
+
     // =========================================================================
     // TRAKT
     // =========================================================================

@@ -189,17 +189,39 @@ class GetHomeFeedUseCase(
 
         // ─── Colección Festiva / Estacional (Exclusivo Medusa Pro) ───────────────
         val activeSeasonalEvent = SeasonalEventsManager.getActiveEvent()
-        if (prefs.isProUser && activeSeasonalEvent != null) {
-            val matchedEntities = activeSeasonalEvent.matchingGenres.flatMap { genre ->
-                runCatching { mediaRepository.getItemsByGenre(genre) }.getOrDefault(emptyList())
-            }.distinctBy { it.id }
-            .sortedByDescending { it.communityRating ?: 0f }
-            .take(25)
+        var seasonalCuratedLocal: List<JellyfinMediaEntity> = emptyList()
+        var seasonalExtraLocal: List<JellyfinMediaEntity> = emptyList()
 
-            if (matchedEntities.size >= 3) {
+        if (prefs.isProUser && activeSeasonalEvent != null) {
+            // 1. Clásicos comunitarios curados presentes en la biblioteca
+            seasonalCuratedLocal = activeSeasonalEvent.curatedItems.mapNotNull { curated ->
+                val matched = mediaRepository.findLocal(
+                    tmdbId = curated.tmdbId,
+                    imdbId = null,
+                    title = curated.title,
+                    year = curated.year
+                )
+                matched?.takeIf { isEntityEligibleForSeasonal(it, activeSeasonalEvent) }
+            }
+
+            // 2. Coincidencias locales estrictas por género (Terror/Horror sin géneros indeseados)
+            seasonalExtraLocal = activeSeasonalEvent.matchingGenres.flatMap { genre ->
+                runCatching { mediaRepository.getItemsByGenre(genre) }.getOrDefault(emptyList())
+            }.filter { entity ->
+                isEntityEligibleForSeasonal(entity, activeSeasonalEvent) &&
+                    activeSeasonalEvent.matchingGenres.any { mg ->
+                        entity.genres.orEmpty().contains(mg, ignoreCase = true)
+                    }
+            }.sortedByDescending { it.communityRating ?: 0f }
+
+            val combinedSeasonal = (seasonalCuratedLocal + seasonalExtraLocal)
+                .distinctBy { it.id }
+                .take(25)
+
+            if (combinedSeasonal.size >= 3) {
                 updateOrAddSection(HomeSection(
                     title = activeSeasonalEvent.homeSectionTitle,
-                    items = matchedEntities.map { it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.JELLYFIN) },
+                    items = combinedSeasonal.map { it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.JELLYFIN) },
                     badge = activeSeasonalEvent.badgeLabel
                 ))
             }
@@ -654,6 +676,48 @@ class GetHomeFeedUseCase(
                     }
                 }
             }
+
+            // ---------------------------------------------------------------------
+            // JOB 6: DESCUBRIMIENTO ESTACIONAL / FESTIVO TMDB (PRO)
+            // ---------------------------------------------------------------------
+            if (prefs.isProUser && activeSeasonalEvent != null && effectiveTmdbKey.isNotBlank() && activeSeasonalEvent.tmdbDiscoverGenreId != null) {
+                launch {
+                    runCatching {
+                        withTimeoutOrNull(6000L) {
+                            val tmdbSeasonalItems = mediaRepository.getTmdbSeasonalDiscover(
+                                apiKey = effectiveTmdbKey,
+                                withGenres = activeSeasonalEvent.tmdbDiscoverGenreId,
+                                withoutGenres = activeSeasonalEvent.tmdbWithoutGenres,
+                                maxPages = 2
+                            ).getOrDefault(emptyList())
+
+                            if (tmdbSeasonalItems.isNotEmpty()) {
+                                val matchedTmdb = filterToLibraryUseCase.filterTmdbItems(
+                                    tmdbItems = tmdbSeasonalItems,
+                                    serverUrl = prefs.jellyfinServerUrl,
+                                    userId = prefs.jellyfinUserId,
+                                    token = prefs.jellyfinAccessToken,
+                                    maxCandidates = 30
+                                ).filter { isEntityEligibleForSeasonal(it, activeSeasonalEvent) }
+
+                                if (matchedTmdb.isNotEmpty()) {
+                                    val finalEntities = (seasonalCuratedLocal + matchedTmdb + seasonalExtraLocal)
+                                        .distinctBy { it.id }
+                                        .take(25)
+
+                                    if (finalEntities.size >= 3) {
+                                        postSection(HomeSection(
+                                            title = activeSeasonalEvent.homeSectionTitle,
+                                            items = finalEntities.map { it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.JELLYFIN) },
+                                            badge = activeSeasonalEvent.badgeLabel
+                                        ))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         // Emisión final garantizada cuando todos los trabajos en paralelo concluyen
@@ -943,5 +1007,20 @@ class GetHomeFeedUseCase(
             }
         }
         return restored
+    }
+
+    private fun isEntityEligibleForSeasonal(entity: JellyfinMediaEntity, event: tv.medusa.app.domain.model.SeasonalEvent): Boolean {
+        val isMovieOrSeries = entity.type.equals("Movie", ignoreCase = true) || entity.type.equals("Series", ignoreCase = true)
+        if (!isMovieOrSeries) return false
+
+        val genresStr = entity.genres.orEmpty()
+        val titleStr = entity.title
+
+        val hasExcluded = event.excludedGenres.any { excluded ->
+            genresStr.contains(excluded, ignoreCase = true) || titleStr.contains(excluded, ignoreCase = true)
+        }
+        if (hasExcluded) return false
+
+        return true
     }
 }

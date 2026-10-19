@@ -67,6 +67,33 @@ class SeasonalEventsManagerTest {
     }
 
     @Test
+    fun `halloween curated list contains community classics and excludes non-horror genres`() {
+        val event = SeasonalEventsManager.ALL_EVENTS.first { it.id == "halloween" }
+
+        // Comprueba que los clásicos de la comunidad están incluidos
+        val titles = event.curatedItems.map { it.title }
+        assertTrue(titles.contains("The Shining"))
+        assertTrue(titles.contains("Hereditary"))
+        assertTrue(titles.contains("Halloween"))
+        assertTrue(titles.contains("Scream"))
+        assertTrue(titles.contains("Beetlejuice"))
+        assertTrue(titles.contains("Hocus Pocus"))
+        assertTrue(titles.contains("The Conjuring"))
+
+        // Comprueba que géneros no temáticos están estrictamente en la lista negra
+        assertTrue(event.excludedGenres.contains("Documental"))
+        assertTrue(event.excludedGenres.contains("Música"))
+        assertTrue(event.excludedGenres.contains("Bélica"))
+        assertTrue(event.excludedGenres.contains("War"))
+        assertTrue(event.excludedGenres.contains("Music"))
+
+        // Comprueba que no tiene géneros ambiguos como Thriller o Misterio que contaminan la selección
+        assertFalse(event.matchingGenres.contains("Thriller"))
+        assertFalse(event.matchingGenres.contains("Misterio"))
+        assertFalse(event.matchingGenres.contains("Suspense"))
+    }
+
+    @Test
     fun `editorial badge labels do not contain emojis`() {
         // Strict requirement: zero tacky WhatsApp emojis, clean cinema-grade UI
         val emojiRegex = Regex("[\\p{So}\\p{Cn}]")

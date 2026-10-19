@@ -112,4 +112,15 @@ interface TmdbApiService {
         @Query("api_key") apiKey: String,
         @Query("language") language: String = ApiConfig.TMDB_LANGUAGE
     ): TmdbTrendingResponse
+
+    @GET("discover/movie")
+    suspend fun discoverSeasonalMovies(
+        @Query("api_key") apiKey: String,
+        @Query("with_genres") withGenres: String? = null,
+        @Query("without_genres") withoutGenres: String? = null,
+        @Query("sort_by") sortBy: String = "popularity.desc",
+        @Query("vote_count.gte") voteCountGte: Int? = 150,
+        @Query("page") page: Int = 1,
+        @Query("language") language: String = ApiConfig.TMDB_LANGUAGE
+    ): TmdbTrendingResponse
 }
