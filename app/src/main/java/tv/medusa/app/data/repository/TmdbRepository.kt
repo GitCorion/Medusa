@@ -231,9 +231,10 @@ class TmdbRepository(
 
     suspend fun getTmdbSeasonalDiscover(
         apiKey: String,
-        withGenres: String?,
-        withoutGenres: String?,
-        maxPages: Int = 2
+        withKeywords: String? = null,
+        withGenres: String? = null,
+        withoutGenres: String? = null,
+        maxPages: Int = 3
     ): Result<List<TmdbItemDto>> {
         return runCatching {
             val api = NetworkClientFactory.createService(ApiConfig.TMDB_BASE_URL, TmdbApiService::class.java)
@@ -243,6 +244,7 @@ class TmdbRepository(
                         runCatching {
                             api.discoverSeasonalMovies(
                                 apiKey = apiKey,
+                                withKeywords = withKeywords,
                                 withGenres = withGenres,
                                 withoutGenres = withoutGenres,
                                 page = p

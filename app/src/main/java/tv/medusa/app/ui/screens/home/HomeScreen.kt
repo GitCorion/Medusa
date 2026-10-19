@@ -84,11 +84,15 @@ import tv.medusa.app.R
 import tv.medusa.app.data.local.BUTTON_STYLE_ICONS_ONLY
 import tv.medusa.app.data.local.BUTTON_STYLE_TEXT_ONLY
 import tv.medusa.app.domain.BillboardPoolBuilder
+import tv.medusa.app.domain.model.MediaItem
+import tv.medusa.app.domain.model.ParticleType
 import tv.medusa.app.domain.model.SeasonalEventsManager
 import tv.medusa.app.ui.components.BrandTileRow
 import tv.medusa.app.ui.components.GenreRow
 import tv.medusa.app.ui.components.HeroBanner
+import tv.medusa.app.ui.components.MediaContextMenuDialog
 import tv.medusa.app.ui.components.MediaRow
+import tv.medusa.app.ui.components.SeasonalParticles
 import tv.medusa.app.ui.theme.TvAccent
 
 @OptIn(ExperimentalTvMaterial3Api::class)
@@ -102,6 +106,7 @@ fun HomeScreen(
     onOpenBrand: (String) -> Unit = {},
     onOpenGenre: (String) -> Unit = {},
     onOpenMedusa: () -> Unit = {},
+    onOpenSeasonal: (String) -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -110,6 +115,7 @@ fun HomeScreen(
     val buttonStyleKey by viewModel.buttonStyle.collectAsStateWithLifecycle()
     val selectedPlatforms by viewModel.selectedPlatforms.collectAsStateWithLifecycle()
     val isProUser by viewModel.isProUser.collectAsStateWithLifecycle()
+    val seasonalAudioEnabled by viewModel.seasonalAudioEnabled.collectAsStateWithLifecycle()
     var showProDialog by remember { mutableStateOf(false) }
     val showTopIcons = buttonStyleKey != BUTTON_STYLE_TEXT_ONLY
     val showTopText = buttonStyleKey != BUTTON_STYLE_ICONS_ONLY
@@ -408,16 +414,14 @@ fun HomeScreen(
                                 buttonStyle = buttonStyleKey,
                                 onActiveHeroChanged = { activeItem -> backdropState.carouselBackdrop = activeItem.backdropUrl },
                                 seasonalEvent = activeSeasonalEvent,
+                                seasonalAudioEnabled = seasonalAudioEnabled,
                                 onExploreSeasonal = {
-                                    if (isProUser) {
-                                        val targetSectionIndex = state.sections.indexOfFirst { it.title == activeSeasonalEvent?.homeSectionTitle }
-                                        val headerCount = 1 + (if (state.genres.isNotEmpty()) 1 else 0) + 1
-                                        val targetIndex = if (targetSectionIndex >= 0) headerCount + targetSectionIndex else headerCount
-                                        coroutineScope.launch {
-                                            listState.animateScrollToItem(targetIndex)
+                                    if (activeSeasonalEvent != null) {
+                                        if (isProUser) {
+                                            onOpenSeasonal(activeSeasonalEvent.id)
+                                        } else {
+                                            showProDialog = true
                                         }
-                                    } else {
-                                        showProDialog = true
                                     }
                                 }
                             )
@@ -476,6 +480,15 @@ fun HomeScreen(
             }
         }
     }
+
+        // Capa ambiental estacional (Seasonal) por encima de toda la pantalla (cubriendo el Hero y las filas)
+        if (activeSeasonalEvent != null && activeSeasonalEvent.particleType != ParticleType.NONE) {
+            SeasonalParticles(
+                particleType = activeSeasonalEvent.particleType,
+                modifier = Modifier.fillMaxSize(),
+                particleCount = 28
+            )
+        }
 
         val billingManager = LocalBillingManager.current
         if (showProDialog && billingManager != null) {

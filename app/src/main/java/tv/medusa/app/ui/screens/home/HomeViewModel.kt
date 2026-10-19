@@ -64,6 +64,7 @@ class HomeViewModel @Inject constructor(
     val buttonStyle: StateFlow<String> = userPreferencesRepository.buttonStyle
     val selectedPlatforms: StateFlow<Set<String>> = userPreferencesRepository.selectedPlatforms
     val isProUser: StateFlow<Boolean> = userPreferencesRepository.isProUser
+    val seasonalAudioEnabled: StateFlow<Boolean> = userPreferencesRepository.seasonalAudioEnabled
 
     val syncProgress: StateFlow<SyncProgress> = MediaRepository.syncProgress
     val localMediaCount: StateFlow<Int> = mediaRepository.getLibraryStatsFlow()
@@ -414,5 +415,85 @@ class HomeViewModel @Inject constructor(
         if (currentState is HomeUiState.Success) {
             _uiState.value = currentState.copy(focusedItem = item)
         }
+    }
+
+    fun toggleFavorite(item: MediaItem) {
+        val newFav = !item.isFavorite
+        updateItemInState(item.id) { it.copy(isFavorite = newFav) }
+        viewModelScope.launch(Dispatchers.IO) {
+            val prefs = userPreferencesRepository.userPreferencesFlow.first()
+            mediaRepository.toggleFavorite(
+                serverUrl = prefs.jellyfinServerUrl,
+                userId = prefs.jellyfinUserId,
+                token = prefs.jellyfinAccessToken,
+                itemId = item.id,
+                makeFavorite = newFav
+            )
+        }
+    }
+
+    fun togglePlayed(item: MediaItem) {
+        val newPlayed = !item.isPlayed
+        updateItemInState(item.id) {
+            it.copy(
+                isPlayed = newPlayed,
+                playbackPositionTicks = if (newPlayed) 0L else it.playbackPositionTicks
+            )
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            val prefs = userPreferencesRepository.userPreferencesFlow.first()
+            mediaRepository.togglePlayed(
+                serverUrl = prefs.jellyfinServerUrl,
+                userId = prefs.jellyfinUserId,
+                token = prefs.jellyfinAccessToken,
+                itemId = item.id,
+                makePlayed = newPlayed
+            )
+            refreshContinueWatching()
+        }
+    }
+
+    fun removeFromContinueWatching(item: MediaItem) {
+        updateItemInState(item.id) { it.copy(playbackPositionTicks = 0L) }
+        viewModelScope.launch(Dispatchers.IO) {
+            val prefs = userPreferencesRepository.userPreferencesFlow.first()
+            mediaRepository.clearPlaybackPosition(
+                serverUrl = prefs.jellyfinServerUrl,
+                userId = prefs.jellyfinUserId,
+                token = prefs.jellyfinAccessToken,
+                itemId = item.id
+            )
+            refreshContinueWatching()
+        }
+    }
+
+    fun playFromBeginning(item: MediaItem, onPlay: (String) -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val prefs = userPreferencesRepository.userPreferencesFlow.first()
+            mediaRepository.clearPlaybackPosition(
+                serverUrl = prefs.jellyfinServerUrl,
+                userId = prefs.jellyfinUserId,
+                token = prefs.jellyfinAccessToken,
+                itemId = item.id
+            )
+            withContext(Dispatchers.Main) {
+                onPlay(item.id)
+            }
+        }
+    }
+
+    private fun updateItemInState(itemId: String, transform: (MediaItem) -> MediaItem) {
+        val current = _uiState.value as? HomeUiState.Success ?: return
+        val updatedSections = current.sections.map { section ->
+            if (section.items.any { it.id == itemId }) {
+                section.copy(items = section.items.map { if (it.id == itemId) transform(it) else it })
+            } else {
+                section
+            }
+        }
+        val updatedFocused = if (current.focusedItem?.id == itemId) transform(current.focusedItem) else current.focusedItem
+        _uiState.value = current.copy(sections = updatedSections, focusedItem = updatedFocused)
+        lastSections = updatedSections
+        lastStaticSections = updatedSections
     }
 }

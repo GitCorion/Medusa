@@ -217,6 +217,8 @@ fun JellyfinMediaEntity.toOptimizedMediaItem(
         isPlayed = effectivePlayed,
         isFavorite = isFavorite,
         totalEpisodes = total,
-        playedEpisodes = played
+        playedEpisodes = played,
+        seriesId = seriesId,
+        seriesName = seriesName
     )
 }

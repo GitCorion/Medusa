@@ -55,7 +55,7 @@ class SeasonalEventsManagerTest {
 
         assertNotNull(event)
         assertEquals("halloween", event?.id)
-        assertEquals("CICLO DE TERROR", event?.badgeLabel)
+        assertEquals("HALLOWEEN", event?.badgeLabel)
     }
 
     @Test
@@ -67,30 +67,21 @@ class SeasonalEventsManagerTest {
     }
 
     @Test
-    fun `halloween curated list contains community classics and excludes non-horror genres`() {
-        val event = SeasonalEventsManager.ALL_EVENTS.first { it.id == "halloween" }
+    fun `seasonal events have valid keywords, particle types and drawables`() {
+        val halloween = SeasonalEventsManager.ALL_EVENTS.first { it.id == "halloween" }
+        assertEquals("3335", halloween.tmdbKeywordId)
+        assertEquals(ParticleType.LEAVES, halloween.particleType)
+        assertTrue(halloween.backdropResId != 0)
 
-        // Comprueba que los clásicos de la comunidad están incluidos
-        val titles = event.curatedItems.map { it.title }
-        assertTrue(titles.contains("The Shining"))
-        assertTrue(titles.contains("Hereditary"))
-        assertTrue(titles.contains("Halloween"))
-        assertTrue(titles.contains("Scream"))
-        assertTrue(titles.contains("Beetlejuice"))
-        assertTrue(titles.contains("Hocus Pocus"))
-        assertTrue(titles.contains("The Conjuring"))
+        val christmas = SeasonalEventsManager.ALL_EVENTS.first { it.id == "christmas" }
+        assertEquals("207317", christmas.tmdbKeywordId)
+        assertEquals(ParticleType.SNOW, christmas.particleType)
+        assertTrue(christmas.backdropResId != 0)
 
-        // Comprueba que géneros no temáticos están estrictamente en la lista negra
-        assertTrue(event.excludedGenres.contains("Documental"))
-        assertTrue(event.excludedGenres.contains("Música"))
-        assertTrue(event.excludedGenres.contains("Bélica"))
-        assertTrue(event.excludedGenres.contains("War"))
-        assertTrue(event.excludedGenres.contains("Music"))
-
-        // Comprueba que no tiene géneros ambiguos como Thriller o Misterio que contaminan la selección
-        assertFalse(event.matchingGenres.contains("Thriller"))
-        assertFalse(event.matchingGenres.contains("Misterio"))
-        assertFalse(event.matchingGenres.contains("Suspense"))
+        val valentines = SeasonalEventsManager.ALL_EVENTS.first { it.id == "valentines" }
+        assertEquals("9840", valentines.tmdbKeywordId)
+        assertEquals(ParticleType.EMBERS, valentines.particleType)
+        assertTrue(valentines.backdropResId != 0)
     }
 
     @Test

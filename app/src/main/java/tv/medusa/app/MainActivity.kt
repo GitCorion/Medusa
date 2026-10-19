@@ -4,7 +4,11 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.SystemClock
 import android.util.Log
+import android.view.KeyEvent
+import android.view.SoundEffectConstants
+import androidx.lifecycle.lifecycleScope
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.runtime.CompositionLocalProvider
@@ -86,10 +90,14 @@ import tv.medusa.app.ui.screens.detail.DetailScreen
 import tv.medusa.app.ui.screens.favorites.FavoritesScreen
 import tv.medusa.app.ui.screens.genre.GenreScreen
 import tv.medusa.app.ui.screens.home.HomeScreen
+import tv.medusa.app.ui.screens.seasonal.SeasonalScreen
 import tv.medusa.app.ui.screens.onboarding.PlatformSelectionScreen
 import tv.medusa.app.ui.screens.player.PlayerScreen
 import tv.medusa.app.ui.screens.search.SearchScreen
 import tv.medusa.app.ui.screens.settings.SettingsScreen
+import tv.medusa.app.ui.components.contextmenu.ContextMenuController
+import tv.medusa.app.ui.components.contextmenu.ContextMenuHost
+import tv.medusa.app.ui.components.contextmenu.MediaActionHandler
 import tv.medusa.app.ui.theme.MedusaTheme
 import tv.medusa.app.util.AppForeground
 
@@ -101,11 +109,22 @@ class MainActivity : ComponentActivity() {
     @javax.inject.Inject
     lateinit var userPreferencesRepository: UserPreferencesRepository
 
+    @javax.inject.Inject
+    lateinit var mediaActionHandler: MediaActionHandler
+
     private var pendingPlayItemId by mutableStateOf<String?>(null)
+    private var isNavigationSoundEnabled = true
+    private var lastNavSoundTimestamp = 0L
+    private var isSelectLongPressActive = false
 
     @OptIn(ExperimentalTvMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        lifecycleScope.launch {
+            userPreferencesRepository.navigationSoundEnabled.collect { enabled ->
+                isNavigationSoundEnabled = enabled
+            }
+        }
         NetworkClientFactory.initCache(applicationContext)
 
         val imageLoader = coil.ImageLoader.Builder(this)
@@ -167,7 +186,8 @@ class MainActivity : ComponentActivity() {
                         MedusaApp(
                             startOnboarding = !prefs.hasCompletedOnboarding,
                             pendingPlayItemId = pendingPlayItemId,
-                            onPlayItemConsumed = { pendingPlayItemId = null }
+                            onPlayItemConsumed = { pendingPlayItemId = null },
+                            mediaActionHandler = mediaActionHandler
                         )
                     }
                 }
@@ -191,7 +211,48 @@ class MainActivity : ComponentActivity() {
 
     override fun onStop() {
         AppForeground.isVisible = false
+        tv.medusa.app.util.SeasonalAudioManager.release()
         super.onStop()
+    }
+
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        val isSelectKey = event.keyCode == KeyEvent.KEYCODE_DPAD_CENTER ||
+                event.keyCode == KeyEvent.KEYCODE_ENTER ||
+                event.keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER ||
+                event.keyCode == KeyEvent.KEYCODE_BUTTON_A
+
+        if (isSelectKey) {
+            val isLongPress = event.isLongPress || event.repeatCount > 0 || (event.eventTime - event.downTime >= 350L)
+            if (event.action == KeyEvent.ACTION_DOWN) {
+                if (isLongPress) {
+                    isSelectLongPressActive = true
+                }
+            } else if (event.action == KeyEvent.ACTION_UP) {
+                if (isSelectLongPressActive || (event.eventTime - event.downTime >= 350L)) {
+                    isSelectLongPressActive = false
+                    // Consumir el UP de una pulsación larga para que no se interprete como clic al soltar
+                    return true
+                }
+            }
+        }
+
+        if (event.action == KeyEvent.ACTION_DOWN && isNavigationSoundEnabled) {
+            val soundEffect = when (event.keyCode) {
+                KeyEvent.KEYCODE_DPAD_UP -> SoundEffectConstants.NAVIGATION_UP
+                KeyEvent.KEYCODE_DPAD_DOWN -> SoundEffectConstants.NAVIGATION_DOWN
+                KeyEvent.KEYCODE_DPAD_LEFT -> SoundEffectConstants.NAVIGATION_LEFT
+                KeyEvent.KEYCODE_DPAD_RIGHT -> SoundEffectConstants.NAVIGATION_RIGHT
+                else -> null
+            }
+            if (soundEffect != null) {
+                val now = SystemClock.uptimeMillis()
+                if (event.repeatCount == 0 || (now - lastNavSoundTimestamp >= 120L)) {
+                    lastNavSoundTimestamp = now
+                    window?.decorView?.playSoundEffect(soundEffect)
+                }
+            }
+        }
+        return super.dispatchKeyEvent(event)
     }
 }
 
@@ -215,10 +276,14 @@ private fun openPlayStoreListing(context: Context) {
 fun MedusaApp(
     startOnboarding: Boolean = false,
     pendingPlayItemId: String? = null,
-    onPlayItemConsumed: () -> Unit = {}
+    onPlayItemConsumed: () -> Unit = {},
+    mediaActionHandler: MediaActionHandler
 ) {
     val navController = rememberNavController()
     val startDestination = if (startOnboarding) "onboarding" else "home"
+    val contextMenuController = remember { ContextMenuController() }
+    val isMonochrome = tv.medusa.app.ui.theme.LocalIsMonochromeTheme.current
+    val accentColor = tv.medusa.app.ui.theme.LocalAccentColor.current
 
     LaunchedEffect(pendingPlayItemId) {
         val id = pendingPlayItemId
@@ -284,10 +349,22 @@ fun MedusaApp(
     val isPlayerActive = currentEntry?.destination?.route?.startsWith("player") == true
 
     Box(modifier = Modifier.fillMaxSize()) {
-        NavHost(
-            navController = navController,
-            startDestination = startDestination
+        ContextMenuHost(
+            controller = contextMenuController,
+            actionHandler = mediaActionHandler,
+            accentColorKey = accentColor,
+            isMonochrome = isMonochrome,
+            onPlayMedia = { itemId ->
+                navController.navigate("player/$itemId")
+            },
+            onDetailMedia = { itemId ->
+                navController.navigate("detail/$itemId")
+            }
         ) {
+            NavHost(
+                navController = navController,
+                startDestination = startDestination
+            ) {
         composable("onboarding") {
             PlatformSelectionScreen(
                 onDone = {
@@ -320,6 +397,9 @@ fun MedusaApp(
                 },
                 onOpenGenre = { genreName ->
                     navController.navigate("genre/$genreName")
+                },
+                onOpenSeasonal = { eventId ->
+                    navController.navigate("seasonal/$eventId")
                 },
                 onOpenMedusa = {
                     navController.navigate("medusa") { launchSingleTop = true }
@@ -486,6 +566,43 @@ fun MedusaApp(
         }
 
         composable(
+            route = "seasonal/{eventId}",
+            arguments = listOf(navArgument("eventId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val eventId = backStackEntry.arguments?.getString("eventId") ?: "halloween"
+            SeasonalScreen(
+                eventId = eventId,
+                onBack = {
+                    navController.popBackStack()
+                },
+                onPlayMedia = { itemId ->
+                    navController.navigate("player/$itemId")
+                },
+                onDetailMedia = { itemId ->
+                    navController.navigate("detail/$itemId")
+                },
+                onNavigateHome = {
+                    navController.navigate("home") {
+                        popUpTo("home") { inclusive = false }
+                        launchSingleTop = true
+                    }
+                },
+                onOpenMedusa = {
+                    navController.navigate("medusa") { launchSingleTop = true }
+                },
+                onOpenFavorites = {
+                    navController.navigate("favorites")
+                },
+                onOpenSearch = {
+                    navController.navigate("search")
+                },
+                onOpenSettings = {
+                    navController.navigate("settings")
+                }
+            )
+        }
+
+        composable(
             route = "detail/{itemId}",
             arguments = listOf(navArgument("itemId") { type = NavType.StringType })
         ) { backStackEntry ->
@@ -538,6 +655,7 @@ fun MedusaApp(
                     navController.navigate("search")
                 }
             )
+        }
         }
     }
 

@@ -71,6 +71,7 @@ fun MediaCard(
     item: MediaItem,
     onClick: () -> Unit,
     onFocus: () -> Unit = {},
+    onLongClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     var isFocused by remember { mutableStateOf(false) }
@@ -98,6 +99,25 @@ fun MediaCard(
         label = "pulseGlow"
     )
 
+    val contextMenuController = tv.medusa.app.ui.components.contextmenu.LocalContextMenuController.current
+    val view = androidx.compose.ui.platform.LocalView.current
+    var lastLongClickTimestamp by remember { mutableStateOf(0L) }
+
+    val effectiveLongClick: (() -> Unit)? = onLongClick ?: contextMenuController?.let { controller ->
+        {
+            lastLongClickTimestamp = android.os.SystemClock.uptimeMillis()
+            view.playSoundEffect(android.view.SoundEffectConstants.CLICK)
+            controller.showContextMenu(item)
+        }
+    }
+
+    val safeOnClick: () -> Unit = {
+        // Evita que al soltar una pulsación larga se interprete erróneamente como un clic estándar
+        if (android.os.SystemClock.uptimeMillis() - lastLongClickTimestamp > 800L) {
+            onClick()
+        }
+    }
+
     Box(
         modifier = modifier
             .drawBehind {
@@ -124,7 +144,8 @@ fun MediaCard(
             }
     ) {
         Card(
-            onClick = onClick,
+            onClick = safeOnClick,
+            onLongClick = effectiveLongClick,
             colors = CardDefaults.colors(
                 containerColor = if (isFocused) Color(0xFF1E222D) else Color(0xFF111319),
                 focusedContainerColor = Color(0xFF1E222D)

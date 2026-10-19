@@ -856,6 +856,32 @@ private fun AppearanceCategory(
         focusColor = focusColor,
         focusContent = focusContent
     )
+
+    TvSectionHeader(title = stringResource(R.string.settings_section_navigation_sound))
+
+    TvSegmentedSelector(
+        options = listOf(
+            true to stringResource(R.string.settings_navigation_sound_enabled),
+            false to stringResource(R.string.settings_navigation_sound_disabled)
+        ),
+        selectedOption = uiState.navigationSoundEnabled,
+        onOptionSelected = { viewModel.updateNavigationSoundEnabled(it) },
+        focusColor = focusColor,
+        focusContent = focusContent
+    )
+
+    TvSectionHeader(title = stringResource(R.string.settings_section_seasonal_audio))
+
+    TvSegmentedSelector(
+        options = listOf(
+            true to stringResource(R.string.settings_seasonal_audio_enabled),
+            false to stringResource(R.string.settings_seasonal_audio_disabled)
+        ),
+        selectedOption = uiState.seasonalAudioEnabled,
+        onOptionSelected = { viewModel.updateSeasonalAudioEnabled(it) },
+        focusColor = focusColor,
+        focusContent = focusContent
+    )
 }
 
 // =============================================================================

@@ -40,6 +40,7 @@ fun MediaRow(
     section: HomeSection,
     onItemClick: (MediaItem) -> Unit,
     onItemFocus: (MediaItem) -> Unit,
+    onItemLongClick: ((MediaItem) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -122,10 +123,17 @@ fun MediaRow(
                 } else {
                     item
                 }
+                val view = androidx.compose.ui.platform.LocalView.current
                 MediaCard(
                     item = displayItem,
                     onClick = { onItemClick(displayItem) },
-                    onFocus = { onItemFocus(displayItem) }
+                    onFocus = { onItemFocus(displayItem) },
+                    onLongClick = onItemLongClick?.let { callback ->
+                        {
+                            view.playSoundEffect(android.view.SoundEffectConstants.CLICK)
+                            callback(displayItem)
+                        }
+                    }
                 )
             }
         }

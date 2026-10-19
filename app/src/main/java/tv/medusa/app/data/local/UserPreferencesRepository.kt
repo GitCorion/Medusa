@@ -89,7 +89,9 @@ data class UserPreferences(
     val audioVolumeBoostDb: Int = 0,
     val subtitleSize: String = SUBTITLE_SIZE_NORMAL,
     val subtitleBackground: Boolean = false,
-    val autoFrameRateEnabled: Boolean = true
+    val autoFrameRateEnabled: Boolean = true,
+    val seasonalAudioEnabled: Boolean = true,
+    val navigationSoundEnabled: Boolean = true
 ) {
     val isMonochrome: Boolean
         get() = indicatorTheme == INDICATOR_THEME_MONOCHROME || accentColor == ACCENT_WHITE
@@ -161,6 +163,8 @@ class UserPreferencesRepository(context: Context) {
         val SUBTITLE_SIZE = stringPreferencesKey("subtitle_size")
         val SUBTITLE_BACKGROUND = stringPreferencesKey("subtitle_background")
         val AUTO_FRAME_RATE = stringPreferencesKey("auto_frame_rate")
+        val SEASONAL_AUDIO_ENABLED = stringPreferencesKey("seasonal_audio_enabled")
+        val NAVIGATION_SOUND_ENABLED = stringPreferencesKey("navigation_sound_enabled")
         // Versión del algoritmo de sincronización aplicada. Si la almacenada es menor que la
         // actual, se fuerza un sync completo para reconstruir catálogos truncados por versiones
         // anteriores (p. ej. paginación que cortaba al recibir páginas más cortas que el límite).
@@ -216,6 +220,12 @@ class UserPreferencesRepository(context: Context) {
 
     val autoFrameRateEnabled: StateFlow<Boolean> =
         userPreferences.map { it.autoFrameRateEnabled }.stateIn(appScope, SharingStarted.Eagerly, true)
+
+    val seasonalAudioEnabled: StateFlow<Boolean> =
+        userPreferences.map { it.seasonalAudioEnabled }.stateIn(appScope, SharingStarted.Eagerly, true)
+
+    val navigationSoundEnabled: StateFlow<Boolean> =
+        userPreferences.map { it.navigationSoundEnabled }.stateIn(appScope, SharingStarted.Eagerly, true)
 
     val jellyfinLanServerUrl: StateFlow<String> =
         userPreferences.map { it.jellyfinLanServerUrl }.stateIn(appScope, SharingStarted.Eagerly, "")
@@ -352,6 +362,18 @@ class UserPreferencesRepository(context: Context) {
     suspend fun updateAutoFrameRate(enabled: Boolean) {
         appContext.dataStore.edit { prefs ->
             prefs[Keys.AUTO_FRAME_RATE] = enabled.toString()
+        }
+    }
+
+    suspend fun updateSeasonalAudioEnabled(enabled: Boolean) {
+        appContext.dataStore.edit { prefs ->
+            prefs[Keys.SEASONAL_AUDIO_ENABLED] = enabled.toString()
+        }
+    }
+
+    suspend fun updateNavigationSoundEnabled(enabled: Boolean) {
+        appContext.dataStore.edit { prefs ->
+            prefs[Keys.NAVIGATION_SOUND_ENABLED] = enabled.toString()
         }
     }
 
@@ -589,7 +611,9 @@ class UserPreferencesRepository(context: Context) {
                 audioVolumeBoostDb = this[Keys.AUDIO_VOLUME_BOOST_DB] ?: 0,
                 subtitleSize = this[Keys.SUBTITLE_SIZE] ?: SUBTITLE_SIZE_NORMAL,
                 subtitleBackground = this[Keys.SUBTITLE_BACKGROUND] == "true",
-                autoFrameRateEnabled = (this[Keys.AUTO_FRAME_RATE] ?: "true") != "false"
+                autoFrameRateEnabled = (this[Keys.AUTO_FRAME_RATE] ?: "true") != "false",
+                seasonalAudioEnabled = (this[Keys.SEASONAL_AUDIO_ENABLED] ?: "true") != "false",
+                navigationSoundEnabled = (this[Keys.NAVIGATION_SOUND_ENABLED] ?: "true") != "false"
             )
         }
     }

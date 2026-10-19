@@ -329,6 +329,23 @@ class JellyfinMediaRemoteRepository(
         }
     }
 
+    suspend fun clearPlaybackPosition(serverUrl: String, userId: String, token: String, itemId: String): Result<Unit> {
+        return runCatching {
+            jellyfinDao.updatePlaybackPosition(itemId, positionTicks = 0L, isPlayed = false, lastPlayedTicks = 0L)
+            if (serverUrl.isNotBlank() && token.isNotBlank()) {
+                val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
+                val authHeader = buildJellyfinAuthHeader(token = token)
+                api.reportPlaybackStopped(
+                    authHeader,
+                    tv.medusa.app.data.remote.jellyfin.JellyfinPlaybackProgressRequest(
+                        itemId = itemId,
+                        positionTicks = 0L
+                    )
+                )
+            }
+        }
+    }
+
     /**
      * Selección dinámica de películas para la cabecera — lógica estilo streaming.
      *

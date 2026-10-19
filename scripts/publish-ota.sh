@@ -100,7 +100,11 @@ OTA_RELEASE_NOTES="${OTA_RELEASE_NOTES:-}" \
 python3 scripts/update_version_json.py
 
 echo "▶ Desplegando en Firebase Hosting (proyecto $FIREBASE_PROJECT)…"
-firebase deploy --only hosting --project "$FIREBASE_PROJECT"
+FIREBASE_ARGS=(--only hosting --project "$FIREBASE_PROJECT")
+if [ -n "${FIREBASE_TOKEN:-}" ]; then
+  FIREBASE_ARGS+=(--token "$FIREBASE_TOKEN")
+fi
+firebase deploy "${FIREBASE_ARGS[@]}"
 
 echo "✓ OTA publicado:"
 echo "    manifiesto : $OTA_BASE_URL/api/version.json"

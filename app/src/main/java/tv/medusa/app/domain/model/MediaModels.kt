@@ -28,7 +28,9 @@ data class MediaItem(
     val isFavorite: Boolean = false,
     val totalEpisodes: Int? = null,
     val playedEpisodes: Int? = null,
-    val trailerUrl: String? = null
+    val trailerUrl: String? = null,
+    val seriesId: String? = null,
+    val seriesName: String? = null
 )
 
 @Immutable

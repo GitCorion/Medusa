@@ -138,7 +138,9 @@ data class SettingsUiState(
     val hasPurchasedPro: Boolean = false,
     val isFamilyVipUser: Boolean = false,
     val isTrialActive: Boolean = false,
-    val trialDaysRemaining: Int = 0
+    val trialDaysRemaining: Int = 0,
+    val seasonalAudioEnabled: Boolean = true,
+    val navigationSoundEnabled: Boolean = true
 ) {
     val isMonochrome: Boolean
         get() = indicatorTheme == INDICATOR_THEME_MONOCHROME || accentColor == ACCENT_WHITE
@@ -200,7 +202,9 @@ class SettingsViewModel @Inject constructor(
                     hasPurchasedPro = prefs.hasPurchasedPro,
                     isFamilyVipUser = prefs.isFamilyVipUser,
                     isTrialActive = prefs.isTrialActive,
-                    trialDaysRemaining = prefs.trialDaysRemaining
+                    trialDaysRemaining = prefs.trialDaysRemaining,
+                    seasonalAudioEnabled = prefs.seasonalAudioEnabled,
+                    navigationSoundEnabled = prefs.navigationSoundEnabled
                 )
             }
         }
@@ -235,7 +239,9 @@ class SettingsViewModel @Inject constructor(
                 hasPurchasedPro = prefs.hasPurchasedPro,
                 isFamilyVipUser = prefs.isFamilyVipUser,
                 isTrialActive = prefs.isTrialActive,
-                trialDaysRemaining = prefs.trialDaysRemaining
+                trialDaysRemaining = prefs.trialDaysRemaining,
+                seasonalAudioEnabled = prefs.seasonalAudioEnabled,
+                navigationSoundEnabled = prefs.navigationSoundEnabled
             )
             if (prefs.traktAccessToken.isNotBlank()) {
                 validateTraktToken(prefs.traktAccessToken, prefs.traktClientId)
@@ -252,6 +258,20 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             userPreferencesRepository.updatePerformanceMode(mode)
             _uiState.value = _uiState.value.copy(performanceMode = mode)
+        }
+    }
+
+    fun updateSeasonalAudioEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.updateSeasonalAudioEnabled(enabled)
+            _uiState.value = _uiState.value.copy(seasonalAudioEnabled = enabled)
+        }
+    }
+
+    fun updateNavigationSoundEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.updateNavigationSoundEnabled(enabled)
+            _uiState.value = _uiState.value.copy(navigationSoundEnabled = enabled)
         }
     }
 

@@ -148,6 +148,9 @@ class MediaRepository(
     suspend fun togglePlayed(serverUrl: String, userId: String, token: String, itemId: String, makePlayed: Boolean): Result<Boolean> =
         jellyfinRemote.togglePlayed(serverUrl, userId, token, itemId, makePlayed)
 
+    suspend fun clearPlaybackPosition(serverUrl: String, userId: String, token: String, itemId: String): Result<Unit> =
+        jellyfinRemote.clearPlaybackPosition(serverUrl, userId, token, itemId)
+
     suspend fun getTopRatedMoviesServer(serverUrl: String, userId: String, token: String, limit: Int = 20): List<JellyfinMediaEntity> =
         jellyfinRemote.getTopRatedMoviesServer(serverUrl, userId, token, limit)
 
@@ -211,10 +214,11 @@ class MediaRepository(
 
     suspend fun getTmdbSeasonalDiscover(
         apiKey: String,
-        withGenres: String?,
-        withoutGenres: String?,
-        maxPages: Int = 2
-    ): Result<List<TmdbItemDto>> = tmdb.getTmdbSeasonalDiscover(apiKey, withGenres, withoutGenres, maxPages)
+        withKeywords: String? = null,
+        withGenres: String? = null,
+        withoutGenres: String? = null,
+        maxPages: Int = 3
+    ): Result<List<TmdbItemDto>> = tmdb.getTmdbSeasonalDiscover(apiKey, withKeywords, withGenres, withoutGenres, maxPages)
 
     // =========================================================================
     // TRAKT

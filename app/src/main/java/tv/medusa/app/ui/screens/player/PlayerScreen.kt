@@ -170,6 +170,7 @@ fun PlayerScreen(
 ) {
     LaunchedEffect(itemId) {
         Log.i("PlayerScreen", "PlayerScreen LaunchedEffect for itemId=$itemId")
+        tv.medusa.app.util.SeasonalAudioManager.release()
         viewModel.loadStreamUrl(itemId)
     }
 

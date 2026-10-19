@@ -267,6 +267,12 @@
     <string name="settings_perf_auto">Automatic</string>
     <string name="settings_perf_high">High</string>
     <string name="settings_perf_low">Battery saver</string>
+    <string name="settings_section_seasonal_audio">SEASONAL EVENT AUDIO</string>
+    <string name="settings_seasonal_audio_enabled">Enabled</string>
+    <string name="settings_seasonal_audio_disabled">Disabled</string>
+    <string name="settings_section_navigation_sound">SYSTEM NAVIGATION SOUNDS</string>
+    <string name="settings_navigation_sound_enabled">Enabled</string>
+    <string name="settings_navigation_sound_disabled">Disabled</string>
 
     <!-- About -->
     <string name="settings_section_system">SYSTEM</string>

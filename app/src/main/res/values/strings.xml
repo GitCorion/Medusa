@@ -267,6 +267,12 @@
     <string name="settings_perf_auto">Automático</string>
     <string name="settings_perf_high">Alto</string>
     <string name="settings_perf_low">Ahorro</string>
+    <string name="settings_section_seasonal_audio">SONIDO DE EVENTOS ESPECIALES</string>
+    <string name="settings_seasonal_audio_enabled">Activado</string>
+    <string name="settings_seasonal_audio_disabled">Desactivado</string>
+    <string name="settings_section_navigation_sound">SONIDOS DE NAVEGACIÓN (SISTEMA)</string>
+    <string name="settings_navigation_sound_enabled">Activado</string>
+    <string name="settings_navigation_sound_disabled">Desactivado</string>
 
     <!-- Acerca de -->
     <string name="settings_section_system">SISTEMA</string>
@@ -521,4 +527,16 @@
     <string name="update_error_apk_http">Error al descargar APK: HTTP %1$d</string>
     <string name="update_error_empty_body">Respuesta vacía al descargar APK</string>
     <string name="update_error_integrity">Verificación de integridad fallida: el APK descargado no coincide con el hash esperado.</string>
+
+    <!-- Menú Contextual de Medios -->
+    <string name="context_menu_resume">Reanudar</string>
+    <string name="context_menu_play_from_start">Reproducir desde el principio</string>
+    <string name="context_menu_play">Reproducir</string>
+    <string name="context_menu_mark_watched">Marcar como visto</string>
+    <string name="context_menu_mark_unwatched">Marcar como no visto</string>
+    <string name="context_menu_remove_from_continue">Quitar de Continuar viendo</string>
+    <string name="context_menu_add_favorite">Añadir a Favoritos</string>
+    <string name="context_menu_remove_favorite">Quitar de Favoritos</string>
+    <string name="context_menu_view_details">Ver detalles</string>
+    <string name="context_menu_go_to_series">Ir a la serie</string>
 </resources>
