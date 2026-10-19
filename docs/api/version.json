@@ -1,12 +1,12 @@
 {
-  "versionCode": 1000095,
-  "versionName": "2.2.48-beta",
+  "versionCode": 1000096,
+  "versionName": "2.2.49-beta",
   "minSupportedVersionCode": 71,
   "forceUpdate": false,
   "killSwitch": false,
-  "releaseNotes": "Curaduría de Halloween mejorada: listas de la comunidad de clásicos del terror (The Shining, Hereditary, Hocus Pocus, Beetlejuice, Scream...), descubrimiento TMDB y filtrado estricto que elimina documentales, conciertos y películas bélicas.",
+  "releaseNotes": "Menú contextual con pulsación larga y protección de selección, ambientación estacional Halloween a pantalla completa con sombras sutiles de murciélagos y hojas botánicas, y control de audio en apariencia.",
   "apkUrl": "https://medusa-fd388.web.app/Medusa.apk",
-  "apkSha256": "64de2148797d501dd5f1e41c5604992c889ad2d4504cda5de00287fd5bcc66d4",
+  "apkSha256": "33dd9c97537fe8d8c913aebe981af5737e4ef2c294a799ad4f6f526ad3e511fd",
   "signatures": [
     "26bccb39ed122a69ecf7a8d0b50deeabeb15bc1a4b2a8b77941b47a96fdd3fea",
     "78a588afcc90d8ea59e008c9cbd1e8bbed3b2831518184d5a9935948b9d245ac"
