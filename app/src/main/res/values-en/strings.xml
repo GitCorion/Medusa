@@ -103,6 +103,8 @@
 
     <!-- Search -->
     <string name="search_placeholder">Search...</string>
+    <string name="search_voice_title">Voice search</string>
+    <string name="search_voice_prompt">Say a movie or series title</string>
     <string name="search_catalog_title">Catalog search</string>
     <string name="search_no_results">No titles found for \"%1$s\"</string>
 
@@ -153,6 +155,16 @@
     <string name="player_aspect_fill">Stretch / Full Screen</string>
     <string name="player_resume">Resume (%1$s)</string>
     <string name="player_from_start">From the beginning</string>
+    <string name="player_subtitle_size">Subtitle Size</string>
+    <string name="player_subtitle_size_small">Small</string>
+    <string name="player_subtitle_size_normal">Normal</string>
+    <string name="player_subtitle_size_large">Large</string>
+    <string name="player_subtitle_contrast">Contrast Background</string>
+    <string name="player_subtitle_contrast_off">Disabled (Outline only)</string>
+    <string name="player_subtitle_contrast_on">Enabled (Translucent box)</string>
+    <string name="player_afr_title">Auto Frame Rate (Judder-free 24p)</string>
+    <string name="player_afr_enabled">Enabled (Recommended)</string>
+    <string name="player_afr_disabled">Disabled</string>
 
     <!-- ===================================================================== -->
     <!-- Settings                                                              -->
@@ -161,6 +173,9 @@
     <!-- Edit fields (SettingField) -->
     <string name="settings_field_server_url">Jellyfin Server URL</string>
     <string name="settings_field_server_url_placeholder">http://192.168.1.100:8096 or https://jellyfin.example.com</string>
+    <string name="settings_field_lan_server_url">Local / LAN URL (Optional)</string>
+    <string name="settings_field_lan_server_url_placeholder">http://192.168.1.x:8096 (Local network)</string>
+    <string name="settings_field_lan_server_url_desc">Direct local network streaming without routing through the Internet or WAN</string>
     <string name="settings_field_username">Jellyfin Username</string>
     <string name="settings_field_username_placeholder">Enter your username</string>
     <string name="settings_field_password">Jellyfin Password</string>

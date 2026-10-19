@@ -337,6 +337,12 @@ private fun JellyfinCategory(
         )
 
         TvSettingRow(
+            title = stringResource(R.string.settings_field_lan_server_url),
+            value = uiState.lanServerUrl.ifBlank { stringResource(R.string.settings_field_lan_server_url_placeholder) },
+            onClick = { viewModel.openEditDialog(SettingField.LAN_SERVER_URL) }
+        )
+
+        TvSettingRow(
             title = stringResource(R.string.settings_row_user),
             value = uiState.username
         )
@@ -442,6 +448,12 @@ private fun JellyfinCategory(
             title = stringResource(R.string.settings_row_server),
             value = uiState.serverUrl.ifBlank { stringResource(R.string.settings_placeholder_enter_url) },
             onClick = { viewModel.openEditDialog(SettingField.SERVER_URL) }
+        )
+
+        TvSettingRow(
+            title = stringResource(R.string.settings_field_lan_server_url),
+            value = uiState.lanServerUrl.ifBlank { stringResource(R.string.settings_field_lan_server_url_placeholder) },
+            onClick = { viewModel.openEditDialog(SettingField.LAN_SERVER_URL) }
         )
 
         if (uiState.serverUrl.isNotBlank()) {

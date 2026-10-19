@@ -1,5 +1,9 @@
 package tv.medusa.app.util
 
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+
 /**
  * Visibilidad de la app, para que el trabajo de fondo ceda el paso a lo que el usuario espera.
  *
@@ -11,6 +15,12 @@ package tv.medusa.app.util
  * que competir.
  */
 object AppForeground {
-    @Volatile
-    var isVisible: Boolean = false
+    private val _isForegroundFlow = MutableStateFlow(false)
+    val isForegroundFlow: StateFlow<Boolean> = _isForegroundFlow.asStateFlow()
+
+    var isVisible: Boolean
+        get() = _isForegroundFlow.value
+        set(value) {
+            _isForegroundFlow.value = value
+        }
 }

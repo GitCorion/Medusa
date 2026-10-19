@@ -92,6 +92,9 @@ class PlayerViewModel @Inject constructor(
     val isProUser: StateFlow<Boolean> = userPreferencesRepository.isProUser
     val nightModeAudio: StateFlow<Int> = userPreferencesRepository.nightModeAudio
     val audioVolumeBoostDb: StateFlow<Int> = userPreferencesRepository.audioVolumeBoostDb
+    val subtitleSize: StateFlow<String> = userPreferencesRepository.subtitleSize
+    val subtitleBackground: StateFlow<Boolean> = userPreferencesRepository.subtitleBackground
+    val autoFrameRateEnabled: StateFlow<Boolean> = userPreferencesRepository.autoFrameRateEnabled
 
     fun setNightModeAudio(level: Int) {
         viewModelScope.launch {
@@ -102,6 +105,24 @@ class PlayerViewModel @Inject constructor(
     fun setAudioVolumeBoostDb(db: Int) {
         viewModelScope.launch {
             userPreferencesRepository.setAudioVolumeBoostDb(db)
+        }
+    }
+
+    fun setSubtitleSize(size: String) {
+        viewModelScope.launch {
+            userPreferencesRepository.updateSubtitleSize(size)
+        }
+    }
+
+    fun setSubtitleBackground(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.updateSubtitleBackground(enabled)
+        }
+    }
+
+    fun setAutoFrameRateEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.updateAutoFrameRate(enabled)
         }
     }
 
@@ -648,12 +669,27 @@ class PlayerViewModel @Inject constructor(
                 candidateUrls.add(defaultHls)
             }
 
-            val primaryStreamUrl = candidateUrls.firstOrNull() ?: "$baseUrl/Videos/$playableId/stream?api_key=$effectiveToken"
+            val lanUrl = prefs.jellyfinLanServerUrl.trimEnd('/')
+            val finalCandidates = if (lanUrl.isNotBlank() && lanUrl != baseUrl) {
+                val list = mutableListOf<String>()
+                candidateUrls.forEach { url ->
+                    if (url.startsWith(baseUrl)) {
+                        val lanCandidate = url.replaceFirst(baseUrl, lanUrl)
+                        if (!list.contains(lanCandidate)) list.add(lanCandidate)
+                    }
+                    if (!list.contains(url)) list.add(url)
+                }
+                list
+            } else {
+                candidateUrls
+            }
+
+            val primaryStreamUrl = finalCandidates.firstOrNull() ?: "$baseUrl/Videos/$playableId/stream?api_key=$effectiveToken"
 
             val rawTicks = itemDto?.userData?.playbackPositionTicks ?: entity?.playbackPositionTicks ?: 0L
             val startPositionMs = (rawTicks / 10_000L).coerceAtLeast(0L)
 
-            Log.i("PlayerViewModel", "Resolved ${candidateUrls.size} candidate URLs for $playableId. Primary: $primaryStreamUrl")
+            Log.i("PlayerViewModel", "Resolved ${finalCandidates.size} candidate URLs for $playableId. Primary: $primaryStreamUrl")
 
             if (primaryStreamUrl.isNotBlank()) {
                 prewarmStream(primaryStreamUrl, effectiveToken, effectiveAuthHeader)
@@ -662,7 +698,7 @@ class PlayerViewModel @Inject constructor(
             _streamInfo.value = PlayerStreamInfo(
                 playableId = playableId,
                 primaryStreamUrl = primaryStreamUrl,
-                candidateUrls = candidateUrls,
+                candidateUrls = finalCandidates,
                 subtitles = subtitles,
                 audioTracks = audioTracks,
                 title = itemDto?.name ?: entity?.title ?: "",

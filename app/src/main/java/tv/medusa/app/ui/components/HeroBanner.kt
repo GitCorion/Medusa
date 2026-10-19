@@ -28,6 +28,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -63,6 +64,7 @@ import tv.medusa.app.data.local.BUTTON_STYLE_ICONS_ONLY
 import tv.medusa.app.data.local.BUTTON_STYLE_TEXT_ONLY
 import tv.medusa.app.domain.model.MediaItem
 import tv.medusa.app.domain.model.MediaSource
+import tv.medusa.app.domain.model.SeasonalEvent
 import tv.medusa.app.ui.theme.TvAccent
 import tv.medusa.app.ui.theme.TvPill
 import tv.medusa.app.ui.theme.TvRatingBadge
@@ -78,6 +80,8 @@ fun HeroBanner(
     featuredItems: List<MediaItem> = emptyList(),
     accentColor: String = ACCENT_CYAN,
     buttonStyle: String = BUTTON_STYLE_ICONS_ONLY,
+    seasonalEvent: SeasonalEvent? = null,
+    onExploreSeasonal: (() -> Unit)? = null,
     onActiveHeroChanged: ((MediaItem) -> Unit)? = null
 ) {
     val indicatorTheme = LocalIndicatorTheme.current
@@ -209,6 +213,44 @@ fun HeroBanner(
                     .padding(start = 48.dp, end = 24.dp, top = 20.dp, bottom = 14.dp)
                     .fillMaxWidth(0.58f)
             ) {
+                // Festive / Seasonal Editorial Badge (Apple TV+ style, no emojis)
+                if (seasonalEvent != null) {
+                    val eventAccentColor = remember(seasonalEvent.accentHex) {
+                        runCatching { Color(android.graphics.Color.parseColor(seasonalEvent.accentHex)) }
+                            .getOrDefault(Color(0xFFEA580C))
+                    }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .padding(bottom = 8.dp)
+                            .background(
+                                color = if (isMonochrome) Color(0x22FFFFFF) else eventAccentColor.copy(alpha = 0.20f),
+                                shape = RoundedCornerShape(4.dp)
+                            )
+                            .border(
+                                width = 1.dp,
+                                color = if (isMonochrome) Color(0x33FFFFFF) else eventAccentColor.copy(alpha = 0.60f),
+                                shape = RoundedCornerShape(4.dp)
+                            )
+                            .padding(horizontal = 8.dp, vertical = 3.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(5.dp)
+                                .clip(CircleShape)
+                                .background(if (isMonochrome) Color.White else eventAccentColor)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = seasonalEvent.badgeLabel,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            letterSpacing = 1.2.sp,
+                            color = Color.White
+                        )
+                    }
+                }
+
                 // Title / ClearLogo
                 var isLogoLoaded by remember(effectiveItem.id, effectiveItem.logoUrl) { mutableStateOf(false) }
 
@@ -386,6 +428,50 @@ fun HeroBanner(
                 val showText = buttonStyle != BUTTON_STYLE_ICONS_ONLY
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (onExploreSeasonal != null && seasonalEvent != null) {
+                        val eventAccent = remember(seasonalEvent.accentHex) {
+                            runCatching { Color(android.graphics.Color.parseColor(seasonalEvent.accentHex)) }
+                                .getOrDefault(Color(0xFFEA580C))
+                        }
+                        Button(
+                            onClick = onExploreSeasonal,
+                            colors = ButtonDefaults.colors(
+                                containerColor = if (isMonochrome) Color(0x28FFFFFF) else eventAccent.copy(alpha = 0.28f),
+                                contentColor = Color.White,
+                                focusedContainerColor = if (isMonochrome) Color.White else eventAccent,
+                                focusedContentColor = if (isMonochrome) Color(0xFF0F172A) else Color.White
+                            ),
+                            shape = ButtonDefaults.shape(shape = CircleShape),
+                            border = ButtonDefaults.border(
+                                border = Border(
+                                    border = BorderStroke(1.dp, if (isMonochrome) Color(0x33FFFFFF) else eventAccent.copy(alpha = 0.70f)),
+                                    shape = CircleShape
+                                ),
+                                focusedBorder = Border.None
+                            )
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.AutoAwesome,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "VER SELECCIÓN",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                    }
+
                     Button(
                         onClick = { onDetailClick(effectiveItem) },
                         colors = ButtonDefaults.colors(

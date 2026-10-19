@@ -16,6 +16,7 @@ import tv.medusa.app.domain.model.MediaItem
 import tv.medusa.app.domain.model.MediaSource
 import tv.medusa.app.domain.usecase.GetHomeFeedUseCase
 import tv.medusa.app.util.toOptimizedMediaItem
+import tv.medusa.app.util.AppForeground
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -91,6 +92,20 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             val count = mediaRepository.getLocalCount()
             MediaRepository.checkActiveWorkerSync(context, count)
+        }
+        viewModelScope.launch {
+            var isFirstForeground = true
+            AppForeground.isForegroundFlow.collect { isForeground ->
+                if (isForeground) {
+                    if (!isFirstForeground) {
+                        refreshContinueWatching()
+                        if (_uiState.value is HomeUiState.Error) {
+                            loadHomeFeed(forceRefresh = true)
+                        }
+                    }
+                    isFirstForeground = false
+                }
+            }
         }
         viewModelScope.launch {
             var wasSyncing = false

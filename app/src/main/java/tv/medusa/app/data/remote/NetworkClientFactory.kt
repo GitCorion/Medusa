@@ -3,9 +3,6 @@ package tv.medusa.app.data.remote
 import android.content.Context
 import java.io.File
 import java.io.IOException
-import java.net.Inet4Address
-import java.net.Inet6Address
-import java.net.NetworkInterface
 import java.util.concurrent.ConcurrentHashMap
 import tv.medusa.app.R
 import tv.medusa.app.util.DeviceUtils
@@ -67,34 +64,6 @@ object NetworkClientFactory {
                 || hostname.endsWith(".home", ignoreCase = true)
     }
 
-    /**
-     * Comprueba si el dispositivo tiene una dirección IPv6 global enrutable asignada.
-     * Si no la tiene (como en emulador o redes solo IPv4), no se prioriza IPv6 en el DNS.
-     */
-    private fun hasIpv6Connectivity(): Boolean {
-        return try {
-            val interfaces = NetworkInterface.getNetworkInterfaces() ?: return false
-            while (interfaces.hasMoreElements()) {
-                val iface = interfaces.nextElement()
-                if (!iface.isUp || iface.isLoopback) continue
-                val addrs = iface.inetAddresses
-                while (addrs.hasMoreElements()) {
-                    val addr = addrs.nextElement()
-                    if (addr is Inet6Address &&
-                        !addr.isLinkLocalAddress &&
-                        !addr.isLoopbackAddress &&
-                        !addr.isSiteLocalAddress &&
-                        !addr.isMulticastAddress
-                    ) {
-                        return true
-                    }
-                }
-            }
-            false
-        } catch (_: Exception) {
-            false
-        }
-    }
 
     /**
      * Fábrica TLS consciente del host. OkHttp la invoca con el host destino
@@ -138,19 +107,6 @@ object NetworkClientFactory {
                 javax.net.ssl.HttpsURLConnection.getDefaultHostnameVerifier().verify(hostname, session)
             }
         }
-        .dns(object : okhttp3.Dns {
-            override fun lookup(hostname: String): List<InetAddress> {
-                val addresses = okhttp3.Dns.SYSTEM.lookup(hostname)
-                // En dominios públicos solo priorizamos IPv6 si el dispositivo tiene salida IPv6 real
-                // (para saltar bloqueos de operadoras como Digi sobre IPv4 sin romper en redes IPv4)
-                val canIpv6 = hasIpv6Connectivity()
-                return if (canIpv6 && !isLocalHost(hostname)) {
-                    addresses.sortedBy { it is Inet4Address }
-                } else {
-                    addresses.sortedBy { it !is Inet4Address }
-                }
-            }
-        })
         .connectionPool(okhttp3.ConnectionPool(20, 5, TimeUnit.MINUTES))
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(120, TimeUnit.SECONDS)

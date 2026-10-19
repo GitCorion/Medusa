@@ -14,6 +14,7 @@ import tv.medusa.app.data.repository.MediaRepository
 import tv.medusa.app.domain.model.HomeSection
 import tv.medusa.app.domain.model.MediaItem
 import tv.medusa.app.domain.model.MediaSource
+import tv.medusa.app.domain.model.SeasonalEventsManager
 import tv.medusa.app.util.toOptimizedMediaItem
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -49,6 +50,8 @@ class GetHomeFeedUseCase(
 
         fun sectionPriority(title: String): Int = when {
             title == "Continuar Viendo" -> 0
+            title.startsWith("Ciclo ") || title.startsWith("Selección Festiva") ||
+            title.startsWith("Temporada de Premios") || title.startsWith("Especial ") -> 1
             title == "Últimos estrenos" -> 5
             title.contains("Top 10", ignoreCase = true) -> 10
             title == "Añadido recientemente" -> 20
@@ -182,6 +185,24 @@ class GetHomeFeedUseCase(
                 title = "Continuar Viendo",
                 items = localContinueWatching.take(20).map { it.toOptimizedMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.JELLYFIN) }
             ))
+        }
+
+        // ─── Colección Festiva / Estacional (Exclusivo Medusa Pro) ───────────────
+        val activeSeasonalEvent = SeasonalEventsManager.getActiveEvent()
+        if (prefs.isProUser && activeSeasonalEvent != null) {
+            val matchedEntities = activeSeasonalEvent.matchingGenres.flatMap { genre ->
+                runCatching { mediaRepository.getItemsByGenre(genre) }.getOrDefault(emptyList())
+            }.distinctBy { it.id }
+            .sortedByDescending { it.communityRating ?: 0f }
+            .take(25)
+
+            if (matchedEntities.size >= 3) {
+                updateOrAddSection(HomeSection(
+                    title = activeSeasonalEvent.homeSectionTitle,
+                    items = matchedEntities.map { it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.JELLYFIN) },
+                    badge = activeSeasonalEvent.badgeLabel
+                ))
+            }
         }
         // Últimos estrenos: lo más nuevo por año de estreno que hay en la biblioteca. Va arriba,
         // justo después de Continuar Viendo, para que lo recién estrenado no quede enterrado.

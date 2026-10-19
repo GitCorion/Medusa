@@ -35,6 +35,16 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import android.app.Activity
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.speech.RecognizerIntent
+import android.speech.SpeechRecognizer
+import android.util.Log
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material.icons.rounded.Mic
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -82,6 +92,29 @@ fun SearchScreen(
     val isMonochrome by viewModel.isMonochrome.collectAsStateWithLifecycle()
     val focusColor = TvAccent.getColor(accentColorKey)
     val focusContent = TvAccent.getFocusedContentColor(accentColorKey)
+
+    val context = LocalContext.current
+    val voicePrompt = stringResource(R.string.search_voice_prompt)
+    val isVoiceSearchAvailable = remember(context) {
+        SpeechRecognizer.isRecognitionAvailable(context) ||
+            context.packageManager.queryIntentActivities(
+                Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH),
+                PackageManager.MATCH_DEFAULT_ONLY
+            ).isNotEmpty()
+    }
+
+    val voiceSearchLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val spoken = result.data
+                ?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)
+                ?.firstOrNull()
+            if (!spoken.isNullOrBlank()) {
+                viewModel.onQueryChange(spoken.trim())
+            }
+        }
+    }
 
     // Enfoque inicial automático en la primera tecla del teclado (A)
     val initialKeyFocusRequester = remember { FocusRequester() }
@@ -190,38 +223,77 @@ fun SearchScreen(
                         }
                     }
 
-                    // Selector de Modo Predictivo sobrio y limpio
-                    Button(
-                        onClick = { viewModel.togglePredictive() },
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                        shape = ButtonDefaults.shape(RoundedCornerShape(6.dp)),
-                        colors = ButtonDefaults.colors(
-                            containerColor = if (uiState.isPredictiveActive) {
-                                if (isMonochrome) Color(0x22FFFFFF) else focusColor.copy(alpha = 0.18f)
-                            } else Color(0x0AFFFFFF),
-                            contentColor = if (uiState.isPredictiveActive) {
-                                if (isMonochrome) Color.White else focusColor
-                            } else Color(0xFF64748B),
-                            focusedContainerColor = focusColor,
-                            focusedContentColor = focusContent
-                        ),
-                        border = ButtonDefaults.border(
-                            border = Border(
-                                border = BorderStroke(
-                                    0.8.dp,
-                                    if (uiState.isPredictiveActive) focusColor.copy(alpha = 0.4f) else Color(0x18FFFFFF)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (isVoiceSearchAvailable) {
+                            Button(
+                                onClick = {
+                                    try {
+                                        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                                            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                                            putExtra(RecognizerIntent.EXTRA_PROMPT, voicePrompt)
+                                        }
+                                        voiceSearchLauncher.launch(intent)
+                                    } catch (e: Exception) {
+                                        Log.w("SearchScreen", "Voice recognition activity not found", e)
+                                    }
+                                },
+                                contentPadding = PaddingValues(horizontal = 7.dp, vertical = 2.dp),
+                                shape = ButtonDefaults.shape(RoundedCornerShape(6.dp)),
+                                colors = ButtonDefaults.colors(
+                                    containerColor = Color(0x14FFFFFF),
+                                    contentColor = if (isMonochrome) Color.White else focusColor,
+                                    focusedContainerColor = focusColor,
+                                    focusedContentColor = focusContent
+                                ),
+                                border = ButtonDefaults.border(
+                                    border = Border(border = BorderStroke(0.8.dp, Color(0x18FFFFFF))),
+                                    focusedBorder = Border(border = BorderStroke(1.5.dp, focusColor))
+                                ),
+                                modifier = Modifier.height(26.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Mic,
+                                    contentDescription = stringResource(R.string.search_voice_title),
+                                    modifier = Modifier.size(14.dp)
                                 )
+                            }
+
+                            Spacer(modifier = Modifier.width(6.dp))
+                        }
+
+                        // Selector de Modo Predictivo sobrio y limpio
+                        Button(
+                            onClick = { viewModel.togglePredictive() },
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                            shape = ButtonDefaults.shape(RoundedCornerShape(6.dp)),
+                            colors = ButtonDefaults.colors(
+                                containerColor = if (uiState.isPredictiveActive) {
+                                    if (isMonochrome) Color(0x22FFFFFF) else focusColor.copy(alpha = 0.18f)
+                                } else Color(0x0AFFFFFF),
+                                contentColor = if (uiState.isPredictiveActive) {
+                                    if (isMonochrome) Color.White else focusColor
+                                } else Color(0xFF64748B),
+                                focusedContainerColor = focusColor,
+                                focusedContentColor = focusContent
                             ),
-                            focusedBorder = Border(border = BorderStroke(1.5.dp, focusColor))
-                        ),
-                        modifier = Modifier.height(26.dp)
-                    ) {
-                        Text(
-                            text = if (uiState.isPredictiveActive) "Auto" else "Libre",
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 0.5.sp
-                        )
+                            border = ButtonDefaults.border(
+                                border = Border(
+                                    border = BorderStroke(
+                                        0.8.dp,
+                                        if (uiState.isPredictiveActive) focusColor.copy(alpha = 0.4f) else Color(0x18FFFFFF)
+                                    )
+                                ),
+                                focusedBorder = Border(border = BorderStroke(1.5.dp, focusColor))
+                            ),
+                            modifier = Modifier.height(26.dp)
+                        ) {
+                            Text(
+                                text = if (uiState.isPredictiveActive) "Auto" else "Libre",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 0.5.sp
+                            )
+                        }
                     }
                 }
 

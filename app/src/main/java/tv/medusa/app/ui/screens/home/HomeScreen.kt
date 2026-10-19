@@ -84,6 +84,7 @@ import tv.medusa.app.R
 import tv.medusa.app.data.local.BUTTON_STYLE_ICONS_ONLY
 import tv.medusa.app.data.local.BUTTON_STYLE_TEXT_ONLY
 import tv.medusa.app.domain.BillboardPoolBuilder
+import tv.medusa.app.domain.model.SeasonalEventsManager
 import tv.medusa.app.ui.components.BrandTileRow
 import tv.medusa.app.ui.components.GenreRow
 import tv.medusa.app.ui.components.HeroBanner
@@ -140,6 +141,7 @@ fun HomeScreen(
     val localMediaCount by viewModel.localMediaCount.collectAsStateWithLifecycle()
     val currentSuccess = uiState as? HomeUiState.Success
     val daySeed = remember { Calendar.getInstance().get(Calendar.DAY_OF_YEAR).toLong() }
+    val activeSeasonalEvent = remember { SeasonalEventsManager.getActiveEvent() }
     // Estado del backdrop del carrusel aislado en un holder: se lee dentro de
     // HomeGlobalBackdrop, de modo que su cambio NO recompone HomeScreen (ni la LazyColumn).
     val backdropState = remember { HomeBackdropState() }
@@ -404,7 +406,20 @@ fun HomeScreen(
                                 onDetailClick = { item -> onDetailMedia(item.id) },
                                 accentColor = accentColorKey,
                                 buttonStyle = buttonStyleKey,
-                                onActiveHeroChanged = { activeItem -> backdropState.carouselBackdrop = activeItem.backdropUrl }
+                                onActiveHeroChanged = { activeItem -> backdropState.carouselBackdrop = activeItem.backdropUrl },
+                                seasonalEvent = activeSeasonalEvent,
+                                onExploreSeasonal = {
+                                    if (isProUser) {
+                                        val targetSectionIndex = state.sections.indexOfFirst { it.title == activeSeasonalEvent?.homeSectionTitle }
+                                        val headerCount = 1 + (if (state.genres.isNotEmpty()) 1 else 0) + 1
+                                        val targetIndex = if (targetSectionIndex >= 0) headerCount + targetSectionIndex else headerCount
+                                        coroutineScope.launch {
+                                            listState.animateScrollToItem(targetIndex)
+                                        }
+                                    } else {
+                                        showProDialog = true
+                                    }
+                                }
                             )
                         }
                     }

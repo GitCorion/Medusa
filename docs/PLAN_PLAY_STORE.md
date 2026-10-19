@@ -164,7 +164,7 @@ La sección de actualizaciones de Ajustes sigue oculta en Play (`ENABLE_IN_APP_U
 - [x] CI: ejecutar tests unitarios antes de compilar.
 - [ ] CI: añadir `lintPlayRelease` (requiere limpiar avisos existentes).
 - [ ] Ejecutar `AppDatabaseMigrationTest` en emulador.
-- [ ] Quitar dependencia `firebase-firestore` (no se usa).
+- [x] Quitar dependencia `firebase-firestore` (no se usa).
 - [ ] Actualizar dependencias antiguas (core-ktx, media3, Firebase BOM…).
 
 ### Fase 3.5 — Red y latencia (bloqueos ISP / LaLiga / Cloudflare)
@@ -172,9 +172,9 @@ La sección de actualizaciones de Ajustes sigue oculta en Play (`ENABLE_IN_APP_U
 Contexto: en España, las órdenes judiciales de LaLiga bloquean rangos de IP compartidos y
 Cloudflare cae como daño colateral. Síntoma: todo va lento o el vídeo se queda cargando.
 
-- [x] **El vídeo usa el mismo OkHttp que la API** (`OkHttpDataSource`): hereda la preferencia
-      IPv6, el pool de conexiones y los timeouts. Antes ExoPlayer resolvía por DNS del sistema
-      (IPv4 primero) y caía por la ruta bloqueada aunque la API fuera por IPv6.
+- [x] **El vídeo usa el mismo OkHttp que la API** (`OkHttpDataSource`): hereda el pool de
+      conexiones, los timeouts y la detección de bloqueos. La priorización forzada de IPv6 se
+      retiró para evitar problemas de enrutamiento/MTU en redes domésticas (se usa la resolución estándar del sistema).
 - [x] Buffer más generoso (min 30 s / max 90 s, 10 s tras rebuffer) para redes inestables.
 - [x] Detección de la página de bloqueo de LaLiga también en el stream (`Videos/`, `Audio/`).
 - [x] No se fuerza `Accept: application/json` en vídeo/audio.

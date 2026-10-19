@@ -28,8 +28,8 @@ android {
     defaultConfig {
         minSdk = 26
         targetSdk = 35
-        versionCode = 93
-        versionName = "2.2.46"
+        versionCode = 94
+        versionName = "2.2.47"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -50,7 +50,7 @@ android {
             // con datos, firma y actualizaciones independientes.
             applicationIdSuffix = ".beta"
             // Offset de 1.000.000 para distinguir el canal en soporte/Crashlytics.
-            versionCode = 1_000_093
+            versionCode = 1_000_094
             versionNameSuffix = "-beta"
             buildConfigField("boolean", "ENABLE_IN_APP_UPDATER", "true")
         }
@@ -104,7 +104,7 @@ android {
     sourceSets {
         // Los esquemas exportados por Room se copian a los assets de androidTest para que
         // MigrationTestHelper pueda validar las migraciones.
-        getByName("androidTest").assets.srcDir("$projectDir/schemas")
+        getByName("androidTest").assets.directories.add("$projectDir/schemas")
     }
 }
 
@@ -169,11 +169,10 @@ dependencies {
     ksp(libs.hilt.compiler)
     ksp(libs.hilt.androidx.compiler)
 
-    // Firebase (Analytics, Crashlytics, Firestore)
+    // Firebase (Analytics, Crashlytics)
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.analytics)
     implementation(libs.firebase.crashlytics)
-    implementation(libs.firebase.firestore)
 
     // Google Play In-App Billing (Medusa Pro)
     implementation(libs.play.billing)

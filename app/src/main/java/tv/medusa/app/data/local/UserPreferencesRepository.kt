@@ -55,8 +55,13 @@ const val PERFORMANCE_MODE_AUTO = "AUTO"
 const val PERFORMANCE_MODE_HIGH = "HIGH"
 const val PERFORMANCE_MODE_LOW = "LOW"
 
+const val SUBTITLE_SIZE_SMALL = "SMALL"
+const val SUBTITLE_SIZE_NORMAL = "NORMAL"
+const val SUBTITLE_SIZE_LARGE = "LARGE"
+
 data class UserPreferences(
     val jellyfinServerUrl: String = "",
+    val jellyfinLanServerUrl: String = "",
     val jellyfinUserId: String = "",
     val jellyfinUsername: String = "",
     val jellyfinPassword: String = "",
@@ -81,7 +86,10 @@ data class UserPreferences(
     val isTrialActive: Boolean = false,
     val trialDaysRemaining: Int = 0,
     val nightModeAudio: Int = 0,
-    val audioVolumeBoostDb: Int = 0
+    val audioVolumeBoostDb: Int = 0,
+    val subtitleSize: String = SUBTITLE_SIZE_NORMAL,
+    val subtitleBackground: Boolean = false,
+    val autoFrameRateEnabled: Boolean = true
 ) {
     val isMonochrome: Boolean
         get() = indicatorTheme == INDICATOR_THEME_MONOCHROME || accentColor == ACCENT_WHITE
@@ -117,6 +125,7 @@ class UserPreferencesRepository(context: Context) {
 
     private object Keys {
         val JELLYFIN_SERVER_URL = stringPreferencesKey("jellyfin_server_url")
+        val JELLYFIN_LAN_SERVER_URL = stringPreferencesKey("jellyfin_lan_server_url")
         val JELLYFIN_USER_ID = stringPreferencesKey("jellyfin_user_id")
         val JELLYFIN_USERNAME = stringPreferencesKey("jellyfin_username")
         val JELLYFIN_PASSWORD = stringPreferencesKey("jellyfin_password")
@@ -149,6 +158,9 @@ class UserPreferencesRepository(context: Context) {
         val FIRST_INSTALL_TIME = longPreferencesKey("first_install_time_ms")
         val NIGHT_MODE_AUDIO = intPreferencesKey("night_mode_audio")
         val AUDIO_VOLUME_BOOST_DB = intPreferencesKey("audio_volume_boost_db")
+        val SUBTITLE_SIZE = stringPreferencesKey("subtitle_size")
+        val SUBTITLE_BACKGROUND = stringPreferencesKey("subtitle_background")
+        val AUTO_FRAME_RATE = stringPreferencesKey("auto_frame_rate")
         // Versión del algoritmo de sincronización aplicada. Si la almacenada es menor que la
         // actual, se fuerza un sync completo para reconstruir catálogos truncados por versiones
         // anteriores (p. ej. paginación que cortaba al recibir páginas más cortas que el límite).
@@ -195,6 +207,25 @@ class UserPreferencesRepository(context: Context) {
 
     val audioVolumeBoostDb: StateFlow<Int> =
         userPreferences.map { it.audioVolumeBoostDb }.stateIn(appScope, SharingStarted.Eagerly, 0)
+
+    val subtitleSize: StateFlow<String> =
+        userPreferences.map { it.subtitleSize }.stateIn(appScope, SharingStarted.Eagerly, SUBTITLE_SIZE_NORMAL)
+
+    val subtitleBackground: StateFlow<Boolean> =
+        userPreferences.map { it.subtitleBackground }.stateIn(appScope, SharingStarted.Eagerly, false)
+
+    val autoFrameRateEnabled: StateFlow<Boolean> =
+        userPreferences.map { it.autoFrameRateEnabled }.stateIn(appScope, SharingStarted.Eagerly, true)
+
+    val jellyfinLanServerUrl: StateFlow<String> =
+        userPreferences.map { it.jellyfinLanServerUrl }.stateIn(appScope, SharingStarted.Eagerly, "")
+
+    suspend fun updateJellyfinLanServerUrl(lanUrl: String) {
+        val cleanUrl = lanUrl.trimEnd('/')
+        appContext.dataStore.edit { prefs ->
+            prefs[Keys.JELLYFIN_LAN_SERVER_URL] = cleanUrl
+        }
+    }
 
     suspend fun setNightModeAudio(level: Int) {
         appContext.dataStore.edit { prefs ->
@@ -303,6 +334,24 @@ class UserPreferencesRepository(context: Context) {
     suspend fun updatePerformanceMode(mode: String) {
         appContext.dataStore.edit { prefs ->
             prefs[Keys.PERFORMANCE_MODE] = mode
+        }
+    }
+
+    suspend fun updateSubtitleSize(size: String) {
+        appContext.dataStore.edit { prefs ->
+            prefs[Keys.SUBTITLE_SIZE] = size
+        }
+    }
+
+    suspend fun updateSubtitleBackground(enabled: Boolean) {
+        appContext.dataStore.edit { prefs ->
+            prefs[Keys.SUBTITLE_BACKGROUND] = enabled.toString()
+        }
+    }
+
+    suspend fun updateAutoFrameRate(enabled: Boolean) {
+        appContext.dataStore.edit { prefs ->
+            prefs[Keys.AUTO_FRAME_RATE] = enabled.toString()
         }
     }
 
@@ -504,6 +553,7 @@ class UserPreferencesRepository(context: Context) {
 
             return UserPreferences(
                 jellyfinServerUrl = serverUrl,
+                jellyfinLanServerUrl = this[Keys.JELLYFIN_LAN_SERVER_URL] ?: "",
                 jellyfinUserId = this[Keys.JELLYFIN_USER_ID] ?: "",
                 jellyfinUsername = this[Keys.JELLYFIN_USERNAME] ?: "",
                 jellyfinPassword = CryptoUtils.decryptStored(this[Keys.JELLYFIN_PASSWORD] ?: ""),
@@ -536,7 +586,10 @@ class UserPreferencesRepository(context: Context) {
                 isTrialActive = trialActive,
                 trialDaysRemaining = daysRemaining,
                 nightModeAudio = this[Keys.NIGHT_MODE_AUDIO] ?: 0,
-                audioVolumeBoostDb = this[Keys.AUDIO_VOLUME_BOOST_DB] ?: 0
+                audioVolumeBoostDb = this[Keys.AUDIO_VOLUME_BOOST_DB] ?: 0,
+                subtitleSize = this[Keys.SUBTITLE_SIZE] ?: SUBTITLE_SIZE_NORMAL,
+                subtitleBackground = this[Keys.SUBTITLE_BACKGROUND] == "true",
+                autoFrameRateEnabled = (this[Keys.AUTO_FRAME_RATE] ?: "true") != "false"
             )
         }
     }

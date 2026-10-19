@@ -63,7 +63,13 @@ import androidx.compose.material.icons.filled.Subtitles
 import androidx.compose.material.icons.filled.SubtitlesOff
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.foundation.lazy.items
 import tv.medusa.app.util.AudioEnhancementManager
+import tv.medusa.app.util.AutoFrameRateManager
+import tv.medusa.app.data.local.SUBTITLE_SIZE_SMALL
+import tv.medusa.app.data.local.SUBTITLE_SIZE_NORMAL
+import tv.medusa.app.data.local.SUBTITLE_SIZE_LARGE
+import androidx.media3.ui.CaptionStyleCompat
 import tv.medusa.app.ui.theme.TvAccent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -253,7 +259,11 @@ private fun PlayerContent(
     val isProUser by viewModel.isProUser.collectAsStateWithLifecycle()
     val nightModeAudio by viewModel.nightModeAudio.collectAsStateWithLifecycle()
     val audioVolumeBoostDb by viewModel.audioVolumeBoostDb.collectAsStateWithLifecycle()
+    val subtitleSize by viewModel.subtitleSize.collectAsStateWithLifecycle()
+    val subtitleBackground by viewModel.subtitleBackground.collectAsStateWithLifecycle()
+    val autoFrameRateEnabled by viewModel.autoFrameRateEnabled.collectAsStateWithLifecycle()
     val audioEnhancementManager = remember { AudioEnhancementManager() }
+    var currentVideoFps by remember { mutableFloatStateOf(0f) }
 
     var showOverlayControls by remember { mutableStateOf(true) }
     var seekIndicatorText by remember { mutableStateOf<String?>(null) }
@@ -344,10 +354,8 @@ private fun PlayerContent(
             }
         }
 
-        // El vídeo debe usar el MISMO OkHttp que la API: así hereda la preferencia IPv6, el pool
-        // de conexiones y los timeouts. Con DefaultHttpDataSource resolvía por el DNS del sistema
-        // (IPv4 primero) y, en redes con bloqueos de LaLiga sobre rangos de Cloudflare, el stream
-        // caía por la ruta bloqueada aunque la API de Jellyfin fuera bien por IPv6.
+        // El vídeo usa el cliente OkHttp compartido de la aplicación: hereda el pool de conexiones,
+        // los timeouts configurados, la detección de bloqueos de red y las cabeceras personalizadas.
         val httpDataSourceFactory = OkHttpDataSource.Factory(NetworkClientFactory.okHttpClient)
             .setUserAgent("Mozilla/5.0 (Linux; Android 14; Google TV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
             .setDefaultRequestProperties(defaultHeaders)
@@ -425,6 +433,20 @@ private fun PlayerContent(
                         val (audios, subs) = extractTracksFromExoPlayer(this@apply, context)
                         audioTracks = audios
                         subtitleTracks = subs
+
+                        for (trackGroup in tracks.groups) {
+                            if (trackGroup.type == C.TRACK_TYPE_VIDEO && trackGroup.isSelected) {
+                                for (i in 0 until trackGroup.length) {
+                                    if (trackGroup.isTrackSelected(i)) {
+                                        val fps = trackGroup.getTrackFormat(i).frameRate
+                                        if (fps > 0f) {
+                                            currentVideoFps = fps
+                                            break
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
 
                     override fun onPlayerError(error: PlaybackException) {
@@ -509,6 +531,24 @@ private fun PlayerContent(
     DisposableEffect(exoPlayer) {
         onDispose {
             audioEnhancementManager.release()
+        }
+    }
+
+    LaunchedEffect(autoFrameRateEnabled, currentVideoFps, activity) {
+        if (activity != null) {
+            if (autoFrameRateEnabled && currentVideoFps > 0f) {
+                AutoFrameRateManager.matchFrameRate(activity, currentVideoFps)
+            } else if (!autoFrameRateEnabled) {
+                AutoFrameRateManager.restoreOriginal(activity)
+            }
+        }
+    }
+
+    DisposableEffect(activity) {
+        onDispose {
+            if (activity != null) {
+                AutoFrameRateManager.restoreOriginal(activity)
+            }
         }
     }
 
@@ -846,6 +886,35 @@ private fun PlayerContent(
                 }
                 playerView.resizeMode = currentResizeMode
                 playerView.keepScreenOn = isPlaying || showOverlayControls
+
+                // Subtitle appearance (size & contrast background)
+                val textScale = when (subtitleSize) {
+                    SUBTITLE_SIZE_SMALL -> 0.042f
+                    SUBTITLE_SIZE_LARGE -> 0.065f
+                    else -> 0.053f
+                }
+                playerView.subtitleView?.setFractionalTextSize(textScale)
+
+                val subStyle = if (subtitleBackground) {
+                    CaptionStyleCompat(
+                        android.graphics.Color.WHITE,
+                        android.graphics.Color.argb(160, 0, 0, 0),
+                        android.graphics.Color.TRANSPARENT,
+                        CaptionStyleCompat.EDGE_TYPE_NONE,
+                        android.graphics.Color.BLACK,
+                        null
+                    )
+                } else {
+                    CaptionStyleCompat(
+                        android.graphics.Color.WHITE,
+                        android.graphics.Color.TRANSPARENT,
+                        android.graphics.Color.TRANSPARENT,
+                        CaptionStyleCompat.EDGE_TYPE_OUTLINE,
+                        android.graphics.Color.BLACK,
+                        null
+                    )
+                }
+                playerView.subtitleView?.setStyle(subStyle)
             },
             modifier = Modifier.fillMaxSize()
         )
@@ -1225,6 +1294,9 @@ private fun PlayerContent(
                 currentResizeMode = currentResizeMode,
                 nightModeAudio = nightModeAudio,
                 audioVolumeBoostDb = audioVolumeBoostDb,
+                subtitleSize = subtitleSize,
+                subtitleBackground = subtitleBackground,
+                autoFrameRateEnabled = autoFrameRateEnabled,
                 onSelectAudioTrack = { track ->
                     notifyInteraction()
                     selectAudioTrackInExoPlayer(exoPlayer, track)
@@ -1249,6 +1321,18 @@ private fun PlayerContent(
                 onSelectVolumeBoost = { db ->
                     notifyInteraction()
                     viewModel.setAudioVolumeBoostDb(db)
+                },
+                onSelectSubtitleSize = { size ->
+                    notifyInteraction()
+                    viewModel.setSubtitleSize(size)
+                },
+                onToggleSubtitleBackground = { enabled ->
+                    notifyInteraction()
+                    viewModel.setSubtitleBackground(enabled)
+                },
+                onToggleAutoFrameRate = { enabled ->
+                    notifyInteraction()
+                    viewModel.setAutoFrameRateEnabled(enabled)
                 },
                 onClose = {
                     notifyInteraction()
@@ -1674,12 +1758,18 @@ private fun PlayerCustomModalSheet(
     currentResizeMode: Int,
     nightModeAudio: Int = 0,
     audioVolumeBoostDb: Int = 0,
+    subtitleSize: String = SUBTITLE_SIZE_NORMAL,
+    subtitleBackground: Boolean = false,
+    autoFrameRateEnabled: Boolean = false,
     onSelectAudioTrack: (TrackItem) -> Unit,
     onSelectSubtitleTrack: (TrackItem?) -> Unit,
     onSelectSpeed: (Float) -> Unit,
     onSelectResizeMode: (Int) -> Unit,
     onSelectNightMode: (Int) -> Unit = {},
     onSelectVolumeBoost: (Int) -> Unit = {},
+    onSelectSubtitleSize: (String) -> Unit = {},
+    onToggleSubtitleBackground: (Boolean) -> Unit = {},
+    onToggleAutoFrameRate: (Boolean) -> Unit = {},
     onClose: () -> Unit,
     isMonochrome: Boolean = false,
     focusColor: Color = Color.White,
@@ -1931,6 +2021,53 @@ private fun PlayerCustomModalSheet(
                                     }
                                 )
                             }
+
+                            item {
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text(
+                                    text = stringResource(R.string.player_subtitle_size),
+                                    color = Color(0xFFCBD5E1),
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(bottom = 6.dp)
+                                )
+                            }
+
+                            val sizeOptions = listOf(SUBTITLE_SIZE_SMALL, SUBTITLE_SIZE_NORMAL, SUBTITLE_SIZE_LARGE)
+                            items(sizeOptions) { sizeVal ->
+                                val label = when (sizeVal) {
+                                    SUBTITLE_SIZE_SMALL -> stringResource(R.string.player_subtitle_size_small)
+                                    SUBTITLE_SIZE_LARGE -> stringResource(R.string.player_subtitle_size_large)
+                                    else -> stringResource(R.string.player_subtitle_size_normal)
+                                }
+                                TrackOptionItem(
+                                    label = label,
+                                    isSelected = subtitleSize == sizeVal,
+                                    isMonochrome = isMonochrome,
+                                    focusColor = focusColor,
+                                    focusContent = focusContent,
+                                    onClick = { onSelectSubtitleSize(sizeVal) }
+                                )
+                            }
+
+                            item {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text(
+                                    text = stringResource(R.string.player_subtitle_contrast),
+                                    color = Color(0xFFCBD5E1),
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(bottom = 6.dp)
+                                )
+                                TrackOptionItem(
+                                    label = if (subtitleBackground) stringResource(R.string.player_subtitle_contrast_on) else stringResource(R.string.player_subtitle_contrast_off),
+                                    isSelected = subtitleBackground,
+                                    isMonochrome = isMonochrome,
+                                    focusColor = focusColor,
+                                    focusContent = focusContent,
+                                    onClick = { onToggleSubtitleBackground(!subtitleBackground) }
+                                )
+                            }
                         }
 
                         PlayerModalTab.SETTINGS -> {
@@ -1992,6 +2129,25 @@ private fun PlayerCustomModalSheet(
                                     onClick = {
                                         onSelectResizeMode(mode)
                                     }
+                                )
+                            }
+
+                            item {
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text(
+                                    text = stringResource(R.string.player_afr_title),
+                                    color = Color(0xFFCBD5E1),
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(bottom = 6.dp)
+                                )
+                                TrackOptionItem(
+                                    label = if (autoFrameRateEnabled) stringResource(R.string.player_afr_enabled) else stringResource(R.string.player_afr_disabled),
+                                    isSelected = autoFrameRateEnabled,
+                                    isMonochrome = isMonochrome,
+                                    focusColor = focusColor,
+                                    focusContent = focusContent,
+                                    onClick = { onToggleAutoFrameRate(!autoFrameRateEnabled) }
                                 )
                             }
                         }

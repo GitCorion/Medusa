@@ -103,6 +103,8 @@
 
     <!-- Búsqueda (Search) -->
     <string name="search_placeholder">Buscar...</string>
+    <string name="search_voice_title">Búsqueda por voz</string>
+    <string name="search_voice_prompt">Di el título de una película o serie</string>
     <string name="search_catalog_title">Búsqueda en catálogo</string>
     <string name="search_no_results">No se encontraron títulos para \"%1$s\"</string>
 
@@ -153,6 +155,16 @@
     <string name="player_aspect_fill">Estirar / Pantalla Completa</string>
     <string name="player_resume">Reanudar (%1$s)</string>
     <string name="player_from_start">Desde el principio</string>
+    <string name="player_subtitle_size">Tamaño de Subtítulos</string>
+    <string name="player_subtitle_size_small">Pequeño</string>
+    <string name="player_subtitle_size_normal">Normal</string>
+    <string name="player_subtitle_size_large">Grande</string>
+    <string name="player_subtitle_contrast">Fondo de Contraste</string>
+    <string name="player_subtitle_contrast_off">Desactivado (Solo contorno)</string>
+    <string name="player_subtitle_contrast_on">Activado (Caja translúcida)</string>
+    <string name="player_afr_title">Auto Frame Rate (24p sin tirones)</string>
+    <string name="player_afr_enabled">Activado (Recomendado)</string>
+    <string name="player_afr_disabled">Desactivado</string>
 
     <!-- ===================================================================== -->
     <!-- Ajustes (Settings)                                                    -->
@@ -161,6 +173,9 @@
     <!-- Campos de edición (SettingField) -->
     <string name="settings_field_server_url">URL del Servidor Jellyfin</string>
     <string name="settings_field_server_url_placeholder">http://192.168.1.100:8096 o https://jellyfin.ejemplo.com</string>
+    <string name="settings_field_lan_server_url">URL Local / LAN (Opcional)</string>
+    <string name="settings_field_lan_server_url_placeholder">http://192.168.1.x:8096 (Red local)</string>
+    <string name="settings_field_lan_server_url_desc">Streaming directo en red local sin salir a Internet ni consumir WAN</string>
     <string name="settings_field_username">Usuario Jellyfin</string>
     <string name="settings_field_username_placeholder">Escribe tu usuario</string>
     <string name="settings_field_password">Contraseña Jellyfin</string>
