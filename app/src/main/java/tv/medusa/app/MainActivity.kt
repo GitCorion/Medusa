@@ -127,10 +127,14 @@ class MainActivity : ComponentActivity() {
         }
         NetworkClientFactory.initCache(applicationContext)
 
-        val imageLoader = coil.ImageLoader.Builder(this)
+        extractPlayItemId(intent)?.let {
+            pendingPlayItemId = it
+        }
+
+        val imageLoader = coil.ImageLoader.Builder(applicationContext)
             .okHttpClient { NetworkClientFactory.okHttpClient }
             .memoryCache {
-                coil.memory.MemoryCache.Builder(this)
+                coil.memory.MemoryCache.Builder(applicationContext)
                     .maxSizePercent(0.25)
                     .build()
             }
@@ -198,7 +202,7 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        intent.getStringExtra("playItemId")?.let {
+        extractPlayItemId(intent)?.let {
             pendingPlayItemId = it
         }
     }
@@ -207,6 +211,8 @@ class MainActivity : ComponentActivity() {
         super.onStart()
         // El trabajo de fondo (enriquecido de metadatos) baja su ritmo mientras hay app delante.
         AppForeground.isVisible = true
+        billingManager.startBillingConnection()
+        billingManager.queryPurchases()
     }
 
     override fun onStop() {
@@ -253,6 +259,16 @@ class MainActivity : ComponentActivity() {
             }
         }
         return super.dispatchKeyEvent(event)
+    }
+
+    private fun extractPlayItemId(intent: Intent?): String? {
+        if (intent == null) return null
+        intent.getStringExtra("playItemId")?.takeIf { it.isNotBlank() }?.let { return it }
+        val data = intent.data ?: return null
+        if (data.scheme == "medusa" && data.host == "player") {
+            return data.lastPathSegment?.takeIf { it.isNotBlank() }
+        }
+        return null
     }
 }
 

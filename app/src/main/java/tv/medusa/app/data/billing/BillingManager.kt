@@ -17,6 +17,8 @@ import tv.medusa.app.data.local.UserPreferencesRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -27,14 +29,14 @@ import javax.inject.Singleton
 @Singleton
 class BillingManager @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val preferencesRepository: UserPreferencesRepository
+    val preferencesRepository: UserPreferencesRepository
 ) : PurchasesUpdatedListener, BillingClientStateListener {
 
     companion object {
         const val PRODUCT_ID_PRO = "medusa_pro_lifetime"
     }
 
-    private val scope = CoroutineScope(Dispatchers.IO)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private val _proProductDetails = MutableStateFlow<ProductDetails?>(null)
     val proProductDetails: StateFlow<ProductDetails?> = _proProductDetails.asStateFlow()
@@ -68,10 +70,17 @@ class BillingManager @Inject constructor(
 
     override fun onBillingServiceDisconnected() {
         _billingStatusMessage.value = "Conexión con Google Play perdida. Reintentando..."
+        scope.launch {
+            delay(2500L)
+            startBillingConnection()
+        }
     }
 
     fun queryPurchases() {
-        if (!billingClient.isReady) return
+        if (!billingClient.isReady) {
+            startBillingConnection()
+            return
+        }
         val params = QueryPurchasesParams.newBuilder()
             .setProductType(BillingClient.ProductType.INAPP)
             .build()
@@ -92,6 +101,11 @@ class BillingManager @Inject constructor(
                         acknowledgePurchase(purchase)
                     }
                 }
+                if (hasPro) {
+                    _billingStatusMessage.value = "Licencia Medusa Pro restaurada con éxito."
+                }
+            } else {
+                _billingStatusMessage.value = "Error al verificar compras: ${billingResult.debugMessage}"
             }
         }
     }
@@ -117,7 +131,12 @@ class BillingManager @Inject constructor(
     }
 
     fun launchBillingFlow(activity: Activity): Boolean {
-        val details = _proProductDetails.value ?: return false
+        val details = _proProductDetails.value
+        if (details == null) {
+            _billingStatusMessage.value = "Cargando datos de Google Play. Inténtalo de nuevo."
+            queryProductDetails()
+            return false
+        }
         val productDetailsParamsList = listOf(
             BillingFlowParams.ProductDetailsParams.newBuilder()
                 .setProductDetails(details)

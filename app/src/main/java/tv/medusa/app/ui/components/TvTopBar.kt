@@ -195,7 +195,7 @@ fun TvTopBar(
                 border = if (isHomeActive) {
                     ButtonDefaults.border(
                         border = Border(
-                            border = BorderStroke(1.dp, focusColor.copy(alpha = 0.6f)),
+                            border = BorderStroke(1.dp, Color(0x28FFFFFF)),
                             shape = CircleShape
                         ),
                         focusedBorder = Border.None
@@ -255,7 +255,7 @@ fun TvTopBar(
                 border = if (isDiscoverActive) {
                     ButtonDefaults.border(
                         border = Border(
-                            border = BorderStroke(1.dp, focusColor.copy(alpha = 0.6f)),
+                            border = BorderStroke(1.dp, Color(0x28FFFFFF)),
                             shape = CircleShape
                         ),
                         focusedBorder = Border.None
@@ -303,7 +303,7 @@ fun TvTopBar(
                 border = if (isFavoritesActive) {
                     ButtonDefaults.border(
                         border = Border(
-                            border = BorderStroke(1.dp, focusColor.copy(alpha = 0.6f)),
+                            border = BorderStroke(1.dp, Color(0x28FFFFFF)),
                             shape = CircleShape
                         ),
                         focusedBorder = Border.None
@@ -351,7 +351,7 @@ fun TvTopBar(
                 border = if (isSearchActive) {
                     ButtonDefaults.border(
                         border = Border(
-                            border = BorderStroke(1.dp, focusColor.copy(alpha = 0.6f)),
+                            border = BorderStroke(1.dp, Color(0x28FFFFFF)),
                             shape = CircleShape
                         ),
                         focusedBorder = Border.None
@@ -399,7 +399,7 @@ fun TvTopBar(
                 border = if (isSettingsActive) {
                     ButtonDefaults.border(
                         border = Border(
-                            border = BorderStroke(1.dp, focusColor.copy(alpha = 0.6f)),
+                            border = BorderStroke(1.dp, Color(0x28FFFFFF)),
                             shape = CircleShape
                         ),
                         focusedBorder = Border.None

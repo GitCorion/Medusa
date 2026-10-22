@@ -247,7 +247,7 @@ fun SearchScreen(
                                 ),
                                 border = ButtonDefaults.border(
                                     border = Border(border = BorderStroke(0.8.dp, Color(0x18FFFFFF))),
-                                    focusedBorder = Border(border = BorderStroke(1.5.dp, focusColor))
+                                    focusedBorder = Border.None
                                 ),
                                 modifier = Modifier.height(26.dp)
                             ) {
@@ -280,10 +280,10 @@ fun SearchScreen(
                                 border = Border(
                                     border = BorderStroke(
                                         0.8.dp,
-                                        if (uiState.isPredictiveActive) focusColor.copy(alpha = 0.4f) else Color(0x18FFFFFF)
+                                        if (uiState.isPredictiveActive) Color(0x28FFFFFF) else Color(0x18FFFFFF)
                                     )
                                 ),
-                                focusedBorder = Border(border = BorderStroke(1.5.dp, focusColor))
+                                focusedBorder = Border.None
                             ),
                             modifier = Modifier.height(26.dp)
                         ) {
@@ -396,7 +396,7 @@ fun SearchScreen(
                                         ),
                                         border = ButtonDefaults.border(
                                             border = Border(border = BorderStroke(0.7.dp, Color(0x22FFFFFF))),
-                                            focusedBorder = Border(border = BorderStroke(1.5.dp, focusColor))
+                                            focusedBorder = Border.None
                                         ),
                                         modifier = Modifier.height(26.dp)
                                     ) {

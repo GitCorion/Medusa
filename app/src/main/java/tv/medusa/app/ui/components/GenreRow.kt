@@ -66,8 +66,8 @@ fun GenreRow(
                         .background(
                             brush = Brush.verticalGradient(
                                 listOf(
-                                    Color(0xFF00E5FF),
-                                    Color(0xFFA775F8)
+                                    accentColor,
+                                    accentColor.copy(alpha = 0.35f)
                                 )
                             ),
                             shape = RoundedCornerShape(2.dp)
@@ -90,8 +90,8 @@ fun GenreRow(
                         brush = Brush.horizontalGradient(
                             listOf(
                                 Color(0xFFFFFFFF),
-                                Color(0xFFE0F7FE),
-                                Color(0xFFA775F8).copy(alpha = 0.9f)
+                                Color(0xFFE2E8F0),
+                                accentColor.copy(alpha = 0.85f)
                             )
                         )
                     ),
@@ -123,17 +123,20 @@ private fun GenreChip(
     val isMonochrome = LocalIsMonochromeTheme.current
     val accentKey = LocalAccentColor.current
     val accentColor = TvAccent.getColor(accentKey)
+    val focusContent = if (isMonochrome) Color(0xFF0F172A) else TvAccent.getFocusedContentColor(accentKey)
 
     Surface(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(10.dp)),
         colors = ClickableSurfaceDefaults.colors(
-            containerColor = if (isMonochrome) Color(0x10FFFFFF) else Color(0x1400A4DC),
-            focusedContainerColor = if (isMonochrome) Color(0x28FFFFFF) else accentColor.copy(alpha = 0.25f)
+            containerColor = Color(0x10FFFFFF),
+            focusedContainerColor = if (isMonochrome) Color.White else accentColor,
+            contentColor = Color(0xFFF1F5F9),
+            focusedContentColor = focusContent
         ),
         border = ClickableSurfaceDefaults.border(
-            border = Border(border = BorderStroke(0.75.dp, if (isMonochrome) Color(0x18FFFFFF) else accentColor.copy(alpha = 0.25f))),
-            focusedBorder = Border(border = BorderStroke(2.dp, if (isMonochrome) Color.White else accentColor))
+            border = Border(border = BorderStroke(0.75.dp, Color(0x18FFFFFF))),
+            focusedBorder = Border.None
         ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1.0f)
     ) {
@@ -143,7 +146,6 @@ private fun GenreChip(
         ) {
             Text(
                 text = genreName,
-                color = if (isMonochrome) Color.White else Color(0xFFF1F5F9),
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 13.sp,
                 letterSpacing = 0.5.sp

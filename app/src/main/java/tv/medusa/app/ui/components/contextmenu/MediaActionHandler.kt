@@ -2,6 +2,7 @@ package tv.medusa.app.ui.components.contextmenu
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -21,7 +22,7 @@ class MediaActionHandler @Inject constructor(
     private val mediaRepository: MediaRepository,
     private val userPreferencesRepository: UserPreferencesRepository
 ) {
-    private val scope = CoroutineScope(Dispatchers.IO)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     fun toggleFavorite(item: MediaItem) {
         val newFav = !item.isFavorite

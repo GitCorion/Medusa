@@ -74,6 +74,7 @@ jobs:
           path: |
             app/build/outputs/apk/beta/release/app-beta-release.apk
             app/build/outputs/bundle/playRelease/app-play-release.aab
+          retention-days: 2
 
       # ¿Hay credenciales de Play configuradas? Si no, el resto del workflow sigue igual.
       - name: Check Play credentials

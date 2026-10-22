@@ -168,7 +168,7 @@ object NetworkClientFactory {
             if (isApiCall && contentType.contains("text/html")) {
                 val peekBody = response.peekBody(2048).string()
                 if (peekBody.contains("LaLiga", ignoreCase = true) || peekBody.contains("bloqueado", ignoreCase = true) || peekBody.contains("Sentencia", ignoreCase = true)) {
-                    throw IOException(appContext?.getString(R.string.network_isp_block) ?: "Tu operador ha bloqueado la IP de este servidor por orden judicial de LaLiga. Activa IPv6 en tu router, usa una VPN o pon el dominio en nube gris.")
+                    throw IOException(appContext?.getString(R.string.network_isp_block) ?: "Tu red u operador no puede conectar con este servidor. Comprueba la conexión o intenta con otra red.")
                 }
             }
             response

@@ -52,6 +52,7 @@ import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Icon
 import androidx.tv.material3.Text
+import android.widget.Toast
 import tv.medusa.app.R
 import tv.medusa.app.data.billing.BillingManager
 
@@ -72,6 +73,21 @@ fun MedusaProDialog(
         ?.formattedPrice
         ?.takeIf { it.isNotBlank() }
         ?: priceFormatted
+
+    val statusMessage by billingManager.billingStatusMessage.collectAsStateWithLifecycle()
+    LaunchedEffect(statusMessage) {
+        val msg = statusMessage
+        if (!msg.isNullOrBlank()) {
+            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    val isProUser by billingManager.preferencesRepository.isProUser.collectAsStateWithLifecycle()
+    LaunchedEffect(isProUser) {
+        if (isProUser) {
+            onDismiss()
+        }
+    }
 
     LaunchedEffect(Unit) {
         delay(150)

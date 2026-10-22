@@ -73,7 +73,8 @@ data class PlayerStreamInfo(
     val token: String = "",
     val authHeader: String = "",
     val availableVersions: List<JellyfinMediaSourceDto> = emptyList(),
-    val currentVersionName: String = ""
+    val currentVersionName: String = "",
+    val seriesId: String? = null
 )
 
 @HiltViewModel
@@ -369,6 +370,10 @@ class PlayerViewModel @Inject constructor(
     fun loadStreamUrl(itemId: String, preferredMediaSourceId: String? = null) {
         viewModelScope.launch {
             Log.i("PlayerViewModel", "loadStreamUrl START for itemId=$itemId preferredMediaSourceId=$preferredMediaSourceId")
+            _streamInfo.value = null
+            _introMarker.value = null
+            _creditsMarker.value = null
+            _nextEpisode.value = null
             val prefs = userPreferencesRepository.userPreferencesFlow.first()
             val baseUrl = prefs.jellyfinServerUrl
             val token = prefs.jellyfinAccessToken
@@ -695,6 +700,8 @@ class PlayerViewModel @Inject constructor(
                 prewarmStream(primaryStreamUrl, effectiveToken, effectiveAuthHeader)
             }
 
+            val seriesId = itemDto?.seriesId ?: entity?.seriesId
+
             _streamInfo.value = PlayerStreamInfo(
                 playableId = playableId,
                 primaryStreamUrl = primaryStreamUrl,
@@ -706,7 +713,8 @@ class PlayerViewModel @Inject constructor(
                 token = effectiveToken,
                 authHeader = effectiveAuthHeader,
                 availableVersions = mediaSources ?: emptyList(),
-                currentVersionName = chosenMediaSource?.name ?: ""
+                currentVersionName = chosenMediaSource?.name ?: "",
+                seriesId = seriesId
             )
         }
     }

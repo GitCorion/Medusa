@@ -1,5 +1,9 @@
 package tv.medusa.app.ui.screens.settings
 
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.ui.platform.LocalContext
+import java.net.URLEncoder
 import java.util.Locale
 import tv.medusa.app.BuildConfig
 import tv.medusa.app.data.remote.ApiConfig
@@ -128,6 +132,7 @@ fun SettingsScreen(
     val focusColor = if (uiState.isMonochrome) Color.White else TvAccent.getColor(uiState.accentColor)
     val focusContent = if (uiState.isMonochrome) Color(0xFF0F172A) else TvAccent.getFocusedContentColor(uiState.accentColor)
     var showProDialog by remember { mutableStateOf(false) }
+    var showPrivacyPolicyDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(uiState.isSuccess) {
         if (uiState.isSuccess) {
@@ -257,7 +262,14 @@ fun SettingsScreen(
                             1 -> TraktCategory(uiState, viewModel, focusColor, focusContent)
                             2 -> PlatformsCategory(uiState, viewModel, focusColor, focusContent)
                             3 -> AppearanceCategory(uiState, viewModel, focusColor, focusContent)
-                            4 -> AboutCategory(uiState, viewModel, focusColor, focusContent, onOpenProDialog = { showProDialog = true })
+                            4 -> AboutCategory(
+                                uiState = uiState,
+                                viewModel = viewModel,
+                                focusColor = focusColor,
+                                focusContent = focusContent,
+                                onOpenProDialog = { showProDialog = true },
+                                onOpenPrivacyPolicy = { showPrivacyPolicyDialog = true }
+                            )
                         }
 
                         if (uiState.statusMessage != null) {
@@ -310,6 +322,14 @@ fun SettingsScreen(
             MedusaProDialog(
                 billingManager = billingManager,
                 onDismiss = { showProDialog = false }
+            )
+        }
+
+        if (showPrivacyPolicyDialog) {
+            TvPrivacyPolicyDialog(
+                onDismiss = { showPrivacyPolicyDialog = false },
+                focusColor = focusColor,
+                focusContent = focusContent
             )
         }
     }
@@ -895,7 +915,8 @@ private fun AboutCategory(
     viewModel: SettingsViewModel,
     focusColor: Color,
     focusContent: Color,
-    onOpenProDialog: () -> Unit
+    onOpenProDialog: () -> Unit,
+    onOpenPrivacyPolicy: () -> Unit
 ) {
     val updateInfo = uiState.updateInfo
     val hasUpdate = updateInfo?.hasUpdate == true
@@ -1045,6 +1066,13 @@ private fun AboutCategory(
             )
         }
     }
+
+    TvSectionHeader(title = stringResource(R.string.settings_section_legal))
+    TvSettingRow(
+        title = stringResource(R.string.settings_row_privacy_policy),
+        value = stringResource(R.string.settings_privacy_policy_value),
+        onClick = onOpenPrivacyPolicy
+    )
 }
 
 // =============================================================================
@@ -1727,4 +1755,166 @@ private fun formatNumber(count: Int): String {
 private fun formatKey(value: String): String {
     if (value.isBlank()) return stringResource(R.string.settings_value_not_configured)
     return if (value.length > 20) "${value.take(8)}...${value.takeLast(6)}" else value
+}
+
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun TvPrivacyPolicyDialog(
+    onDismiss: () -> Unit,
+    focusColor: Color,
+    focusContent: Color
+) {
+    val context = LocalContext.current
+    val focusRequester = remember { FocusRequester() }
+    val qrUrl = remember {
+        "${ApiConfig.QR_GENERATOR_BASE_URL}?size=320x320&data=" + URLEncoder.encode(ApiConfig.PRIVACY_POLICY_URL, "UTF-8")
+    }
+
+    LaunchedEffect(Unit) {
+        delay(150)
+        focusRequester.requestFocus()
+    }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xCC000000)),
+            contentAlignment = Alignment.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(520.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color(0xFF141722))
+                    .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(16.dp))
+                    .padding(24.dp)
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = stringResource(R.string.settings_privacy_policy_dialog_title),
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Text(
+                        text = stringResource(R.string.settings_privacy_policy_dialog_desc),
+                        fontSize = 13.sp,
+                        color = Color(0xFFCBD5E1),
+                        textAlign = TextAlign.Center,
+                        lineHeight = 18.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color(0x0AFFFFFF), RoundedCornerShape(12.dp))
+                            .border(0.5.dp, Color(0x18FFFFFF), RoundedCornerShape(12.dp))
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(110.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color.White)
+                                .padding(6.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            AsyncImage(
+                                model = qrUrl,
+                                contentDescription = stringResource(R.string.settings_qr_content_description),
+                                contentScale = ContentScale.Fit,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(16.dp))
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "URL:",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF94A3B8)
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = ApiConfig.PRIVACY_POLICY_URL,
+                                color = Color(0xFF38BDF8),
+                                fontSize = 12.sp,
+                                fontFamily = FontFamily.Monospace,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Button(
+                            onClick = {
+                                try {
+                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(ApiConfig.PRIVACY_POLICY_URL))
+                                    context.startActivity(intent)
+                                } catch (_: Exception) {
+                                }
+                            },
+                            colors = ButtonDefaults.colors(
+                                containerColor = Color(0x18FFFFFF),
+                                contentColor = Color.White,
+                                focusedContainerColor = focusColor,
+                                focusedContentColor = focusContent
+                            ),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(
+                                text = stringResource(R.string.settings_privacy_policy_dialog_open_browser),
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+
+                        Button(
+                            onClick = onDismiss,
+                            colors = ButtonDefaults.colors(
+                                containerColor = Color(0x18FFFFFF),
+                                contentColor = Color.White,
+                                focusedContainerColor = focusColor,
+                                focusedContentColor = focusContent
+                            ),
+                            modifier = Modifier
+                                .weight(1f)
+                                .focusRequester(focusRequester)
+                        ) {
+                            Text(
+                                text = stringResource(R.string.settings_privacy_policy_dialog_close),
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
 }

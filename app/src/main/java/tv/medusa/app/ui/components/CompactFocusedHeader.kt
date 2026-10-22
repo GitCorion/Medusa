@@ -75,7 +75,7 @@ fun CompactFocusedHeader(
             .padding(horizontal = 48.dp, vertical = 6.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(Color(0xD90D0F18))
-            .border(0.75.dp, if (isMonochrome) Color(0x22FFFFFF) else focusColor.copy(alpha = 0.35f), RoundedCornerShape(12.dp))
+            .border(0.75.dp, Color(0x20FFFFFF), RoundedCornerShape(12.dp))
             .padding(horizontal = 20.dp, vertical = 10.dp)
     ) {
         Row(

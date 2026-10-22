@@ -501,7 +501,7 @@ fun DetailScreen(
                                 ),
                                 border = ButtonDefaults.border(
                                     border = Border(
-                                        border = BorderStroke(1.dp, if (isMonochrome) Color(0x33FFFFFF) else focusColor.copy(alpha = 0.60f)),
+                                        border = BorderStroke(1.dp, Color(0x28FFFFFF)),
                                         shape = RoundedCornerShape(12.dp)
                                     ),
                                     focusedBorder = Border.None
@@ -725,7 +725,7 @@ fun DetailScreen(
                                                 border = Border(
                                                     border = BorderStroke(
                                                         1.dp,
-                                                        if (isSelected) (if (isMonochrome) Color.White.copy(alpha = 0.6f) else focusColor.copy(alpha = 0.65f)) else Color(0x18FFFFFF)
+                                                        if (isSelected) Color(0x33FFFFFF) else Color(0x18FFFFFF)
                                                     ),
                                                     shape = RoundedCornerShape(16.dp)
                                                 ),

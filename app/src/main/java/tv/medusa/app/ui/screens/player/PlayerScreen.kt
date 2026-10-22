@@ -74,6 +74,10 @@ import tv.medusa.app.ui.theme.TvAccent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.key
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -189,30 +193,32 @@ fun PlayerScreen(
     val context = LocalContext.current
     LaunchedEffect(streamInfo) {
         val info = streamInfo ?: return@LaunchedEffect
-        // Look up seriesId from local DB
+        // Look up seriesId from streamInfo or local DB
         val db = AppDatabase.getDatabase(context)
         val entity = db.jellyfinDao().getItemById(info.playableId)
-        val seriesId = entity?.seriesId
+        val seriesId = info.seriesId ?: entity?.seriesId
         viewModel.loadIntroAndNextEpisode(itemId = info.playableId, seriesId = seriesId)
     }
 
     val currentInfo = streamInfo
     if (currentInfo != null) {
-        PlayerContent(
-            info = currentInfo,
-            buttonStyle = buttonStyle,
-            isMonochrome = isMonochrome,
-            focusColor = focusColor,
-            focusContent = focusContent,
-            viewModel = viewModel,
-            introMarker = introMarker,
-            creditsMarker = creditsMarker,
-            nextEpisode = nextEpisode,
-            onBack = onBack,
-            onPlayNextEpisode = { nextEp ->
-                viewModel.loadStreamUrl(nextEp.itemId)
-            }
-        )
+        key(currentInfo.playableId) {
+            PlayerContent(
+                info = currentInfo,
+                buttonStyle = buttonStyle,
+                isMonochrome = isMonochrome,
+                focusColor = focusColor,
+                focusContent = focusContent,
+                viewModel = viewModel,
+                introMarker = introMarker,
+                creditsMarker = creditsMarker,
+                nextEpisode = nextEpisode,
+                onBack = onBack,
+                onPlayNextEpisode = { nextEp ->
+                    viewModel.loadStreamUrl(nextEp.itemId)
+                }
+            )
+        }
     } else {
         Box(
             modifier = Modifier
@@ -284,6 +290,8 @@ private fun PlayerContent(
     // countdown calculado en vivo desde la posición del reproductor, no un timer fijo
     // -1 = sin cuenta atrás (episodio terminó, mostrar sin contador)
     var nextEpisodeCountdown by remember { mutableIntStateOf(-1) }
+    var playbackEnded by remember { mutableStateOf(false) }
+    var nextEpisodeTriggered by remember { mutableStateOf(false) }
 
     // Resume dialog state: null = not yet decided, true = show dialog, false = decision made
     var showResumeDialog by remember { mutableStateOf(false) }
@@ -523,10 +531,32 @@ private fun PlayerContent(
         previousModalTab = activeModalTab
     }
 
-    LaunchedEffect(exoPlayer, nightModeAudio, audioVolumeBoostDb) {
+    LaunchedEffect(exoPlayer) {
         audioEnhancementManager.attachToPlayer(exoPlayer)
+    }
+
+    LaunchedEffect(nightModeAudio, audioVolumeBoostDb) {
         audioEnhancementManager.setNightMode(nightModeAudio)
         audioEnhancementManager.setVolumeBoost(audioVolumeBoostDb)
+    }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, exoPlayer) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_PAUSE) {
+                if (exoPlayer.isPlaying) {
+                    exoPlayer.pause()
+                    isPlaying = false
+                    val pos = exoPlayer.currentPosition.coerceAtLeast(0L)
+                    val dur = exoPlayer.duration.coerceAtLeast(0L)
+                    viewModel.reportProgress(pos, isPaused = true, dur)
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
     }
 
     DisposableEffect(exoPlayer) {
@@ -621,6 +651,9 @@ private fun PlayerContent(
             activeModalTab = PlayerModalTab.NONE
         } else if (showNextEpisodeOverlay) {
             showNextEpisodeOverlay = false
+            if (playbackEnded) {
+                onBack()
+            }
         } else if (showOverlayControls) {
             showOverlayControls = false
         } else {
@@ -681,6 +714,15 @@ private fun PlayerContent(
     // el player; sin rememberUpdatedState la lambda capturaría valores obsoletos.
     val latestNextEpisode by rememberUpdatedState(nextEpisode)
     val latestCreditsMarker by rememberUpdatedState(creditsMarker)
+    val latestOnBack by rememberUpdatedState(onBack)
+    val latestOnPlayNextEpisode by rememberUpdatedState(onPlayNextEpisode)
+
+    fun playNext(ep: NextEpisodeInfo) {
+        if (nextEpisodeTriggered) return
+        nextEpisodeTriggered = true
+        showNextEpisodeOverlay = false
+        latestOnPlayNextEpisode(ep)
+    }
 
     DisposableEffect(exoPlayer) {
         // Un único listener para discontinuidades, fin de reproducción y buffer; se elimina en
@@ -706,10 +748,7 @@ private fun PlayerContent(
                     viewModel.reportStopped(dur, dur)
                     currentPosition = dur
                     duration = dur
-                    if (latestNextEpisode != null && latestCreditsMarker == null) {
-                        nextEpisodeCountdown = -1 // sin cuenta atrás: el episodio ya ha terminado
-                        showNextEpisodeOverlay = true
-                    }
+                    playbackEnded = true
                 }
             }
         }
@@ -722,6 +761,32 @@ private fun PlayerContent(
                 viewModel.reportStopped(finalPos, totalDur)
             }
             exoPlayer.release()
+        }
+    }
+
+    // ─── Fin de reproducción (STATE_ENDED) ──────────────────────────────────
+    // Si hay siguiente episodio: cuenta atrás de 5s y salto automático.
+    // Si es película o último capítulo: salida limpia del reproductor (onBack).
+    LaunchedEffect(playbackEnded) {
+        if (!playbackEnded) return@LaunchedEffect
+
+        val next = latestNextEpisode
+        if (next != null) {
+            showNextEpisodeOverlay = true
+            for (sec in 5 downTo 1) {
+                if (!isActive || !showNextEpisodeOverlay || nextEpisodeTriggered) break
+                nextEpisodeCountdown = sec
+                delay(1000L)
+            }
+            if (isActive && showNextEpisodeOverlay && !nextEpisodeTriggered) {
+                nextEpisodeCountdown = 0
+                playNext(next)
+            }
+        } else {
+            delay(800L)
+            if (isActive) {
+                latestOnBack()
+            }
         }
     }
 
@@ -756,28 +821,28 @@ private fun PlayerContent(
         }
     }
 
-    // ─── Next episode overlay (exclusivo Medusa Pro) ───────────────────────
+    // ─── Next episode overlay (exclusivo Medusa Pro) durante créditos ───────────
     LaunchedEffect(creditsMarker, nextEpisode, isProUser) {
         val next = nextEpisode
         if (next == null || !isProUser) {
-            if (showNextEpisodeOverlay) showNextEpisodeOverlay = false
+            if (showNextEpisodeOverlay && !playbackEnded) showNextEpisodeOverlay = false
             return@LaunchedEffect
         }
 
         val marker = creditsMarker
         if (marker != null) {
             snapshotFlow { currentPosition }.collect { pos ->
+                if (playbackEnded || nextEpisodeTriggered) return@collect
                 val inRange = pos in marker.showAtMs..marker.hideAtMs
                 if (inRange) {
                     nextEpisodeCountdown = ((marker.hideAtMs - pos) / 1000L).toInt().coerceAtLeast(0)
                     if (!showNextEpisodeOverlay) showNextEpisodeOverlay = true
                 } else if (pos > marker.hideAtMs) {
                     if (showNextEpisodeOverlay) {
-                        showNextEpisodeOverlay = false
-                        onPlayNextEpisode(next)
+                        playNext(next)
                     }
                 } else {
-                    if (showNextEpisodeOverlay) showNextEpisodeOverlay = false
+                    if (showNextEpisodeOverlay && !playbackEnded) showNextEpisodeOverlay = false
                 }
             }
         }
@@ -786,8 +851,7 @@ private fun PlayerContent(
     // Cuando el countdown llega a 0 (caso A: créditos terminaron), lanzar siguiente episodio
     LaunchedEffect(nextEpisodeCountdown, isProUser) {
         if (isProUser && nextEpisodeCountdown == 0 && showNextEpisodeOverlay && nextEpisode != null) {
-            showNextEpisodeOverlay = false
-            onPlayNextEpisode(nextEpisode!!)
+            playNext(nextEpisode!!)
         }
     }
 
@@ -1409,12 +1473,15 @@ private fun PlayerContent(
                     focusColor = focusColor,
                     focusContent = focusContent,
                     onPlayNow = {
-                        showNextEpisodeOverlay = false
-                        onPlayNextEpisode(ep)
+                        playNext(ep)
                     },
                     onDismiss = {
                         showNextEpisodeOverlay = false
-                        nextEpisodeCountdown = -1 // Prevent auto-play
+                        if (playbackEnded) {
+                            latestOnBack()
+                        } else {
+                            nextEpisodeCountdown = -1 // Prevent auto-play during credits
+                        }
                     }
                 )
             }

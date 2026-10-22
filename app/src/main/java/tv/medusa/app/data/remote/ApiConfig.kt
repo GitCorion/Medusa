@@ -18,6 +18,9 @@ object ApiConfig {
     /** Backend propio de distribución OTA (Firebase Hosting, `version.json`). */
     const val FIREBASE_OTA_BASE_URL = "https://medusa-fd388.web.app/"
 
+    /** Política de privacidad pública (Firebase Hosting). */
+    const val PRIVACY_POLICY_URL = "https://medusa-fd388.web.app/privacy.html"
+
     /** Base de imágenes de TMDB (pósters). */
     const val TMDB_IMAGE_BASE_W500 = "https://image.tmdb.org/t/p/w500"
 

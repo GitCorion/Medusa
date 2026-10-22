@@ -182,8 +182,8 @@ fun SeasonalScreen(
                         buttonStyleKey = buttonStyleKey,
                         isMonochrome = isMonochrome,
                         titleBadge = {
-                            val badgeBorder = if (isMonochrome) Color(0x33FFFFFF) else eventAccent.copy(alpha = 0.6f)
-                            val badgeBg = if (isMonochrome) Color(0x22FFFFFF) else eventAccent.copy(alpha = 0.2f)
+                            val badgeBorder = if (isMonochrome) Color(0x33FFFFFF) else eventAccent.copy(alpha = 0.28f)
+                            val badgeBg = if (isMonochrome) Color(0x22FFFFFF) else eventAccent.copy(alpha = 0.15f)
                             Box(
                                 modifier = Modifier
                                     .background(badgeBg, RoundedCornerShape(16.dp))

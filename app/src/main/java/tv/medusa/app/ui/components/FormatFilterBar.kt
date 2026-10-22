@@ -87,23 +87,16 @@ fun FormatFilterBar(
                         focusedContentColor = focusContent
                     ),
                     shape = ButtonDefaults.shape(shape = RoundedCornerShape(14.dp)),
-                    border = if (isSelected) {
-                        ButtonDefaults.border(
-                            border = Border(
-                                border = BorderStroke(1.dp, if (isMonochrome) Color(0x33FFFFFF) else focusColor.copy(alpha = 0.70f)),
-                                shape = RoundedCornerShape(14.dp)
+                    border = ButtonDefaults.border(
+                        border = Border(
+                            border = BorderStroke(
+                                width = if (isSelected) 1.dp else 0.75.dp,
+                                color = if (isSelected) Color(0x33FFFFFF) else Color(0x14FFFFFF)
                             ),
-                            focusedBorder = Border.None
-                        )
-                    } else {
-                        ButtonDefaults.border(
-                            border = Border(
-                                border = BorderStroke(0.75.dp, if (isMonochrome) Color(0x14FFFFFF) else focusColor.copy(alpha = 0.18f)),
-                                shape = RoundedCornerShape(14.dp)
-                            ),
-                            focusedBorder = Border.None
-                        )
-                    },
+                            shape = RoundedCornerShape(14.dp)
+                        ),
+                        focusedBorder = Border.None
+                    ),
                     modifier = Modifier.height(28.dp)
                 ) {
                     val formatLabel = when (format) {

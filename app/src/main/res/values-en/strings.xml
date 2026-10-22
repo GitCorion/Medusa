@@ -298,6 +298,15 @@
     <string name="settings_channel_play">Google Play Store</string>
     <string name="settings_section_release_notes">NEW IN VERSION %1$s</string>
 
+    <!-- Legal -->
+    <string name="settings_section_legal">LEGAL</string>
+    <string name="settings_row_privacy_policy">Privacy Policy</string>
+    <string name="settings_privacy_policy_value">View link / QR</string>
+    <string name="settings_privacy_policy_dialog_title">Privacy Policy</string>
+    <string name="settings_privacy_policy_dialog_desc">Scan the QR code with your mobile device to view our complete privacy policy, or visit:</string>
+    <string name="settings_privacy_policy_dialog_open_browser">Open in browser</string>
+    <string name="settings_privacy_policy_dialog_close">Close</string>
+
     <!-- Edit / activation dialog -->
     <string name="settings_qr_content_description">QR code</string>
     <string name="settings_activation_step1">1. %1$s</string>
@@ -502,7 +511,7 @@
     <string name="season_default">Season %1$d</string>
 
     <!-- Specific network errors -->
-    <string name="network_isp_block">Your ISP (Digi) has blocked this server\'s IP under a LaLiga court order. Enable IPv6 on your router, use a VPN (WARP 1.1.1.1) or set the domain to grey cloud.</string>
+    <string name="network_isp_block">Your network or ISP cannot connect to this server. Please check your connection or try another network.</string>
 
     <!-- Misc (screens) -->
     <string name="home_exit_hint">Press Back again to exit</string>

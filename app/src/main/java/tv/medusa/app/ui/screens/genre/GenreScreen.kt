@@ -128,8 +128,8 @@ fun GenreScreen(
                         buttonStyleKey = buttonStyleKey,
                         isMonochrome = isMonochrome,
                         titleBadge = {
-                            val badgeBg = if (isMonochrome) Color(0x22FFFFFF) else TvAccent.getColor(accentColorKey).copy(alpha = 0.18f)
-                            val badgeBorder = if (isMonochrome) Color(0x33FFFFFF) else TvAccent.getColor(accentColorKey).copy(alpha = 0.55f)
+                            val badgeBg = if (isMonochrome) Color(0x22FFFFFF) else TvAccent.getColor(accentColorKey).copy(alpha = 0.15f)
+                            val badgeBorder = if (isMonochrome) Color(0x33FFFFFF) else TvAccent.getColor(accentColorKey).copy(alpha = 0.28f)
                             val badgeText = if (isMonochrome) Color.White else TvAccent.getColor(accentColorKey)
                             Box(
                                 modifier = Modifier

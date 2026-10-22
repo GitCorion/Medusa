@@ -64,8 +64,8 @@ fun MediaRow(
                         .background(
                             brush = Brush.verticalGradient(
                                 listOf(
-                                    Color(0xFF00E5FF),
-                                    accentColor
+                                    accentColor,
+                                    accentColor.copy(alpha = 0.35f)
                                 )
                             ),
                             shape = RoundedCornerShape(2.dp)

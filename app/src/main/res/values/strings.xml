@@ -298,6 +298,15 @@
     <string name="settings_channel_play">Google Play Store</string>
     <string name="settings_section_release_notes">NOVEDADES DE LA VERSIÓN %1$s</string>
 
+    <!-- Legal -->
+    <string name="settings_section_legal">LEGAL</string>
+    <string name="settings_row_privacy_policy">Política de privacidad</string>
+    <string name="settings_privacy_policy_value">Ver enlace / QR</string>
+    <string name="settings_privacy_policy_dialog_title">Política de privacidad</string>
+    <string name="settings_privacy_policy_dialog_desc">Escanea el código QR con tu móvil para leer la política completa o visita:</string>
+    <string name="settings_privacy_policy_dialog_open_browser">Abrir en navegador</string>
+    <string name="settings_privacy_policy_dialog_close">Cerrar</string>
+
     <!-- Diálogo de edición / activación -->
     <string name="settings_qr_content_description">Código QR</string>
     <string name="settings_activation_step1">1. %1$s</string>
@@ -515,7 +524,7 @@
     <string name="season_default">Temporada %1$d</string>
 
     <!-- Errores de red específicos -->
-    <string name="network_isp_block">Tu operador (Digi) ha bloqueado la IP de este servidor por orden judicial de LaLiga. Activa IPv6 en tu router, usa una VPN (WARP 1.1.1.1) o pon el dominio en nube gris.</string>
+    <string name="network_isp_block">Tu red u operador no puede conectar con este servidor. Comprueba la conexión o intenta con otra red.</string>
 
     <!-- Varios (pantallas) -->
     <string name="home_exit_hint">Pulsa Atrás de nuevo para salir</string>
