@@ -336,6 +336,9 @@ interface JellyfinDao {
     @Query("DELETE FROM jellyfin_media")
     suspend fun clearAll()
 
+    @Query("DELETE FROM jellyfin_media WHERE id LIKE 'demo_%'")
+    suspend fun deleteDemoItems()
+
     @Query("SELECT id, overview, backdropImageTag FROM jellyfin_media WHERE overview IS NOT NULL")
     suspend fun getCachedOverviews(): List<CachedOverviewDto>
 

@@ -102,7 +102,7 @@ class MediaSyncRepository(
     }
 
     fun startBackgroundOverviewEnrichment(serverUrl: String, userId: String, token: String) {
-        if (serverUrl.isBlank() || userId.isBlank() || token.isBlank()) return
+        if (serverUrl.isBlank() || userId.isBlank() || token.isBlank() || tv.medusa.app.data.demo.DemoCatalogManager.isDemoServer(serverUrl)) return
         // No competir con el sync de catálogo. En un servidor lento sus páginas ya rozan el
         // timeout; si además el enriquecido lanza olas de peticiones en paralelo, las páginas
         // del sync completo fallan y no se inserta nada. La Home lo relanza cuando el sync
@@ -142,7 +142,7 @@ class MediaSyncRepository(
         context: Context? = null,
         onSyncCompleted: ((String) -> Unit)? = null
     ) {
-        if (serverUrl.isBlank() || userId.isBlank() || token.isBlank()) return
+        if (serverUrl.isBlank() || userId.isBlank() || token.isBlank() || tv.medusa.app.data.demo.DemoCatalogManager.isDemoServer(serverUrl)) return
 
         val targetContext = context ?: userPreferencesRepository?.applicationContext
         if (targetContext != null) {
@@ -196,7 +196,7 @@ class MediaSyncRepository(
      * termina, la Home se recarga sola.
      */
     fun primeLocalCache(serverUrl: String, userId: String, token: String, force: Boolean = false) {
-        if (serverUrl.isBlank() || userId.isBlank() || token.isBlank()) return
+        if (serverUrl.isBlank() || userId.isBlank() || token.isBlank() || tv.medusa.app.data.demo.DemoCatalogManager.isDemoServer(serverUrl)) return
         if (_syncProgress.value.isSyncing) return
         syncScope.launch {
             runCatching {
@@ -220,6 +220,9 @@ class MediaSyncRepository(
         token: String,
         force: Boolean = false
     ): Result<Unit> {
+        if (tv.medusa.app.data.demo.DemoCatalogManager.isDemoServer(serverUrl)) {
+            return Result.success(Unit)
+        }
         if (!force && System.currentTimeMillis() - quickInitCompletedAt < QUICK_INIT_FRESH_WINDOW_MS) {
             return Result.success(Unit)
         }
@@ -416,7 +419,7 @@ class MediaSyncRepository(
         forceFullSync: Boolean = false,
         onSyncCompleted: (suspend (String) -> Unit)? = null
     ): Result<Unit> {
-        if (serverUrl.isBlank() || userId.isBlank() || token.isBlank()) {
+        if (serverUrl.isBlank() || userId.isBlank() || token.isBlank() || tv.medusa.app.data.demo.DemoCatalogManager.isDemoServer(serverUrl)) {
             return Result.success(Unit)
         }
         if (!syncMutex.tryLock()) {

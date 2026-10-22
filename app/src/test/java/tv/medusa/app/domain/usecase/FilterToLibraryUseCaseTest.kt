@@ -304,6 +304,10 @@ class FakeJellyfinDao : JellyfinDao {
     override suspend fun clearAll() {
         localDb.clear()
     }
+
+    override suspend fun deleteDemoItems() {
+        localDb.removeAll { it.id.startsWith("demo_") }
+    }
 }
 
 class FilterToLibraryUseCaseTest {

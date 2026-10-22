@@ -548,4 +548,10 @@
     <string name="context_menu_remove_favorite">Quitar de Favoritos</string>
     <string name="context_menu_view_details">Ver detalles</string>
     <string name="context_menu_go_to_series">Ir a la serie</string>
+
+    <!-- Modo Demo para Revisores -->
+    <string name="home_demo_button">Explorar Catálogo Demo</string>
+    <string name="settings_btn_demo_catalog">Explorar catálogo de demostración (Modo Revisor)</string>
+    <string name="demo_activating">Cargando catálogo de demostración...</string>
+    <string name="demo_activated_success">Conectado al catálogo de demostración local</string>
 </resources>

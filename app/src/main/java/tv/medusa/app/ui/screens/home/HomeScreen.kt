@@ -256,23 +256,48 @@ fun HomeScreen(
                             textAlign = TextAlign.Center
                         )
                         Spacer(modifier = Modifier.height(20.dp))
-                        Button(
-                            onClick = onOpenSettings,
-                            colors = ButtonDefaults.colors(
-                                containerColor = Color(0x22FFFFFF),
-                                contentColor = Color.White,
-                                focusedContainerColor = Color.White,
-                                focusedContentColor = Color(0xFF0F172A)
-                            )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(14.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Tune,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(16.dp)
+                            Button(
+                                onClick = onOpenSettings,
+                                colors = ButtonDefaults.colors(
+                                    containerColor = Color(0x22FFFFFF),
+                                    contentColor = Color.White,
+                                    focusedContainerColor = Color.White,
+                                    focusedContentColor = Color(0xFF0F172A)
                                 )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(text = stringResource(R.string.home_config_button), fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Tune,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(text = stringResource(R.string.home_config_button), fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
+                                }
+                            }
+
+                            Button(
+                                onClick = { viewModel.activateDemoMode() },
+                                colors = ButtonDefaults.colors(
+                                    containerColor = Color(0x22FFFFFF),
+                                    contentColor = Color.White,
+                                    focusedContainerColor = if (isMonochrome) Color.White else focusColor,
+                                    focusedContentColor = if (isMonochrome) Color(0xFF0F172A) else focusContent
+                                )
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Movie,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(text = stringResource(R.string.home_demo_button), fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
+                                }
                             }
                         }
                     }

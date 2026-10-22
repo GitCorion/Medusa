@@ -19,6 +19,7 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import tv.medusa.app.R
+import tv.medusa.app.data.local.db.AppDatabase
 import tv.medusa.app.data.local.BUTTON_STYLE_ICONS_ONLY
 import tv.medusa.app.data.local.DEFAULT_TRAKT_CLIENT_ID
 import tv.medusa.app.data.local.DEFAULT_TRAKT_CLIENT_SECRET
@@ -151,7 +152,8 @@ class SettingsViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val userPreferencesRepository: UserPreferencesRepository,
     private val appUpdateManager: AppUpdateManager,
-    private val mediaRepository: MediaRepository
+    private val mediaRepository: MediaRepository,
+    private val database: AppDatabase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -512,8 +514,11 @@ class SettingsViewModel @Inject constructor(
     fun disconnectJellyfin() {
         jellyfinQuickConnectJob?.cancel()
         viewModelScope.launch {
+            if (tv.medusa.app.data.demo.DemoCatalogManager.isDemoServer(_uiState.value.serverUrl)) {
+                tv.medusa.app.data.demo.DemoCatalogManager.clearDemoCatalog(database)
+            }
             userPreferencesRepository.updateJellyfinConfig(
-                serverUrl = _uiState.value.serverUrl,
+                serverUrl = "",
                 userId = "",
                 accessToken = "",
                 username = "",
@@ -521,12 +526,36 @@ class SettingsViewModel @Inject constructor(
             )
             _uiState.value = _uiState.value.copy(
                 isJellyfinConnected = false,
+                serverUrl = "",
                 username = "",
                 password = "",
                 serverName = null,
                 serverVersion = null,
                 isSuccess = false,
                 statusMessage = context.getString(R.string.settings_jellyfin_session_closed)
+            )
+        }
+    }
+
+    fun activateDemoMode() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(
+                isLoading = true,
+                statusMessage = context.getString(R.string.demo_activating)
+            )
+            tv.medusa.app.data.demo.DemoCatalogManager.populateDemoCatalog(
+                database = database,
+                prefsRepo = userPreferencesRepository
+            )
+            _uiState.value = _uiState.value.copy(
+                isLoading = false,
+                isJellyfinConnected = true,
+                serverUrl = tv.medusa.app.data.demo.DemoCatalogManager.DEMO_SERVER_URL,
+                username = tv.medusa.app.data.demo.DemoCatalogManager.DEMO_USERNAME,
+                serverName = "Catálogo Demo (Play Store)",
+                serverVersion = "Demo 1.0",
+                isSuccess = true,
+                statusMessage = context.getString(R.string.demo_activated_success)
             )
         }
     }
@@ -690,6 +719,16 @@ class SettingsViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(statusMessage = context.getString(R.string.settings_enter_server_url_first))
             return
         }
+
+        if (tv.medusa.app.data.demo.DemoCatalogManager.isDemoServer(cleanUrl)) {
+            _uiState.value = _uiState.value.copy(
+                isLoading = false,
+                serverName = "Catálogo Demo (Play Store)",
+                serverVersion = "Demo 1.0",
+                statusMessage = context.getString(R.string.settings_server_detected, "Catálogo Demo (Play Store)", "Demo 1.0")
+            )
+            return
+        }
         _uiState.value = _uiState.value.copy(serverUrl = cleanUrl, isLoading = true, statusMessage = context.getString(R.string.settings_testing_connection, cleanUrl))
 
         viewModelScope.launch {
@@ -812,6 +851,11 @@ class SettingsViewModel @Inject constructor(
 
             if (cleanUrl.isBlank() || effectiveUsername.isBlank()) {
                 _uiState.value = state.copy(statusMessage = context.getString(R.string.settings_enter_url_and_user))
+                return@launch
+            }
+
+            if (tv.medusa.app.data.demo.DemoCatalogManager.isDemoServer(cleanUrl) || tv.medusa.app.data.demo.DemoCatalogManager.isDemoReviewerUser(effectiveUsername)) {
+                activateDemoMode()
                 return@launch
             }
 

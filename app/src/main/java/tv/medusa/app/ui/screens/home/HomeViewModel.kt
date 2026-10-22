@@ -1,5 +1,6 @@
 package tv.medusa.app.ui.screens.home
 
+import tv.medusa.app.data.local.db.AppDatabase
 import tv.medusa.app.data.local.db.JellyfinMediaEntity
 import tv.medusa.app.data.repository.SyncProgress
 import tv.medusa.app.domain.model.MediaFormatFilter
@@ -49,7 +50,8 @@ class HomeViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val userPreferencesRepository: UserPreferencesRepository,
     private val mediaRepository: MediaRepository,
-    private val getHomeFeedUseCase: GetHomeFeedUseCase
+    private val getHomeFeedUseCase: GetHomeFeedUseCase,
+    private val database: AppDatabase
 ) : ViewModel() {
 
     companion object {
@@ -207,6 +209,16 @@ class HomeViewModel @Inject constructor(
             getHomeFeedUseCase.clearSectionCache()
         }
         loadHomeFeed(forceRefresh = true)
+    }
+
+    fun activateDemoMode() {
+        viewModelScope.launch {
+            _uiState.value = HomeUiState.Loading
+            tv.medusa.app.data.demo.DemoCatalogManager.populateDemoCatalog(
+                database = database,
+                prefsRepo = userPreferencesRepository
+            )
+        }
     }
 
     fun refreshContinueWatching() {

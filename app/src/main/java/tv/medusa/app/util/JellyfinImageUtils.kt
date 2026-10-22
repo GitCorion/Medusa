@@ -28,6 +28,9 @@ object JellyfinImageUtils {
         height: Int = 540,
         quality: Int = 85
     ): String? {
+        if (!imageTag.isNullOrBlank() && (imageTag.startsWith("http://") || imageTag.startsWith("https://"))) {
+            return imageTag
+        }
         if (!imageTag.isNullOrBlank() && imageTag.startsWith("tmdb:")) {
             val path = imageTag.removePrefix("tmdb:")
             return "${ApiConfig.TMDB_IMAGE_BASE_W500}$path"
@@ -58,6 +61,9 @@ object JellyfinImageUtils {
         maxWidth: Int = 1280,
         quality: Int = 80
     ): String? {
+        if (!imageTag.isNullOrBlank() && (imageTag.startsWith("http://") || imageTag.startsWith("https://"))) {
+            return imageTag
+        }
         if (!imageTag.isNullOrBlank() && imageTag.startsWith("tmdb:")) {
             val path = imageTag.removePrefix("tmdb:")
             return "${ApiConfig.TMDB_IMAGE_BASE_W1280}$path"
@@ -101,6 +107,9 @@ object JellyfinImageUtils {
         height: Int = 270,
         quality: Int = 80
     ): String? {
+        if (!imageTag.isNullOrBlank() && (imageTag.startsWith("http://") || imageTag.startsWith("https://"))) {
+            return imageTag
+        }
         if (baseUrl.isBlank() || itemId.isBlank()) return null
 
         val cleanBase = baseUrl.trimEnd('/')
@@ -125,6 +134,7 @@ object JellyfinImageUtils {
         maxWidth: Int = 400,
         quality: Int = 85
     ): String? {
+        if (itemId.startsWith("demo_")) return null
         if (baseUrl.isBlank() || itemId.isBlank()) return null
         val cleanBase = baseUrl.trimEnd('/')
         val params = mutableListOf<String>()

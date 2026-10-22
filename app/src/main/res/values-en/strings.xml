@@ -523,4 +523,10 @@
     <string name="update_error_apk_http">Error downloading APK: HTTP %1$d</string>
     <string name="update_error_empty_body">Empty response while downloading APK</string>
     <string name="update_error_integrity">Integrity check failed: the downloaded APK does not match the expected hash.</string>
+
+    <!-- Demo Mode for Reviewers -->
+    <string name="home_demo_button">Explore Demo Catalog</string>
+    <string name="settings_btn_demo_catalog">Explore demo catalog (Reviewer mode)</string>
+    <string name="demo_activating">Loading demo catalog...</string>
+    <string name="demo_activated_success">Connected to local demo catalog</string>
 </resources>

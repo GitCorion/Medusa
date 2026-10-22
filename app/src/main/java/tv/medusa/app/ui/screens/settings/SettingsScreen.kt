@@ -38,6 +38,7 @@ import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Clear
 import androidx.compose.material.icons.rounded.CloudDone
 import androidx.compose.material.icons.rounded.Dns
+import androidx.compose.material.icons.rounded.Movie
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Public
 import androidx.compose.material.icons.rounded.Refresh
@@ -475,6 +476,23 @@ private fun JellyfinCategory(
             value = uiState.lanServerUrl.ifBlank { stringResource(R.string.settings_field_lan_server_url_placeholder) },
             onClick = { viewModel.openEditDialog(SettingField.LAN_SERVER_URL) }
         )
+
+        Spacer(modifier = Modifier.height(6.dp))
+        Button(
+            onClick = { viewModel.activateDemoMode() },
+            colors = ButtonDefaults.colors(
+                containerColor = Color(0x18FFFFFF),
+                contentColor = Color.White,
+                focusedContainerColor = focusColor,
+                focusedContentColor = focusContent
+            )
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Rounded.Movie, contentDescription = null, modifier = Modifier.size(15.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(stringResource(R.string.settings_btn_demo_catalog), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+            }
+        }
 
         if (uiState.serverUrl.isNotBlank()) {
             Spacer(modifier = Modifier.height(4.dp))

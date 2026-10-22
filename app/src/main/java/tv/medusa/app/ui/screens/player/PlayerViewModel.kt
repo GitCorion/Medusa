@@ -384,6 +384,36 @@ class PlayerViewModel @Inject constructor(
 
             val entity = database.jellyfinDao().getItemById(itemId)
 
+            if (tv.medusa.app.data.demo.DemoCatalogManager.isDemoMediaId(itemId) || tv.medusa.app.data.demo.DemoCatalogManager.isDemoServer(baseUrl)) {
+                val demoEntity = if (entity?.type?.equals("Series", ignoreCase = true) == true) {
+                    val firstEp = database.jellyfinDao().getEpisodesForSeries(itemId).firstOrNull()
+                    firstEp ?: entity
+                } else {
+                    entity
+                }
+                val demoPlayableId = demoEntity?.id ?: itemId
+                val demoStreamUrl = tv.medusa.app.data.demo.DemoCatalogManager.getDemoStreamUrl(demoPlayableId)
+                currentPlayableId = demoPlayableId
+                nowPlaying = demoEntity?.toOptimizedMediaItem(baseUrl, token, MediaSource.JELLYFIN)
+                val rawTicks = demoEntity?.playbackPositionTicks ?: 0L
+                val startPositionMs = (rawTicks / 10_000L).coerceAtLeast(0L)
+                _streamInfo.value = PlayerStreamInfo(
+                    playableId = demoPlayableId,
+                    primaryStreamUrl = demoStreamUrl,
+                    candidateUrls = listOf(demoStreamUrl),
+                    subtitles = emptyList(),
+                    audioTracks = emptyList(),
+                    title = demoEntity?.title ?: "Demo Stream",
+                    startPositionMs = startPositionMs,
+                    token = "",
+                    authHeader = "",
+                    availableVersions = emptyList(),
+                    currentVersionName = "Direct Play (Demo Stream)",
+                    seriesId = demoEntity?.seriesId
+                )
+                return@launch
+            }
+
             var playableId = itemId
             val api = NetworkClientFactory.createService(baseUrl, JellyfinApiService::class.java)
 
