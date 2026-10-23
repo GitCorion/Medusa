@@ -104,7 +104,11 @@ fun GenreRow(
             contentPadding = PaddingValues(horizontal = 48.dp, vertical = 6.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            items(genres, key = { it }) { genre ->
+            items(
+                items = genres,
+                key = { it },
+                contentType = { "genre_chip" }
+            ) { genre ->
                 GenreChip(
                     genreName = genre,
                     onClick = { onSelectGenre(genre) }

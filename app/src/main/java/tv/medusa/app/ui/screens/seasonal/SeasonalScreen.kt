@@ -209,7 +209,7 @@ fun SeasonalScreen(
                         modifier = Modifier.fillMaxSize()
                     ) {
                         // Header con información de la colección
-                        item(key = "seasonal_header", span = { GridItemSpan(maxLineSpan) }) {
+                        item(key = "seasonal_header", span = { GridItemSpan(maxLineSpan) }, contentType = "header") {
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -270,7 +270,7 @@ fun SeasonalScreen(
                         }
 
                         // Filtro de formato (Todas, Películas, Series)
-                        item(key = "seasonal_format_filter_bar", span = { GridItemSpan(maxLineSpan) }) {
+                        item(key = "seasonal_format_filter_bar", span = { GridItemSpan(maxLineSpan) }, contentType = "filter_bar") {
                             FormatFilterBar(
                                 selected = state.format,
                                 onSelect = { viewModel.setFormat(it) },
@@ -282,7 +282,11 @@ fun SeasonalScreen(
                         }
 
                         // Muro de posters (Grid)
-                        items(state.items, key = { it.id }) { item ->
+                        items(
+                            items = state.items,
+                            key = { it.id },
+                            contentType = { "media_card" }
+                        ) { item ->
                             MediaCard(
                                 item = item,
                                 onClick = { onDetailMedia(item.id) },
@@ -291,7 +295,7 @@ fun SeasonalScreen(
                         }
 
                         if (state.items.isEmpty()) {
-                            item(span = { GridItemSpan(maxLineSpan) }) {
+                            item(key = "seasonal_empty", span = { GridItemSpan(maxLineSpan) }, contentType = "empty_placeholder") {
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()

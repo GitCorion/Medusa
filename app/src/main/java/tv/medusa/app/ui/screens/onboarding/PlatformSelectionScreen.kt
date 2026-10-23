@@ -148,7 +148,11 @@ fun PlatformSelectionScreen(
                     .fillMaxWidth()
                     .weight(1f)
             ) {
-                items(SUPPORTED_PLATFORMS, key = { it.id }) { platform ->
+                items(
+                    items = SUPPORTED_PLATFORMS,
+                    key = { it.id },
+                    contentType = { "platform_tile" }
+                ) { platform ->
                     PlatformTileCard(
                         platform = platform,
                         isSelected = platform.id in selected,

@@ -1991,7 +1991,11 @@ private fun PlayerCustomModalSheet(
                                     )
                                 }
                             } else {
-                                itemsIndexed(audioTracks) { index, track ->
+                                itemsIndexed(
+                                    items = audioTracks,
+                                    key = { index, track -> "audio_${track.label}_$index" },
+                                    contentType = { _, _ -> "track_item" }
+                                ) { index, track ->
                                     TrackOptionItem(
                                         label = track.label,
                                         isSelected = track.isSelected,
@@ -2103,7 +2107,11 @@ private fun PlayerCustomModalSheet(
                                 )
                             }
 
-                            itemsIndexed(subtitleTracks) { _, track ->
+                            itemsIndexed(
+                                items = subtitleTracks,
+                                key = { index, track -> "sub_${track.label}_$index" },
+                                contentType = { _, _ -> "track_item" }
+                            ) { _, track ->
                                 TrackOptionItem(
                                     label = track.label,
                                     isSelected = track.isSelected,
@@ -2129,7 +2137,11 @@ private fun PlayerCustomModalSheet(
                             }
 
                             val sizeOptions = listOf(SUBTITLE_SIZE_SMALL, SUBTITLE_SIZE_NORMAL, SUBTITLE_SIZE_LARGE)
-                            items(sizeOptions) { sizeVal ->
+                            items(
+                                items = sizeOptions,
+                                key = { it },
+                                contentType = { "size_option" }
+                            ) { sizeVal ->
                                 val label = when (sizeVal) {
                                     SUBTITLE_SIZE_SMALL -> stringResource(R.string.player_subtitle_size_small)
                                     SUBTITLE_SIZE_LARGE -> stringResource(R.string.player_subtitle_size_large)
@@ -2177,7 +2189,11 @@ private fun PlayerCustomModalSheet(
                             }
 
                             val speeds = listOf(0.75f, 1.0f, 1.25f, 1.5f, 2.0f)
-                            itemsIndexed(speeds) { index, speed ->
+                            itemsIndexed(
+                                items = speeds,
+                                key = { _, speed -> speed },
+                                contentType = { _, _ -> "speed_option" }
+                            ) { index, speed ->
                                 val label = if (speed == 1.0f) stringResource(R.string.player_speed_normal) else "${speed}x"
                                 TrackOptionItem(
                                     label = label,
@@ -2209,7 +2225,11 @@ private fun PlayerCustomModalSheet(
                                 AspectRatioFrameLayout.RESIZE_MODE_FILL
                             )
 
-                            itemsIndexed(modes) { _, mode ->
+                            itemsIndexed(
+                                items = modes,
+                                key = { _, mode -> mode },
+                                contentType = { _, _ -> "resize_mode" }
+                            ) { _, mode ->
                                 val label = when (mode) {
                                     AspectRatioFrameLayout.RESIZE_MODE_FIT -> stringResource(R.string.player_aspect_fit)
                                     AspectRatioFrameLayout.RESIZE_MODE_ZOOM -> stringResource(R.string.player_aspect_zoom)

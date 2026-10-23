@@ -464,7 +464,8 @@ fun SearchScreen(
                             ) {
                                 items(
                                     items = uiState.results,
-                                    key = { it.id }
+                                    key = { it.id },
+                                    contentType = { "media_card" }
                                 ) { item ->
                                     MediaCard(
                                         item = item,

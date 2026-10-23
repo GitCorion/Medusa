@@ -361,7 +361,8 @@ fun MedusaScreen(
                         ) {
                             itemsIndexed(
                                 items = uiState.matchingMovies,
-                                key = { _, movie -> movie.id }
+                                key = { _, movie -> movie.id },
+                                contentType = { _, _ -> "media_card" }
                             ) { _, movie ->
                                 MediaCard(
                                     item = movie,

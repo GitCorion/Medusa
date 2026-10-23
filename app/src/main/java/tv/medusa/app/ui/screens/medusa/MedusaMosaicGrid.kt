@@ -38,7 +38,8 @@ fun MedusaMosaicGrid(
     ) {
         itemsIndexed(
             items = tags,
-            key = { _, tag -> tag.id }
+            key = { _, tag -> tag.id },
+            contentType = { _, _ -> "mosaic_chip" }
         ) { index, tag ->
             val chipModifier = if (index == 0 && firstChipFocusRequester != null) {
                 Modifier.focusRequester(firstChipFocusRequester)

@@ -707,7 +707,11 @@ fun DetailScreen(
                                     contentPadding = PaddingValues(vertical = 4.dp, horizontal = 2.dp),
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    items(state.seasons, key = { it.id }) { season ->
+                                    items(
+                                        items = state.seasons,
+                                        key = { it.id },
+                                        contentType = { "season_chip" }
+                                    ) { season ->
                                         val isSelected = season.id == state.selectedSeasonId
                                         Button(
                                             onClick = { viewModel.selectSeason(season.id) },
@@ -793,7 +797,11 @@ fun DetailScreen(
                                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    items(state.episodes) { episode ->
+                                    items(
+                                        items = state.episodes,
+                                        key = { it.id },
+                                        contentType = { "episode_card" }
+                                    ) { episode ->
                                         EpisodeCard(
                                             episode = episode,
                                             onClick = {
@@ -858,7 +866,11 @@ fun DetailScreen(
                                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                items(state.collectionItems, key = { it.id }) { item ->
+                                items(
+                                    items = state.collectionItems,
+                                    key = { it.id },
+                                    contentType = { "media_card" }
+                                ) { item ->
                                     MediaCard(
                                         item = item,
                                         onClick = {
@@ -929,7 +941,11 @@ fun DetailScreen(
                                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    items(state.similarItems, key = { it.id }) { item ->
+                                    items(
+                                    items = state.similarItems,
+                                    key = { it.id },
+                                    contentType = { "media_card" }
+                                ) { item ->
                                         MediaCard(
                                             item = item,
                                             onClick = {
@@ -990,7 +1006,11 @@ fun DetailScreen(
                                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    items(state.genreItems, key = { it.id }) { item ->
+                                    items(
+                                    items = state.genreItems,
+                                    key = { it.id },
+                                    contentType = { "media_card" }
+                                ) { item ->
                                         MediaCard(
                                             item = item,
                                             onClick = {

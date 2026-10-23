@@ -149,7 +149,7 @@ fun GenreScreen(
                     )
 
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        item(key = "genre_format_filter_bar") {
+                        item(key = "genre_format_filter_bar", contentType = "filter_bar") {
                             FormatFilterBar(
                                 selected = state.format,
                                 onSelect = { viewModel.setFormat(it) },
@@ -161,7 +161,11 @@ fun GenreScreen(
                         }
 
                         // Secciones de Género
-                        items(state.sections) { section ->
+                        items(
+                            items = state.sections,
+                            key = { it.title },
+                            contentType = { "media_row" }
+                        ) { section ->
                             MediaRow(
                                 section = section,
                                 onItemClick = { item -> onDetailMedia(item.id) },
@@ -170,7 +174,7 @@ fun GenreScreen(
                         }
 
                         if (state.sections.isEmpty()) {
-                            item {
+                            item(key = "genre_empty", contentType = "empty_placeholder") {
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()

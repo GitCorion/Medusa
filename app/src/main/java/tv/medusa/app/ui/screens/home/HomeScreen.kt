@@ -401,7 +401,7 @@ fun HomeScreen(
                     state = listState,
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    item {
+                    item(key = "home_hero_banner", contentType = "hero_banner") {
                         @OptIn(ExperimentalFoundationApi::class)
                         val heroBringIntoViewResponder = remember(listState) {
                             object : BringIntoViewResponder {
@@ -425,7 +425,7 @@ fun HomeScreen(
                                     if (focusState.hasFocus) {
                                         viewModel.setFocusedItem(null)
                                         coroutineScope.launch {
-                                            listState.scrollToItem(0, 0)
+                                             listState.scrollToItem(0, 0)
                                         }
                                     }
                                 }
@@ -453,7 +453,7 @@ fun HomeScreen(
                         }
                     }
 
-                    item {
+                    item(key = "home_genre_row", contentType = "genre_row") {
                         if (state.genres.isNotEmpty()) {
                             GenreRow(
                                 genres = state.genres,
@@ -469,7 +469,7 @@ fun HomeScreen(
                         }
                     }
 
-                    item {
+                    item(key = "home_brand_row", contentType = "brand_row") {
                         BrandTileRow(
                             onSelectBrand = { brandId ->
                                 if (isProUser) {
@@ -488,7 +488,11 @@ fun HomeScreen(
                         )
                     }
 
-                    items(state.sections, key = { section -> section.title }) { section ->
+                    items(
+                        items = state.sections,
+                        key = { section -> section.title },
+                        contentType = { "media_row" }
+                    ) { section ->
                         MediaRow(
                             section = section,
                             onItemClick = { item ->

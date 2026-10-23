@@ -143,7 +143,7 @@ fun FavoritesScreen(
                     )
 
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        item(key = "favorites_format_filter_bar") {
+                        item(key = "favorites_format_filter_bar", contentType = "filter_bar") {
                             FormatFilterBar(
                                 selected = state.activeFilter,
                                 onSelect = { viewModel.setFilter(it) },
@@ -155,7 +155,7 @@ fun FavoritesScreen(
                         }
 
                         if (state.filteredItems.isEmpty()) {
-                            item {
+                            item(key = "favorites_empty", contentType = "empty_placeholder") {
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -199,7 +199,7 @@ fun FavoritesScreen(
                             }
                         } else {
                             // Grid of favorites (Directly accessible without giant hero header)
-                            item {
+                            item(key = "favorites_grid_content", contentType = "grid_content") {
                                 Column(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -259,7 +259,11 @@ fun FavoritesScreen(
                                             .height(520.dp),
                                         contentPadding = PaddingValues(bottom = 32.dp)
                                     ) {
-                                        items(state.filteredItems, key = { it.id }) { item ->
+                                        items(
+                                            items = state.filteredItems,
+                                            key = { it.id },
+                                            contentType = { "media_card" }
+                                        ) { item ->
                                             MediaCard(
                                                 item = item,
                                                 onClick = { onDetailMedia(item.id) }

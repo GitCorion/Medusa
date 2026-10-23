@@ -117,7 +117,11 @@ fun MediaRow(
             contentPadding = PaddingValues(horizontal = 48.dp, vertical = 6.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            itemsIndexed(uniqueItems, key = { _, it -> it.id }) { index, item ->
+            itemsIndexed(
+                items = uniqueItems,
+                key = { _, it -> it.id },
+                contentType = { _, _ -> "media_card" }
+            ) { index, item ->
                 val displayItem = if (section.isRanked && item.rank == null) {
                     item.copy(rank = index + 1)
                 } else {

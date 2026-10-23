@@ -183,7 +183,7 @@ fun BrandScreen(
                     )
 
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        item(key = "brand_format_filter_bar") {
+                        item(key = "brand_format_filter_bar", contentType = "filter_bar") {
                             FormatFilterBar(
                                 selected = state.format,
                                 onSelect = { viewModel.setFormat(it) },
@@ -195,7 +195,7 @@ fun BrandScreen(
                         }
 
                         if (state.sections.isEmpty()) {
-                            item {
+                            item(key = "brand_empty_state", contentType = "empty_placeholder") {
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -234,7 +234,11 @@ fun BrandScreen(
                             }
                         } else {
                             // Platform Rows
-                            items(state.sections) { section ->
+                            items(
+                                items = state.sections,
+                                key = { it.title },
+                                contentType = { "media_row" }
+                            ) { section ->
                                 MediaRow(
                                     section = section,
                                     onItemClick = { item -> onDetailMedia(item.id) },
@@ -243,7 +247,7 @@ fun BrandScreen(
                             }
                         }
 
-                        item {
+                        item(key = "brand_bottom_spacer", contentType = "spacer") {
                             Spacer(modifier = Modifier.height(32.dp))
                         }
                     }

@@ -127,7 +127,8 @@ fun MedusaTagRail(
     ) {
         itemsIndexed(
             items = tags,
-            key = { _, tag -> tag.id }
+            key = { _, tag -> tag.id },
+            contentType = { _, _ -> "tag_pill" }
         ) { index, tag ->
             val itemRequester = focusRequesters.getOrPut(tag.id) { FocusRequester() }
 

@@ -72,7 +72,11 @@ fun BrandTileRow(
             contentPadding = PaddingValues(horizontal = 48.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)
         ) {
-            items(platforms, key = { it.id }) { platform ->
+            items(
+                items = platforms,
+                key = { it.id },
+                contentType = { "brand_card" }
+            ) { platform ->
                 BrandCard(
                     brand = platform,
                     isLocked = !isProUser,
