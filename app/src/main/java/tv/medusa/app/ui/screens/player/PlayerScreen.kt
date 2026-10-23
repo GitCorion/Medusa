@@ -13,8 +13,12 @@ import tv.medusa.app.data.local.db.AppDatabase
 import tv.medusa.app.data.repository.buildJellyfinAuthHeader
 import tv.medusa.app.ui.components.JellyLoadingIndicator
 import android.app.Activity
+import android.app.PendingIntent
 import android.content.Context
 import android.content.ContextWrapper
+import android.content.Intent
+import androidx.media3.session.MediaSession
+import tv.medusa.app.MainActivity
 import android.net.Uri
 import android.view.WindowManager
 import androidx.activity.compose.BackHandler
@@ -401,6 +405,8 @@ private fun PlayerContent(
             .setRenderersFactory(renderersFactory)
             .setMediaSourceFactory(mediaSourceFactory)
             .setLoadControl(loadControl)
+            .setSeekForwardIncrementMs(10_000L)
+            .setSeekBackIncrementMs(10_000L)
             .setWakeMode(C.WAKE_MODE_NETWORK)
             .setAudioAttributes(audioAttributes, true)
             .build().apply {
@@ -510,6 +516,26 @@ private fun PlayerContent(
                     playWhenReady = true
                 }
             }
+    }
+
+    // Integración de MediaSession (androidx.media3.session) para Android TV:
+    // Permite que los botones físicos del mando de TV (Play, Pause, FastForward, Rewind),
+    // mandos Bluetooth / HDMI-CEC y comandos por voz de Google Assistant ("Ok Google, pausa")
+    // controlen la reproducción nativamente y mantengan el estado global en el sistema.
+    val mediaSession = remember(exoPlayer) {
+        val sessionActivityIntent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val sessionActivityPendingIntent = PendingIntent.getActivity(
+            context,
+            0,
+            sessionActivityIntent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        MediaSession.Builder(context, exoPlayer)
+            .setId("MedusaMediaSession_${info.playableId.ifBlank { "main" }}")
+            .setSessionActivity(sessionActivityPendingIntent)
+            .build()
     }
 
     LaunchedEffect(activeModalTab) {
@@ -754,6 +780,7 @@ private fun PlayerContent(
         }
         exoPlayer.addListener(listener)
         onDispose {
+            mediaSession.release()
             exoPlayer.removeListener(listener)
             val finalPos = exoPlayer.currentPosition
             val totalDur = exoPlayer.duration
