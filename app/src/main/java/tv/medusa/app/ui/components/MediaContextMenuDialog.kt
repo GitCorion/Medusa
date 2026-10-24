@@ -68,6 +68,7 @@ import tv.medusa.app.R
 import tv.medusa.app.domain.model.MediaItem
 import tv.medusa.app.ui.theme.TvAccent
 import tv.medusa.app.ui.theme.TvPill
+import tv.medusa.app.ui.theme.TvRatingBadge
 import java.util.Locale
 
 private data class ContextActionItem(
@@ -368,11 +369,9 @@ fun MediaContextMenuDialog(
                             }
 
                             if (item.rating != null && item.rating > 0f) {
-                                TvPill(
-                                    text = "★ ${String.format(Locale.US, "%.1f", item.rating)}",
-                                    containerColor = if (isMonochrome) Color(0x20FFFFFF) else Color(0x26F59E0B),
-                                    textColor = if (isMonochrome) Color.White else Color(0xFFFBBF24),
-                                    borderColor = if (isMonochrome) Color(0x33FFFFFF) else Color(0x44F59E0B)
+                                TvRatingBadge(
+                                    rating = item.rating,
+                                    compact = true
                                 )
                             }
                         }
