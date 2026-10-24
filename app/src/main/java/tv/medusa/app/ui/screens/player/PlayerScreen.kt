@@ -77,12 +77,7 @@ import tv.medusa.app.util.AppForeground
 import tv.medusa.app.data.local.SUBTITLE_SIZE_SMALL
 import tv.medusa.app.data.local.SUBTITLE_SIZE_NORMAL
 import tv.medusa.app.data.local.SUBTITLE_SIZE_LARGE
-import tv.medusa.app.data.local.AUDIO_PASSTHROUGH_OFF
-import tv.medusa.app.data.local.AUDIO_PASSTHROUGH_AUTO
-import tv.medusa.app.data.local.AUDIO_PASSTHROUGH_DIRECT
-import androidx.media3.exoplayer.audio.AudioCapabilities
 import androidx.media3.exoplayer.audio.AudioSink
-import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.ui.CaptionStyleCompat
 import tv.medusa.app.ui.theme.TvAccent
@@ -286,11 +281,6 @@ private fun PlayerContent(
     val subtitleSize by viewModel.subtitleSize.collectAsStateWithLifecycle()
     val subtitleBackground by viewModel.subtitleBackground.collectAsStateWithLifecycle()
     val autoFrameRateEnabled by viewModel.autoFrameRateEnabled.collectAsStateWithLifecycle()
-    val audioPassthroughMode by viewModel.audioPassthroughMode.collectAsStateWithLifecycle()
-    var currentPassthroughMode by remember { mutableIntStateOf(audioPassthroughMode) }
-    LaunchedEffect(audioPassthroughMode) {
-        currentPassthroughMode = audioPassthroughMode
-    }
 
     DisposableEffect(Unit) {
         AppForeground.isPlaybackActive = true
@@ -303,7 +293,10 @@ private fun PlayerContent(
     var currentVideoFps by remember { mutableFloatStateOf(0f) }
 
     var showOverlayControls by remember { mutableStateOf(true) }
-    var seekIndicatorText by remember { mutableStateOf<String?>(null) }
+    var isScrubbing by remember { mutableStateOf(false) }
+    var scrubTargetPosition by remember { mutableLongStateOf(0L) }
+    var scrubDeltaMs by remember { mutableLongStateOf(0L) }
+    var lastScrubKeystrokeTime by remember { mutableLongStateOf(0L) }
     var activeModalTab by remember { mutableStateOf(PlayerModalTab.NONE) }
     var lastInteractionTrigger by remember { mutableLongStateOf(0L) }
 
@@ -430,42 +423,7 @@ private fun PlayerContent(
             )
             .build()
 
-        val audioCapabilities = when (currentPassthroughMode) {
-            AUDIO_PASSTHROUGH_OFF -> AudioCapabilities.DEFAULT_AUDIO_CAPABILITIES
-            AUDIO_PASSTHROUGH_DIRECT -> AudioCapabilities.getCapabilities(context)
-            else -> {
-                // Modo Automático: Comprueba si realmente hay una barra o receptor AV conectado (HDMI ARC/eARC, Óptico)
-                // Si sólo suenan los altavoces integrados de la TV, se usa PCM para evitar silencios.
-                val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
-                val outputDevices = audioManager?.getDevices(AudioManager.GET_DEVICES_OUTPUTS) ?: emptyArray()
-                val hasExternalAudioSystem = outputDevices.any { device ->
-                    device.type == AudioDeviceInfo.TYPE_HDMI_ARC ||
-                    device.type == AudioDeviceInfo.TYPE_HDMI_EARC ||
-                    device.type == AudioDeviceInfo.TYPE_LINE_DIGITAL
-                }
-                if (hasExternalAudioSystem) {
-                    AudioCapabilities.getCapabilities(context)
-                } else {
-                    AudioCapabilities.DEFAULT_AUDIO_CAPABILITIES
-                }
-            }
-        }
-
-        val audioSink = DefaultAudioSink.Builder(context)
-            .setAudioCapabilities(audioCapabilities)
-            .setEnableFloatOutput(false)
-            .setEnableAudioTrackPlaybackParams(true)
-            .build()
-
-        val renderersFactory = object : DefaultRenderersFactory(context) {
-            override fun buildAudioSink(
-                context: Context,
-                enableFloatOutput: Boolean,
-                enableAudioTrackPlaybackParams: Boolean
-            ): AudioSink {
-                return audioSink
-            }
-        }
+        val renderersFactory = DefaultRenderersFactory(context)
             // ON = prefiere el decodificador de hardware de la plataforma y sólo recurre
             // a la extensión FFmpeg (software) cuando no hay uno válido.
             .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
@@ -559,14 +517,6 @@ private fun PlayerContent(
                                 error.cause is AudioSink.WriteException
 
                         if (isAudioError) {
-                            if (currentPassthroughMode != AUDIO_PASSTHROUGH_OFF) {
-                                Log.w("PlayerScreen", "Error de audio en modo passthrough. Conmutando automáticamente a decodificación PCM.")
-                                playerErrorMessage = context.getString(R.string.player_audio_fallback_toast)
-                                viewModel.setAudioPassthroughMode(AUDIO_PASSTHROUGH_OFF)
-                                currentPassthroughMode = AUDIO_PASSTHROUGH_OFF
-                                return
-                            }
-
                             val availableAudios = audioTracks
                             val currentTrack = availableAudios.firstOrNull { it.isSelected }
                             val fallbackTrack = availableAudios.firstOrNull { !it.isSelected }
@@ -727,28 +677,43 @@ private fun PlayerContent(
         }
     }
 
-    var accumulatedSeekOffset by remember { mutableLongStateOf(0L) }
-    var lastSeekTime by remember { mutableLongStateOf(0L) }
-
     fun seekRelative(deltaMs: Long) {
         notifyInteraction()
-        val cur = exoPlayer.currentPosition.coerceAtLeast(0L)
-        val dur = exoPlayer.duration.takeIf { it > 0 } ?: duration.takeIf { it > 0 } ?: Long.MAX_VALUE
-        val target = (cur + deltaMs).coerceIn(0L, dur)
-        exoPlayer.seekTo(target)
-        currentPosition = target
-
+        showOverlayControls = true
         val now = System.currentTimeMillis()
-        if (now - lastSeekTime > 1200L || (accumulatedSeekOffset > 0 && deltaMs < 0) || (accumulatedSeekOffset < 0 && deltaMs > 0)) {
-            accumulatedSeekOffset = deltaMs
-        } else {
-            accumulatedSeekOffset += deltaMs
-        }
-        lastSeekTime = now
+        val cur = if (isScrubbing) scrubTargetPosition else exoPlayer.currentPosition.coerceAtLeast(0L)
+        val dur = exoPlayer.duration.takeIf { it > 0 } ?: duration.takeIf { it > 0 } ?: Long.MAX_VALUE
 
-        val absSec = abs(accumulatedSeekOffset) / 1000
-        val sign = if (accumulatedSeekOffset < 0) "⏪ -" else "⏩ +"
-        seekIndicatorText = "$sign${absSec}s (${formatTime(target)})"
+        val timeSinceLast = now - lastScrubKeystrokeTime
+        // Aceleración progresiva natural: si se pulsa repetidamente en menos de 280ms, acelera el salto
+        val effectiveDelta = if (timeSinceLast < 280L && ((scrubDeltaMs > 0 && deltaMs > 0) || (scrubDeltaMs < 0 && deltaMs < 0))) {
+            deltaMs * 2
+        } else {
+            deltaMs
+        }
+
+        if (!isScrubbing || (scrubDeltaMs > 0 && deltaMs < 0) || (scrubDeltaMs < 0 && deltaMs > 0)) {
+            scrubDeltaMs = effectiveDelta
+            scrubTargetPosition = (cur + effectiveDelta).coerceIn(0L, dur)
+        } else {
+            scrubDeltaMs += effectiveDelta
+            scrubTargetPosition = (scrubTargetPosition + effectiveDelta).coerceIn(0L, dur)
+        }
+        lastScrubKeystrokeTime = now
+        isScrubbing = true
+    }
+
+    // Debounce del seek: ejecuta el salto real en ExoPlayer 650 ms después de que el usuario deja de pulsar
+    LaunchedEffect(scrubTargetPosition, isScrubbing, lastScrubKeystrokeTime) {
+        if (isScrubbing) {
+            delay(650L)
+            if (isScrubbing) {
+                exoPlayer.seekTo(scrubTargetPosition)
+                currentPosition = scrubTargetPosition
+                isScrubbing = false
+                scrubDeltaMs = 0L
+            }
+        }
     }
 
     // Auto-focus retry button if an error occurs
@@ -768,15 +733,6 @@ private fun PlayerContent(
             try {
                 playPauseFocusRequester.requestFocus()
             } catch (_: Exception) {}
-        }
-    }
-
-    // Auto-hide seek indicator banner after 1.2s
-    LaunchedEffect(seekIndicatorText) {
-        if (seekIndicatorText != null) {
-            delay(1200L)
-            seekIndicatorText = null
-            accumulatedSeekOffset = 0L
         }
     }
 
@@ -1033,25 +989,32 @@ private fun PlayerContent(
                         true
                     }
                     Key.DirectionLeft -> {
-                        if (!showOverlayControls && activeModalTab == PlayerModalTab.NONE) {
+                        if (activeModalTab == PlayerModalTab.NONE) {
                             seekRelative(-10_000L)
                             true
                         } else {
                             notifyInteraction()
-                            false // Let Compose focus system navigate to the Rewind button on the left
+                            false
                         }
                     }
                     Key.DirectionRight -> {
-                        if (!showOverlayControls && activeModalTab == PlayerModalTab.NONE) {
+                        if (activeModalTab == PlayerModalTab.NONE) {
                             seekRelative(+10_000L)
                             true
                         } else {
                             notifyInteraction()
-                            false // Let Compose focus system navigate to the Forward button on the right
+                            false
                         }
                     }
                     Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> {
-                        if (!showOverlayControls) {
+                        if (isScrubbing) {
+                            exoPlayer.seekTo(scrubTargetPosition)
+                            currentPosition = scrubTargetPosition
+                            isScrubbing = false
+                            scrubDeltaMs = 0L
+                            notifyInteraction()
+                            true
+                        } else if (!showOverlayControls) {
                             showOverlayControls = true
                             notifyInteraction()
                             true
@@ -1258,26 +1221,51 @@ private fun PlayerContent(
             }
         }
 
-        // Seek Indicator Overlay (Center Toast for D-Pad Left/Right & Media Keys)
+        // Cinematic Scrubber HUD Bubble (Apple TV+ / Infuse style)
         AnimatedVisibility(
-            visible = seekIndicatorText != null,
-            enter = fadeIn() + scaleIn(),
-            exit = fadeOut() + scaleOut(),
-            modifier = Modifier.align(Alignment.Center)
+            visible = isScrubbing,
+            enter = fadeIn() + scaleIn(initialScale = 0.94f),
+            exit = fadeOut() + scaleOut(targetScale = 0.94f),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 124.dp)
         ) {
             Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(Color(0xEE121320))
-                    .border(1.5.dp, if (isMonochrome) Color.White else focusColor, RoundedCornerShape(24.dp))
-                    .padding(horizontal = 28.dp, vertical = 14.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color(0xF2080A14))
+                    .border(0.75.dp, if (isMonochrome) Color(0x33FFFFFF) else focusColor.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
+                    .padding(horizontal = 18.dp, vertical = 10.dp)
             ) {
-                Text(
-                    text = seekIndicatorText ?: "",
-                    color = Color.White,
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Icon(
+                        imageVector = if (scrubDeltaMs >= 0) Icons.Default.FastForward else Icons.Default.FastRewind,
+                        contentDescription = null,
+                        tint = if (isMonochrome) Color.White else focusColor,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Text(
+                        text = formatSeekDelta(scrubDeltaMs),
+                        color = if (isMonochrome) Color.White else focusColor,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Box(
+                        modifier = Modifier
+                            .width(1.dp)
+                            .height(14.dp)
+                            .background(Color(0x33FFFFFF))
+                    )
+                    Text(
+                        text = formatTime(scrubTargetPosition),
+                        color = Color.White,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
             }
         }
 
@@ -1347,8 +1335,9 @@ private fun PlayerContent(
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         // Progress Scrubber
+                        val displayPos = if (isScrubbing) scrubTargetPosition else currentPosition
                         TvProgressBar(
-                            currentPositionMs = currentPosition,
+                            currentPositionMs = displayPos,
                             bufferedPositionMs = bufferedPosition,
                             durationMs = duration,
                             isMonochrome = isMonochrome,
@@ -1428,8 +1417,8 @@ private fun PlayerContent(
 
                                 // Time Indicator
                                 Text(
-                                    text = "${formatTime(currentPosition)} / ${formatTime(duration)}",
-                                    color = Color(0xFFCBD5E1),
+                                    text = "${formatTime(displayPos)} / ${formatTime(duration)}",
+                                    color = if (isScrubbing && !isMonochrome) focusColor else Color(0xFFCBD5E1),
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.SemiBold
                                 )
@@ -1507,12 +1496,6 @@ private fun PlayerContent(
                 subtitleSize = subtitleSize,
                 subtitleBackground = subtitleBackground,
                 autoFrameRateEnabled = autoFrameRateEnabled,
-                audioPassthroughMode = currentPassthroughMode,
-                onSelectAudioPassthrough = { mode ->
-                    notifyInteraction()
-                    viewModel.setAudioPassthroughMode(mode)
-                    currentPassthroughMode = mode
-                },
                 onSelectAudioTrack = { track ->
                     notifyInteraction()
                     selectAudioTrackInExoPlayer(exoPlayer, track)
@@ -1980,8 +1963,6 @@ private fun PlayerCustomModalSheet(
     subtitleSize: String = SUBTITLE_SIZE_NORMAL,
     subtitleBackground: Boolean = false,
     autoFrameRateEnabled: Boolean = false,
-    audioPassthroughMode: Int = AUDIO_PASSTHROUGH_OFF,
-    onSelectAudioPassthrough: (Int) -> Unit = {},
     onSelectAudioTrack: (TrackItem) -> Unit,
     onSelectSubtitleTrack: (TrackItem?) -> Unit,
     onSelectSpeed: (Float) -> Unit,
@@ -2010,7 +1991,7 @@ private fun PlayerCustomModalSheet(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.7f))
+            .background(Color.Black.copy(alpha = 0.65f))
             .clickable { onClose() }
             .onPreviewKeyEvent { keyEvent ->
                 if (keyEvent.type == KeyEventType.KeyDown && (keyEvent.key == Key.Back || keyEvent.key == Key.Escape)) {
@@ -2023,7 +2004,7 @@ private fun PlayerCustomModalSheet(
         Surface(
             modifier = Modifier
                 .fillMaxHeight()
-                .width(420.dp)
+                .width(440.dp)
                 .clickable(enabled = false) {}
                 .onPreviewKeyEvent { keyEvent ->
                     if (keyEvent.type == KeyEventType.KeyDown && (keyEvent.key == Key.Back || keyEvent.key == Key.Escape)) {
@@ -2037,17 +2018,21 @@ private fun PlayerCustomModalSheet(
                         true
                     } else false
                 }
-                .border(1.dp, if (isMonochrome) Color(0x22FFFFFF) else focusColor.copy(alpha = 0.35f), RoundedCornerShape(topStart = 24.dp, bottomStart = 24.dp)),
+                .border(
+                    1.dp,
+                    if (isMonochrome) Color(0x22FFFFFF) else focusColor.copy(alpha = 0.25f),
+                    RoundedCornerShape(topStart = 24.dp, bottomStart = 24.dp)
+                ),
             shape = RoundedCornerShape(topStart = 24.dp, bottomStart = 24.dp),
             colors = NonInteractiveSurfaceDefaults.colors(
-                containerColor = Color(0xFA11121E)
+                containerColor = Color(0xF6090D18)
             )
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(28.dp),
-                verticalArrangement = Arrangement.spacedBy(20.dp)
+                    .padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(18.dp)
             ) {
                 // Modal Title Header
                 Row(
@@ -2076,12 +2061,12 @@ private fun PlayerCustomModalSheet(
                             imageVector = titleIcon,
                             contentDescription = null,
                             tint = if (isMonochrome) Color.White else focusColor,
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(22.dp)
                         )
                         Text(
                             text = titleText,
                             color = Color.White,
-                            fontSize = 18.sp,
+                            fontSize = 17.sp,
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -2089,26 +2074,24 @@ private fun PlayerCustomModalSheet(
                     Button(
                         onClick = onClose,
                         colors = ButtonDefaults.colors(
-                            containerColor = Color(0x22FFFFFF),
+                            containerColor = Color(0x18FFFFFF),
                             contentColor = Color.White,
                             focusedContainerColor = if (isMonochrome) Color.White else focusColor,
                             focusedContentColor = if (isMonochrome) Color(0xFF0F172A) else focusContent
                         ),
-                        modifier = Modifier.size(36.dp)
+                        modifier = Modifier.size(34.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Close,
                             contentDescription = stringResource(R.string.common_close),
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(16.dp)
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(2.dp))
-
                 // Modal Content Body
                 LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     when (activeTab) {
@@ -2118,9 +2101,9 @@ private fun PlayerCustomModalSheet(
                                 Text(
                                     text = stringResource(R.string.player_audio_tracks),
                                     color = Color(0xFFCBD5E1),
-                                    fontSize = 13.sp,
+                                    fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(bottom = 4.dp)
+                                    modifier = Modifier.padding(bottom = 2.dp)
                                 )
                             }
 
@@ -2129,7 +2112,7 @@ private fun PlayerCustomModalSheet(
                                     Text(
                                         text = stringResource(R.string.player_no_audio_tracks),
                                         color = Color.Gray,
-                                        fontSize = 14.sp
+                                        fontSize = 13.sp
                                     )
                                 }
                             } else {
@@ -2153,131 +2136,49 @@ private fun PlayerCustomModalSheet(
                                 }
                             }
 
-                            // 2. Modo Nocturno (Compresor DRC / Realce de Diálogos)
+                            // 2. Modo Nocturno / DRC (Segmented Option Card)
                             item {
-                                Spacer(modifier = Modifier.height(14.dp))
-                                val nightLevels = listOf(0, 1, 2)
-                                val currentIdx = nightLevels.indexOf(nightModeAudio).coerceAtLeast(0)
-                                val nightLabel = when (nightModeAudio) {
-                                    1 -> stringResource(R.string.player_night_mode_soft)
-                                    2 -> stringResource(R.string.player_night_mode_strong)
-                                    else -> stringResource(R.string.player_night_mode_off)
-                                }
-                                KodiAudioSliderRow(
+                                Spacer(modifier = Modifier.height(6.dp))
+                                TvSegmentedControlRow(
                                     title = stringResource(R.string.player_night_mode),
                                     subtitle = stringResource(R.string.player_night_mode_desc),
-                                    currentValueLabel = nightLabel,
-                                    progressFraction = currentIdx.toFloat() / (nightLevels.size - 1),
-                                    canDecrease = currentIdx > 0,
-                                    canIncrease = currentIdx < nightLevels.size - 1,
                                     icon = Icons.Default.Bedtime,
-                                    isMonochrome = isMonochrome,
-                                    focusColor = focusColor,
-                                    focusRequester = if (audioTracks.isEmpty()) firstItemFocusRequester else null,
-                                    onDecrease = {
-                                        if (currentIdx > 0) {
-                                            onSelectNightMode(nightLevels[currentIdx - 1])
+                                    options = listOf(0, 1, 2),
+                                    selectedOption = nightModeAudio,
+                                    optionLabel = { level ->
+                                        when (level) {
+                                            1 -> stringResource(R.string.player_night_mode_soft)
+                                            2 -> stringResource(R.string.player_night_mode_strong)
+                                            else -> stringResource(R.string.player_night_mode_off)
                                         }
                                     },
-                                    onIncrease = {
-                                        if (currentIdx < nightLevels.size - 1) {
-                                            onSelectNightMode(nightLevels[currentIdx + 1])
-                                        }
-                                    },
-                                    onCycleNext = {
-                                        val nextIdx = (currentIdx + 1) % nightLevels.size
-                                        onSelectNightMode(nightLevels[nextIdx])
-                                    }
-                                )
-                            }
-
-                            // 3. Amplificador de Volumen (Estilo Kodi)
-                            item {
-                                Spacer(modifier = Modifier.height(10.dp))
-                                val boostSteps = listOf(0, 3, 6, 10, 15)
-                                val currentIdx = boostSteps.indexOf(audioVolumeBoostDb).let { if (it >= 0) it else 0 }
-                                val boostLabel = when (audioVolumeBoostDb) {
-                                    3 -> stringResource(R.string.player_volume_boost_low)
-                                    6 -> stringResource(R.string.player_volume_boost_medium)
-                                    10 -> stringResource(R.string.player_volume_boost_high)
-                                    15 -> stringResource(R.string.player_volume_boost_max)
-                                    else -> stringResource(R.string.player_volume_boost_original)
-                                }
-                                KodiAudioSliderRow(
-                                    title = stringResource(R.string.player_volume_boost),
-                                    subtitle = stringResource(R.string.player_volume_boost_desc),
-                                    currentValueLabel = boostLabel,
-                                    progressFraction = currentIdx.toFloat() / (boostSteps.size - 1),
-                                    canDecrease = currentIdx > 0,
-                                    canIncrease = currentIdx < boostSteps.size - 1,
-                                    icon = Icons.AutoMirrored.Filled.VolumeUp,
-                                    isMonochrome = isMonochrome,
-                                    focusColor = focusColor,
-                                    onDecrease = {
-                                        if (currentIdx > 0) {
-                                            onSelectVolumeBoost(boostSteps[currentIdx - 1])
-                                        }
-                                    },
-                                    onIncrease = {
-                                        if (currentIdx < boostSteps.size - 1) {
-                                            onSelectVolumeBoost(boostSteps[currentIdx + 1])
-                                        }
-                                    },
-                                    onCycleNext = {
-                                        val nextIdx = (currentIdx + 1) % boostSteps.size
-                                        onSelectVolumeBoost(boostSteps[nextIdx])
-                                    }
-                                )
-                            }
-
-                            // 4. Salida de audio / Passthrough
-                            item {
-                                Spacer(modifier = Modifier.height(10.dp))
-                                val passthroughModes = listOf(AUDIO_PASSTHROUGH_OFF, AUDIO_PASSTHROUGH_AUTO, AUDIO_PASSTHROUGH_DIRECT)
-                                val currentIdx = passthroughModes.indexOf(audioPassthroughMode).coerceAtLeast(0)
-                                val passthroughLabel = when (audioPassthroughMode) {
-                                    AUDIO_PASSTHROUGH_AUTO -> stringResource(R.string.player_audio_passthrough_auto)
-                                    AUDIO_PASSTHROUGH_DIRECT -> stringResource(R.string.player_audio_passthrough_direct)
-                                    else -> stringResource(R.string.player_audio_passthrough_off)
-                                }
-                                KodiAudioSliderRow(
-                                    title = stringResource(R.string.player_audio_passthrough),
-                                    subtitle = stringResource(R.string.player_audio_passthrough_desc),
-                                    currentValueLabel = passthroughLabel,
-                                    progressFraction = currentIdx.toFloat() / (passthroughModes.size - 1),
-                                    canDecrease = currentIdx > 0,
-                                    canIncrease = currentIdx < passthroughModes.size - 1,
-                                    icon = Icons.Default.Audiotrack,
-                                    isMonochrome = isMonochrome,
-                                    focusColor = focusColor,
-                                    onDecrease = {
-                                        if (currentIdx > 0) {
-                                            onSelectAudioPassthrough(passthroughModes[currentIdx - 1])
-                                        }
-                                    },
-                                    onIncrease = {
-                                        if (currentIdx < passthroughModes.size - 1) {
-                                            onSelectAudioPassthrough(passthroughModes[currentIdx + 1])
-                                        }
-                                    },
-                                    onCycleNext = {
-                                        val nextIdx = (currentIdx + 1) % passthroughModes.size
-                                        onSelectAudioPassthrough(passthroughModes[nextIdx])
-                                    }
-                                )
-                            }
-
-                            // 5. Botón Cerrar menú
-                            item {
-                                Spacer(modifier = Modifier.height(14.dp))
-                                TrackOptionItem(
-                                    label = stringResource(R.string.player_modal_close),
-                                    isSelected = false,
-                                    icon = Icons.Default.Close,
+                                    onOptionSelected = { onSelectNightMode(it) },
                                     isMonochrome = isMonochrome,
                                     focusColor = focusColor,
                                     focusContent = focusContent,
-                                    onClick = onClose
+                                    firstFocusRequester = if (audioTracks.isEmpty()) firstItemFocusRequester else null
+                                )
+                            }
+
+                            // 3. Amplificador de Volumen / Diálogos (Segmented Option Card)
+                            item {
+                                Spacer(modifier = Modifier.height(2.dp))
+                                TvSegmentedControlRow(
+                                    title = stringResource(R.string.player_volume_boost),
+                                    subtitle = stringResource(R.string.player_volume_boost_desc),
+                                    icon = Icons.AutoMirrored.Filled.VolumeUp,
+                                    options = listOf(0, 3, 6, 10, 15),
+                                    selectedOption = audioVolumeBoostDb,
+                                    optionLabel = { db ->
+                                        when (db) {
+                                            0 -> stringResource(R.string.player_volume_boost_original)
+                                            else -> "+$db dB"
+                                        }
+                                    },
+                                    onOptionSelected = { onSelectVolumeBoost(it) },
+                                    isMonochrome = isMonochrome,
+                                    focusColor = focusColor,
+                                    focusContent = focusContent
                                 )
                             }
                         }
@@ -2318,170 +2219,105 @@ private fun PlayerCustomModalSheet(
                                 )
                             }
 
+                            // Tamaño de subtítulos (Segmented Option Card)
                             item {
-                                Spacer(modifier = Modifier.height(16.dp))
-                                Text(
-                                    text = stringResource(R.string.player_subtitle_size),
-                                    color = Color(0xFFCBD5E1),
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(bottom = 6.dp)
+                                Spacer(modifier = Modifier.height(6.dp))
+                                TvSegmentedControlRow(
+                                    title = stringResource(R.string.player_subtitle_size),
+                                    icon = Icons.Default.Subtitles,
+                                    options = listOf(SUBTITLE_SIZE_SMALL, SUBTITLE_SIZE_NORMAL, SUBTITLE_SIZE_LARGE),
+                                    selectedOption = subtitleSize,
+                                    optionLabel = { sizeVal ->
+                                        when (sizeVal) {
+                                            SUBTITLE_SIZE_SMALL -> stringResource(R.string.player_subtitle_size_small)
+                                            SUBTITLE_SIZE_LARGE -> stringResource(R.string.player_subtitle_size_large)
+                                            else -> stringResource(R.string.player_subtitle_size_normal)
+                                        }
+                                    },
+                                    onOptionSelected = { onSelectSubtitleSize(it) },
+                                    isMonochrome = isMonochrome,
+                                    focusColor = focusColor,
+                                    focusContent = focusContent
                                 )
                             }
 
-                            val sizeOptions = listOf(SUBTITLE_SIZE_SMALL, SUBTITLE_SIZE_NORMAL, SUBTITLE_SIZE_LARGE)
-                            items(
-                                items = sizeOptions,
-                                key = { it },
-                                contentType = { "size_option" }
-                            ) { sizeVal ->
-                                val label = when (sizeVal) {
-                                    SUBTITLE_SIZE_SMALL -> stringResource(R.string.player_subtitle_size_small)
-                                    SUBTITLE_SIZE_LARGE -> stringResource(R.string.player_subtitle_size_large)
-                                    else -> stringResource(R.string.player_subtitle_size_normal)
-                                }
-                                TrackOptionItem(
-                                    label = label,
-                                    isSelected = subtitleSize == sizeVal,
-                                    isMonochrome = isMonochrome,
-                                    focusColor = focusColor,
-                                    focusContent = focusContent,
-                                    onClick = { onSelectSubtitleSize(sizeVal) }
-                                )
-                            }
-
+                            // Fondo de contraste (Segmented Option Card)
                             item {
-                                Spacer(modifier = Modifier.height(12.dp))
-                                Text(
-                                    text = stringResource(R.string.player_subtitle_contrast),
-                                    color = Color(0xFFCBD5E1),
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(bottom = 6.dp)
-                                )
-                                TrackOptionItem(
-                                    label = if (subtitleBackground) stringResource(R.string.player_subtitle_contrast_on) else stringResource(R.string.player_subtitle_contrast_off),
-                                    isSelected = subtitleBackground,
+                                Spacer(modifier = Modifier.height(2.dp))
+                                TvSegmentedControlRow(
+                                    title = stringResource(R.string.player_subtitle_contrast),
+                                    options = listOf(false, true),
+                                    selectedOption = subtitleBackground,
+                                    optionLabel = { bg ->
+                                        if (bg) stringResource(R.string.player_subtitle_contrast_on) else stringResource(R.string.player_subtitle_contrast_off)
+                                    },
+                                    onOptionSelected = { onToggleSubtitleBackground(it) },
                                     isMonochrome = isMonochrome,
                                     focusColor = focusColor,
-                                    focusContent = focusContent,
-                                    onClick = { onToggleSubtitleBackground(!subtitleBackground) }
-                                )
-                            }
-
-                            item {
-                                Spacer(modifier = Modifier.height(14.dp))
-                                TrackOptionItem(
-                                    label = stringResource(R.string.player_modal_close),
-                                    isSelected = false,
-                                    icon = Icons.Default.Close,
-                                    isMonochrome = isMonochrome,
-                                    focusColor = focusColor,
-                                    focusContent = focusContent,
-                                    onClick = onClose
+                                    focusContent = focusContent
                                 )
                             }
                         }
 
                         PlayerModalTab.SETTINGS -> {
+                            // Velocidad de reproducción (Segmented Option Card)
                             item {
-                                Text(
-                                    text = stringResource(R.string.player_playback_speed),
-                                    color = Color(0xFFCBD5E1),
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(bottom = 4.dp)
-                                )
-                            }
-
-                            val speeds = listOf(0.75f, 1.0f, 1.25f, 1.5f, 2.0f)
-                            itemsIndexed(
-                                items = speeds,
-                                key = { _, speed -> speed },
-                                contentType = { _, _ -> "speed_option" }
-                            ) { index, speed ->
-                                val label = if (speed == 1.0f) stringResource(R.string.player_speed_normal) else "${speed}x"
-                                TrackOptionItem(
-                                    label = label,
-                                    isSelected = currentSpeed == speed,
+                                TvSegmentedControlRow(
+                                    title = stringResource(R.string.player_playback_speed),
+                                    icon = Icons.Default.Tune,
+                                    options = listOf(0.75f, 1.0f, 1.25f, 1.5f, 2.0f),
+                                    selectedOption = currentSpeed,
+                                    optionLabel = { spd ->
+                                        if (spd == 1.0f) "1.0×" else "${spd}×"
+                                    },
+                                    onOptionSelected = { onSelectSpeed(it) },
                                     isMonochrome = isMonochrome,
                                     focusColor = focusColor,
                                     focusContent = focusContent,
-                                    focusRequester = if (index == 0) firstItemFocusRequester else null,
-                                    onClick = {
-                                        onSelectSpeed(speed)
-                                    }
+                                    firstFocusRequester = firstItemFocusRequester
                                 )
                             }
 
+                            // Modo de pantalla / Aspect Ratio (Segmented Option Card)
                             item {
-                                Spacer(modifier = Modifier.height(12.dp))
-                                Text(
-                                    text = stringResource(R.string.player_aspect_ratio),
-                                    color = Color(0xFFCBD5E1),
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(bottom = 4.dp)
-                                )
-                            }
-
-                            val modes = listOf(
-                                AspectRatioFrameLayout.RESIZE_MODE_FIT,
-                                AspectRatioFrameLayout.RESIZE_MODE_ZOOM,
-                                AspectRatioFrameLayout.RESIZE_MODE_FILL
-                            )
-
-                            itemsIndexed(
-                                items = modes,
-                                key = { _, mode -> mode },
-                                contentType = { _, _ -> "resize_mode" }
-                            ) { _, mode ->
-                                val label = when (mode) {
-                                    AspectRatioFrameLayout.RESIZE_MODE_FIT -> stringResource(R.string.player_aspect_fit)
-                                    AspectRatioFrameLayout.RESIZE_MODE_ZOOM -> stringResource(R.string.player_aspect_zoom)
-                                    else -> stringResource(R.string.player_aspect_fill)
-                                }
-                                TrackOptionItem(
-                                    label = label,
-                                    isSelected = currentResizeMode == mode,
+                                Spacer(modifier = Modifier.height(4.dp))
+                                TvSegmentedControlRow(
+                                    title = stringResource(R.string.player_aspect_ratio),
+                                    options = listOf(
+                                        AspectRatioFrameLayout.RESIZE_MODE_FIT,
+                                        AspectRatioFrameLayout.RESIZE_MODE_ZOOM,
+                                        AspectRatioFrameLayout.RESIZE_MODE_FILL
+                                    ),
+                                    selectedOption = currentResizeMode,
+                                    optionLabel = { mode ->
+                                        when (mode) {
+                                            AspectRatioFrameLayout.RESIZE_MODE_FIT -> stringResource(R.string.player_aspect_fit)
+                                            AspectRatioFrameLayout.RESIZE_MODE_ZOOM -> stringResource(R.string.player_aspect_zoom)
+                                            else -> stringResource(R.string.player_aspect_fill)
+                                        }
+                                    },
+                                    onOptionSelected = { onSelectResizeMode(it) },
                                     isMonochrome = isMonochrome,
                                     focusColor = focusColor,
-                                    focusContent = focusContent,
-                                    onClick = {
-                                        onSelectResizeMode(mode)
-                                    }
+                                    focusContent = focusContent
                                 )
                             }
 
+                            // Sincronización de fotogramas AFR (Segmented Option Card)
                             item {
-                                Spacer(modifier = Modifier.height(16.dp))
-                                Text(
-                                    text = stringResource(R.string.player_afr_title),
-                                    color = Color(0xFFCBD5E1),
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(bottom = 6.dp)
-                                )
-                                TrackOptionItem(
-                                    label = if (autoFrameRateEnabled) stringResource(R.string.player_afr_enabled) else stringResource(R.string.player_afr_disabled),
-                                    isSelected = autoFrameRateEnabled,
+                                Spacer(modifier = Modifier.height(4.dp))
+                                TvSegmentedControlRow(
+                                    title = stringResource(R.string.player_afr_title),
+                                    subtitle = "Sincroniza la tasa de refresco (Hz) de la TV",
+                                    options = listOf(false, true),
+                                    selectedOption = autoFrameRateEnabled,
+                                    optionLabel = { afr ->
+                                        if (afr) stringResource(R.string.player_afr_enabled) else stringResource(R.string.player_afr_disabled)
+                                    },
+                                    onOptionSelected = { onToggleAutoFrameRate(it) },
                                     isMonochrome = isMonochrome,
                                     focusColor = focusColor,
-                                    focusContent = focusContent,
-                                    onClick = { onToggleAutoFrameRate(!autoFrameRateEnabled) }
-                                )
-                            }
-
-                            item {
-                                Spacer(modifier = Modifier.height(14.dp))
-                                TrackOptionItem(
-                                    label = stringResource(R.string.player_modal_close),
-                                    isSelected = false,
-                                    icon = Icons.Default.Close,
-                                    isMonochrome = isMonochrome,
-                                    focusColor = focusColor,
-                                    focusContent = focusContent,
-                                    onClick = onClose
+                                    focusContent = focusContent
                                 )
                             }
                         }
@@ -2506,13 +2342,27 @@ private fun TrackOptionItem(
     focusRequester: FocusRequester? = null,
     onClick: () -> Unit
 ) {
-    Button(
+    Surface(
         onClick = onClick,
-        colors = ButtonDefaults.colors(
-            containerColor = if (isSelected) (if (isMonochrome) Color(0x35FFFFFF) else focusColor.copy(alpha = 0.25f)) else Color(0x14FFFFFF),
-            contentColor = Color.White,
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.02f),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = if (isSelected) (if (isMonochrome) Color(0x35FFFFFF) else focusColor.copy(alpha = 0.22f)) else Color(0x12FFFFFF),
             focusedContainerColor = if (isMonochrome) Color.White else focusColor,
             focusedContentColor = if (isMonochrome) Color(0xFF0F172A) else focusContent
+        ),
+        border = ClickableSurfaceDefaults.border(
+            border = Border(
+                border = BorderStroke(
+                    1.dp,
+                    if (isSelected) (if (isMonochrome) Color(0x66FFFFFF) else focusColor.copy(alpha = 0.5f)) else Color(0x14FFFFFF)
+                ),
+                shape = RoundedCornerShape(10.dp)
+            ),
+            focusedBorder = Border(
+                border = BorderStroke(2.dp, if (isMonochrome) Color.White else focusColor),
+                shape = RoundedCornerShape(10.dp)
+            )
         ),
         modifier = Modifier
             .fillMaxWidth()
@@ -2521,14 +2371,14 @@ private fun TrackOptionItem(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 4.dp),
+                .padding(horizontal = 14.dp, vertical = 10.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f, fill = false)
             ) {
                 if (icon != null) {
                     Icon(
@@ -2547,199 +2397,125 @@ private fun TrackOptionItem(
                 )
             }
 
-            Icon(
-                imageVector = if (isSelected) Icons.Default.CheckCircle else Icons.Default.Check,
-                contentDescription = null,
-                tint = if (isSelected) (if (isMonochrome) Color.White else focusColor) else Color(0x33FFFFFF),
-                modifier = Modifier.size(20.dp)
-            )
+            if (isSelected) {
+                Icon(
+                    imageVector = Icons.Default.CheckCircle,
+                    contentDescription = null,
+                    tint = if (isMonochrome) Color.White else focusColor,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
         }
     }
 }
 
 @ExperimentalTvMaterial3Api
 @Composable
-private fun KodiAudioSliderRow(
+private fun <T> TvSegmentedControlRow(
     title: String,
-    subtitle: String,
-    currentValueLabel: String,
-    progressFraction: Float, // 0f to 1f
-    canDecrease: Boolean,
-    canIncrease: Boolean,
+    subtitle: String? = null,
     icon: ImageVector? = null,
+    options: List<T>,
+    selectedOption: T,
+    optionLabel: @Composable (T) -> String,
+    onOptionSelected: (T) -> Unit,
     isMonochrome: Boolean = false,
     focusColor: Color = Color.White,
-    focusRequester: FocusRequester? = null,
-    onDecrease: () -> Unit,
-    onIncrease: () -> Unit,
-    onCycleNext: () -> Unit = onIncrease
+    focusContent: Color = Color(0xFF0F172A),
+    firstFocusRequester: FocusRequester? = null,
+    modifier: Modifier = Modifier
 ) {
-    var isFocused by remember { mutableStateOf(false) }
-
-    Surface(
-        onClick = onCycleNext,
-        shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(12.dp)),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.02f),
-        colors = ClickableSurfaceDefaults.colors(
-            containerColor = if (progressFraction > 0f) (if (isMonochrome) Color(0x2EFFFFFF) else focusColor.copy(alpha = 0.20f)) else Color(0x14FFFFFF),
-            focusedContainerColor = if (isMonochrome) Color(0x40FFFFFF) else focusColor.copy(alpha = 0.35f),
-            pressedContainerColor = if (isMonochrome) Color(0x55FFFFFF) else focusColor.copy(alpha = 0.45f)
-        ),
-        border = ClickableSurfaceDefaults.border(
-            border = Border(
-                border = BorderStroke(
-                    1.dp,
-                    if (progressFraction > 0f) (if (isMonochrome) Color(0x44FFFFFF) else focusColor.copy(alpha = 0.35f)) else Color(0x18FFFFFF)
-                ),
-                shape = RoundedCornerShape(12.dp)
-            ),
-            focusedBorder = Border(
-                border = BorderStroke(
-                    2.dp,
-                    if (isMonochrome) Color.White else focusColor
-                ),
-                shape = RoundedCornerShape(12.dp)
-            )
-        ),
-        modifier = Modifier
+    Column(
+        modifier = modifier
             .fillMaxWidth()
-            .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
-            .onFocusChanged { isFocused = it.isFocused }
-            .onPreviewKeyEvent { event ->
-                if (event.type == KeyEventType.KeyDown) {
-                    when (event.key) {
-                        Key.DirectionLeft -> {
-                            // Let DirectionLeft bubble up to Surface so the user can easily exit the drawer
-                            // without having to decrement their setting back to 0!
-                            false
-                        }
-                        Key.DirectionRight -> {
-                            if (canIncrease) {
-                                onIncrease()
-                                true
-                            } else {
-                                false
-                            }
-                        }
-                        else -> false
-                    }
-                } else false
-            }
+            .clip(RoundedCornerShape(14.dp))
+            .background(Color(0x12FFFFFF))
+            .border(1.dp, Color(0x18FFFFFF), RoundedCornerShape(14.dp))
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+        // Title + Subtitle Row
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Header: Icon + Title + Value Badge
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.weight(1f, fill = false)
-                ) {
-                    if (icon != null) {
-                        Icon(
-                            imageVector = icon,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp),
-                            tint = if (progressFraction > 0f) {
-                                if (isMonochrome) Color.White else focusColor
-                            } else Color(0xFF94A3B8)
-                        )
-                    }
-                    Column {
-                        Text(
-                            text = title,
-                            color = Color.White,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text(
-                            text = subtitle,
-                            color = Color(0x88CBD5E1),
-                            fontSize = 11.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
-
-                // Value Badge
-                androidx.compose.material3.Surface(
-                    shape = RoundedCornerShape(6.dp),
-                    color = if (progressFraction > 0f) {
-                        if (isMonochrome) Color.White.copy(alpha = 0.25f) else focusColor.copy(alpha = 0.30f)
-                    } else Color(0x1AFFFFFF),
-                    border = BorderStroke(
-                        1.dp,
-                        if (progressFraction > 0f) {
-                            if (isMonochrome) Color.White.copy(alpha = 0.6f) else focusColor.copy(alpha = 0.7f)
-                        } else Color(0x22FFFFFF)
-                    )
-                ) {
+            if (icon != null) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = if (isMonochrome) Color.White else focusColor,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+            Column {
+                Text(
+                    text = title,
+                    color = Color.White,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+                if (subtitle != null) {
                     Text(
-                        text = "‹ $currentValueLabel ›",
-                        color = if (progressFraction > 0f && !isMonochrome) focusColor else Color.White,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
+                        text = subtitle,
+                        color = Color(0x99CBD5E1),
+                        fontSize = 11.sp
                     )
                 }
             }
+        }
 
-            // Slider track (Kodi style) with arrow indicators
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text(
-                    text = "◀",
-                    fontSize = 11.sp,
-                    color = if (canDecrease) {
-                        if (isFocused) (if (isMonochrome) Color.White else focusColor) else Color.White
-                    } else Color(0x33FFFFFF)
-                )
-
-                Box(
+        // Horizontal Segmented Pills
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            options.forEachIndexed { index, option ->
+                val isSelected = option == selectedOption
+                Surface(
+                    onClick = { onOptionSelected(option) },
                     modifier = Modifier
                         .weight(1f)
-                        .height(6.dp)
-                        .clip(RoundedCornerShape(3.dp))
-                        .background(Color(0x33FFFFFF))
+                        .then(if (index == 0 && firstFocusRequester != null) Modifier.focusRequester(firstFocusRequester) else Modifier),
+                    shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
+                    scale = ClickableSurfaceDefaults.scale(focusedScale = 1.05f),
+                    colors = ClickableSurfaceDefaults.colors(
+                        containerColor = if (isSelected) {
+                            if (isMonochrome) Color(0x40FFFFFF) else focusColor.copy(alpha = 0.28f)
+                        } else Color(0x12FFFFFF),
+                        focusedContainerColor = if (isMonochrome) Color.White else focusColor,
+                        focusedContentColor = if (isMonochrome) Color(0xFF0F172A) else focusContent
+                    ),
+                    border = ClickableSurfaceDefaults.border(
+                        border = Border(
+                            border = BorderStroke(
+                                if (isSelected) 1.5.dp else 0.5.dp,
+                                if (isSelected) {
+                                    if (isMonochrome) Color(0x88FFFFFF) else focusColor.copy(alpha = 0.7f)
+                                } else Color(0x18FFFFFF)
+                            ),
+                            shape = RoundedCornerShape(8.dp)
+                        ),
+                        focusedBorder = Border(
+                            border = BorderStroke(2.dp, if (isMonochrome) Color.White else focusColor),
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                    )
                 ) {
-                    val activeColor = if (isMonochrome) Color.White else focusColor
                     Box(
                         modifier = Modifier
-                            .fillMaxHeight()
-                            .fillMaxWidth(progressFraction.coerceIn(0f, 1f))
-                            .clip(RoundedCornerShape(3.dp))
-                            .background(
-                                Brush.horizontalGradient(
-                                    listOf(
-                                        activeColor.copy(alpha = 0.7f),
-                                        activeColor
-                                    )
-                                )
-                            )
-                    )
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp, horizontal = 4.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = optionLabel(option),
+                            fontSize = 11.sp,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
-
-                Text(
-                    text = "▶",
-                    fontSize = 11.sp,
-                    color = if (canIncrease) {
-                        if (isFocused) (if (isMonochrome) Color.White else focusColor) else Color.White
-                    } else Color(0x33FFFFFF)
-                )
             }
         }
     }
@@ -2909,6 +2685,18 @@ private fun selectSubtitleTrackInExoPlayer(exoPlayer: ExoPlayer, trackItem: Trac
                 )
             )
             .build()
+    }
+}
+
+private fun formatSeekDelta(deltaMs: Long): String {
+    val totalSec = abs(deltaMs) / 1000
+    val sign = if (deltaMs < 0) "-" else "+"
+    val min = totalSec / 60
+    val sec = totalSec % 60
+    return if (min > 0) {
+        if (sec > 0) "$sign${min}m ${sec}s" else "$sign${min}m"
+    } else {
+        "$sign${sec}s"
     }
 }
 
