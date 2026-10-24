@@ -356,7 +356,9 @@ private fun PlayerContent(
     var playerErrorMessage by remember { mutableStateOf<String?>(null) }
     var retryTrigger by remember { mutableIntStateOf(0) }
 
+    val rewindFocusRequester = remember { FocusRequester() }
     val playPauseFocusRequester = remember { FocusRequester() }
+    val fastForwardFocusRequester = remember { FocusRequester() }
     val retryFocusRequester = remember { FocusRequester() }
     val audioButtonFocusRequester = remember { FocusRequester() }
     val subtitleButtonFocusRequester = remember { FocusRequester() }
@@ -679,7 +681,6 @@ private fun PlayerContent(
 
     fun seekRelative(deltaMs: Long) {
         notifyInteraction()
-        showOverlayControls = true
         val now = System.currentTimeMillis()
         val cur = if (isScrubbing) scrubTargetPosition else exoPlayer.currentPosition.coerceAtLeast(0L)
         val dur = exoPlayer.duration.takeIf { it > 0 } ?: duration.takeIf { it > 0 } ?: Long.MAX_VALUE
@@ -729,7 +730,7 @@ private fun PlayerContent(
     // Auto-focus the play/pause button when controls overlay is visible so remote D-pad works immediately!
     LaunchedEffect(showOverlayControls) {
         if (showOverlayControls && playerErrorMessage == null && !showResumeDialog) {
-            delay(150L)
+            delay(50L)
             try {
                 playPauseFocusRequester.requestFocus()
             } catch (_: Exception) {}
@@ -989,7 +990,7 @@ private fun PlayerContent(
                         true
                     }
                     Key.DirectionLeft -> {
-                        if (activeModalTab == PlayerModalTab.NONE) {
+                        if (!showOverlayControls && activeModalTab == PlayerModalTab.NONE) {
                             seekRelative(-10_000L)
                             true
                         } else {
@@ -998,7 +999,7 @@ private fun PlayerContent(
                         }
                     }
                     Key.DirectionRight -> {
-                        if (activeModalTab == PlayerModalTab.NONE) {
+                        if (!showOverlayControls && activeModalTab == PlayerModalTab.NONE) {
                             seekRelative(+10_000L)
                             true
                         } else {
@@ -1023,9 +1024,23 @@ private fun PlayerContent(
                             false
                         }
                     }
-                    Key.DirectionUp, Key.DirectionDown -> {
+                    Key.DirectionUp -> {
                         if (!showOverlayControls) {
                             showOverlayControls = true
+                            notifyInteraction()
+                            true
+                        } else {
+                            notifyInteraction()
+                            false
+                        }
+                    }
+                    Key.DirectionDown -> {
+                        if (!showOverlayControls) {
+                            showOverlayControls = true
+                            notifyInteraction()
+                            true
+                        } else if (activeModalTab == PlayerModalTab.NONE) {
+                            showOverlayControls = false
                             notifyInteraction()
                             true
                         } else {
@@ -1228,7 +1243,7 @@ private fun PlayerContent(
             exit = fadeOut() + scaleOut(targetScale = 0.94f),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 124.dp)
+                .padding(bottom = if (showOverlayControls) 124.dp else 48.dp)
         ) {
             Box(
                 modifier = Modifier
@@ -1370,7 +1385,11 @@ private fun PlayerContent(
                                     contentColor = Color.White,
                                     focusedContentColor = if (isMonochrome) Color(0xFF0F172A) else focusContent,
                                     isMonochrome = isMonochrome,
-                                    focusColor = focusColor
+                                    focusColor = focusColor,
+                                    focusRequester = rewindFocusRequester,
+                                    modifier = Modifier.focusProperties {
+                                        right = playPauseFocusRequester
+                                    }
                                 )
 
                                 // 2. Play / Pause (Primary Action - Centered & Default Focus)
@@ -1393,7 +1412,11 @@ private fun PlayerContent(
                                     focusedContentColor = if (isMonochrome) Color(0xFF0F172A) else focusContent,
                                     isMonochrome = isMonochrome,
                                     focusColor = focusColor,
-                                    focusRequester = playPauseFocusRequester
+                                    focusRequester = playPauseFocusRequester,
+                                    modifier = Modifier.focusProperties {
+                                        left = rewindFocusRequester
+                                        right = fastForwardFocusRequester
+                                    }
                                 )
 
                                 // 3. Fast Forward 10s (Avance)
@@ -1410,7 +1433,12 @@ private fun PlayerContent(
                                     contentColor = Color.White,
                                     focusedContentColor = if (isMonochrome) Color(0xFF0F172A) else focusContent,
                                     isMonochrome = isMonochrome,
-                                    focusColor = focusColor
+                                    focusColor = focusColor,
+                                    focusRequester = fastForwardFocusRequester,
+                                    modifier = Modifier.focusProperties {
+                                        left = playPauseFocusRequester
+                                        right = audioButtonFocusRequester
+                                    }
                                 )
 
                                 Spacer(modifier = Modifier.width(6.dp))
@@ -1442,7 +1470,12 @@ private fun PlayerContent(
                                     isMonochrome = isMonochrome,
                                     focusColor = focusColor,
                                     focusContent = focusContent,
-                                    modifier = Modifier.focusRequester(audioButtonFocusRequester)
+                                    modifier = Modifier
+                                        .focusRequester(audioButtonFocusRequester)
+                                        .focusProperties {
+                                            left = fastForwardFocusRequester
+                                            right = subtitleButtonFocusRequester
+                                        }
                                 )
 
                                 // 5. Subtitles Selector Button
@@ -1458,7 +1491,12 @@ private fun PlayerContent(
                                     isMonochrome = isMonochrome,
                                     focusColor = focusColor,
                                     focusContent = focusContent,
-                                    modifier = Modifier.focusRequester(subtitleButtonFocusRequester)
+                                    modifier = Modifier
+                                        .focusRequester(subtitleButtonFocusRequester)
+                                        .focusProperties {
+                                            left = audioButtonFocusRequester
+                                            right = settingsButtonFocusRequester
+                                        }
                                 )
 
                                 // 6. Settings Selector Button
@@ -1474,7 +1512,11 @@ private fun PlayerContent(
                                     isMonochrome = isMonochrome,
                                     focusColor = focusColor,
                                     focusContent = focusContent,
-                                    modifier = Modifier.focusRequester(settingsButtonFocusRequester)
+                                    modifier = Modifier
+                                        .focusRequester(settingsButtonFocusRequester)
+                                        .focusProperties {
+                                            left = subtitleButtonFocusRequester
+                                        }
                                 )
                             }
                         }
