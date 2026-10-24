@@ -23,4 +23,13 @@ object AppForeground {
         set(value) {
             _isForegroundFlow.value = value
         }
+
+    private val _isPlaybackActiveFlow = MutableStateFlow(false)
+    val isPlaybackActiveFlow: StateFlow<Boolean> = _isPlaybackActiveFlow.asStateFlow()
+
+    var isPlaybackActive: Boolean
+        get() = _isPlaybackActiveFlow.value
+        set(value) {
+            _isPlaybackActiveFlow.value = value
+        }
 }

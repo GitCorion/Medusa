@@ -1,12 +1,12 @@
 {
-  "versionCode": 1000097,
-  "versionName": "2.2.50-beta",
-  "minSupportedVersionCode": 71,
-  "forceUpdate": false,
+  "versionCode": 1000105,
+  "versionName": "2.2.58-beta",
+  "minSupportedVersionCode": 1000105,
+  "forceUpdate": true,
   "killSwitch": false,
-  "releaseNotes": "Corrección de fin de reproducción: paso automático al siguiente capítulo con cuenta atrás y salida limpia sin pantalla en negro al terminar películas.",
+  "releaseNotes": "Restauración integral de streaming LAN gigabit, sondeo dinámico MediaCodecList, OkHttpDataSource compartido y selección de versiones 4K/1080p.",
   "apkUrl": "https://medusa-fd388.web.app/Medusa.apk",
-  "apkSha256": "38174e4e7e0bc7802e351e7c79a91fe8c8aaa753632f19ee8e0b22ffe536f0b9",
+  "apkSha256": "c534dc89d4fcdd792ba3ffe4fcd357a663d135350f11acbd217040652641ea45",
   "signatures": [
     "26bccb39ed122a69ecf7a8d0b50deeabeb15bc1a4b2a8b77941b47a96fdd3fea",
     "78a588afcc90d8ea59e008c9cbd1e8bbed3b2831518184d5a9935948b9d245ac"

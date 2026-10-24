@@ -476,6 +476,18 @@
     <string name="player_audio_track_default">Audio %1$d</string>
     <string name="player_track_default">Pista %1$d</string>
     <string name="player_language_unknown">Desconocido</string>
+    <string name="player_audio_passthrough">Salida de audio / Passthrough</string>
+    <string name="player_audio_passthrough_desc">Control de salida HDMI / decodificación</string>
+    <string name="player_audio_passthrough_off">Desactivado (PCM - Sin silencios)</string>
+    <string name="player_audio_passthrough_auto">Automático (HDMI)</string>
+    <string name="player_audio_passthrough_direct">Passthrough Directo (Receptor AV)</string>
+    <string name="player_audio_fallback_toast">Audio incompatible con el televisor. Cambiado automáticamente a decodificación PCM.</string>
+    <string name="player_audio_track_switched_toast">Cambiando automáticamente a pista de audio compatible: %1$s</string>
+    <string name="player_modal_close">Cerrar menú</string>
+    <string name="settings_section_audio_passthrough">Salida de audio / Passthrough</string>
+    <string name="settings_passthrough_off">PCM (Compatible)</string>
+    <string name="settings_passthrough_auto">Automático</string>
+    <string name="settings_passthrough_direct">Directo (AVR)</string>
 
     <!-- Actualizaciones -->
     <string name="update_downloading_progress">Descargando actualización: %1$d%%</string>

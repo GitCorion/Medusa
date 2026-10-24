@@ -54,10 +54,6 @@ enum class SettingField(
         R.string.settings_field_server_url,
         R.string.settings_field_server_url_placeholder
     ),
-    LAN_SERVER_URL(
-        R.string.settings_field_lan_server_url,
-        R.string.settings_field_lan_server_url_placeholder
-    ),
     USERNAME(
         R.string.settings_field_username,
         R.string.settings_field_username_placeholder
@@ -386,7 +382,6 @@ class SettingsViewModel @Inject constructor(
     fun openEditDialog(field: SettingField) {
         val currentVal = when (field) {
             SettingField.SERVER_URL -> _uiState.value.serverUrl
-            SettingField.LAN_SERVER_URL -> _uiState.value.lanServerUrl
             SettingField.USERNAME -> _uiState.value.username
             SettingField.PASSWORD -> _uiState.value.password
             SettingField.TRAKT_CLIENT_ID -> _uiState.value.traktClientId
@@ -409,16 +404,14 @@ class SettingsViewModel @Inject constructor(
         val value = _uiState.value.activeDialogValue.trim()
         when (field) {
             SettingField.SERVER_URL -> {
-                _uiState.value = _uiState.value.copy(serverUrl = value)
-                viewModelScope.launch {
-                    userPreferencesRepository.updateJellyfinServerUrl(value)
+                var cleanUrl = value.trimEnd('/')
+                if (cleanUrl.isNotBlank() && !cleanUrl.startsWith("http://", ignoreCase = true) && !cleanUrl.startsWith("https://", ignoreCase = true)) {
+                    cleanUrl = "http://$cleanUrl"
                 }
-            }
-            SettingField.LAN_SERVER_URL -> {
-                val cleanUrl = value.trimEnd('/')
-                _uiState.value = _uiState.value.copy(lanServerUrl = cleanUrl)
+                _uiState.value = _uiState.value.copy(serverUrl = cleanUrl)
                 viewModelScope.launch {
-                    userPreferencesRepository.updateJellyfinLanServerUrl(cleanUrl)
+                    userPreferencesRepository.updateJellyfinServerUrl(cleanUrl)
+                    userPreferencesRepository.updateJellyfinLanServerUrl("")
                 }
             }
             SettingField.USERNAME -> {

@@ -53,18 +53,6 @@ object NetworkClientFactory {
         init(null, null, null)
     }
 
-    private fun isLocalHost(hostname: String): Boolean {
-        return hostname.equals("localhost", ignoreCase = true)
-                || hostname.startsWith("127.0.0.1")
-                || hostname.startsWith("10.")
-                || hostname.startsWith("192.168.")
-                || hostname.matches(Regex("^172\\.(1[6-9]|2[0-9]|3[0-1])\\..*"))
-                || hostname.endsWith(".local", ignoreCase = true)
-                || hostname.endsWith(".lan", ignoreCase = true)
-                || hostname.endsWith(".home", ignoreCase = true)
-    }
-
-
     /**
      * Fábrica TLS consciente del host. OkHttp la invoca con el host destino
      * (`createSocket(socket, host, port, autoClose)`), lo que permite validar con las CAs del
@@ -97,6 +85,17 @@ object NetworkClientFactory {
             relaxed.createSocket(address, port, localAddress, localPort)
     }
 
+    private fun isLocalHost(hostname: String): Boolean {
+        return hostname.equals("localhost", ignoreCase = true)
+                || hostname.startsWith("127.0.0.1")
+                || hostname.startsWith("10.")
+                || hostname.startsWith("192.168.")
+                || hostname.matches(Regex("^172\\.(1[6-9]|2[0-9]|3[0-1])\\..*"))
+                || hostname.endsWith(".local", ignoreCase = true)
+                || hostname.endsWith(".lan", ignoreCase = true)
+                || hostname.endsWith(".home", ignoreCase = true)
+    }
+
     @Volatile
     var okHttpClient: OkHttpClient = OkHttpClient.Builder()
         .sslSocketFactory(hostAwareSslSocketFactory, trustAllCerts[0])
@@ -107,6 +106,8 @@ object NetworkClientFactory {
                 javax.net.ssl.HttpsURLConnection.getDefaultHostnameVerifier().verify(hostname, session)
             }
         }
+        .followRedirects(true)
+        .followSslRedirects(true)
         .connectionPool(okhttp3.ConnectionPool(20, 5, TimeUnit.MINUTES))
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(120, TimeUnit.SECONDS)

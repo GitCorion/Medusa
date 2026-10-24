@@ -64,6 +64,11 @@ class OverviewEnrichmentWorker @AssistedInject constructor(
             return Result.success()
         }
 
+        if (AppForeground.isPlaybackActive) {
+            Log.d("OverviewEnrichmentWorker", "Reproducción activa en primer plano: pausando enriquecido")
+            return Result.success()
+        }
+
         return try {
             enrich(serverUrl = serverUrl, userId = userId, token = token, tmdbApiKey = prefs.tmdbApiKey)
             Result.success()
@@ -88,6 +93,7 @@ class OverviewEnrichmentWorker @AssistedInject constructor(
         val processed = AtomicInteger(0)
         var processedCount = 0
         while (processedCount < 10000) {
+            if (AppForeground.isPlaybackActive) break
             val yielding = AppForeground.isVisible
             val concurrency = if (yielding) CONCURRENCY_FOREGROUND else CONCURRENCY_BACKGROUND
             val missingIds = jellyfinDao.getIdsMissingOverview(limit = overviewBatchSize * concurrency)

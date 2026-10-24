@@ -96,6 +96,13 @@ class PlayerViewModel @Inject constructor(
     val subtitleSize: StateFlow<String> = userPreferencesRepository.subtitleSize
     val subtitleBackground: StateFlow<Boolean> = userPreferencesRepository.subtitleBackground
     val autoFrameRateEnabled: StateFlow<Boolean> = userPreferencesRepository.autoFrameRateEnabled
+    val audioPassthroughMode: StateFlow<Int> = userPreferencesRepository.audioPassthroughMode
+
+    fun setAudioPassthroughMode(mode: Int) {
+        viewModelScope.launch {
+            userPreferencesRepository.setAudioPassthroughMode(mode)
+        }
+    }
 
     fun setNightModeAudio(level: Int) {
         viewModelScope.launch {
@@ -227,10 +234,7 @@ class PlayerViewModel @Inject constructor(
     private fun createAndroidTvDeviceProfile(): JellyfinDeviceProfile {
         val isEmu = DeviceUtils.isEmulator()
         val hwVideoCodecs = mutableSetOf("h264") // h264 always supported
-        // Base audio formats supported natively or via bundled FFmpeg software decoders (DTS, TrueHD, AC3, EAC3, FLAC, Opus)
-        val supportedAudioCodecs = mutableSetOf(
-            "aac", "mp3", "ac3", "eac3", "dts", "dca", "truehd", "flac", "opus", "vorbis"
-        )
+        val hwAudioCodecs = mutableSetOf("aac", "mp3") // baseline audio
         var maxVideoWidth = 1920 // default to 1080p
 
         if (!isEmu) {
@@ -258,13 +262,17 @@ class PlayerViewModel @Inject constructor(
                         }
                     }
                 }
+                // Si el hardware soporta HEVC, soporta AC3/EAC3 passthrough en Android TV
+                if ("hevc" in hwVideoCodecs) {
+                    hwAudioCodecs.addAll(listOf("ac3", "eac3"))
+                }
             } catch (e: Exception) {
                 Log.w("PlayerViewModel", "Error probing MediaCodecList: ${e.message}")
             }
         }
 
         val videoCodecStr = hwVideoCodecs.joinToString(",")
-        val audioCodecStr = supportedAudioCodecs.joinToString(",")
+        val audioCodecStr = (hwAudioCodecs + setOf("aac", "mp3", "ac3", "eac3", "dts", "dca", "truehd", "flac", "opus", "vorbis")).distinct().joinToString(",")
 
         Log.i("PlayerViewModel", "DeviceProfile: isEmulator=$isEmu videoCodecs=$videoCodecStr audioCodecs=$audioCodecStr maxWidth=$maxVideoWidth")
 
@@ -313,7 +321,7 @@ class PlayerViewModel @Inject constructor(
             musicStreamingTranscodingBitrate = 128_000L,
             directPlayProfiles = listOf(
                 JellyfinDirectPlayProfile(
-                    container = "mkv,mp4,mov",
+                    container = "mkv,mp4,mov,webm,ts,avi,m4v,strm,flv,asf,wmv,3gp,ogv,m3u8,mpd",
                     type = "Video",
                     videoCodec = videoCodecStr,
                     audioCodec = audioCodecStr
@@ -329,7 +337,26 @@ class PlayerViewModel @Inject constructor(
                 )
             ),
             subtitleProfiles = listOf(
-                JellyfinSubtitleProfile(format = "srt", method = "External")
+                JellyfinSubtitleProfile(format = "srt", method = "External"),
+                JellyfinSubtitleProfile(format = "subrip", method = "External"),
+                JellyfinSubtitleProfile(format = "vtt", method = "External"),
+                JellyfinSubtitleProfile(format = "webvtt", method = "External"),
+                JellyfinSubtitleProfile(format = "ass", method = "External"),
+                JellyfinSubtitleProfile(format = "ssa", method = "External"),
+                JellyfinSubtitleProfile(format = "pgs", method = "External"),
+                JellyfinSubtitleProfile(format = "sub", method = "External"),
+                JellyfinSubtitleProfile(format = "dvdsub", method = "External"),
+                JellyfinSubtitleProfile(format = "dvbsub", method = "External"),
+                JellyfinSubtitleProfile(format = "srt", method = "Embed"),
+                JellyfinSubtitleProfile(format = "subrip", method = "Embed"),
+                JellyfinSubtitleProfile(format = "vtt", method = "Embed"),
+                JellyfinSubtitleProfile(format = "webvtt", method = "Embed"),
+                JellyfinSubtitleProfile(format = "ass", method = "Embed"),
+                JellyfinSubtitleProfile(format = "ssa", method = "Embed"),
+                JellyfinSubtitleProfile(format = "pgs", method = "Embed"),
+                JellyfinSubtitleProfile(format = "sub", method = "Embed"),
+                JellyfinSubtitleProfile(format = "dvdsub", method = "Embed"),
+                JellyfinSubtitleProfile(format = "dvbsub", method = "Embed")
             ),
             codecProfiles = codecProfiles
         )
@@ -445,16 +472,22 @@ class PlayerViewModel @Inject constructor(
                 enableDirectPlay = true,
                 enableDirectStream = true,
                 enableTranscoding = true,
+                allowVideoStreamCopy = true,
+                allowAudioStreamCopy = true,
                 enableSubtitleExtraction = false,
                 maxStreamingBitrate = 120_000_000L,
                 deviceProfile = androidTvProfile
             )
 
-            var itemDto = runCatching { api.getItemDetail(authHeader = effectiveAuthHeader, userId = effectiveUserId, itemId = playableId) }.getOrNull()
-            var playbackInfo = runCatching { api.getPlaybackInfo(authHeader = effectiveAuthHeader, itemId = playableId, userId = effectiveUserId, request = pbRequest) }.getOrNull()
+            var itemDetailResult = runCatching { api.getItemDetail(authHeader = effectiveAuthHeader, userId = effectiveUserId, itemId = playableId) }
+            var playbackInfoResult = runCatching { api.getPlaybackInfo(authHeader = effectiveAuthHeader, itemId = playableId, userId = effectiveUserId, request = pbRequest) }
 
-            if (itemDto == null && playbackInfo == null && prefs.jellyfinUsername.isNotBlank() && prefs.jellyfinPassword.isNotBlank()) {
-                Log.i("PlayerViewModel", "Playback metadata failed (possible 401). Attempting re-authentication with Jellyfin...")
+            val is401 = (itemDetailResult.exceptionOrNull() as? retrofit2.HttpException)?.code() == 401 ||
+                    (playbackInfoResult.exceptionOrNull() as? retrofit2.HttpException)?.code() == 401 ||
+                    (itemDetailResult.isFailure && playbackInfoResult.isFailure && prefs.jellyfinPassword.isNotBlank())
+
+            if (is401 && prefs.jellyfinUsername.isNotBlank() && prefs.jellyfinPassword.isNotBlank()) {
+                Log.i("PlayerViewModel", "Playback token 401 challenged/revoked. Re-authenticating with Jellyfin credentials...")
                 try {
                     val authResp = api.authenticateByName(
                         authHeader = buildJellyfinAuthHeader(token = ""),
@@ -475,13 +508,16 @@ class PlayerViewModel @Inject constructor(
                         password = prefs.jellyfinPassword
                     )
                     val updatedPbRequest = pbRequest.copy(userId = effectiveUserId)
-                    itemDto = runCatching { api.getItemDetail(authHeader = effectiveAuthHeader, userId = effectiveUserId, itemId = playableId) }.getOrNull()
-                    playbackInfo = runCatching { api.getPlaybackInfo(authHeader = effectiveAuthHeader, itemId = playableId, userId = effectiveUserId, request = updatedPbRequest) }.getOrNull()
-                    Log.i("PlayerViewModel", "Re-authentication succeeded.")
+                    itemDetailResult = runCatching { api.getItemDetail(authHeader = effectiveAuthHeader, userId = effectiveUserId, itemId = playableId) }
+                    playbackInfoResult = runCatching { api.getPlaybackInfo(authHeader = effectiveAuthHeader, itemId = playableId, userId = effectiveUserId, request = updatedPbRequest) }
+                    Log.i("PlayerViewModel", "Re-authentication succeeded! New token saved: ${effectiveToken.take(6)}...")
                 } catch (e: Exception) {
                     Log.w("PlayerViewModel", "Re-authentication attempt failed: ${e.message}")
                 }
             }
+
+            var itemDto = itemDetailResult.getOrNull()
+            var playbackInfo = playbackInfoResult.getOrNull()
 
             val mediaSources = playbackInfo?.mediaSources?.ifEmpty { null } ?: itemDto?.mediaSources
 
@@ -517,6 +553,13 @@ class PlayerViewModel @Inject constructor(
                     name.contains("1080") || name.contains("fhd")
                 }
                 pH264 ?: p1080 ?: mediaSources.firstOrNull()
+            } else if (supports4K && mediaSources != null && mediaSources.size > 1) {
+                // If device supports 4K HEVC hardware decode, pick 4K version first
+                val p4k = mediaSources.firstOrNull { ms ->
+                    val name = ms.name?.lowercase() ?: ""
+                    name.contains("4k") || name.contains("2160") || name.contains("uhd")
+                }
+                p4k ?: mediaSources.firstOrNull()
             } else {
                 mediaSources?.firstOrNull()
             }
@@ -538,17 +581,32 @@ class PlayerViewModel @Inject constructor(
 
                 Log.d("PlayerViewModel", "Using MediaSource id=$mediaSourceId name='${mediaSource.name}' container=$container isStrm=$isStrm path=$path")
 
-                // For .strm files:
-                // 1. Direct static stream from Jellyfin (static=true forces Jellyfin to stream raw bytes without FFmpeg)
+                // Remote descriptor / stream resolution:
                 if (isStrm) {
+                    val extractedStrmUrl = resolveStrmTargetUrl(
+                        baseUrl = baseUrl,
+                        token = effectiveToken,
+                        authHeader = effectiveAuthHeader,
+                        playableId = playableId,
+                        mediaSourceId = mediaSourceId
+                    )
+                    val strmUri = extractedStrmUrl?.let { runCatching { Uri.parse(it) }.getOrNull() }
+                    val strmHost = strmUri?.host
+
+                    // 1. Si es una URL pública accesible directamente desde Internet (CDN o almacenamiento remoto directo)
+                    if (!extractedStrmUrl.isNullOrBlank() && !isDockerOrLocalhostHost(strmHost) && !strmHost.isNullOrBlank()) {
+                        if (!candidateUrls.contains(extractedStrmUrl)) candidateUrls.add(extractedStrmUrl)
+                    }
+
+                    // 2. Stream a través de Jellyfin (Jellyfin hace de pasarela directa sin transcodificar)
                     if (mediaSourceId.isNotBlank()) {
-                        val staticStream = "$baseUrl/Videos/$playableId/stream?static=true&MediaSourceId=$mediaSourceId&api_key=$effectiveToken"
-                        if (!candidateUrls.contains(staticStream)) {
-                            candidateUrls.add(staticStream)
+                        val dynamicStream = "$baseUrl/Videos/$playableId/stream?MediaSourceId=$mediaSourceId&api_key=$effectiveToken"
+                        if (!candidateUrls.contains(dynamicStream)) {
+                            candidateUrls.add(dynamicStream)
                         }
                     }
 
-                    // 2. DirectStreamUrl provided by Jellyfin API if available
+                    // 3. DirectStreamUrl provisto por Jellyfin API si existe
                     val dsUrl = mediaSource.directStreamUrl
                     if (!dsUrl.isNullOrBlank()) {
                         val fullDsUrl = if (dsUrl.startsWith("http", ignoreCase = true)) dsUrl else "$baseUrl$dsUrl"
@@ -558,18 +616,17 @@ class PlayerViewModel @Inject constructor(
                         }
                     }
 
-                    // 3. Alternative versions (e.g. 1080p SDR versions) as direct static candidates
-                    // Allows seamless fallback if 4K HDR HEVC hardware decoder fails
+                    // 4. Versiones alternativas como candidatos directos (fallback si falla la versión 4K/primaria)
                     mediaSources?.filter { it.id != mediaSourceId }?.forEach { altSource ->
                         if (altSource.id.isNotBlank()) {
-                            val altStatic = "$baseUrl/Videos/$playableId/stream?static=true&MediaSourceId=${altSource.id}&api_key=$effectiveToken"
+                            val altStatic = "$baseUrl/Videos/$playableId/stream?MediaSourceId=${altSource.id}&api_key=$effectiveToken"
                             if (!candidateUrls.contains(altStatic)) {
                                 candidateUrls.add(altStatic)
                             }
                         }
                     }
 
-                    // 4. Direct path from MediaSourceInfo.Path ONLY if LAN/routable IP (not docker bridge)
+                    // 5. Ruta directa si es una IP pública enrutada
                     if (path.startsWith("http://", ignoreCase = true) || path.startsWith("https://", ignoreCase = true)) {
                         val pathUri = runCatching { Uri.parse(path) }.getOrNull()
                         val pathHost = pathUri?.host
@@ -579,7 +636,7 @@ class PlayerViewModel @Inject constructor(
                         }
                     }
 
-                    // 5. Transcoding / HLS fallbacks from Jellyfin (ONLY as last resort if direct play and static fails)
+                    // 5. Transcoding / HLS fallbacks from Jellyfin (ONLY as last resort if direct play and stream fail)
                     if (mediaSourceId.isNotBlank()) {
                         val transcode1080 = "$baseUrl/Videos/$playableId/master.m3u8?MediaSourceId=$mediaSourceId&VideoCodec=h264&AudioCodec=aac,mp3,ac3&MaxHeight=1080&MaxWidth=1920&api_key=$effectiveToken"
                         if (!candidateUrls.contains(transcode1080)) {
@@ -592,26 +649,6 @@ class PlayerViewModel @Inject constructor(
                         val mainHlsWithMs = "$baseUrl/Videos/$playableId/main.m3u8?MediaSourceId=$mediaSourceId&api_key=$effectiveToken"
                         if (!candidateUrls.contains(mainHlsWithMs)) {
                             candidateUrls.add(mainHlsWithMs)
-                        }
-                    }
-
-                    // 4. Optional: Direct proxy on server host if port is exposed
-                    val extractedStrmUrl = resolveStrmTargetUrl(
-                        baseUrl = baseUrl,
-                        token = effectiveToken,
-                        authHeader = effectiveAuthHeader,
-                        playableId = playableId,
-                        mediaSourceId = mediaSourceId
-                    )
-                    if (extractedStrmUrl != null) {
-                        val strmUri = runCatching { Uri.parse(extractedStrmUrl) }.getOrNull()
-                        val strmHost = strmUri?.host
-                        val serverHost = runCatching { Uri.parse(baseUrl).host }.getOrNull()
-                        if (!serverHost.isNullOrBlank() && isDockerOrLocalhostHost(strmHost)) {
-                            val transformed = extractedStrmUrl.replaceFirst(strmHost!!, serverHost)
-                            if (!candidateUrls.contains(transformed)) candidateUrls.add(transformed)
-                        } else if (!isDockerOrLocalhostHost(strmHost)) {
-                            if (!candidateUrls.contains(extractedStrmUrl)) candidateUrls.add(extractedStrmUrl)
                         }
                     }
                 } else {
@@ -718,7 +755,6 @@ class PlayerViewModel @Inject constructor(
             } else {
                 candidateUrls
             }
-
             val primaryStreamUrl = finalCandidates.firstOrNull() ?: "$baseUrl/Videos/$playableId/stream?api_key=$effectiveToken"
 
             val rawTicks = itemDto?.userData?.playbackPositionTicks ?: entity?.playbackPositionTicks ?: 0L

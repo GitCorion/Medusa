@@ -40,8 +40,6 @@ class GetHomeFeedUseCase(
         @Volatile
         private var cachedFeedTimestamp: Long = 0L
         private const val FEED_CACHE_TTL = 15 * 60 * 1000L // 15 minutos
-        @Volatile
-        private var hasCleanedLegacyPlatformCache = false
 
         fun invalidateFeedCache() {
             cachedHomeFeed = null
@@ -851,11 +849,6 @@ class GetHomeFeedUseCase(
         sections: MutableList<HomeSection>
     ): Boolean {
         val dao = homeSectionCacheDao ?: return false
-        if (!hasCleanedLegacyPlatformCache) {
-            hasCleanedLegacyPlatformCache = true
-            runCatching { dao.clearAll() }
-            return false
-        }
         val cached = runCatching { dao.getAllSections() }.getOrDefault(emptyList())
         if (cached.isEmpty()) return false
 

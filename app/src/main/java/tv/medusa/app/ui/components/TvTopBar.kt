@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -129,7 +130,9 @@ fun TvTopBar(
         // Sección central: Insignia de contexto / Logo de Plataforma (Centrado perfectamente)
         Box(
             contentAlignment = Alignment.Center,
-            modifier = Modifier.wrapContentWidth()
+            modifier = Modifier
+                .weight(1f, fill = false)
+                .padding(horizontal = 16.dp)
         ) {
             if (titleBadge != null) {
                 titleBadge()
@@ -151,6 +154,7 @@ fun TvTopBar(
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
+                        .widthIn(max = 260.dp)
                         .background(Color(0x30EF4444), RoundedCornerShape(16.dp))
                         .border(0.75.dp, Color(0x70EF4444), RoundedCornerShape(16.dp))
                         .padding(horizontal = 10.dp, vertical = 5.dp)
@@ -169,7 +173,8 @@ fun TvTopBar(
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        softWrap = false
+                        softWrap = false,
+                        modifier = Modifier.weight(1f, fill = false)
                     )
                 }
             }

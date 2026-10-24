@@ -463,6 +463,18 @@
     <string name="player_audio_track_default">Audio %1$d</string>
     <string name="player_track_default">Track %1$d</string>
     <string name="player_language_unknown">Unknown</string>
+    <string name="player_audio_passthrough">Audio Output / Passthrough</string>
+    <string name="player_audio_passthrough_desc">HDMI output &amp; decoding control</string>
+    <string name="player_audio_passthrough_off">Disabled (PCM - Guaranteed audio)</string>
+    <string name="player_audio_passthrough_auto">Automatic (HDMI)</string>
+    <string name="player_audio_passthrough_direct">Direct Passthrough (AV Receiver)</string>
+    <string name="player_audio_fallback_toast">Incompatible audio format. Automatically switched to PCM decoding.</string>
+    <string name="player_audio_track_switched_toast">Switched automatically to compatible audio track: %1$s</string>
+    <string name="player_modal_close">Close menu</string>
+    <string name="settings_section_audio_passthrough">Audio Output / Passthrough</string>
+    <string name="settings_passthrough_off">PCM (Compatible)</string>
+    <string name="settings_passthrough_auto">Automatic</string>
+    <string name="settings_passthrough_direct">Direct (AVR)</string>
 
     <!-- Updates -->
     <string name="update_downloading_progress">Downloading update: %1$d%%</string>

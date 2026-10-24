@@ -45,6 +45,7 @@ class AudioEnhancementManager {
             exoPlayer.addAnalyticsListener(object : AnalyticsListener {
                 override fun onAudioSessionIdChanged(eventTime: AnalyticsListener.EventTime, audioSessionId: Int) {
                     if (audioSessionId != C.AUDIO_SESSION_ID_UNSET && audioSessionId > 0 && audioSessionId != currentSessionId) {
+                        release()
                         currentSessionId = audioSessionId
                         updateEnhancer()
                     }

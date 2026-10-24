@@ -19,6 +19,8 @@ import android.content.ContextWrapper
 import android.content.Intent
 import androidx.media3.session.MediaSession
 import tv.medusa.app.MainActivity
+import android.media.AudioDeviceInfo
+import android.media.AudioManager
 import android.net.Uri
 import android.view.WindowManager
 import androidx.activity.compose.BackHandler
@@ -67,12 +69,21 @@ import androidx.compose.material.icons.filled.Subtitles
 import androidx.compose.material.icons.filled.SubtitlesOff
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.SettingsInputHdmi
 import androidx.compose.foundation.lazy.items
 import tv.medusa.app.util.AudioEnhancementManager
 import tv.medusa.app.util.AutoFrameRateManager
+import tv.medusa.app.util.AppForeground
 import tv.medusa.app.data.local.SUBTITLE_SIZE_SMALL
 import tv.medusa.app.data.local.SUBTITLE_SIZE_NORMAL
 import tv.medusa.app.data.local.SUBTITLE_SIZE_LARGE
+import tv.medusa.app.data.local.AUDIO_PASSTHROUGH_OFF
+import tv.medusa.app.data.local.AUDIO_PASSTHROUGH_AUTO
+import tv.medusa.app.data.local.AUDIO_PASSTHROUGH_DIRECT
+import androidx.media3.exoplayer.audio.AudioCapabilities
+import androidx.media3.exoplayer.audio.AudioSink
+import androidx.media3.exoplayer.audio.DefaultAudioSink
+import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.ui.CaptionStyleCompat
 import tv.medusa.app.ui.theme.TvAccent
 import androidx.compose.runtime.Composable
@@ -126,6 +137,8 @@ import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.Tracks
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.datasource.ResolvingDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
@@ -273,6 +286,19 @@ private fun PlayerContent(
     val subtitleSize by viewModel.subtitleSize.collectAsStateWithLifecycle()
     val subtitleBackground by viewModel.subtitleBackground.collectAsStateWithLifecycle()
     val autoFrameRateEnabled by viewModel.autoFrameRateEnabled.collectAsStateWithLifecycle()
+    val audioPassthroughMode by viewModel.audioPassthroughMode.collectAsStateWithLifecycle()
+    var currentPassthroughMode by remember { mutableIntStateOf(audioPassthroughMode) }
+    LaunchedEffect(audioPassthroughMode) {
+        currentPassthroughMode = audioPassthroughMode
+    }
+
+    DisposableEffect(Unit) {
+        AppForeground.isPlaybackActive = true
+        onDispose {
+            AppForeground.isPlaybackActive = false
+        }
+    }
+
     val audioEnhancementManager = remember { AudioEnhancementManager() }
     var currentVideoFps by remember { mutableFloatStateOf(0f) }
 
@@ -367,34 +393,91 @@ private fun PlayerContent(
             }
         }
 
-        // El vídeo usa el cliente OkHttp compartido de la aplicación: hereda el pool de conexiones,
-        // los timeouts configurados, la detección de bloqueos de red y las cabeceras personalizadas.
-        val httpDataSourceFactory = OkHttpDataSource.Factory(NetworkClientFactory.okHttpClient)
+        // Fuente OkHttp compartida con soporte IPv6, pool de conexiones y bypass SSL local
+        val baseHttpDataSourceFactory = OkHttpDataSource.Factory(NetworkClientFactory.okHttpClient)
             .setUserAgent("Mozilla/5.0 (Linux; Android 14; Google TV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-            .setDefaultRequestProperties(defaultHeaders)
 
-        val mediaSourceFactory = DefaultMediaSourceFactory(httpDataSourceFactory)
+        // ResolvingDataSource: inyecta cabeceras de Jellyfin únicamente si la petición va a Jellyfin.
+        // Si va dirigida directamente a un CDN externo o almacenamiento remoto, no envía cabeceras
+        // de Jellyfin para evitar que el servidor remoto rechace la petición con 401/403.
+        val resolvingDataSourceFactory = ResolvingDataSource.Factory(baseHttpDataSourceFactory) { dataSpec ->
+            val uriString = dataSpec.uri.toString()
+            val isJellyfinRequest = uriString.contains("/Videos/", ignoreCase = true) ||
+                    uriString.contains("/Audio/", ignoreCase = true) ||
+                    uriString.contains("/Items/", ignoreCase = true)
 
-        // Buffer más generoso para redes inestables o con latencia alta: aguanta mejor los
-        // microcortes en vez de entrar en bucle de rebuffering. El arranque sigue siendo rápido
-        // (bufferForPlayback 1,5 s) y tras un corte espera 10 s para reanudar con margen.
+            if (isJellyfinRequest && defaultHeaders.isNotEmpty()) {
+                val mergedHeaders = HashMap(dataSpec.httpRequestHeaders)
+                defaultHeaders.forEach { (k, v) ->
+                    if (!mergedHeaders.containsKey(k)) {
+                        mergedHeaders[k] = v
+                    }
+                }
+                dataSpec.buildUpon().setHttpRequestHeaders(mergedHeaders).build()
+            } else {
+                dataSpec
+            }
+        }
+
+        val mediaSourceFactory = DefaultMediaSourceFactory(resolvingDataSourceFactory)
+
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(
-                /* minBufferMs = */ 30_000,
-                /* maxBufferMs = */ 90_000,
-                /* bufferForPlaybackMs = */ 1_500,
-                /* bufferForPlaybackAfterRebufferMs = */ 10_000
+                /* minBufferMs = */ 15_000,
+                /* maxBufferMs = */ 60_000,
+                /* bufferForPlaybackMs = */ 2_500,
+                /* bufferForPlaybackAfterRebufferMs = */ 5_000
             )
-            .setPrioritizeTimeOverSizeThresholds(true)
-            .setBackBuffer(30_000, true)
             .build()
 
-        val renderersFactory = DefaultRenderersFactory(context)
+        val audioCapabilities = when (currentPassthroughMode) {
+            AUDIO_PASSTHROUGH_OFF -> AudioCapabilities.DEFAULT_AUDIO_CAPABILITIES
+            AUDIO_PASSTHROUGH_DIRECT -> AudioCapabilities.getCapabilities(context)
+            else -> {
+                // Modo Automático: Comprueba si realmente hay una barra o receptor AV conectado (HDMI ARC/eARC, Óptico)
+                // Si sólo suenan los altavoces integrados de la TV, se usa PCM para evitar silencios.
+                val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+                val outputDevices = audioManager?.getDevices(AudioManager.GET_DEVICES_OUTPUTS) ?: emptyArray()
+                val hasExternalAudioSystem = outputDevices.any { device ->
+                    device.type == AudioDeviceInfo.TYPE_HDMI_ARC ||
+                    device.type == AudioDeviceInfo.TYPE_HDMI_EARC ||
+                    device.type == AudioDeviceInfo.TYPE_LINE_DIGITAL
+                }
+                if (hasExternalAudioSystem) {
+                    AudioCapabilities.getCapabilities(context)
+                } else {
+                    AudioCapabilities.DEFAULT_AUDIO_CAPABILITIES
+                }
+            }
+        }
+
+        val audioSink = DefaultAudioSink.Builder(context)
+            .setAudioCapabilities(audioCapabilities)
+            .setEnableFloatOutput(false)
+            .setEnableAudioTrackPlaybackParams(true)
+            .build()
+
+        val renderersFactory = object : DefaultRenderersFactory(context) {
+            override fun buildAudioSink(
+                context: Context,
+                enableFloatOutput: Boolean,
+                enableAudioTrackPlaybackParams: Boolean
+            ): AudioSink {
+                return audioSink
+            }
+        }
             // ON = prefiere el decodificador de hardware de la plataforma y sólo recurre
-            // a la extensión FFmpeg (software) cuando no hay uno válido. PREFER forzaba
-            // decodificación software y quemaba CPU en TV.
+            // a la extensión FFmpeg (software) cuando no hay uno válido.
             .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
             .setEnableDecoderFallback(true)
+
+        val trackSelector = DefaultTrackSelector(context).apply {
+            parameters = buildUponParameters()
+                .setPreferredAudioLanguage("es")
+                .setPreferredTextLanguage("es")
+                .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
+                .build()
+        }
 
         val audioAttributes = AudioAttributes.Builder()
             .setUsage(C.USAGE_MEDIA)
@@ -403,6 +486,7 @@ private fun PlayerContent(
 
         ExoPlayer.Builder(context)
             .setRenderersFactory(renderersFactory)
+            .setTrackSelector(trackSelector)
             .setMediaSourceFactory(mediaSourceFactory)
             .setLoadControl(loadControl)
             .setSeekForwardIncrementMs(10_000L)
@@ -466,6 +550,37 @@ private fun PlayerContent(
 
                     override fun onPlayerError(error: PlaybackException) {
                         Log.e("PlayerScreen", "ExoPlayer error on candidate $candidateIdx (${candidates.getOrNull(candidateIdx)}): ${error.errorCodeName}", error)
+
+                        // ── Recuperación automática de fallos de audio (Passthrough o pista incompatible) ──
+                        val isAudioError = error.errorCode == PlaybackException.ERROR_CODE_AUDIO_TRACK_INIT_FAILED ||
+                                error.errorCode == PlaybackException.ERROR_CODE_AUDIO_TRACK_WRITE_FAILED ||
+                                error.errorCode == PlaybackException.ERROR_CODE_DECODER_INIT_FAILED ||
+                                error.cause is AudioSink.InitializationException ||
+                                error.cause is AudioSink.WriteException
+
+                        if (isAudioError) {
+                            if (currentPassthroughMode != AUDIO_PASSTHROUGH_OFF) {
+                                Log.w("PlayerScreen", "Error de audio en modo passthrough. Conmutando automáticamente a decodificación PCM.")
+                                playerErrorMessage = context.getString(R.string.player_audio_fallback_toast)
+                                viewModel.setAudioPassthroughMode(AUDIO_PASSTHROUGH_OFF)
+                                currentPassthroughMode = AUDIO_PASSTHROUGH_OFF
+                                return
+                            }
+
+                            val availableAudios = audioTracks
+                            val currentTrack = availableAudios.firstOrNull { it.isSelected }
+                            val fallbackTrack = availableAudios.firstOrNull { !it.isSelected }
+                            if (fallbackTrack != null) {
+                                Log.w("PlayerScreen", "Error en pista de audio (${currentTrack?.label}). Conmutando automáticamente a: ${fallbackTrack.label}")
+                                playerErrorMessage = context.getString(R.string.player_audio_track_switched_toast, fallbackTrack.label)
+                                selectAudioTrackInExoPlayer(this@apply, fallbackTrack)
+                                val pos = currentPosition.coerceAtLeast(0L)
+                                if (pos > 0 && isCurrentMediaItemSeekable) seekTo(pos)
+                                prepare()
+                                playWhenReady = true
+                                return
+                            }
+                        }
 
                         candidateIdx++
                         if (candidateIdx < candidates.size) {
@@ -591,9 +706,12 @@ private fun PlayerContent(
         }
     }
 
-    LaunchedEffect(autoFrameRateEnabled, currentVideoFps, activity) {
+    LaunchedEffect(autoFrameRateEnabled, currentVideoFps, isPlaying, activity) {
         if (activity != null) {
-            if (autoFrameRateEnabled && currentVideoFps > 0f) {
+            // Solo sincronizar la tasa de refresco cuando el vídeo ya esté en reproducción activa.
+            // Conmutar el modo de pantalla durante la carga inicial destruye el Surface de la TV
+            // y cancela la descarga del segmento de inicialización (-1.mp4).
+            if (autoFrameRateEnabled && currentVideoFps > 0f && isPlaying) {
                 AutoFrameRateManager.matchFrameRate(activity, currentVideoFps)
             } else if (!autoFrameRateEnabled) {
                 AutoFrameRateManager.restoreOriginal(activity)
@@ -1389,6 +1507,12 @@ private fun PlayerContent(
                 subtitleSize = subtitleSize,
                 subtitleBackground = subtitleBackground,
                 autoFrameRateEnabled = autoFrameRateEnabled,
+                audioPassthroughMode = currentPassthroughMode,
+                onSelectAudioPassthrough = { mode ->
+                    notifyInteraction()
+                    viewModel.setAudioPassthroughMode(mode)
+                    currentPassthroughMode = mode
+                },
                 onSelectAudioTrack = { track ->
                     notifyInteraction()
                     selectAudioTrackInExoPlayer(exoPlayer, track)
@@ -1856,6 +1980,8 @@ private fun PlayerCustomModalSheet(
     subtitleSize: String = SUBTITLE_SIZE_NORMAL,
     subtitleBackground: Boolean = false,
     autoFrameRateEnabled: Boolean = false,
+    audioPassthroughMode: Int = AUDIO_PASSTHROUGH_OFF,
+    onSelectAudioPassthrough: (Int) -> Unit = {},
     onSelectAudioTrack: (TrackItem) -> Unit,
     onSelectSubtitleTrack: (TrackItem?) -> Unit,
     onSelectSpeed: (Float) -> Unit,
@@ -1872,6 +1998,10 @@ private fun PlayerCustomModalSheet(
 ) {
     val firstItemFocusRequester = remember { FocusRequester() }
 
+    BackHandler(enabled = true) {
+        onClose()
+    }
+
     LaunchedEffect(activeTab) {
         delay(120L)
         runCatching { firstItemFocusRequester.requestFocus() }
@@ -1881,7 +2011,13 @@ private fun PlayerCustomModalSheet(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black.copy(alpha = 0.7f))
-            .clickable { onClose() },
+            .clickable { onClose() }
+            .onPreviewKeyEvent { keyEvent ->
+                if (keyEvent.type == KeyEventType.KeyDown && (keyEvent.key == Key.Back || keyEvent.key == Key.Escape)) {
+                    onClose()
+                    true
+                } else false
+            },
         contentAlignment = Alignment.CenterEnd
     ) {
         Surface(
@@ -1889,6 +2025,12 @@ private fun PlayerCustomModalSheet(
                 .fillMaxHeight()
                 .width(420.dp)
                 .clickable(enabled = false) {}
+                .onPreviewKeyEvent { keyEvent ->
+                    if (keyEvent.type == KeyEventType.KeyDown && (keyEvent.key == Key.Back || keyEvent.key == Key.Escape)) {
+                        onClose()
+                        true
+                    } else false
+                }
                 .onKeyEvent { keyEvent ->
                     if (keyEvent.type == KeyEventType.KeyDown && keyEvent.key == Key.DirectionLeft) {
                         onClose()
@@ -2087,6 +2229,57 @@ private fun PlayerCustomModalSheet(
                                     }
                                 )
                             }
+
+                            // 4. Salida de audio / Passthrough
+                            item {
+                                Spacer(modifier = Modifier.height(10.dp))
+                                val passthroughModes = listOf(AUDIO_PASSTHROUGH_OFF, AUDIO_PASSTHROUGH_AUTO, AUDIO_PASSTHROUGH_DIRECT)
+                                val currentIdx = passthroughModes.indexOf(audioPassthroughMode).coerceAtLeast(0)
+                                val passthroughLabel = when (audioPassthroughMode) {
+                                    AUDIO_PASSTHROUGH_AUTO -> stringResource(R.string.player_audio_passthrough_auto)
+                                    AUDIO_PASSTHROUGH_DIRECT -> stringResource(R.string.player_audio_passthrough_direct)
+                                    else -> stringResource(R.string.player_audio_passthrough_off)
+                                }
+                                KodiAudioSliderRow(
+                                    title = stringResource(R.string.player_audio_passthrough),
+                                    subtitle = stringResource(R.string.player_audio_passthrough_desc),
+                                    currentValueLabel = passthroughLabel,
+                                    progressFraction = currentIdx.toFloat() / (passthroughModes.size - 1),
+                                    canDecrease = currentIdx > 0,
+                                    canIncrease = currentIdx < passthroughModes.size - 1,
+                                    icon = Icons.Default.Audiotrack,
+                                    isMonochrome = isMonochrome,
+                                    focusColor = focusColor,
+                                    onDecrease = {
+                                        if (currentIdx > 0) {
+                                            onSelectAudioPassthrough(passthroughModes[currentIdx - 1])
+                                        }
+                                    },
+                                    onIncrease = {
+                                        if (currentIdx < passthroughModes.size - 1) {
+                                            onSelectAudioPassthrough(passthroughModes[currentIdx + 1])
+                                        }
+                                    },
+                                    onCycleNext = {
+                                        val nextIdx = (currentIdx + 1) % passthroughModes.size
+                                        onSelectAudioPassthrough(passthroughModes[nextIdx])
+                                    }
+                                )
+                            }
+
+                            // 5. Botón Cerrar menú
+                            item {
+                                Spacer(modifier = Modifier.height(14.dp))
+                                TrackOptionItem(
+                                    label = stringResource(R.string.player_modal_close),
+                                    isSelected = false,
+                                    icon = Icons.Default.Close,
+                                    isMonochrome = isMonochrome,
+                                    focusColor = focusColor,
+                                    focusContent = focusContent,
+                                    onClick = onClose
+                                )
+                            }
                         }
 
                         PlayerModalTab.SUBTITLES -> {
@@ -2173,6 +2366,19 @@ private fun PlayerCustomModalSheet(
                                     focusColor = focusColor,
                                     focusContent = focusContent,
                                     onClick = { onToggleSubtitleBackground(!subtitleBackground) }
+                                )
+                            }
+
+                            item {
+                                Spacer(modifier = Modifier.height(14.dp))
+                                TrackOptionItem(
+                                    label = stringResource(R.string.player_modal_close),
+                                    isSelected = false,
+                                    icon = Icons.Default.Close,
+                                    isMonochrome = isMonochrome,
+                                    focusColor = focusColor,
+                                    focusContent = focusContent,
+                                    onClick = onClose
                                 )
                             }
                         }
@@ -2263,6 +2469,19 @@ private fun PlayerCustomModalSheet(
                                     focusColor = focusColor,
                                     focusContent = focusContent,
                                     onClick = { onToggleAutoFrameRate(!autoFrameRateEnabled) }
+                                )
+                            }
+
+                            item {
+                                Spacer(modifier = Modifier.height(14.dp))
+                                TrackOptionItem(
+                                    label = stringResource(R.string.player_modal_close),
+                                    isSelected = false,
+                                    icon = Icons.Default.Close,
+                                    isMonochrome = isMonochrome,
+                                    focusColor = focusColor,
+                                    focusContent = focusContent,
+                                    onClick = onClose
                                 )
                             }
                         }
@@ -2390,19 +2609,16 @@ private fun KodiAudioSliderRow(
                 if (event.type == KeyEventType.KeyDown) {
                     when (event.key) {
                         Key.DirectionLeft -> {
-                            if (canDecrease) {
-                                onDecrease()
-                                true
-                            } else {
-                                false
-                            }
+                            // Let DirectionLeft bubble up to Surface so the user can easily exit the drawer
+                            // without having to decrement their setting back to 0!
+                            false
                         }
                         Key.DirectionRight -> {
                             if (canIncrease) {
                                 onIncrease()
                                 true
                             } else {
-                                true
+                                false
                             }
                         }
                         else -> false
@@ -2470,7 +2686,7 @@ private fun KodiAudioSliderRow(
                     )
                 ) {
                     Text(
-                        text = currentValueLabel,
+                        text = "‹ $currentValueLabel ›",
                         color = if (progressFraction > 0f && !isMonochrome) focusColor else Color.White,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,

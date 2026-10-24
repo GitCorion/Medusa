@@ -21,6 +21,7 @@ import tv.medusa.app.util.AppForeground
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -101,6 +102,7 @@ class HomeViewModel @Inject constructor(
             AppForeground.isForegroundFlow.collect { isForeground ->
                 if (isForeground) {
                     if (!isFirstForeground) {
+                        delay(2500L)
                         refreshContinueWatching()
                         if (_uiState.value is HomeUiState.Error) {
                             loadHomeFeed(forceRefresh = true)
@@ -117,6 +119,7 @@ class HomeViewModel @Inject constructor(
                     wasSyncing = true
                 } else if (wasSyncing && !progress.isSyncing) {
                     wasSyncing = false
+                    if (tv.medusa.app.util.AppForeground.isPlaybackActive) return@collect
                     val prefs = userPreferencesRepository.userPreferencesFlow.first()
                     if (prefs.jellyfinServerUrl.isNotBlank() && prefs.jellyfinAccessToken.isNotBlank() && mediaRepository.getLocalCount() > 0) {
                         GetHomeFeedUseCase.invalidateFeedCache()
@@ -132,6 +135,10 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             var lastTriggeredCount = 0
             localMediaCount.collect { count ->
+                // Si el usuario está viendo una película/serie a pantalla completa, no recalcular
+                // ni instanciar el feed en segundo plano: satura la RAM del SoC de TV y provoca OOM/cierre.
+                if (tv.medusa.app.util.AppForeground.isPlaybackActive) return@collect
+
                 val currentSections = (_uiState.value as? HomeUiState.Success)?.sections ?: emptyList()
                 val isSparse = currentSections.isEmpty() || currentSections.sumOf { it.items.size } < 10
                 val countJump = count - lastTriggeredCount
@@ -203,11 +210,6 @@ class HomeViewModel @Inject constructor(
     fun forceRefreshHomeFeed() {
         GetHomeFeedUseCase.invalidateFeedCache()
         MediaRepository.invalidateServerCaches()
-        lastStaticSections = null
-        lastSections = null
-        viewModelScope.launch(Dispatchers.IO) {
-            getHomeFeedUseCase.clearSectionCache()
-        }
         loadHomeFeed(forceRefresh = true)
     }
 

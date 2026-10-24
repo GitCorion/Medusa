@@ -59,6 +59,10 @@ const val SUBTITLE_SIZE_SMALL = "SMALL"
 const val SUBTITLE_SIZE_NORMAL = "NORMAL"
 const val SUBTITLE_SIZE_LARGE = "LARGE"
 
+const val AUDIO_PASSTHROUGH_OFF = 0       // Decodificación PCM (Máxima compatibilidad sin silencios)
+const val AUDIO_PASSTHROUGH_AUTO = 1      // Detección automática según capacidades HDMI
+const val AUDIO_PASSTHROUGH_DIRECT = 2    // Passthrough directo HDMI (Bitstream receptor AV)
+
 data class UserPreferences(
     val jellyfinServerUrl: String = "",
     val jellyfinLanServerUrl: String = "",
@@ -89,9 +93,10 @@ data class UserPreferences(
     val audioVolumeBoostDb: Int = 0,
     val subtitleSize: String = SUBTITLE_SIZE_NORMAL,
     val subtitleBackground: Boolean = false,
-    val autoFrameRateEnabled: Boolean = true,
+    val autoFrameRateEnabled: Boolean = false,
     val seasonalAudioEnabled: Boolean = true,
-    val navigationSoundEnabled: Boolean = true
+    val navigationSoundEnabled: Boolean = true,
+    val audioPassthroughMode: Int = AUDIO_PASSTHROUGH_OFF
 ) {
     val isMonochrome: Boolean
         get() = indicatorTheme == INDICATOR_THEME_MONOCHROME || accentColor == ACCENT_WHITE
@@ -165,6 +170,7 @@ class UserPreferencesRepository(context: Context) {
         val AUTO_FRAME_RATE = stringPreferencesKey("auto_frame_rate")
         val SEASONAL_AUDIO_ENABLED = stringPreferencesKey("seasonal_audio_enabled")
         val NAVIGATION_SOUND_ENABLED = stringPreferencesKey("navigation_sound_enabled")
+        val AUDIO_PASSTHROUGH_MODE = intPreferencesKey("audio_passthrough_mode")
         // Versión del algoritmo de sincronización aplicada. Si la almacenada es menor que la
         // actual, se fuerza un sync completo para reconstruir catálogos truncados por versiones
         // anteriores (p. ej. paginación que cortaba al recibir páginas más cortas que el límite).
@@ -219,13 +225,16 @@ class UserPreferencesRepository(context: Context) {
         userPreferences.map { it.subtitleBackground }.stateIn(appScope, SharingStarted.Eagerly, false)
 
     val autoFrameRateEnabled: StateFlow<Boolean> =
-        userPreferences.map { it.autoFrameRateEnabled }.stateIn(appScope, SharingStarted.Eagerly, true)
+        userPreferences.map { it.autoFrameRateEnabled }.stateIn(appScope, SharingStarted.Eagerly, false)
 
     val seasonalAudioEnabled: StateFlow<Boolean> =
         userPreferences.map { it.seasonalAudioEnabled }.stateIn(appScope, SharingStarted.Eagerly, true)
 
     val navigationSoundEnabled: StateFlow<Boolean> =
         userPreferences.map { it.navigationSoundEnabled }.stateIn(appScope, SharingStarted.Eagerly, true)
+
+    val audioPassthroughMode: StateFlow<Int> =
+        userPreferences.map { it.audioPassthroughMode }.stateIn(appScope, SharingStarted.Eagerly, AUDIO_PASSTHROUGH_OFF)
 
     val jellyfinLanServerUrl: StateFlow<String> =
         userPreferences.map { it.jellyfinLanServerUrl }.stateIn(appScope, SharingStarted.Eagerly, "")
@@ -234,6 +243,12 @@ class UserPreferencesRepository(context: Context) {
         val cleanUrl = lanUrl.trimEnd('/')
         appContext.dataStore.edit { prefs ->
             prefs[Keys.JELLYFIN_LAN_SERVER_URL] = cleanUrl
+        }
+    }
+
+    suspend fun setAudioPassthroughMode(mode: Int) {
+        appContext.dataStore.edit { prefs ->
+            prefs[Keys.AUDIO_PASSTHROUGH_MODE] = mode
         }
     }
 
@@ -611,9 +626,10 @@ class UserPreferencesRepository(context: Context) {
                 audioVolumeBoostDb = this[Keys.AUDIO_VOLUME_BOOST_DB] ?: 0,
                 subtitleSize = this[Keys.SUBTITLE_SIZE] ?: SUBTITLE_SIZE_NORMAL,
                 subtitleBackground = this[Keys.SUBTITLE_BACKGROUND] == "true",
-                autoFrameRateEnabled = (this[Keys.AUTO_FRAME_RATE] ?: "true") != "false",
+                autoFrameRateEnabled = (this[Keys.AUTO_FRAME_RATE] ?: "false") == "true",
                 seasonalAudioEnabled = (this[Keys.SEASONAL_AUDIO_ENABLED] ?: "true") != "false",
-                navigationSoundEnabled = (this[Keys.NAVIGATION_SOUND_ENABLED] ?: "true") != "false"
+                navigationSoundEnabled = (this[Keys.NAVIGATION_SOUND_ENABLED] ?: "true") != "false",
+                audioPassthroughMode = this[Keys.AUDIO_PASSTHROUGH_MODE] ?: AUDIO_PASSTHROUGH_OFF
             )
         }
     }

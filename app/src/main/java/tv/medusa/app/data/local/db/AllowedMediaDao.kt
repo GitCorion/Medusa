@@ -27,7 +27,9 @@ interface AllowedMediaDao {
     suspend fun replaceAll(ids: List<String>) {
         clearAll()
         if (ids.isNotEmpty()) {
-            insertAll(ids.map { AllowedMediaIdEntity(it) })
+            ids.chunked(500).forEach { chunk ->
+                insertAll(chunk.map { AllowedMediaIdEntity(it) })
+            }
         }
     }
 

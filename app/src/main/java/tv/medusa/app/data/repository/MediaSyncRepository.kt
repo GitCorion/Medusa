@@ -740,12 +740,15 @@ class MediaSyncRepository(
                         startIndex += items.size
                         totalSynced += items.size
 
-                        // Guardar checkpoint en DataStore tras cada bloque persistido
-                        userPreferencesRepository?.saveSyncCheckpoint(
-                            viewIndex = viewIndex,
-                            offset = startIndex,
-                            totalSynced = totalSynced
-                        )
+                        // Guardar checkpoint en DataStore cada 1.000 ítems o al final de la vista
+                        // (evita saturar el bus de I/O y disparar 100+ emisiones de DataStore en TV lenta)
+                        if (totalSynced % 1000 == 0 || items.size < pageSize) {
+                            userPreferencesRepository?.saveSyncCheckpoint(
+                                viewIndex = viewIndex,
+                                offset = startIndex,
+                                totalSynced = totalSynced
+                            )
+                        }
 
                         val effectiveTotal = maxOf(grandTotal, totalSynced)
                         _syncProgress.value = SyncProgress(
@@ -796,18 +799,51 @@ class MediaSyncRepository(
             }.onFailure { e ->
                 Log.e("MediaSyncRepository", "Error during Jellyfin library sync: ${e.message}", e)
                 val is401 = (e as? retrofit2.HttpException)?.code() == 401
-                val errorMessage = if (is401) {
-                    str(R.string.sync_session_expired)
+                val isNetworkError = e is java.net.ConnectException ||
+                        e is java.net.SocketTimeoutException ||
+                        e is java.net.UnknownHostException ||
+                        e is java.io.IOException ||
+                        (e.cause is java.net.ConnectException) ||
+                        (e.cause is java.net.SocketTimeoutException) ||
+                        (e.cause is java.net.UnknownHostException)
+                val currentCount = jellyfinDao.getCount()
+
+                if (currentCount > 0 && !is401) {
+                    // Si ya tenemos catálogo local y el fallo no es una sesión caducada (401),
+                    // no alarmamos al usuario con un error rojo en la barra superior; dejamos el catálogo disponible.
+                    _syncProgress.value = SyncProgress(
+                        isSyncing = false,
+                        isError = false,
+                        current = currentCount,
+                        total = currentCount,
+                        message = str(R.string.sync_up_to_date, currentCount)
+                    )
                 } else {
-                    str(R.string.sync_error_prefix, e.localizedMessage ?: str(R.string.sync_error_connection))
+                    val errorMessage = if (is401) {
+                        str(R.string.sync_session_expired)
+                    } else {
+                        str(R.string.sync_error_prefix, str(R.string.sync_error_connection))
+                    }
+                    _syncProgress.value = SyncProgress(
+                        isSyncing = false,
+                        isError = true,
+                        current = currentCount,
+                        total = currentCount,
+                        message = errorMessage
+                    )
+                    // Auto-limpiar el error en 6 segundos para que no se quede bloqueado en la barra superior
+                    syncScope.launch {
+                        delay(6000L)
+                        if (_syncProgress.value.isError) {
+                            _syncProgress.value = SyncProgress(
+                                isSyncing = false,
+                                isError = false,
+                                current = currentCount,
+                                total = currentCount
+                            )
+                        }
+                    }
                 }
-                _syncProgress.value = SyncProgress(
-                    isSyncing = false,
-                    isError = true,
-                    current = jellyfinDao.getCount(),
-                    total = jellyfinDao.getCount(),
-                    message = errorMessage
-                )
             }
         } finally {
             syncMutex.unlock()
