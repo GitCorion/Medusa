@@ -471,6 +471,9 @@
     <string name="player_audio_fallback_toast">Incompatible audio format. Automatically switched to PCM decoding.</string>
     <string name="player_audio_track_switched_toast">Switched automatically to compatible audio track: %1$s</string>
     <string name="player_modal_close">Close menu</string>
+    <string name="player_timeline">Timeline</string>
+    <string name="player_timeline_desc">Timeline, %1$s of %2$s</string>
+    <string name="player_timeline_hint">◀ ▶ Seek exact point • OK Confirm</string>
     <string name="settings_section_audio_passthrough">Audio Output / Passthrough</string>
     <string name="settings_passthrough_off">PCM (Compatible)</string>
     <string name="settings_passthrough_auto">Automatic</string>

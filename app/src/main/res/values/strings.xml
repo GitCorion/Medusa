@@ -484,6 +484,9 @@
     <string name="player_audio_fallback_toast">Audio incompatible con el televisor. Cambiado automáticamente a decodificación PCM.</string>
     <string name="player_audio_track_switched_toast">Cambiando automáticamente a pista de audio compatible: %1$s</string>
     <string name="player_modal_close">Cerrar menú</string>
+    <string name="player_timeline">Línea de tiempo</string>
+    <string name="player_timeline_desc">Línea de tiempo, %1$s de %2$s</string>
+    <string name="player_timeline_hint">◀ ▶ Buscar punto exacto • OK Confirmar</string>
     <string name="settings_section_audio_passthrough">Salida de audio / Passthrough</string>
     <string name="settings_passthrough_off">PCM (Compatible)</string>
     <string name="settings_passthrough_auto">Automático</string>

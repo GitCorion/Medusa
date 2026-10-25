@@ -26,17 +26,25 @@ import android.view.WindowManager
 import androidx.activity.compose.BackHandler
 import androidx.annotation.OptIn
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -45,6 +53,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -68,6 +77,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Subtitles
 import androidx.compose.material.icons.filled.SubtitlesOff
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.automirrored.filled.VolumeDown
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.SettingsInputHdmi
 import androidx.compose.foundation.lazy.items
@@ -78,6 +88,7 @@ import tv.medusa.app.data.local.SUBTITLE_SIZE_SMALL
 import tv.medusa.app.data.local.SUBTITLE_SIZE_NORMAL
 import tv.medusa.app.data.local.SUBTITLE_SIZE_LARGE
 import androidx.media3.exoplayer.audio.AudioSink
+import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.ui.CaptionStyleCompat
 import tv.medusa.app.ui.theme.TvAccent
@@ -105,8 +116,11 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -114,6 +128,12 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -359,10 +379,15 @@ private fun PlayerContent(
     val rewindFocusRequester = remember { FocusRequester() }
     val playPauseFocusRequester = remember { FocusRequester() }
     val fastForwardFocusRequester = remember { FocusRequester() }
+    val progressBarFocusRequester = remember { FocusRequester() }
     val retryFocusRequester = remember { FocusRequester() }
     val audioButtonFocusRequester = remember { FocusRequester() }
     val subtitleButtonFocusRequester = remember { FocusRequester() }
     val settingsButtonFocusRequester = remember { FocusRequester() }
+
+    var isProgressBarFocused by remember { mutableStateOf(false) }
+    var pendingFocusProgressBar by remember { mutableStateOf(false) }
+    var scrubRepeatCount by remember { mutableIntStateOf(0) }
 
     var previousModalTab by remember { mutableStateOf(PlayerModalTab.NONE) }
 
@@ -426,7 +451,19 @@ private fun PlayerContent(
             .setBackBuffer(30_000, true)
             .build()
 
-        val renderersFactory = DefaultRenderersFactory(context)
+        val renderersFactory = object : DefaultRenderersFactory(context) {
+            override fun buildAudioSink(
+                context: Context,
+                enableFloatOutput: Boolean,
+                enableAudioTrackPlaybackParams: Boolean
+            ): AudioSink {
+                return DefaultAudioSink.Builder(context)
+                    .setEnableFloatOutput(enableFloatOutput)
+                    .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
+                    .setAudioProcessors(arrayOf(audioEnhancementManager.audioProcessor))
+                    .build()
+            }
+        }
             // ON = prefiere el decodificador de hardware de la plataforma y sólo recurre
             // a la extensión FFmpeg (software) cuando no hay uno válido.
             .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
@@ -682,6 +719,79 @@ private fun PlayerContent(
         }
     }
 
+    fun commitScrub() {
+        notifyInteraction()
+        if (isScrubbing) {
+            val dur = exoPlayer.duration.takeIf { it > 0 } ?: duration.takeIf { it > 0 } ?: 0L
+            val target = scrubTargetPosition.coerceIn(0L, dur)
+            exoPlayer.seekTo(target)
+            currentPosition = target
+            isScrubbing = false
+            scrubDeltaMs = 0L
+            scrubRepeatCount = 0
+        }
+    }
+
+    fun seekToExactPosition(targetMs: Long) {
+        notifyInteraction()
+        val dur = exoPlayer.duration.takeIf { it > 0 } ?: duration.takeIf { it > 0 } ?: 0L
+        val target = targetMs.coerceIn(0L, dur)
+        exoPlayer.seekTo(target)
+        currentPosition = target
+        scrubTargetPosition = target
+        isScrubbing = false
+        scrubDeltaMs = 0L
+        scrubRepeatCount = 0
+    }
+
+    fun updateScrubPosition(targetMs: Long) {
+        notifyInteraction()
+        val dur = exoPlayer.duration.takeIf { it > 0 } ?: duration.takeIf { it > 0 } ?: 0L
+        val target = targetMs.coerceIn(0L, dur)
+        val cur = exoPlayer.currentPosition.coerceAtLeast(0L)
+        scrubTargetPosition = target
+        scrubDeltaMs = target - cur
+        isScrubbing = true
+        lastScrubKeystrokeTime = System.currentTimeMillis()
+    }
+
+    fun scrubStep(deltaSign: Int) {
+        notifyInteraction()
+        val now = System.currentTimeMillis()
+        val cur = if (isScrubbing) scrubTargetPosition else exoPlayer.currentPosition.coerceAtLeast(0L)
+        val dur = exoPlayer.duration.takeIf { it > 0 } ?: duration.takeIf { it > 0 } ?: Long.MAX_VALUE
+
+        val timeSinceLast = now - lastScrubKeystrokeTime
+        if (!isScrubbing || timeSinceLast > 350L || (scrubDeltaMs > 0 && deltaSign < 0) || (scrubDeltaMs < 0 && deltaSign > 0)) {
+            scrubRepeatCount = 0
+        } else {
+            scrubRepeatCount++
+        }
+        lastScrubKeystrokeTime = now
+
+        // Aceleración escalonada:
+        // 0-3 pulsaciones: 5 segundos (máxima precisión para clics sueltos y seleccionar punto exacto)
+        // 4-10 pulsaciones: 15 segundos (desplazamiento moderado)
+        // 11-20 pulsaciones: 30 segundos (búsqueda rápida)
+        // 21+ pulsaciones: 60 segundos (avance rápido por películas de 2 horas)
+        val baseStep = when {
+            scrubRepeatCount < 4 -> 5_000L
+            scrubRepeatCount < 11 -> 15_000L
+            scrubRepeatCount < 21 -> 30_000L
+            else -> 60_000L
+        }
+
+        val effectiveDelta = baseStep * deltaSign
+        if (!isScrubbing || (scrubDeltaMs > 0 && deltaSign < 0) || (scrubDeltaMs < 0 && deltaSign > 0)) {
+            scrubDeltaMs = effectiveDelta
+            scrubTargetPosition = (cur + effectiveDelta).coerceIn(0L, dur)
+        } else {
+            scrubDeltaMs += effectiveDelta
+            scrubTargetPosition = (scrubTargetPosition + effectiveDelta).coerceIn(0L, dur)
+        }
+        isScrubbing = true
+    }
+
     fun seekRelative(deltaMs: Long) {
         notifyInteraction()
         val now = System.currentTimeMillis()
@@ -716,6 +826,7 @@ private fun PlayerContent(
                 currentPosition = scrubTargetPosition
                 isScrubbing = false
                 scrubDeltaMs = 0L
+                scrubRepeatCount = 0
             }
         }
     }
@@ -730,21 +841,29 @@ private fun PlayerContent(
         }
     }
 
-    // Auto-focus the play/pause button when controls overlay is visible so remote D-pad works immediately!
+    // Auto-focus the play/pause button (or progress bar if opened via UP) when controls overlay is visible
     LaunchedEffect(showOverlayControls) {
         if (showOverlayControls && playerErrorMessage == null && !showResumeDialog) {
             delay(50L)
             try {
-                playPauseFocusRequester.requestFocus()
+                if (pendingFocusProgressBar) {
+                    progressBarFocusRequester.requestFocus()
+                    pendingFocusProgressBar = false
+                } else {
+                    playPauseFocusRequester.requestFocus()
+                }
             } catch (_: Exception) {}
         }
     }
 
-    // Auto-hide controls overlay after 5s if activeModalTab is NONE (resets on user interaction)
-    LaunchedEffect(showOverlayControls, activeModalTab, lastInteractionTrigger) {
-        if (showOverlayControls && activeModalTab == PlayerModalTab.NONE) {
-            delay(5000L)
-            showOverlayControls = false
+    // Auto-hide controls overlay after 5s (or 9s if timeline is focused) if activeModalTab is NONE (resets on user interaction)
+    LaunchedEffect(showOverlayControls, activeModalTab, lastInteractionTrigger, isProgressBarFocused, isScrubbing) {
+        if (showOverlayControls && activeModalTab == PlayerModalTab.NONE && !isScrubbing) {
+            val timeout = if (isProgressBarFocused) 9000L else 5000L
+            delay(timeout)
+            if (!isScrubbing) {
+                showOverlayControls = false
+            }
         }
     }
 
@@ -758,6 +877,10 @@ private fun PlayerContent(
             if (playbackEnded) {
                 onBack()
             }
+        } else if (isScrubbing) {
+            isScrubbing = false
+            scrubDeltaMs = 0L
+            scrubRepeatCount = 0
         } else if (showOverlayControls) {
             showOverlayControls = false
         } else {
@@ -1027,6 +1150,7 @@ private fun PlayerContent(
                     }
                     Key.DirectionUp -> {
                         if (!showOverlayControls) {
+                            pendingFocusProgressBar = true
                             showOverlayControls = true
                             notifyInteraction()
                             true
@@ -1041,9 +1165,15 @@ private fun PlayerContent(
                             notifyInteraction()
                             true
                         } else if (activeModalTab == PlayerModalTab.NONE) {
-                            showOverlayControls = false
-                            notifyInteraction()
-                            true
+                            if (isProgressBarFocused) {
+                                notifyInteraction()
+                                playPauseFocusRequester.requestFocus()
+                                true
+                            } else {
+                                showOverlayControls = false
+                                notifyInteraction()
+                                true
+                            }
                         } else {
                             notifyInteraction()
                             false
@@ -1239,12 +1369,12 @@ private fun PlayerContent(
 
         // Cinematic Scrubber HUD Bubble (Apple TV+ / Infuse style)
         AnimatedVisibility(
-            visible = isScrubbing,
+            visible = isScrubbing || isProgressBarFocused,
             enter = fadeIn() + scaleIn(initialScale = 0.94f),
             exit = fadeOut() + scaleOut(targetScale = 0.94f),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = if (showOverlayControls) 124.dp else 48.dp)
+                .padding(bottom = if (showOverlayControls) 130.dp else 48.dp)
         ) {
             Box(
                 modifier = Modifier
@@ -1253,34 +1383,66 @@ private fun PlayerContent(
                     .border(0.75.dp, if (isMonochrome) Color(0x33FFFFFF) else focusColor.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
                     .padding(horizontal = 18.dp, vertical = 10.dp)
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Icon(
-                        imageVector = if (scrubDeltaMs >= 0) Icons.Default.FastForward else Icons.Default.FastRewind,
-                        contentDescription = null,
-                        tint = if (isMonochrome) Color.White else focusColor,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Text(
-                        text = formatSeekDelta(scrubDeltaMs),
-                        color = if (isMonochrome) Color.White else focusColor,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Box(
-                        modifier = Modifier
-                            .width(1.dp)
-                            .height(14.dp)
-                            .background(Color(0x33FFFFFF))
-                    )
-                    Text(
-                        text = formatTime(scrubTargetPosition),
-                        color = Color.White,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
+                if (isScrubbing) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (scrubDeltaMs >= 0) Icons.Default.FastForward else Icons.Default.FastRewind,
+                            contentDescription = null,
+                            tint = if (isMonochrome) Color.White else focusColor,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Text(
+                            text = formatSeekDelta(scrubDeltaMs),
+                            color = if (isMonochrome) Color.White else focusColor,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Box(
+                            modifier = Modifier
+                                .width(1.dp)
+                                .height(14.dp)
+                                .background(Color(0x33FFFFFF))
+                        )
+                        Text(
+                            text = formatTime(scrubTargetPosition),
+                            color = Color.White,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                } else {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Tune,
+                            contentDescription = null,
+                            tint = if (isMonochrome) Color.White else focusColor,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Text(
+                            text = formatTime(currentPosition),
+                            color = if (isMonochrome) Color.White else focusColor,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Box(
+                            modifier = Modifier
+                                .width(1.dp)
+                                .height(14.dp)
+                                .background(Color(0x33FFFFFF))
+                        )
+                        Text(
+                            text = stringResource(R.string.player_timeline_hint),
+                            color = Color.White,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
                 }
             }
         }
@@ -1358,6 +1520,34 @@ private fun PlayerContent(
                             durationMs = duration,
                             isMonochrome = isMonochrome,
                             focusColor = focusColor,
+                            focusRequester = progressBarFocusRequester,
+                            introMarker = introMarker,
+                            creditsMarker = creditsMarker,
+                            onSeekRelative = { deltaSign ->
+                                scrubStep(deltaSign)
+                            },
+                            onSeekTo = { targetMs ->
+                                seekToExactPosition(targetMs)
+                            },
+                            onScrubStart = { targetMs ->
+                                updateScrubPosition(targetMs)
+                            },
+                            onScrubUpdate = { targetMs ->
+                                updateScrubPosition(targetMs)
+                            },
+                            onCommitSeek = {
+                                commitScrub()
+                            },
+                            onFocusChanged = { focused ->
+                                isProgressBarFocused = focused
+                                if (focused) {
+                                    notifyInteraction()
+                                }
+                            },
+                            onDownNavigation = {
+                                notifyInteraction()
+                                playPauseFocusRequester.requestFocus()
+                            },
                             modifier = Modifier.fillMaxWidth()
                         )
 
@@ -1389,6 +1579,7 @@ private fun PlayerContent(
                                     focusColor = focusColor,
                                     focusRequester = rewindFocusRequester,
                                     modifier = Modifier.focusProperties {
+                                        up = progressBarFocusRequester
                                         right = playPauseFocusRequester
                                     }
                                 )
@@ -1415,6 +1606,7 @@ private fun PlayerContent(
                                     focusColor = focusColor,
                                     focusRequester = playPauseFocusRequester,
                                     modifier = Modifier.focusProperties {
+                                        up = progressBarFocusRequester
                                         left = rewindFocusRequester
                                         right = fastForwardFocusRequester
                                     }
@@ -1437,6 +1629,7 @@ private fun PlayerContent(
                                     focusColor = focusColor,
                                     focusRequester = fastForwardFocusRequester,
                                     modifier = Modifier.focusProperties {
+                                        up = progressBarFocusRequester
                                         left = playPauseFocusRequester
                                         right = audioButtonFocusRequester
                                     }
@@ -1447,7 +1640,7 @@ private fun PlayerContent(
                                 // Time Indicator
                                 Text(
                                     text = "${formatTime(displayPos)} / ${formatTime(duration)}",
-                                    color = if (isScrubbing && !isMonochrome) focusColor else Color(0xFFCBD5E1),
+                                    color = if ((isScrubbing || isProgressBarFocused) && !isMonochrome) focusColor else Color(0xFFCBD5E1),
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.SemiBold
                                 )
@@ -1474,6 +1667,7 @@ private fun PlayerContent(
                                     modifier = Modifier
                                         .focusRequester(audioButtonFocusRequester)
                                         .focusProperties {
+                                            up = progressBarFocusRequester
                                             left = fastForwardFocusRequester
                                             right = subtitleButtonFocusRequester
                                         }
@@ -1495,6 +1689,7 @@ private fun PlayerContent(
                                     modifier = Modifier
                                         .focusRequester(subtitleButtonFocusRequester)
                                         .focusProperties {
+                                            up = progressBarFocusRequester
                                             left = audioButtonFocusRequester
                                             right = settingsButtonFocusRequester
                                         }
@@ -1516,6 +1711,7 @@ private fun PlayerContent(
                                     modifier = Modifier
                                         .focusRequester(settingsButtonFocusRequester)
                                         .focusProperties {
+                                            up = progressBarFocusRequester
                                             left = subtitleButtonFocusRequester
                                         }
                                 )
@@ -2198,41 +2394,18 @@ private fun PlayerCustomModalSheet(
                                 )
                             }
 
-                            // 3. Amplificador de Volumen / Diálogos con indicador de decibelios (Kodi Slider Row)
+                            // 3. Amplificador de Volumen / Diálogos con deslizante real interactivo (0 a 20 dB)
                             item {
                                 Spacer(modifier = Modifier.height(10.dp))
-                                val boostSteps = listOf(0, 3, 6, 10, 15)
-                                val currentIdx = boostSteps.indexOf(audioVolumeBoostDb).let { if (it >= 0) it else 0 }
-                                val boostLabel = when (audioVolumeBoostDb) {
-                                    3 -> "+3 dB"
-                                    6 -> "+6 dB"
-                                    10 -> "+10 dB"
-                                    15 -> "+15 dB"
-                                    else -> "0 dB (${stringResource(R.string.player_volume_boost_original)})"
-                                }
-                                KodiAudioSliderRow(
+                                TvAudioVolumeSliderRow(
                                     title = stringResource(R.string.player_volume_boost),
                                     subtitle = stringResource(R.string.player_volume_boost_desc),
-                                    currentValueLabel = boostLabel,
-                                    progressFraction = currentIdx.toFloat() / (boostSteps.size - 1),
-                                    canDecrease = currentIdx > 0,
-                                    canIncrease = currentIdx < boostSteps.size - 1,
-                                    icon = Icons.AutoMirrored.Filled.VolumeUp,
+                                    currentDb = audioVolumeBoostDb,
+                                    maxDb = 20,
                                     isMonochrome = isMonochrome,
                                     focusColor = focusColor,
-                                    onDecrease = {
-                                        if (currentIdx > 0) {
-                                            onSelectVolumeBoost(boostSteps[currentIdx - 1])
-                                        }
-                                    },
-                                    onIncrease = {
-                                        if (currentIdx < boostSteps.size - 1) {
-                                            onSelectVolumeBoost(boostSteps[currentIdx + 1])
-                                        }
-                                    },
-                                    onCycleNext = {
-                                        val nextIdx = (currentIdx + 1) % boostSteps.size
-                                        onSelectVolumeBoost(boostSteps[nextIdx])
+                                    onValueChange = { db ->
+                                        onSelectVolumeBoost(db)
                                     }
                                 )
                             }
@@ -2584,29 +2757,51 @@ private fun TvToggleOptionRow(
 
 @ExperimentalTvMaterial3Api
 @Composable
-private fun KodiAudioSliderRow(
+private fun TvAudioVolumeSliderRow(
     title: String,
     subtitle: String,
-    currentValueLabel: String,
-    progressFraction: Float, // 0f to 1f
-    canDecrease: Boolean,
-    canIncrease: Boolean,
-    icon: ImageVector? = null,
+    currentDb: Int,
+    maxDb: Int = 20,
     isMonochrome: Boolean = false,
     focusColor: Color = Color.White,
     focusRequester: FocusRequester? = null,
-    onDecrease: () -> Unit,
-    onIncrease: () -> Unit,
-    onCycleNext: () -> Unit = onIncrease
+    onValueChange: (Int) -> Unit
 ) {
     var isFocused by remember { mutableStateOf(false) }
+    val fraction = (currentDb.toFloat() / maxDb.toFloat()).coerceIn(0f, 1f)
+    val animatedFraction by animateFloatAsState(
+        targetValue = fraction,
+        animationSpec = tween(durationMillis = 100, easing = LinearOutSlowInEasing),
+        label = "volume_slider_fraction"
+    )
+
+    val isBoosted = currentDb > 0
+
+    val badgeText = when (currentDb) {
+        0 -> stringResource(R.string.player_volume_boost_original)
+        in 1..3 -> "+$currentDb dB • ${stringResource(R.string.player_volume_boost_low)}"
+        in 4..6 -> "+$currentDb dB • ${stringResource(R.string.player_volume_boost_medium)}"
+        in 7..10 -> "+$currentDb dB • ${stringResource(R.string.player_volume_boost_high)}"
+        else -> "+$currentDb dB • ${stringResource(R.string.player_volume_boost_max)}"
+    }
+
+    val iconVector = when {
+        currentDb == 0 -> Icons.AutoMirrored.Filled.VolumeDown
+        else -> Icons.AutoMirrored.Filled.VolumeUp
+    }
 
     Surface(
-        onClick = onCycleNext,
-        shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(12.dp)),
+        onClick = {
+            // Un toque en el centro alterna entre apagado (0 dB) y realce equilibrado (+6 dB)
+            val nextDb = if (currentDb == 0) 6 else 0
+            onValueChange(nextDb)
+        },
+        shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(14.dp)),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1.02f),
         colors = ClickableSurfaceDefaults.colors(
-            containerColor = if (progressFraction > 0f) (if (isMonochrome) Color(0x2EFFFFFF) else focusColor.copy(alpha = 0.20f)) else Color(0x14FFFFFF),
+            containerColor = if (isBoosted) {
+                if (isMonochrome) Color(0x2EFFFFFF) else focusColor.copy(alpha = 0.20f)
+            } else Color(0x14FFFFFF),
             focusedContainerColor = if (isMonochrome) Color(0x40FFFFFF) else focusColor.copy(alpha = 0.35f),
             pressedContainerColor = if (isMonochrome) Color(0x55FFFFFF) else focusColor.copy(alpha = 0.45f)
         ),
@@ -2614,16 +2809,18 @@ private fun KodiAudioSliderRow(
             border = Border(
                 border = BorderStroke(
                     1.dp,
-                    if (progressFraction > 0f) (if (isMonochrome) Color(0x44FFFFFF) else focusColor.copy(alpha = 0.35f)) else Color(0x18FFFFFF)
+                    if (isBoosted) {
+                        if (isMonochrome) Color(0x44FFFFFF) else focusColor.copy(alpha = 0.35f)
+                    } else Color(0x18FFFFFF)
                 ),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(14.dp)
             ),
             focusedBorder = Border(
                 border = BorderStroke(
                     2.dp,
                     if (isMonochrome) Color.White else focusColor
                 ),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(14.dp)
             )
         ),
         modifier = Modifier
@@ -2634,21 +2831,26 @@ private fun KodiAudioSliderRow(
                 if (event.type == KeyEventType.KeyDown) {
                     when (event.key) {
                         Key.DirectionLeft -> {
-                            if (canDecrease) {
-                                onDecrease()
-                                true
-                            } else {
-                                false
+                            val newDb = (currentDb - 1).coerceAtLeast(0)
+                            if (newDb != currentDb) {
+                                onValueChange(newDb)
                             }
+                            // IMPORTANTE: Devolvemos true SIEMPRE para que el evento no suba
+                            // al contenedor padre y no cierre el panel lateral del reproductor.
+                            true
                         }
                         Key.DirectionRight -> {
-                            if (canIncrease) {
-                                onIncrease()
-                                true
-                            } else {
-                                true
+                            val newDb = (currentDb + 1).coerceAtMost(maxDb)
+                            if (newDb != currentDb) {
+                                onValueChange(newDb)
                             }
+                            true
                         }
+                        else -> false
+                    }
+                } else if (event.type == KeyEventType.KeyUp) {
+                    when (event.key) {
+                        Key.DirectionLeft, Key.DirectionRight -> true
                         else -> false
                     }
                 } else false
@@ -2657,10 +2859,10 @@ private fun KodiAudioSliderRow(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            // Header: Icon + Title + Value Badge
+            // Encabezado: Icono + Título/Subtítulo + Badge de Decibelios
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -2671,16 +2873,14 @@ private fun KodiAudioSliderRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.weight(1f, fill = false)
                 ) {
-                    if (icon != null) {
-                        Icon(
-                            imageVector = icon,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp),
-                            tint = if (progressFraction > 0f) {
-                                if (isMonochrome) Color.White else focusColor
-                            } else Color(0xFF94A3B8)
-                        )
-                    }
+                    Icon(
+                        imageVector = iconVector,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                        tint = if (isBoosted) {
+                            if (isMonochrome) Color.White else focusColor
+                        } else Color(0xFF94A3B8)
+                    )
                     Column {
                         Text(
                             text = title,
@@ -2700,73 +2900,148 @@ private fun KodiAudioSliderRow(
                     }
                 }
 
-                // Decibel / Value Badge
+                // Badge de Decibelios
                 androidx.compose.material3.Surface(
                     shape = RoundedCornerShape(6.dp),
-                    color = if (progressFraction > 0f) {
+                    color = if (isBoosted) {
                         if (isMonochrome) Color.White.copy(alpha = 0.25f) else focusColor.copy(alpha = 0.30f)
                     } else Color(0x1AFFFFFF),
                     border = BorderStroke(
                         1.dp,
-                        if (progressFraction > 0f) {
+                        if (isBoosted) {
                             if (isMonochrome) Color.White.copy(alpha = 0.6f) else focusColor.copy(alpha = 0.7f)
                         } else Color(0x22FFFFFF)
                     )
                 ) {
                     Text(
-                        text = currentValueLabel,
-                        color = if (progressFraction > 0f && !isMonochrome) focusColor else Color.White,
+                        text = if (currentDb == 0) "0 dB" else "+$currentDb dB",
+                        color = if (isBoosted && !isMonochrome) focusColor else Color.White,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                     )
                 }
             }
 
-            // Slider track (Kodi style) with arrow indicators
+            // Deslizante real interactivo con Knob/Punto móvil y flechas laterales
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text(
-                    text = "◀",
-                    fontSize = 11.sp,
-                    color = if (canDecrease) {
-                        if (isFocused) (if (isMonochrome) Color.White else focusColor) else Color.White
-                    } else Color(0x33FFFFFF)
-                )
-
+                // Flecha / Botón Izquierda
                 Box(
                     modifier = Modifier
-                        .weight(1f)
-                        .height(6.dp)
-                        .clip(RoundedCornerShape(3.dp))
-                        .background(Color(0x33FFFFFF))
+                        .size(24.dp)
+                        .clip(CircleShape)
+                        .background(if (isFocused && currentDb > 0) (if (isMonochrome) Color(0x40FFFFFF) else focusColor.copy(alpha = 0.3f)) else Color(0x15FFFFFF)),
+                    contentAlignment = Alignment.Center
                 ) {
-                    val activeColor = if (isMonochrome) Color.White else focusColor
+                    Text(
+                        text = "◀",
+                        fontSize = 10.sp,
+                        color = if (currentDb > 0) {
+                            if (isFocused) (if (isMonochrome) Color.White else focusColor) else Color.White
+                        } else Color(0x33FFFFFF)
+                    )
+                }
+
+                // Pista de la barra con Knob deslizante
+                BoxWithConstraints(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(20.dp),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    val trackWidth = maxWidth
+                    val thumbSize = 16.dp
+                    val availableWidth = (trackWidth - thumbSize).coerceAtLeast(0.dp)
+                    val thumbOffset = availableWidth * animatedFraction
+
+                    // Fondo de la pista (Track inactivo)
                     Box(
                         modifier = Modifier
-                            .fillMaxHeight()
-                            .fillMaxWidth(progressFraction.coerceIn(0f, 1f))
+                            .fillMaxWidth()
+                            .height(6.dp)
                             .clip(RoundedCornerShape(3.dp))
-                            .background(
-                                Brush.horizontalGradient(
-                                    listOf(
-                                        activeColor.copy(alpha = 0.7f),
-                                        activeColor
+                            .background(Color(0x33FFFFFF))
+                    )
+
+                    // Pista activa rellenada
+                    if (animatedFraction > 0f) {
+                        val activeColor = if (isMonochrome) Color.White else focusColor
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(animatedFraction)
+                                .height(6.dp)
+                                .clip(RoundedCornerShape(3.dp))
+                                .background(
+                                    Brush.horizontalGradient(
+                                        listOf(
+                                            activeColor.copy(alpha = 0.65f),
+                                            activeColor
+                                        )
                                     )
                                 )
+                        )
+                    }
+
+                    // Knob/Punto deslizante (Thumb móvil)
+                    Box(
+                        modifier = Modifier
+                            .offset(x = thumbOffset)
+                            .size(thumbSize)
+                            .clip(CircleShape)
+                            .background(
+                                if (isFocused) Color.White else (if (isMonochrome) Color.White else focusColor)
+                            )
+                            .border(
+                                1.5.dp,
+                                if (isFocused) (if (isMonochrome) Color(0xFF0F172A) else focusColor) else Color(0x99FFFFFF),
+                                CircleShape
                             )
                     )
                 }
 
+                // Flecha / Botón Derecha
+                Box(
+                    modifier = Modifier
+                        .size(24.dp)
+                        .clip(CircleShape)
+                        .background(if (isFocused && currentDb < maxDb) (if (isMonochrome) Color(0x40FFFFFF) else focusColor.copy(alpha = 0.3f)) else Color(0x15FFFFFF)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "▶",
+                        fontSize = 10.sp,
+                        color = if (currentDb < maxDb) {
+                            if (isFocused) (if (isMonochrome) Color.White else focusColor) else Color.White
+                        } else Color(0x33FFFFFF)
+                    )
+                }
+            }
+
+            // Sub-etiquetas de escala y ayuda visual
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Text(
-                    text = "▶",
-                    fontSize = 11.sp,
-                    color = if (canIncrease) {
-                        if (isFocused) (if (isMonochrome) Color.White else focusColor) else Color.White
-                    } else Color(0x33FFFFFF)
+                    text = "0 dB",
+                    fontSize = 10.sp,
+                    color = Color(0x66CBD5E1)
+                )
+                Text(
+                    text = if (isFocused) "◄ D-Pad ► para deslizar" else badgeText,
+                    fontSize = 10.sp,
+                    color = if (isFocused) (if (isMonochrome) Color.White else focusColor) else Color(0x88CBD5E1),
+                    fontWeight = if (isFocused) FontWeight.SemiBold else FontWeight.Normal
+                )
+                Text(
+                    text = "+$maxDb dB",
+                    fontSize = 10.sp,
+                    color = Color(0x66CBD5E1)
                 )
             }
         }
@@ -2892,66 +3167,214 @@ private fun TvProgressBar(
     durationMs: Long,
     isMonochrome: Boolean = false,
     focusColor: Color = Color.White,
+    focusRequester: FocusRequester,
+    introMarker: SkipMarker? = null,
+    creditsMarker: SkipMarker? = null,
+    onSeekRelative: (deltaSign: Int) -> Unit,
+    onSeekTo: (targetMs: Long) -> Unit,
+    onScrubStart: (targetMs: Long) -> Unit,
+    onScrubUpdate: (targetMs: Long) -> Unit,
+    onCommitSeek: () -> Unit,
+    onFocusChanged: (Boolean) -> Unit,
+    onDownNavigation: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var isFocused by remember { mutableStateOf(false) }
     val progress = if (durationMs > 0) (currentPositionMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f) else 0f
     val bufferProgress = if (durationMs > 0) (bufferedPositionMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f) else 0f
+
+    val trackHeight by animateDpAsState(
+        targetValue = if (isFocused) 8.dp else 4.dp,
+        animationSpec = tween(durationMillis = 150),
+        label = "trackHeight"
+    )
+    val thumbSize by animateDpAsState(
+        targetValue = if (isFocused) 22.dp else 12.dp,
+        animationSpec = tween(durationMillis = 150),
+        label = "thumbSize"
+    )
+
+    val accessibilityLabel = stringResource(
+        R.string.player_timeline_desc,
+        formatTime(currentPositionMs),
+        formatTime(durationMs)
+    )
 
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(14.dp),
+            .height(36.dp)
+            .focusRequester(focusRequester)
+            .onFocusChanged { focusState ->
+                isFocused = focusState.isFocused
+                onFocusChanged(focusState.isFocused)
+            }
+            .focusProperties {
+                up = FocusRequester.Cancel
+            }
+            .focusable()
+            .onKeyEvent { keyEvent ->
+                if (keyEvent.type != KeyEventType.KeyDown) return@onKeyEvent false
+                when (keyEvent.key) {
+                    Key.DirectionLeft -> {
+                        onSeekRelative(-1)
+                        true
+                    }
+                    Key.DirectionRight -> {
+                        onSeekRelative(+1)
+                        true
+                    }
+                    Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> {
+                        onCommitSeek()
+                        true
+                    }
+                    Key.DirectionDown -> {
+                        onDownNavigation()
+                        true
+                    }
+                    else -> false
+                }
+            }
+            .semantics {
+                contentDescription = accessibilityLabel
+                progressBarRangeInfo = ProgressBarRangeInfo(progress, 0f..1f)
+                setProgress { targetProgress ->
+                    val targetMs = (targetProgress * durationMs).toLong()
+                    onSeekTo(targetMs)
+                    true
+                }
+            }
+            .pointerInput(durationMs) {
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    val width = size.width
+                    if (width > 0 && durationMs > 0) {
+                        val fraction = (down.position.x / width).coerceIn(0f, 1f)
+                        val targetMs = (fraction * durationMs).toLong()
+                        onScrubStart(targetMs)
+                    }
+                    val pointerId = down.id
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        val change = event.changes.firstOrNull { it.id == pointerId } ?: break
+                        if (change.pressed) {
+                            change.consume()
+                            val width = size.width
+                            if (width > 0 && durationMs > 0) {
+                                val fraction = (change.position.x / width).coerceIn(0f, 1f)
+                                val targetMs = (fraction * durationMs).toLong()
+                                onScrubUpdate(targetMs)
+                            }
+                        } else {
+                            change.consume()
+                            onCommitSeek()
+                            break
+                        }
+                    }
+                }
+            },
         contentAlignment = Alignment.CenterStart
     ) {
         // Track Background
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(4.dp)
-                .clip(RoundedCornerShape(2.dp))
+                .height(trackHeight)
+                .clip(RoundedCornerShape(trackHeight / 2))
                 .background(Color(0x33FFFFFF))
-        )
-
-        // Buffer Track
-        Box(
-            modifier = Modifier
-                .fillMaxWidth(bufferProgress)
-                .height(4.dp)
-                .clip(RoundedCornerShape(2.dp))
-                .background(Color(0x55FFFFFF))
-        )
-
-        // Progress Track
-        Box(
-            modifier = Modifier
-                .fillMaxWidth(progress)
-                .height(4.dp)
-                .clip(RoundedCornerShape(2.dp))
-                .background(
-                    if (isMonochrome) {
-                        Brush.horizontalGradient(listOf(Color.White, Color.White))
-                    } else {
-                        Brush.horizontalGradient(
-                            listOf(Color(0xFF22D3EE), focusColor)
-                        )
-                    }
+                .then(
+                    if (isFocused) {
+                        Modifier.border(1.dp, (if (isMonochrome) Color.White else focusColor).copy(alpha = 0.5f), RoundedCornerShape(trackHeight / 2))
+                    } else Modifier
                 )
         )
 
-        // Thumb Dot
-        Box(
-            modifier = Modifier
-                .fillMaxWidth(progress)
-                .height(14.dp),
-            contentAlignment = Alignment.CenterEnd
-        ) {
+        // Intro / Credits Markers
+        if (durationMs > 0) {
+            Canvas(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(trackHeight)
+            ) {
+                introMarker?.let { intro ->
+                    if (intro.showAtMs in 0..durationMs && intro.skipToMs > intro.showAtMs) {
+                        val startX = (intro.showAtMs.toFloat() / durationMs.toFloat()) * size.width
+                        val endX = (intro.skipToMs.toFloat() / durationMs.toFloat()).coerceAtMost(size.width)
+                        drawRect(
+                            color = Color(0xFFFFD54F).copy(alpha = 0.5f),
+                            topLeft = Offset(startX, 0f),
+                            size = Size((endX - startX).coerceAtLeast(3f), size.height)
+                        )
+                    }
+                }
+                creditsMarker?.let { credits ->
+                    if (credits.showAtMs in 0..durationMs) {
+                        val startX = (credits.showAtMs.toFloat() / durationMs.toFloat()) * size.width
+                        drawRect(
+                            color = Color(0xFF64B5F6).copy(alpha = 0.7f),
+                            topLeft = Offset(startX, 0f),
+                            size = Size(4f, size.height)
+                        )
+                    }
+                }
+            }
+        }
+
+        // Buffer Track
+        if (bufferProgress > 0f) {
             Box(
                 modifier = Modifier
-                    .size(11.dp)
-                    .clip(CircleShape)
-                    .background(if (isMonochrome) Color.White else focusColor)
-                    .border(1.dp, Color(0x66000000), CircleShape)
+                    .fillMaxWidth(bufferProgress)
+                    .height(trackHeight)
+                    .clip(RoundedCornerShape(trackHeight / 2))
+                    .background(Color(0x55FFFFFF))
             )
+        }
+
+        // Progress Track
+        if (progress > 0f) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(progress)
+                    .height(trackHeight)
+                    .clip(RoundedCornerShape(trackHeight / 2))
+                    .background(
+                        if (isMonochrome) {
+                            Brush.horizontalGradient(listOf(Color.White, Color.White))
+                        } else {
+                            Brush.horizontalGradient(
+                                listOf(Color(0xFF22D3EE), focusColor)
+                            )
+                        }
+                    )
+            )
+        }
+
+        // Thumb Dot / Playhead Knob
+        Box(
+            modifier = Modifier
+                .graphicsLayer {
+                    val availableWidth = (size.width - thumbSize.toPx()).coerceAtLeast(0f)
+                    translationX = (progress * availableWidth).coerceAtLeast(0f)
+                }
+                .size(thumbSize)
+                .clip(CircleShape)
+                .background(if (isMonochrome) Color.White else focusColor)
+                .border(
+                    width = if (isFocused) 2.5.dp else 1.dp,
+                    color = if (isFocused) Color.White else Color(0x66000000),
+                    shape = CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            if (isFocused) {
+                Box(
+                    modifier = Modifier
+                        .size(6.dp)
+                        .clip(CircleShape)
+                        .background(Color.White)
+                )
+            }
         }
     }
 }
