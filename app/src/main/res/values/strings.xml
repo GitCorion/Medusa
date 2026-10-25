@@ -148,11 +148,11 @@
     <string name="player_no_audio_tracks">No se detectaron pistas de audio adicionales.</string>
     <string name="player_disabled">Desactivados</string>
     <string name="player_playback_speed">Velocidad de Reproducción</string>
-    <string name="player_speed_normal">1.0x (Normal)</string>
+    <string name="player_speed_normal">1.0×</string>
     <string name="player_aspect_ratio">Relación de Aspecto</string>
-    <string name="player_aspect_fit">Ajustar a Pantalla (Proporcional)</string>
-    <string name="player_aspect_zoom">Recortar / Zoom</string>
-    <string name="player_aspect_fill">Estirar / Pantalla Completa</string>
+    <string name="player_aspect_fit">Ajustar</string>
+    <string name="player_aspect_zoom">Zoom</string>
+    <string name="player_aspect_fill">Rellenar</string>
     <string name="player_resume">Reanudar (%1$s)</string>
     <string name="player_from_start">Desde el principio</string>
     <string name="player_subtitle_size">Tamaño de Subtítulos</string>
@@ -160,10 +160,10 @@
     <string name="player_subtitle_size_normal">Normal</string>
     <string name="player_subtitle_size_large">Grande</string>
     <string name="player_subtitle_contrast">Fondo de Contraste</string>
-    <string name="player_subtitle_contrast_off">Desactivado (Solo contorno)</string>
-    <string name="player_subtitle_contrast_on">Activado (Caja translúcida)</string>
-    <string name="player_afr_title">Auto Frame Rate (24p sin tirones)</string>
-    <string name="player_afr_enabled">Activado (Recomendado)</string>
+    <string name="player_subtitle_contrast_off">Desactivado</string>
+    <string name="player_subtitle_contrast_on">Activado</string>
+    <string name="player_afr_title">Auto Frame Rate</string>
+    <string name="player_afr_enabled">Activado</string>
     <string name="player_afr_disabled">Desactivado</string>
 
     <!-- ===================================================================== -->
@@ -452,18 +452,18 @@
     <string name="player_next_episode">Siguiente episodio</string>
     <string name="player_tab_audio">Audio y Sonido</string>
     <string name="player_audio_tracks">Pistas de audio</string>
-    <string name="player_night_mode">Modo Nocturno (Compresor)</string>
+    <string name="player_night_mode">Modo Nocturno</string>
     <string name="player_night_mode_desc">Realza diálogos y atenúa estruendos</string>
     <string name="player_night_mode_off">Desactivado</string>
-    <string name="player_night_mode_soft">Suave • Realce de diálogos (+4 dB)</string>
-    <string name="player_night_mode_strong">Fuerte • Noche profunda (+8 dB)</string>
+    <string name="player_night_mode_soft">Suave</string>
+    <string name="player_night_mode_strong">Fuerte</string>
     <string name="player_volume_boost">Amplificador de Volumen</string>
     <string name="player_volume_boost_desc">Aumenta la ganancia para pistas 5.1/7.1 bajas</string>
-    <string name="player_volume_boost_original">100% • Original (0 dB)</string>
-    <string name="player_volume_boost_low">140% • Realce leve (+3 dB)</string>
-    <string name="player_volume_boost_medium">200% • Realce medio (+6 dB)</string>
-    <string name="player_volume_boost_high">300% • Realce fuerte (+10 dB)</string>
-    <string name="player_volume_boost_max">500% • Realce máximo (+15 dB)</string>
+    <string name="player_volume_boost_original">0 dB</string>
+    <string name="player_volume_boost_low">+3 dB</string>
+    <string name="player_volume_boost_medium">+6 dB</string>
+    <string name="player_volume_boost_high">+10 dB</string>
+    <string name="player_volume_boost_max">+15 dB</string>
     <string name="player_tab_subtitles">Subtítulos</string>
     <string name="player_tab_settings">Ajustes de Reproducción</string>
     <string name="player_decoder_unsupported">El dispositivo no soporta este formato de vídeo o audio (HEVC/HDR)</string>
@@ -478,9 +478,9 @@
     <string name="player_language_unknown">Desconocido</string>
     <string name="player_audio_passthrough">Salida de audio / Passthrough</string>
     <string name="player_audio_passthrough_desc">Control de salida HDMI / decodificación</string>
-    <string name="player_audio_passthrough_off">Desactivado (PCM - Sin silencios)</string>
-    <string name="player_audio_passthrough_auto">Automático (HDMI)</string>
-    <string name="player_audio_passthrough_direct">Passthrough Directo (Receptor AV)</string>
+    <string name="player_audio_passthrough_off">PCM</string>
+    <string name="player_audio_passthrough_auto">Automático</string>
+    <string name="player_audio_passthrough_direct">Passthrough</string>
     <string name="player_audio_fallback_toast">Audio incompatible con el televisor. Cambiado automáticamente a decodificación PCM.</string>
     <string name="player_audio_track_switched_toast">Cambiando automáticamente a pista de audio compatible: %1$s</string>
     <string name="player_modal_close">Cerrar menú</string>
@@ -488,9 +488,9 @@
     <string name="player_timeline_desc">Línea de tiempo, %1$s de %2$s</string>
     <string name="player_timeline_hint">◀ ▶ Buscar punto exacto • OK Confirmar</string>
     <string name="settings_section_audio_passthrough">Salida de audio / Passthrough</string>
-    <string name="settings_passthrough_off">PCM (Compatible)</string>
+    <string name="settings_passthrough_off">PCM</string>
     <string name="settings_passthrough_auto">Automático</string>
-    <string name="settings_passthrough_direct">Directo (AVR)</string>
+    <string name="settings_passthrough_direct">Directo</string>
 
     <!-- Actualizaciones -->
     <string name="update_downloading_progress">Descargando actualización: %1$d%%</string>

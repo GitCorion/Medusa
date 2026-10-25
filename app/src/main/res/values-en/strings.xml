@@ -148,11 +148,11 @@
     <string name="player_no_audio_tracks">No additional audio tracks were detected.</string>
     <string name="player_disabled">Disabled</string>
     <string name="player_playback_speed">Playback Speed</string>
-    <string name="player_speed_normal">1.0x (Normal)</string>
+    <string name="player_speed_normal">1.0×</string>
     <string name="player_aspect_ratio">Aspect Ratio</string>
-    <string name="player_aspect_fit">Fit to Screen (Proportional)</string>
-    <string name="player_aspect_zoom">Crop / Zoom</string>
-    <string name="player_aspect_fill">Stretch / Full Screen</string>
+    <string name="player_aspect_fit">Fit</string>
+    <string name="player_aspect_zoom">Zoom</string>
+    <string name="player_aspect_fill">Fill</string>
     <string name="player_resume">Resume (%1$s)</string>
     <string name="player_from_start">From the beginning</string>
     <string name="player_subtitle_size">Subtitle Size</string>
@@ -160,10 +160,10 @@
     <string name="player_subtitle_size_normal">Normal</string>
     <string name="player_subtitle_size_large">Large</string>
     <string name="player_subtitle_contrast">Contrast Background</string>
-    <string name="player_subtitle_contrast_off">Disabled (Outline only)</string>
-    <string name="player_subtitle_contrast_on">Enabled (Translucent box)</string>
-    <string name="player_afr_title">Auto Frame Rate (Judder-free 24p)</string>
-    <string name="player_afr_enabled">Enabled (Recommended)</string>
+    <string name="player_subtitle_contrast_off">Disabled</string>
+    <string name="player_subtitle_contrast_on">Enabled</string>
+    <string name="player_afr_title">Auto Frame Rate</string>
+    <string name="player_afr_enabled">Enabled</string>
     <string name="player_afr_disabled">Disabled</string>
 
     <!-- ===================================================================== -->
@@ -465,9 +465,9 @@
     <string name="player_language_unknown">Unknown</string>
     <string name="player_audio_passthrough">Audio Output / Passthrough</string>
     <string name="player_audio_passthrough_desc">HDMI output &amp; decoding control</string>
-    <string name="player_audio_passthrough_off">Disabled (PCM - Guaranteed audio)</string>
-    <string name="player_audio_passthrough_auto">Automatic (HDMI)</string>
-    <string name="player_audio_passthrough_direct">Direct Passthrough (AV Receiver)</string>
+    <string name="player_audio_passthrough_off">PCM</string>
+    <string name="player_audio_passthrough_auto">Automatic</string>
+    <string name="player_audio_passthrough_direct">Passthrough</string>
     <string name="player_audio_fallback_toast">Incompatible audio format. Automatically switched to PCM decoding.</string>
     <string name="player_audio_track_switched_toast">Switched automatically to compatible audio track: %1$s</string>
     <string name="player_modal_close">Close menu</string>
@@ -475,9 +475,9 @@
     <string name="player_timeline_desc">Timeline, %1$s of %2$s</string>
     <string name="player_timeline_hint">◀ ▶ Seek exact point • OK Confirm</string>
     <string name="settings_section_audio_passthrough">Audio Output / Passthrough</string>
-    <string name="settings_passthrough_off">PCM (Compatible)</string>
+    <string name="settings_passthrough_off">PCM</string>
     <string name="settings_passthrough_auto">Automatic</string>
-    <string name="settings_passthrough_direct">Direct (AVR)</string>
+    <string name="settings_passthrough_direct">Direct</string>
 
     <!-- Updates -->
     <string name="update_downloading_progress">Downloading update: %1$d%%</string>

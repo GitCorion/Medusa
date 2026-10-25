@@ -112,14 +112,19 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.Key
@@ -193,8 +198,122 @@ private data class TrackItem(
     val trackIndex: Int,
     val label: String,
     val language: String,
+    val flagEmoji: String? = null,
     val isSelected: Boolean
 )
+
+private fun Modifier.monochromeFilter(isMonochrome: Boolean): Modifier = if (isMonochrome) {
+    this.drawWithContent {
+        val paint = Paint().apply {
+            val cm = ColorMatrix().apply { setToSaturation(0f) }
+            asFrameworkPaint().colorFilter = android.graphics.ColorMatrixColorFilter(cm.values)
+        }
+        drawIntoCanvas { canvas ->
+            canvas.saveLayer(Rect(0f, 0f, size.width, size.height), paint)
+            drawContent()
+            canvas.restore()
+        }
+    }
+} else {
+    this
+}
+
+private fun getLanguageFlag(language: String?): String? {
+    if (language.isNullOrBlank() || language.equals("und", ignoreCase = true)) return null
+    val code = language.lowercase().trim()
+    return when {
+        code == "es" || code == "spa" || code.startsWith("es-es") -> "🇪🇸"
+        code == "es-419" || code == "es-la" || code == "es-mx" || code.startsWith("es-") -> "🇲🇽"
+        code == "en" || code == "eng" || code.startsWith("en-us") -> "🇺🇸"
+        code == "en-gb" || code == "en-uk" -> "🇬🇧"
+        code == "fr" || code == "fra" || code == "fre" -> "🇫🇷"
+        code == "de" || code == "deu" || code == "ger" -> "🇩🇪"
+        code == "it" || code == "ita" -> "🇮🇹"
+        code == "pt" || code == "por" || code.startsWith("pt-pt") -> "🇵🇹"
+        code == "pt-br" -> "🇧🇷"
+        code == "ja" || code == "jpn" -> "🇯🇵"
+        code == "ko" || code == "kor" -> "🇰🇷"
+        code == "zh" || code == "chi" || code == "zho" || code.startsWith("zh-") -> "🇨🇳"
+        code == "ru" || code == "rus" -> "🇷🇺"
+        code == "uk" || code == "ukr" -> "🇺🇦"
+        code == "ca" || code == "cat" || code == "gl" || code == "glg" || code == "eu" || code == "eus" || code == "baq" -> "🇪🇸"
+        code == "nl" || code == "nld" || code == "dut" -> "🇳🇱"
+        code == "pl" || code == "pol" -> "🇵🇱"
+        code == "sv" || code == "swe" -> "🇸🇪"
+        code == "da" || code == "dan" -> "🇩🇰"
+        code == "no" || code == "nor" || code == "nob" || code == "nno" -> "🇳🇴"
+        code == "fi" || code == "fin" -> "🇫🇮"
+        code == "el" || code == "ell" || code == "gre" -> "🇬🇷"
+        code == "tr" || code == "tur" -> "🇹🇷"
+        code == "ar" || code == "ara" -> "🇸🇦"
+        code == "hi" || code == "hin" -> "🇮🇳"
+        code == "he" || code == "heb" -> "🇮🇱"
+        code == "cs" || code == "ces" || code == "cze" -> "🇨🇿"
+        code == "hu" || code == "hun" -> "🇭🇺"
+        code == "ro" || code == "ron" || code == "rum" -> "🇷🇴"
+        code == "th" || code == "tha" -> "🇹🇭"
+        code == "vi" || code == "vie" -> "🇻🇳"
+        code == "id" || code == "ind" -> "🇮🇩"
+        code.length == 2 && code.all { it in 'a'..'z' } -> {
+            val first = Character.toChars(0x1F1E6 + (code[0] - 'a'))
+            val second = Character.toChars(0x1F1E6 + (code[1] - 'a'))
+            String(first) + String(second)
+        }
+        else -> null
+    }
+}
+
+private fun getLanguageDisplayName(langCode: String?, rawLabel: String?): String {
+    if (!rawLabel.isNullOrBlank() && !rawLabel.startsWith("Track", ignoreCase = true) && !rawLabel.startsWith("Pista", ignoreCase = true)) {
+        val cleaned = rawLabel.replace(Regex("\\s*\\([^)]*\\)"), "").trim()
+        if (cleaned.isNotBlank()) return cleaned
+    }
+    if (langCode.isNullOrBlank() || langCode.equals("und", ignoreCase = true)) {
+        return "Desconocido"
+    }
+    val code = langCode.lowercase().trim()
+    return when (code) {
+        "es", "spa" -> "Español"
+        "es-419", "es-la", "es-mx" -> "Español Latino"
+        "en", "eng" -> "Inglés"
+        "fr", "fra", "fre" -> "Francés"
+        "de", "deu", "ger" -> "Alemán"
+        "it", "ita" -> "Italiano"
+        "pt", "por" -> "Portugués"
+        "pt-br" -> "Portugués Brasil"
+        "ja", "jpn" -> "Japonés"
+        "ko", "kor" -> "Coreano"
+        "zh", "chi", "zho" -> "Chino"
+        "ru", "rus" -> "Ruso"
+        "ca", "cat" -> "Catalán"
+        "gl", "glg" -> "Gallego"
+        "eu", "eus", "baq" -> "Vasco"
+        "nl", "nld", "dut" -> "Holandés"
+        "pl", "pol" -> "Polaco"
+        "sv", "swe" -> "Sueco"
+        "da", "dan" -> "Danés"
+        "no", "nor", "nob" -> "Noruego"
+        "fi", "fin" -> "Finés"
+        "el", "ell", "gre" -> "Griego"
+        "tr", "tur" -> "Turco"
+        "ar", "ara" -> "Árabe"
+        "hi", "hin" -> "Hindi"
+        "he", "heb" -> "Hebreo"
+        "uk", "ukr" -> "Ucraniano"
+        "cs", "ces", "cze" -> "Checo"
+        "hu", "hun" -> "Húngaro"
+        "ro", "ron", "rum" -> "Rumano"
+        else -> {
+            try {
+                val loc = Locale.forLanguageTag(code)
+                val display = loc.getDisplayLanguage(Locale("es"))
+                if (!display.isNullOrBlank()) display.replaceFirstChar { it.uppercase() } else code.uppercase()
+            } catch (_: Exception) {
+                code.uppercase()
+            }
+        }
+    }
+}
 
 @OptIn(UnstableApi::class)
 @ExperimentalTvMaterial3Api
@@ -1735,6 +1854,7 @@ private fun PlayerContent(
                 subtitleSize = subtitleSize,
                 subtitleBackground = subtitleBackground,
                 autoFrameRateEnabled = autoFrameRateEnabled,
+                buttonStyle = buttonStyle,
                 onSelectAudioTrack = { track ->
                     notifyInteraction()
                     selectAudioTrackInExoPlayer(exoPlayer, track)
@@ -2202,6 +2322,7 @@ private fun PlayerCustomModalSheet(
     subtitleSize: String = SUBTITLE_SIZE_NORMAL,
     subtitleBackground: Boolean = false,
     autoFrameRateEnabled: Boolean = false,
+    buttonStyle: String = BUTTON_STYLE_ICONS_AND_TEXT,
     onSelectAudioTrack: (TrackItem) -> Unit,
     onSelectSubtitleTrack: (TrackItem?) -> Unit,
     onSelectSpeed: (Float) -> Unit,
@@ -2363,6 +2484,9 @@ private fun PlayerCustomModalSheet(
                                     TrackOptionItem(
                                         label = track.label,
                                         isSelected = track.isSelected,
+                                        flagEmoji = track.flagEmoji,
+                                        fallbackIcon = Icons.Default.Audiotrack,
+                                        buttonStyle = buttonStyle,
                                         isMonochrome = isMonochrome,
                                         focusColor = focusColor,
                                         focusContent = focusContent,
@@ -2381,8 +2505,9 @@ private fun PlayerCustomModalSheet(
                                 val isNightModeActive = nightModeAudio > 0
                                 TvToggleOptionRow(
                                     title = stringResource(R.string.player_night_mode),
-                                    subtitle = stringResource(R.string.player_night_mode_desc),
+                                    subtitle = null,
                                     icon = Icons.Default.Bedtime,
+                                    buttonStyle = buttonStyle,
                                     isChecked = isNightModeActive,
                                     onToggle = { enable ->
                                         onSelectNightMode(if (enable) 1 else 0)
@@ -2399,9 +2524,9 @@ private fun PlayerCustomModalSheet(
                                 Spacer(modifier = Modifier.height(10.dp))
                                 TvAudioVolumeSliderRow(
                                     title = stringResource(R.string.player_volume_boost),
-                                    subtitle = stringResource(R.string.player_volume_boost_desc),
                                     currentDb = audioVolumeBoostDb,
                                     maxDb = 20,
+                                    buttonStyle = buttonStyle,
                                     isMonochrome = isMonochrome,
                                     focusColor = focusColor,
                                     onValueChange = { db ->
@@ -2418,6 +2543,7 @@ private fun PlayerCustomModalSheet(
                                     label = stringResource(R.string.player_disabled),
                                     isSelected = isSubDisabled,
                                     icon = Icons.Default.SubtitlesOff,
+                                    buttonStyle = buttonStyle,
                                     isMonochrome = isMonochrome,
                                     focusColor = focusColor,
                                     focusContent = focusContent,
@@ -2437,6 +2563,9 @@ private fun PlayerCustomModalSheet(
                                 TrackOptionItem(
                                     label = track.label,
                                     isSelected = track.isSelected,
+                                    flagEmoji = track.flagEmoji,
+                                    fallbackIcon = Icons.Default.Subtitles,
+                                    buttonStyle = buttonStyle,
                                     isMonochrome = isMonochrome,
                                     focusColor = focusColor,
                                     focusContent = focusContent,
@@ -2453,6 +2582,7 @@ private fun PlayerCustomModalSheet(
                                 TvSegmentedControlRow(
                                     title = stringResource(R.string.player_subtitle_size),
                                     icon = Icons.Default.Subtitles,
+                                    buttonStyle = buttonStyle,
                                     options = listOf(SUBTITLE_SIZE_SMALL, SUBTITLE_SIZE_NORMAL, SUBTITLE_SIZE_LARGE),
                                     selectedOption = subtitleSize,
                                     optionLabel = { sizeVal ->
@@ -2474,6 +2604,7 @@ private fun PlayerCustomModalSheet(
                                 Spacer(modifier = Modifier.height(2.dp))
                                 TvSegmentedControlRow(
                                     title = stringResource(R.string.player_subtitle_contrast),
+                                    buttonStyle = buttonStyle,
                                     options = listOf(false, true),
                                     selectedOption = subtitleBackground,
                                     optionLabel = { bg ->
@@ -2493,6 +2624,7 @@ private fun PlayerCustomModalSheet(
                                 TvSegmentedControlRow(
                                     title = stringResource(R.string.player_playback_speed),
                                     icon = Icons.Default.Tune,
+                                    buttonStyle = buttonStyle,
                                     options = listOf(0.75f, 1.0f, 1.25f, 1.5f, 2.0f),
                                     selectedOption = currentSpeed,
                                     optionLabel = { spd ->
@@ -2511,6 +2643,7 @@ private fun PlayerCustomModalSheet(
                                 Spacer(modifier = Modifier.height(4.dp))
                                 TvSegmentedControlRow(
                                     title = stringResource(R.string.player_aspect_ratio),
+                                    buttonStyle = buttonStyle,
                                     options = listOf(
                                         AspectRatioFrameLayout.RESIZE_MODE_FIT,
                                         AspectRatioFrameLayout.RESIZE_MODE_ZOOM,
@@ -2536,7 +2669,8 @@ private fun PlayerCustomModalSheet(
                                 Spacer(modifier = Modifier.height(4.dp))
                                 TvSegmentedControlRow(
                                     title = stringResource(R.string.player_afr_title),
-                                    subtitle = "Sincroniza la tasa de refresco (Hz) de la TV",
+                                    subtitle = null,
+                                    buttonStyle = buttonStyle,
                                     options = listOf(false, true),
                                     selectedOption = autoFrameRateEnabled,
                                     optionLabel = { afr ->
@@ -2564,12 +2698,18 @@ private fun TrackOptionItem(
     label: String,
     isSelected: Boolean,
     icon: ImageVector? = null,
+    flagEmoji: String? = null,
+    fallbackIcon: ImageVector? = null,
+    buttonStyle: String = BUTTON_STYLE_ICONS_AND_TEXT,
     isMonochrome: Boolean = false,
     focusColor: Color = Color.White,
     focusContent: Color = Color(0xFF0F172A),
     focusRequester: FocusRequester? = null,
     onClick: () -> Unit
 ) {
+    val showIcons = buttonStyle != BUTTON_STYLE_TEXT_ONLY
+    val showText = buttonStyle != BUTTON_STYLE_ICONS_ONLY
+
     Surface(
         onClick = onClick,
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
@@ -2608,21 +2748,38 @@ private fun TrackOptionItem(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 modifier = Modifier.weight(1f, fill = false)
             ) {
-                if (icon != null) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp),
-                        tint = if (isSelected) (if (isMonochrome) Color.White else focusColor) else Color(0xFF94A3B8)
+                if (showIcons) {
+                    if (!flagEmoji.isNullOrBlank()) {
+                        Text(
+                            text = flagEmoji,
+                            fontSize = if (!showText) 20.sp else 16.sp,
+                            modifier = Modifier.monochromeFilter(isMonochrome)
+                        )
+                    } else if (icon != null) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                            tint = if (isSelected) (if (isMonochrome) Color.White else focusColor) else Color(0xFF94A3B8)
+                        )
+                    } else if (fallbackIcon != null) {
+                        Icon(
+                            imageVector = fallbackIcon,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                            tint = if (isSelected) (if (isMonochrome) Color.White else focusColor) else Color(0xFF94A3B8)
+                        )
+                    }
+                }
+                if (showText) {
+                    Text(
+                        text = label,
+                        fontSize = 13.sp,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
-                Text(
-                    text = label,
-                    fontSize = 13.sp,
-                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
             }
 
             if (isSelected) {
@@ -2643,6 +2800,7 @@ private fun TvToggleOptionRow(
     title: String,
     subtitle: String? = null,
     icon: ImageVector? = null,
+    buttonStyle: String = BUTTON_STYLE_ICONS_AND_TEXT,
     isChecked: Boolean,
     onToggle: (Boolean) -> Unit,
     isMonochrome: Boolean = false,
@@ -2650,6 +2808,7 @@ private fun TvToggleOptionRow(
     focusContent: Color = Color(0xFF0F172A),
     firstFocusRequester: FocusRequester? = null
 ) {
+    val showIcons = buttonStyle != BUTTON_STYLE_TEXT_ONLY
     var isFocused by remember { mutableStateOf(false) }
 
     Surface(
@@ -2694,7 +2853,7 @@ private fun TvToggleOptionRow(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 modifier = Modifier.weight(1f, fill = false)
             ) {
-                if (icon != null) {
+                if (showIcons && icon != null) {
                     Icon(
                         imageVector = icon,
                         contentDescription = null,
@@ -2759,14 +2918,15 @@ private fun TvToggleOptionRow(
 @Composable
 private fun TvAudioVolumeSliderRow(
     title: String,
-    subtitle: String,
     currentDb: Int,
     maxDb: Int = 20,
+    buttonStyle: String = BUTTON_STYLE_ICONS_AND_TEXT,
     isMonochrome: Boolean = false,
     focusColor: Color = Color.White,
     focusRequester: FocusRequester? = null,
     onValueChange: (Int) -> Unit
 ) {
+    val showIcons = buttonStyle != BUTTON_STYLE_TEXT_ONLY
     var isFocused by remember { mutableStateOf(false) }
     val fraction = (currentDb.toFloat() / maxDb.toFloat()).coerceIn(0f, 1f)
     val animatedFraction by animateFloatAsState(
@@ -2777,14 +2937,6 @@ private fun TvAudioVolumeSliderRow(
 
     val isBoosted = currentDb > 0
 
-    val badgeText = when (currentDb) {
-        0 -> stringResource(R.string.player_volume_boost_original)
-        in 1..3 -> "+$currentDb dB • ${stringResource(R.string.player_volume_boost_low)}"
-        in 4..6 -> "+$currentDb dB • ${stringResource(R.string.player_volume_boost_medium)}"
-        in 7..10 -> "+$currentDb dB • ${stringResource(R.string.player_volume_boost_high)}"
-        else -> "+$currentDb dB • ${stringResource(R.string.player_volume_boost_max)}"
-    }
-
     val iconVector = when {
         currentDb == 0 -> Icons.AutoMirrored.Filled.VolumeDown
         else -> Icons.AutoMirrored.Filled.VolumeUp
@@ -2792,7 +2944,6 @@ private fun TvAudioVolumeSliderRow(
 
     Surface(
         onClick = {
-            // Un toque en el centro alterna entre apagado (0 dB) y realce equilibrado (+6 dB)
             val nextDb = if (currentDb == 0) 6 else 0
             onValueChange(nextDb)
         },
@@ -2835,8 +2986,6 @@ private fun TvAudioVolumeSliderRow(
                             if (newDb != currentDb) {
                                 onValueChange(newDb)
                             }
-                            // IMPORTANTE: Devolvemos true SIEMPRE para que el evento no suba
-                            // al contenedor padre y no cierre el panel lateral del reproductor.
                             true
                         }
                         Key.DirectionRight -> {
@@ -2862,7 +3011,7 @@ private fun TvAudioVolumeSliderRow(
                 .padding(horizontal = 14.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            // Encabezado: Icono + Título/Subtítulo + Badge de Decibelios
+            // Header: Icon + Title + Decibels Badge
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -2873,31 +3022,24 @@ private fun TvAudioVolumeSliderRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.weight(1f, fill = false)
                 ) {
-                    Icon(
-                        imageVector = iconVector,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp),
-                        tint = if (isBoosted) {
-                            if (isMonochrome) Color.White else focusColor
-                        } else Color(0xFF94A3B8)
-                    )
-                    Column {
-                        Text(
-                            text = title,
-                            color = Color.White,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Text(
-                            text = subtitle,
-                            color = Color(0x88CBD5E1),
-                            fontSize = 11.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                    if (showIcons) {
+                        Icon(
+                            imageVector = iconVector,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                            tint = if (isBoosted) {
+                                if (isMonochrome) Color.White else focusColor
+                            } else Color(0xFF94A3B8)
                         )
                     }
+                    Text(
+                        text = title,
+                        color = Color.White,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
 
                 // Badge de Decibelios
@@ -2923,13 +3065,12 @@ private fun TvAudioVolumeSliderRow(
                 }
             }
 
-            // Deslizante real interactivo con Knob/Punto móvil y flechas laterales
+            // Slider with interactive thumb
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Flecha / Botón Izquierda
                 Box(
                     modifier = Modifier
                         .size(24.dp)
@@ -2946,7 +3087,6 @@ private fun TvAudioVolumeSliderRow(
                     )
                 }
 
-                // Pista de la barra con Knob deslizante
                 BoxWithConstraints(
                     modifier = Modifier
                         .weight(1f)
@@ -2958,7 +3098,6 @@ private fun TvAudioVolumeSliderRow(
                     val availableWidth = (trackWidth - thumbSize).coerceAtLeast(0.dp)
                     val thumbOffset = availableWidth * animatedFraction
 
-                    // Fondo de la pista (Track inactivo)
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -2967,7 +3106,6 @@ private fun TvAudioVolumeSliderRow(
                             .background(Color(0x33FFFFFF))
                     )
 
-                    // Pista activa rellenada
                     if (animatedFraction > 0f) {
                         val activeColor = if (isMonochrome) Color.White else focusColor
                         Box(
@@ -2986,7 +3124,6 @@ private fun TvAudioVolumeSliderRow(
                         )
                     }
 
-                    // Knob/Punto deslizante (Thumb móvil)
                     Box(
                         modifier = Modifier
                             .offset(x = thumbOffset)
@@ -3003,7 +3140,6 @@ private fun TvAudioVolumeSliderRow(
                     )
                 }
 
-                // Flecha / Botón Derecha
                 Box(
                     modifier = Modifier
                         .size(24.dp)
@@ -3021,7 +3157,7 @@ private fun TvAudioVolumeSliderRow(
                 }
             }
 
-            // Sub-etiquetas de escala y ayuda visual
+            // Clean scale bounds
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -3031,12 +3167,6 @@ private fun TvAudioVolumeSliderRow(
                     text = "0 dB",
                     fontSize = 10.sp,
                     color = Color(0x66CBD5E1)
-                )
-                Text(
-                    text = if (isFocused) "◄ D-Pad ► para deslizar" else badgeText,
-                    fontSize = 10.sp,
-                    color = if (isFocused) (if (isMonochrome) Color.White else focusColor) else Color(0x88CBD5E1),
-                    fontWeight = if (isFocused) FontWeight.SemiBold else FontWeight.Normal
                 )
                 Text(
                     text = "+$maxDb dB",
@@ -3054,6 +3184,7 @@ private fun <T> TvSegmentedControlRow(
     title: String,
     subtitle: String? = null,
     icon: ImageVector? = null,
+    buttonStyle: String = BUTTON_STYLE_ICONS_AND_TEXT,
     options: List<T>,
     selectedOption: T,
     optionLabel: @Composable (T) -> String,
@@ -3064,6 +3195,8 @@ private fun <T> TvSegmentedControlRow(
     firstFocusRequester: FocusRequester? = null,
     modifier: Modifier = Modifier
 ) {
+    val showIcons = buttonStyle != BUTTON_STYLE_TEXT_ONLY
+
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -3078,7 +3211,7 @@ private fun <T> TvSegmentedControlRow(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            if (icon != null) {
+            if (showIcons && icon != null) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
@@ -3200,7 +3333,7 @@ private fun TvProgressBar(
         formatTime(durationMs)
     )
 
-    Box(
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
             .height(36.dp)
@@ -3351,12 +3484,10 @@ private fun TvProgressBar(
         }
 
         // Thumb Dot / Playhead Knob
+        val availableWidth = (maxWidth - thumbSize).coerceAtLeast(0.dp)
         Box(
             modifier = Modifier
-                .graphicsLayer {
-                    val availableWidth = (size.width - thumbSize.toPx()).coerceAtLeast(0f)
-                    translationX = (progress * availableWidth).coerceAtLeast(0f)
-                }
+                .offset(x = availableWidth * progress)
                 .size(thumbSize)
                 .clip(CircleShape)
                 .background(if (isMonochrome) Color.White else focusColor)
@@ -3392,14 +3523,14 @@ private fun extractTracksFromExoPlayer(exoPlayer: ExoPlayer, context: Context): 
             val format = mediaTrackGroup.getFormat(i)
             val isSelected = group.isTrackSelected(i)
             val lang = format.language?.takeIf { it.isNotBlank() && it != "und" } ?: context.getString(R.string.player_language_unknown)
-            val rawLabel = format.label?.takeIf { it.isNotBlank() } ?: context.getString(R.string.player_track_default, i + 1)
 
             if (trackType == C.TRACK_TYPE_AUDIO) {
+                val flag = getLanguageFlag(lang)
+                val langName = getLanguageDisplayName(lang, format.label)
                 val codec = format.sampleMimeType?.substringAfter("/")?.uppercase() ?: ""
                 val channels = if (format.channelCount > 0) "${format.channelCount} ch" else ""
                 val displayParts = listOfNotNull(
-                    rawLabel.ifBlank { null },
-                    lang.uppercase(),
+                    langName.ifBlank { null },
                     codec.ifBlank { null },
                     channels.ifBlank { null }
                 )
@@ -3411,15 +3542,13 @@ private fun extractTracksFromExoPlayer(exoPlayer: ExoPlayer, context: Context): 
                         trackIndex = i,
                         label = displayLabel,
                         language = lang,
+                        flagEmoji = flag,
                         isSelected = isSelected
                     )
                 )
             } else if (trackType == C.TRACK_TYPE_TEXT) {
-                val displayLabel = if (!rawLabel.contains(lang, ignoreCase = true)) {
-                    "$rawLabel (${lang.uppercase()})"
-                } else {
-                    rawLabel
-                }
+                val flag = getLanguageFlag(lang)
+                val displayLabel = getLanguageDisplayName(lang, format.label)
 
                 subtitleTracks.add(
                     TrackItem(
@@ -3427,6 +3556,7 @@ private fun extractTracksFromExoPlayer(exoPlayer: ExoPlayer, context: Context): 
                         trackIndex = i,
                         label = displayLabel,
                         language = lang,
+                        flagEmoji = flag,
                         isSelected = isSelected
                     )
                 )
