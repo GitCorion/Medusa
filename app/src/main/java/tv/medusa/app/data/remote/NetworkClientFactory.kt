@@ -108,20 +108,32 @@ object NetworkClientFactory {
         }
         .followRedirects(true)
         .followSslRedirects(true)
-        .connectionPool(okhttp3.ConnectionPool(20, 5, TimeUnit.MINUTES))
+        .connectionPool(okhttp3.ConnectionPool(30, 5, TimeUnit.MINUTES))
+        .dispatcher(okhttp3.Dispatcher().apply {
+            maxRequests = 64
+            maxRequestsPerHost = 20 // Permite carga simultánea y fluida de carátulas desde el mismo host
+        })
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(120, TimeUnit.SECONDS)
         .writeTimeout(30, TimeUnit.SECONDS)
         .addInterceptor { chain ->
             val original = chain.request()
-            val isMediaRequest = original.url.encodedPath.contains("Videos/", ignoreCase = true) ||
-                original.url.encodedPath.contains("Audio/", ignoreCase = true)
+            val urlPath = original.url.encodedPath
+            val isMediaRequest = urlPath.contains("Videos/", ignoreCase = true) ||
+                urlPath.contains("Audio/", ignoreCase = true)
+            val isImageRequest = urlPath.contains("Images/", ignoreCase = true) ||
+                original.url.host.contains("tmdb.org", ignoreCase = true) ||
+                original.header("Accept")?.contains("image", ignoreCase = true) == true ||
+                urlPath.endsWith(".jpg", ignoreCase = true) ||
+                urlPath.endsWith(".jpeg", ignoreCase = true) ||
+                urlPath.endsWith(".png", ignoreCase = true) ||
+                urlPath.endsWith(".webp", ignoreCase = true)
+
             val requestBuilder = original.newBuilder()
                 .header("User-Agent", "Mozilla/5.0 (Linux; Android 14; Google TV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
 
-            // En vídeo/audio NO forzamos Accept: application/json (podía afectar a la negociación
-            // de contenido del stream). Solo en las llamadas de API.
-            if (!isMediaRequest) {
+            // Solo forzar Accept: application/json en llamadas API de datos, NUNCA en vídeo ni en imágenes
+            if (!isMediaRequest && !isImageRequest && original.header("Accept").isNullOrBlank()) {
                 requestBuilder.header("Accept", "application/json, text/plain, */*")
             }
 

@@ -1,10 +1,10 @@
 {
-  "versionCode": 1000110,
-  "versionName": "2.2.63-beta",
+  "versionCode": 1000111,
+  "versionName": "2.2.64-beta",
   "minSupportedVersionCode": 1000105,
   "forceUpdate": true,
   "killSwitch": false,
-  "releaseNotes": "Modo noche como interruptor directo Activado/Desactivado, barra deslizante única para el amplificador de volumen con decibelios y corrección de error 503.",
+  "releaseNotes": "Restauración integral de streaming .strm y rclone (static=true directo), resolución instantánea de imágenes, blindaje de MediaSession y corrección de cierre del reproductor.",
   "apkUrl": "https://medusa-fd388.web.app/Medusa.apk",
   "apkSha256": "0cbb7d8b7c704f6e32ba21329ef832f16a763dfef434f4aabcd100bfae929c32",
   "signatures": [

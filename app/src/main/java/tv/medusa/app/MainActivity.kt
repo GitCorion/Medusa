@@ -135,16 +135,15 @@ class MainActivity : ComponentActivity() {
             .okHttpClient { NetworkClientFactory.okHttpClient }
             .memoryCache {
                 coil.memory.MemoryCache.Builder(applicationContext)
-                    .maxSizePercent(0.15) // Limitado al 15% para no provocar OOM en SoCs de 2GB de RAM
+                    .maxSizePercent(0.25)
                     .build()
             }
             .diskCache {
                 coil.disk.DiskCache.Builder()
                     .directory(cacheDir.resolve("image_cache"))
-                    .maxSizeBytes(200L * 1024 * 1024)
+                    .maxSizeBytes(250L * 1024 * 1024)
                     .build()
             }
-            .allowRgb565(true) // Decodifica en RGB_565 (16 bits/px): reduce el consumo de RAM de bitmaps al 50%
             .respectCacheHeaders(false)
             // Sin crossfade global: animar cada imagen de cada tarjeta penaliza el scroll.
             // Hero/backdrop ya animan con su propio Crossfade composable.

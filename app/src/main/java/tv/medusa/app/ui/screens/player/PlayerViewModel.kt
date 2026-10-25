@@ -173,9 +173,14 @@ class PlayerViewModel @Inject constructor(
     ): String? {
         val downloadEndpoints = listOfNotNull(
             "$baseUrl/Items/$playableId/Download?api_key=$token",
-            if (mediaSourceId.isNotBlank()) "$baseUrl/Videos/$playableId/stream?MediaSourceId=$mediaSourceId&api_key=$token" else null,
-            "$baseUrl/Videos/$playableId/stream?api_key=$token"
+            if (mediaSourceId.isNotBlank()) "$baseUrl/Videos/$playableId/stream?static=true&MediaSourceId=$mediaSourceId&api_key=$token" else null
         )
+
+        val fastClient = NetworkClientFactory.okHttpClient.newBuilder()
+            .connectTimeout(4, TimeUnit.SECONDS)
+            .readTimeout(4, TimeUnit.SECONDS)
+            .callTimeout(5, TimeUnit.SECONDS)
+            .build()
 
         for (targetUrl in downloadEndpoints) {
             try {
@@ -185,29 +190,20 @@ class PlayerViewModel @Inject constructor(
                     .header("X-Emby-Authorization", authHeader)
                     .build()
 
-                val (lineWithUrl, redirectedUrl) = withContext(Dispatchers.IO) {
-                    NetworkClientFactory.okHttpClient.newCall(request).execute().use { response ->
-                        val finalUrl = response.request.url.toString()
-                        val redirect = if (finalUrl != targetUrl && (finalUrl.startsWith("http://", ignoreCase = true) || finalUrl.startsWith("https://", ignoreCase = true))) {
-                            finalUrl
+                val lineWithUrl = withContext(Dispatchers.IO) {
+                    fastClient.newCall(request).execute().use { response ->
+                        if (response.isSuccessful && response.header("Content-Type")?.contains("video", ignoreCase = true) != true) {
+                            val content = runCatching { response.peekBody(4096).string().trim() }.getOrNull()
+                            content?.lineSequence()
+                                ?.map { it.trim() }
+                                ?.firstOrNull { it.startsWith("http://", ignoreCase = true) || it.startsWith("https://", ignoreCase = true) }
                         } else null
-
-                        val content = if (response.isSuccessful && response.header("Content-Type")?.contains("video", ignoreCase = true) != true) {
-                            runCatching { response.peekBody(4096).string().trim() }.getOrNull()
-                        } else null
-
-                        val extracted = content?.lineSequence()
-                            ?.map { it.trim() }
-                            ?.firstOrNull { it.startsWith("http://", ignoreCase = true) || it.startsWith("https://", ignoreCase = true) }
-
-                        Pair(extracted, redirect)
                     }
                 }
 
-                val resolved = lineWithUrl ?: redirectedUrl
-                if (resolved != null) {
-                    Log.i("PlayerViewModel", "Extracted target URL from .strm file: $resolved")
-                    return resolved
+                if (lineWithUrl != null) {
+                    Log.i("PlayerViewModel", "Extracted target URL from .strm file: $lineWithUrl")
+                    return lineWithUrl
                 }
             } catch (e: Exception) {
                 Log.w("PlayerViewModel", "Failed to resolve .strm from $targetUrl: ${e.message}")
@@ -559,13 +555,6 @@ class PlayerViewModel @Inject constructor(
                     name.contains("1080") || name.contains("fhd")
                 }
                 pH264 ?: p1080 ?: mediaSources.firstOrNull()
-            } else if (supports4K && mediaSources != null && mediaSources.size > 1) {
-                // If device supports 4K HEVC hardware decode, pick 4K version first
-                val p4k = mediaSources.firstOrNull { ms ->
-                    val name = ms.name?.lowercase() ?: ""
-                    name.contains("4k") || name.contains("2160") || name.contains("uhd")
-                }
-                p4k ?: mediaSources.firstOrNull()
             } else {
                 mediaSources?.firstOrNull()
             }
@@ -587,33 +576,17 @@ class PlayerViewModel @Inject constructor(
 
                 Log.d("PlayerViewModel", "Using MediaSource id=$mediaSourceId name='${mediaSource.name}' container=$container isStrm=$isStrm path=$path")
 
-                // Remote descriptor / stream resolution for .strm files:
+                // Remote descriptor / stream resolution for .strm and rclone files:
                 if (isStrm) {
-                    // 1. Direct path if it's already an HTTP/HTTPS URL
-                    if (path.startsWith("http://", ignoreCase = true) || path.startsWith("https://", ignoreCase = true)) {
-                        val pathUri = runCatching { Uri.parse(path) }.getOrNull()
-                        val pathHost = pathUri?.host
-                        if (!isDockerOrLocalhostHost(pathHost) && !pathHost.isNullOrBlank()) {
-                            if (!candidateUrls.contains(path)) candidateUrls.add(path)
+                    // 1. Direct static stream from Jellyfin (static=true forces Jellyfin to stream raw bytes with HTTP Range 206)
+                    if (mediaSourceId.isNotBlank()) {
+                        val staticStream = "$baseUrl/Videos/$playableId/stream?static=true&MediaSourceId=$mediaSourceId&api_key=$effectiveToken"
+                        if (!candidateUrls.contains(staticStream)) {
+                            candidateUrls.add(staticStream)
                         }
                     }
 
-                    // 2. Extracted direct target URL from the .strm descriptor
-                    val extractedStrmUrl = resolveStrmTargetUrl(
-                        baseUrl = baseUrl,
-                        token = effectiveToken,
-                        authHeader = effectiveAuthHeader,
-                        playableId = playableId,
-                        mediaSourceId = mediaSourceId
-                    )
-                    val strmUri = extractedStrmUrl?.let { runCatching { Uri.parse(it) }.getOrNull() }
-                    val strmHost = strmUri?.host
-
-                    if (!extractedStrmUrl.isNullOrBlank() && !isDockerOrLocalhostHost(strmHost) && !strmHost.isNullOrBlank()) {
-                        if (!candidateUrls.contains(extractedStrmUrl)) candidateUrls.add(extractedStrmUrl)
-                    }
-
-                    // 3. DirectStreamUrl provided by Jellyfin API if available
+                    // 2. DirectStreamUrl provided by Jellyfin API if available
                     val dsUrl = mediaSource.directStreamUrl
                     if (!dsUrl.isNullOrBlank()) {
                         val fullDsUrl = if (dsUrl.startsWith("http", ignoreCase = true)) dsUrl else "$baseUrl$dsUrl"
@@ -623,25 +596,46 @@ class PlayerViewModel @Inject constructor(
                         }
                     }
 
-                    // 4. Stream through Jellyfin gateway (WITHOUT static=true to avoid 503 on .strm items)
-                    if (mediaSourceId.isNotBlank()) {
-                        val dynamicStream = "$baseUrl/Videos/$playableId/stream?MediaSourceId=$mediaSourceId&api_key=$effectiveToken"
-                        if (!candidateUrls.contains(dynamicStream)) {
-                            candidateUrls.add(dynamicStream)
-                        }
-                    }
-
-                    // 5. Alternative versions (e.g. 1080p SDR versions)
+                    // 3. Alternative versions as direct static candidates (seamless fallback si la versión primaria falla)
                     mediaSources?.filter { it.id != mediaSourceId }?.forEach { altSource ->
                         if (altSource.id.isNotBlank()) {
-                            val altDynamic = "$baseUrl/Videos/$playableId/stream?MediaSourceId=${altSource.id}&api_key=$effectiveToken"
-                            if (!candidateUrls.contains(altDynamic)) {
-                                candidateUrls.add(altDynamic)
+                            val altStatic = "$baseUrl/Videos/$playableId/stream?static=true&MediaSourceId=${altSource.id}&api_key=$effectiveToken"
+                            if (!candidateUrls.contains(altStatic)) {
+                                candidateUrls.add(altStatic)
                             }
                         }
                     }
 
-                    // 5. Transcoding / HLS fallbacks from Jellyfin (ONLY as last resort if direct play and stream fail)
+                    // 4. Direct path from MediaSourceInfo.Path ONLY if LAN/routable IP (not docker bridge)
+                    if (path.startsWith("http://", ignoreCase = true) || path.startsWith("https://", ignoreCase = true)) {
+                        val pathUri = runCatching { Uri.parse(path) }.getOrNull()
+                        val pathHost = pathUri?.host
+                        if (!isDockerOrLocalhostHost(pathHost) && !pathHost.isNullOrBlank()) {
+                            if (!candidateUrls.contains(path)) candidateUrls.add(path)
+                        }
+                    }
+
+                    // 5. Extracted direct target URL from the .strm descriptor as fallback
+                    val extractedStrmUrl = resolveStrmTargetUrl(
+                        baseUrl = baseUrl,
+                        token = effectiveToken,
+                        authHeader = effectiveAuthHeader,
+                        playableId = playableId,
+                        mediaSourceId = mediaSourceId
+                    )
+                    if (!extractedStrmUrl.isNullOrBlank()) {
+                        val strmUri = runCatching { Uri.parse(extractedStrmUrl) }.getOrNull()
+                        val strmHost = strmUri?.host
+                        val serverHost = runCatching { Uri.parse(baseUrl).host }.getOrNull()
+                        if (!serverHost.isNullOrBlank() && isDockerOrLocalhostHost(strmHost)) {
+                            val transformed = extractedStrmUrl.replaceFirst(strmHost!!, serverHost)
+                            if (!candidateUrls.contains(transformed)) candidateUrls.add(transformed)
+                        } else if (!isDockerOrLocalhostHost(strmHost) && !strmHost.isNullOrBlank()) {
+                            if (!candidateUrls.contains(extractedStrmUrl)) candidateUrls.add(extractedStrmUrl)
+                        }
+                    }
+
+                    // 6. Transcoding / HLS fallbacks from Jellyfin (ONLY as last resort if direct play and static fails)
                     if (mediaSourceId.isNotBlank()) {
                         val transcode1080 = "$baseUrl/Videos/$playableId/master.m3u8?MediaSourceId=$mediaSourceId&VideoCodec=h264&AudioCodec=aac,mp3,ac3&MaxHeight=1080&MaxWidth=1920&api_key=$effectiveToken"
                         if (!candidateUrls.contains(transcode1080)) {

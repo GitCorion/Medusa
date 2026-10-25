@@ -418,11 +418,12 @@ private fun PlayerContent(
 
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(
-                /* minBufferMs = */ 15_000,
-                /* maxBufferMs = */ 60_000,
-                /* bufferForPlaybackMs = */ 2_500,
-                /* bufferForPlaybackAfterRebufferMs = */ 5_000
+                /* minBufferMs = */ 30_000,
+                /* maxBufferMs = */ 90_000,
+                /* bufferForPlaybackMs = */ 3_000,
+                /* bufferForPlaybackAfterRebufferMs = */ 8_000
             )
+            .setBackBuffer(30_000, true)
             .build()
 
         val renderersFactory = DefaultRenderersFactory(context)
@@ -590,19 +591,21 @@ private fun PlayerContent(
     // mandos Bluetooth / HDMI-CEC y comandos por voz de Google Assistant ("Ok Google, pausa")
     // controlen la reproducción nativamente y mantengan el estado global en el sistema.
     val mediaSession = remember(exoPlayer) {
-        val sessionActivityIntent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
-        }
-        val sessionActivityPendingIntent = PendingIntent.getActivity(
-            context,
-            0,
-            sessionActivityIntent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-        )
-        MediaSession.Builder(context, exoPlayer)
-            .setId("MedusaMediaSession_${info.playableId.ifBlank { "main" }}")
-            .setSessionActivity(sessionActivityPendingIntent)
-            .build()
+        runCatching {
+            val sessionActivityIntent = Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            val sessionActivityPendingIntent = PendingIntent.getActivity(
+                context,
+                0,
+                sessionActivityIntent,
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            )
+            MediaSession.Builder(context, exoPlayer)
+                .setId("MedusaMediaSession_${info.playableId.ifBlank { "main" }}_${System.identityHashCode(exoPlayer)}")
+                .setSessionActivity(sessionActivityPendingIntent)
+                .build()
+        }.getOrNull()
     }
 
     LaunchedEffect(activeModalTab) {
@@ -855,7 +858,7 @@ private fun PlayerContent(
         }
         exoPlayer.addListener(listener)
         onDispose {
-            mediaSession.release()
+            runCatching { mediaSession?.release() }
             exoPlayer.removeListener(listener)
             val finalPos = exoPlayer.currentPosition
             val totalDur = exoPlayer.duration
@@ -868,7 +871,8 @@ private fun PlayerContent(
 
     // ─── Fin de reproducción (STATE_ENDED) ──────────────────────────────────
     // Si hay siguiente episodio: cuenta atrás de 5s y salto automático.
-    // Si es película o último capítulo: salida limpia del reproductor (onBack).
+    // Si es película o último capítulo: mantener controles en pantalla para que el usuario decida,
+    // nunca expulsar abruptamente al usuario al menú principal.
     LaunchedEffect(playbackEnded) {
         if (!playbackEnded) return@LaunchedEffect
 
@@ -885,10 +889,7 @@ private fun PlayerContent(
                 playNext(next)
             }
         } else {
-            delay(800L)
-            if (isActive) {
-                latestOnBack()
-            }
+            showOverlayControls = true
         }
     }
 
