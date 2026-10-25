@@ -6,7 +6,7 @@
   "killSwitch": false,
   "releaseNotes": "Amplificador de volumen nativo en tiempo real vía procesador PCM, barra deslizante interactiva con control D-Pad y mejoras de accesibilidad en la línea de tiempo.",
   "apkUrl": "https://medusa-fd388.web.app/Medusa.apk",
-  "apkSha256": "0cbb7d8b7c704f6e32ba21329ef832f16a763dfef434f4aabcd100bfae929c32",
+  "apkSha256": "1dc12b13568293bfea751d4a1091e12fe853dd3e9be573289f9786263f763b3b",
   "signatures": [
     "26bccb39ed122a69ecf7a8d0b50deeabeb15bc1a4b2a8b77941b47a96fdd3fea",
     "78a588afcc90d8ea59e008c9cbd1e8bbed3b2831518184d5a9935948b9d245ac"
