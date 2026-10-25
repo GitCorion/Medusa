@@ -6,6 +6,7 @@ import java.net.UnknownHostException
 import tv.medusa.app.data.local.ACCENT_CYAN
 import tv.medusa.app.data.local.ACCENT_WHITE
 import tv.medusa.app.data.local.APP_THEME_MONOCHROME
+import tv.medusa.app.data.local.AUDIO_PASSTHROUGH_OFF
 import tv.medusa.app.data.local.INDICATOR_THEME_COLOR
 import tv.medusa.app.data.local.INDICATOR_THEME_MONOCHROME
 import tv.medusa.app.data.local.PERFORMANCE_MODE_AUTO
@@ -137,7 +138,8 @@ data class SettingsUiState(
     val isTrialActive: Boolean = false,
     val trialDaysRemaining: Int = 0,
     val seasonalAudioEnabled: Boolean = true,
-    val navigationSoundEnabled: Boolean = true
+    val navigationSoundEnabled: Boolean = true,
+    val audioPassthroughMode: Int = AUDIO_PASSTHROUGH_OFF
 ) {
     val isMonochrome: Boolean
         get() = indicatorTheme == INDICATOR_THEME_MONOCHROME || accentColor == ACCENT_WHITE
@@ -202,7 +204,8 @@ class SettingsViewModel @Inject constructor(
                     isTrialActive = prefs.isTrialActive,
                     trialDaysRemaining = prefs.trialDaysRemaining,
                     seasonalAudioEnabled = prefs.seasonalAudioEnabled,
-                    navigationSoundEnabled = prefs.navigationSoundEnabled
+                    navigationSoundEnabled = prefs.navigationSoundEnabled,
+                    audioPassthroughMode = prefs.audioPassthroughMode
                 )
             }
         }
@@ -239,7 +242,8 @@ class SettingsViewModel @Inject constructor(
                 isTrialActive = prefs.isTrialActive,
                 trialDaysRemaining = prefs.trialDaysRemaining,
                 seasonalAudioEnabled = prefs.seasonalAudioEnabled,
-                navigationSoundEnabled = prefs.navigationSoundEnabled
+                navigationSoundEnabled = prefs.navigationSoundEnabled,
+                audioPassthroughMode = prefs.audioPassthroughMode
             )
             if (prefs.traktAccessToken.isNotBlank()) {
                 validateTraktToken(prefs.traktAccessToken, prefs.traktClientId)
@@ -270,6 +274,13 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             userPreferencesRepository.updateNavigationSoundEnabled(enabled)
             _uiState.value = _uiState.value.copy(navigationSoundEnabled = enabled)
+        }
+    }
+
+    fun updateAudioPassthroughMode(mode: Int) {
+        viewModelScope.launch {
+            userPreferencesRepository.setAudioPassthroughMode(mode)
+            _uiState.value = _uiState.value.copy(audioPassthroughMode = mode)
         }
     }
 

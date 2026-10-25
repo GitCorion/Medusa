@@ -87,8 +87,12 @@ import tv.medusa.app.util.AppForeground
 import tv.medusa.app.data.local.SUBTITLE_SIZE_SMALL
 import tv.medusa.app.data.local.SUBTITLE_SIZE_NORMAL
 import tv.medusa.app.data.local.SUBTITLE_SIZE_LARGE
+import androidx.media3.exoplayer.audio.AudioCapabilities
 import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
+import tv.medusa.app.data.local.AUDIO_PASSTHROUGH_OFF
+import tv.medusa.app.data.local.AUDIO_PASSTHROUGH_AUTO
+import tv.medusa.app.data.local.AUDIO_PASSTHROUGH_DIRECT
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.ui.CaptionStyleCompat
 import tv.medusa.app.ui.theme.TvAccent
@@ -417,6 +421,7 @@ private fun PlayerContent(
     val isProUser by viewModel.isProUser.collectAsStateWithLifecycle()
     val nightModeAudio by viewModel.nightModeAudio.collectAsStateWithLifecycle()
     val audioVolumeBoostDb by viewModel.audioVolumeBoostDb.collectAsStateWithLifecycle()
+    val audioPassthroughMode by viewModel.audioPassthroughMode.collectAsStateWithLifecycle()
     val subtitleSize by viewModel.subtitleSize.collectAsStateWithLifecycle()
     val subtitleBackground by viewModel.subtitleBackground.collectAsStateWithLifecycle()
     val autoFrameRateEnabled by viewModel.autoFrameRateEnabled.collectAsStateWithLifecycle()
@@ -512,7 +517,7 @@ private fun PlayerContent(
 
     val candidates = info.candidateUrls.ifEmpty { listOf(info.primaryStreamUrl) }
 
-    val exoPlayer = remember(info, retryTrigger) {
+    val exoPlayer = remember(info, retryTrigger, audioPassthroughMode) {
         var candidateIdx = 0
 
         val defaultHeaders = buildMap {
@@ -570,6 +575,11 @@ private fun PlayerContent(
             .setBackBuffer(30_000, true)
             .build()
 
+        val audioCapabilities = when (audioPassthroughMode) {
+            AUDIO_PASSTHROUGH_AUTO, AUDIO_PASSTHROUGH_DIRECT -> AudioCapabilities.getCapabilities(context)
+            else -> AudioCapabilities.DEFAULT_AUDIO_CAPABILITIES
+        }
+
         val renderersFactory = object : DefaultRenderersFactory(context) {
             override fun buildAudioSink(
                 context: Context,
@@ -577,6 +587,7 @@ private fun PlayerContent(
                 enableAudioTrackPlaybackParams: Boolean
             ): AudioSink {
                 return DefaultAudioSink.Builder(context)
+                    .setAudioCapabilities(audioCapabilities)
                     .setEnableFloatOutput(enableFloatOutput)
                     .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
                     .setAudioProcessors(arrayOf(audioEnhancementManager.audioProcessor))
@@ -676,6 +687,14 @@ private fun PlayerContent(
                                 error.cause is AudioSink.WriteException
 
                         if (isAudioError) {
+                            if (audioPassthroughMode != AUDIO_PASSTHROUGH_OFF) {
+                                Log.w("PlayerScreen", "Error de audio en HDMI passthrough. Conmutando automáticamente a decodificación local PCM.")
+                                playerErrorMessage = context.getString(R.string.player_audio_fallback_toast)
+                                chosenStartPositionMs = currentPosition.coerceAtLeast(0L)
+                                viewModel.setAudioPassthroughMode(AUDIO_PASSTHROUGH_OFF)
+                                return
+                            }
+
                             val availableAudios = audioTracks
                             val currentTrack = availableAudios.firstOrNull { it.isSelected }
                             val fallbackTrack = availableAudios.firstOrNull { !it.isSelected }
@@ -1851,6 +1870,7 @@ private fun PlayerContent(
                 currentResizeMode = currentResizeMode,
                 nightModeAudio = nightModeAudio,
                 audioVolumeBoostDb = audioVolumeBoostDb,
+                audioPassthroughMode = audioPassthroughMode,
                 subtitleSize = subtitleSize,
                 subtitleBackground = subtitleBackground,
                 autoFrameRateEnabled = autoFrameRateEnabled,
@@ -1879,6 +1899,11 @@ private fun PlayerContent(
                 onSelectVolumeBoost = { db ->
                     notifyInteraction()
                     viewModel.setAudioVolumeBoostDb(db)
+                },
+                onSelectAudioPassthroughMode = { mode ->
+                    notifyInteraction()
+                    chosenStartPositionMs = currentPosition.coerceAtLeast(0L)
+                    viewModel.setAudioPassthroughMode(mode)
                 },
                 onSelectSubtitleSize = { size ->
                     notifyInteraction()
@@ -2319,6 +2344,7 @@ private fun PlayerCustomModalSheet(
     currentResizeMode: Int,
     nightModeAudio: Int = 0,
     audioVolumeBoostDb: Int = 0,
+    audioPassthroughMode: Int = AUDIO_PASSTHROUGH_OFF,
     subtitleSize: String = SUBTITLE_SIZE_NORMAL,
     subtitleBackground: Boolean = false,
     autoFrameRateEnabled: Boolean = false,
@@ -2329,6 +2355,7 @@ private fun PlayerCustomModalSheet(
     onSelectResizeMode: (Int) -> Unit,
     onSelectNightMode: (Int) -> Unit = {},
     onSelectVolumeBoost: (Int) -> Unit = {},
+    onSelectAudioPassthroughMode: (Int) -> Unit = {},
     onSelectSubtitleSize: (String) -> Unit = {},
     onToggleSubtitleBackground: (Boolean) -> Unit = {},
     onToggleAutoFrameRate: (Boolean) -> Unit = {},
@@ -2532,6 +2559,36 @@ private fun PlayerCustomModalSheet(
                                     onValueChange = { db ->
                                         onSelectVolumeBoost(db)
                                     }
+                                )
+                            }
+
+                            // 4. Salida de audio / Decodificación Local PCM vs Passthrough HDMI
+                            item {
+                                Spacer(modifier = Modifier.height(10.dp))
+                                TvSegmentedControlRow(
+                                    title = stringResource(R.string.player_audio_passthrough),
+                                    subtitle = stringResource(R.string.player_audio_passthrough_desc),
+                                    icon = Icons.Default.Audiotrack,
+                                    buttonStyle = buttonStyle,
+                                    options = listOf(
+                                        AUDIO_PASSTHROUGH_OFF,
+                                        AUDIO_PASSTHROUGH_AUTO,
+                                        AUDIO_PASSTHROUGH_DIRECT
+                                    ),
+                                    selectedOption = audioPassthroughMode,
+                                    optionLabel = { mode ->
+                                        when (mode) {
+                                            AUDIO_PASSTHROUGH_OFF -> stringResource(R.string.player_audio_passthrough_off)
+                                            AUDIO_PASSTHROUGH_AUTO -> stringResource(R.string.player_audio_passthrough_auto)
+                                            else -> stringResource(R.string.player_audio_passthrough_direct)
+                                        }
+                                    },
+                                    onOptionSelected = { mode ->
+                                        onSelectAudioPassthroughMode(mode)
+                                    },
+                                    isMonochrome = isMonochrome,
+                                    focusColor = focusColor,
+                                    focusContent = focusContent
                                 )
                             }
                         }

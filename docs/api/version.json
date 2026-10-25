@@ -1,10 +1,10 @@
 {
-  "versionCode": 1000113,
-  "versionName": "2.2.66-beta",
+  "versionCode": 1000114,
+  "versionName": "2.2.67-beta",
   "minSupportedVersionCode": 1000105,
   "forceUpdate": true,
   "killSwitch": false,
-  "releaseNotes": "Corrección del punto en la barra de progreso, menús adaptados al estilo de botones, banderas de idiomas con soporte monocromático e interfaz limpia sin textos sobreexplicados.",
+  "releaseNotes": "Decodificación local de audio PCM por defecto para máxima compatibilidad y cero silencios en todas las pistas (AC3/DTS/TrueHD), recuperación automática y selector de Passthrough HDMI en ajustes y reproductor.",
   "apkUrl": "https://medusa-fd388.web.app/Medusa.apk",
   "apkSha256": "ef76d4258dbcb6a9eb83a0cd572377291a501bb57cb44f7ec9ae8f7ad278a9d6",
   "signatures": [

@@ -102,6 +102,9 @@ import tv.medusa.app.data.local.APP_THEME_ORIGINAL
 import tv.medusa.app.data.local.BUTTON_STYLE_ICONS_AND_TEXT
 import tv.medusa.app.data.local.BUTTON_STYLE_ICONS_ONLY
 import tv.medusa.app.data.local.BUTTON_STYLE_TEXT_ONLY
+import tv.medusa.app.data.local.AUDIO_PASSTHROUGH_OFF
+import tv.medusa.app.data.local.AUDIO_PASSTHROUGH_AUTO
+import tv.medusa.app.data.local.AUDIO_PASSTHROUGH_DIRECT
 import tv.medusa.app.data.local.PERFORMANCE_MODE_AUTO
 import tv.medusa.app.data.local.PERFORMANCE_MODE_HIGH
 import tv.medusa.app.data.local.PERFORMANCE_MODE_LOW
@@ -905,6 +908,20 @@ private fun AppearanceCategory(
         ),
         selectedOption = uiState.seasonalAudioEnabled,
         onOptionSelected = { viewModel.updateSeasonalAudioEnabled(it) },
+        focusColor = focusColor,
+        focusContent = focusContent
+    )
+
+    TvSectionHeader(title = stringResource(R.string.settings_section_audio_passthrough))
+
+    TvSegmentedSelector(
+        options = listOf(
+            AUDIO_PASSTHROUGH_OFF to stringResource(R.string.settings_passthrough_off),
+            AUDIO_PASSTHROUGH_AUTO to stringResource(R.string.settings_passthrough_auto),
+            AUDIO_PASSTHROUGH_DIRECT to stringResource(R.string.settings_passthrough_direct)
+        ),
+        selectedOption = uiState.audioPassthroughMode,
+        onOptionSelected = { viewModel.updateAudioPassthroughMode(it) },
         focusColor = focusColor,
         focusContent = focusContent
     )
