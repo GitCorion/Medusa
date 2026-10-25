@@ -1,12 +1,12 @@
 {
-  "versionCode": 1000114,
-  "versionName": "2.2.67-beta",
+  "versionCode": 1000115,
+  "versionName": "2.2.68-beta",
   "minSupportedVersionCode": 1000105,
   "forceUpdate": true,
   "killSwitch": false,
-  "releaseNotes": "Decodificación local de audio PCM por defecto para máxima compatibilidad y cero silencios en todas las pistas (AC3/DTS/TrueHD), recuperación automática y selector de Passthrough HDMI en ajustes y reproductor.",
+  "releaseNotes": "Decodificación local FFmpeg prioritaria y soporte PCM multicanal (AC3/DTS 5.1) garantizando audio en todas las películas. Cohesión visual con banderas en botones y menús completos acorde al estilo de botones.",
   "apkUrl": "https://medusa-fd388.web.app/Medusa.apk",
-  "apkSha256": "7d3528a960ee2a5b91ab0f2c3b9307b2cc904223df2c4e8313b1667c58b08e54",
+  "apkSha256": "5823bfb64113c98eaee64e5e64a80a0f32b392a5d288265b66176b6e7d8ff4bb",
   "signatures": [
     "26bccb39ed122a69ecf7a8d0b50deeabeb15bc1a4b2a8b77941b47a96fdd3fea",
     "78a588afcc90d8ea59e008c9cbd1e8bbed3b2831518184d5a9935948b9d245ac"

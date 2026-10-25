@@ -87,6 +87,8 @@ import tv.medusa.app.util.AppForeground
 import tv.medusa.app.data.local.SUBTITLE_SIZE_SMALL
 import tv.medusa.app.data.local.SUBTITLE_SIZE_NORMAL
 import tv.medusa.app.data.local.SUBTITLE_SIZE_LARGE
+import android.media.AudioFormat
+import android.os.Build
 import androidx.media3.exoplayer.audio.AudioCapabilities
 import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
@@ -577,7 +579,33 @@ private fun PlayerContent(
 
         val audioCapabilities = when (audioPassthroughMode) {
             AUDIO_PASSTHROUGH_AUTO, AUDIO_PASSTHROUGH_DIRECT -> AudioCapabilities.getCapabilities(context)
-            else -> AudioCapabilities.DEFAULT_AUDIO_CAPABILITIES
+            else -> {
+                // Modo decodificación local por software (FFmpeg -> PCM):
+                // Permitimos PCM estéreo y multicanal (hasta 8 canales) para que pistas 5.1/7.1 se reproduzcan
+                // sin ser bloqueadas por el sink de audio con límites estéreo.
+                val encodings = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    intArrayOf(
+                        AudioFormat.ENCODING_PCM_16BIT,
+                        AudioFormat.ENCODING_PCM_FLOAT,
+                        AudioFormat.ENCODING_PCM_24BIT_PACKED,
+                        AudioFormat.ENCODING_PCM_32BIT
+                    )
+                } else {
+                    intArrayOf(
+                        AudioFormat.ENCODING_PCM_16BIT,
+                        AudioFormat.ENCODING_PCM_FLOAT
+                    )
+                }
+                AudioCapabilities(encodings, 8)
+            }
+        }
+
+        val extensionRendererMode = if (audioPassthroughMode == AUDIO_PASSTHROUGH_OFF) {
+            // Decodificación local FFmpeg en software prioritaria: evita códecs defectuosos/silenciosos de fabricantes de TV
+            DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER
+        } else {
+            // Passthrough HDMI: permite que el hardware intente bitstream directo si el receptor/soundbar lo soporta
+            DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON
         }
 
         val renderersFactory = object : DefaultRenderersFactory(context) {
@@ -594,9 +622,7 @@ private fun PlayerContent(
                     .build()
             }
         }
-            // ON = prefiere el decodificador de hardware de la plataforma y sólo recurre
-            // a la extensión FFmpeg (software) cuando no hay uno válido.
-            .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
+            .setExtensionRendererMode(extensionRendererMode)
             .setEnableDecoderFallback(true)
 
         val trackSelector = DefaultTrackSelector(context).apply {
@@ -628,6 +654,7 @@ private fun PlayerContent(
                 if (isDebuggable) {
                     addAnalyticsListener(EventLogger())
                 }
+                Log.i("PlayerScreen", "ExoPlayer configured (passthroughMode=$audioPassthroughMode, extMode=$extensionRendererMode)")
 
                 val mediaItem = MediaItem.Builder()
                     .setUri(candidates.first())
@@ -1785,6 +1812,11 @@ private fun PlayerContent(
                             }
 
                             // Right Group: Audio, Subtitles, Settings (Respects buttonStyle)
+                            val currentAudioTrack = audioTracks.firstOrNull { it.isSelected }
+                            val currentSubTrack = subtitleTracks.firstOrNull { it.isSelected }
+                            val audioFlag = currentAudioTrack?.flagEmoji
+                            val subFlag = currentSubTrack?.flagEmoji
+
                             Row(
                                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                                 verticalAlignment = Alignment.CenterVertically
@@ -1796,6 +1828,7 @@ private fun PlayerContent(
                                         activeModalTab = PlayerModalTab.AUDIO
                                     },
                                     icon = Icons.Default.Audiotrack,
+                                    flagEmoji = audioFlag,
                                     label = stringResource(R.string.player_audio),
                                     isSelected = activeModalTab == PlayerModalTab.AUDIO,
                                     buttonStyle = buttonStyle,
@@ -1817,7 +1850,8 @@ private fun PlayerContent(
                                         notifyInteraction()
                                         activeModalTab = PlayerModalTab.SUBTITLES
                                     },
-                                    icon = Icons.Default.Subtitles,
+                                    icon = if (currentSubTrack != null) Icons.Default.Subtitles else Icons.Default.SubtitlesOff,
+                                    flagEmoji = subFlag,
                                     label = stringResource(R.string.player_subtitles),
                                     isSelected = activeModalTab == PlayerModalTab.SUBTITLES,
                                     buttonStyle = buttonStyle,
@@ -2272,6 +2306,7 @@ private fun TvPillButton(
     icon: ImageVector,
     label: String,
     isSelected: Boolean,
+    flagEmoji: String? = null,
     buttonStyle: String = BUTTON_STYLE_ICONS_AND_TEXT,
     isMonochrome: Boolean = false,
     focusColor: Color = Color.White,
@@ -2314,12 +2349,20 @@ private fun TvPillButton(
         ) {
             val currentContentColor = if (isFocused) (if (isMonochrome) Color(0xFF0F172A) else focusContent) else Color.White
             if (showIcons) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = label,
-                    tint = currentContentColor,
-                    modifier = Modifier.size(16.dp)
-                )
+                if (!flagEmoji.isNullOrBlank()) {
+                    Text(
+                        text = flagEmoji,
+                        fontSize = 16.sp,
+                        modifier = Modifier.monochromeFilter(isMonochrome)
+                    )
+                } else {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = label,
+                        tint = currentContentColor,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
             }
             if (showText) {
                 Text(
@@ -2431,9 +2474,16 @@ private fun PlayerCustomModalSheet(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
+                        val currentAudioTrack = audioTracks.firstOrNull { it.isSelected }
+                        val currentSubTrack = subtitleTracks.firstOrNull { it.isSelected }
+                        val titleFlag = when (activeTab) {
+                            PlayerModalTab.AUDIO -> currentAudioTrack?.flagEmoji
+                            PlayerModalTab.SUBTITLES -> currentSubTrack?.flagEmoji
+                            else -> null
+                        }
                         val titleIcon = when (activeTab) {
                             PlayerModalTab.AUDIO -> Icons.Default.Audiotrack
-                            PlayerModalTab.SUBTITLES -> Icons.Default.Subtitles
+                            PlayerModalTab.SUBTITLES -> if (currentSubTrack != null) Icons.Default.Subtitles else Icons.Default.SubtitlesOff
                             PlayerModalTab.SETTINGS -> Icons.Default.Tune
                             PlayerModalTab.NONE -> Icons.Default.Settings
                         }
@@ -2444,12 +2494,20 @@ private fun PlayerCustomModalSheet(
                             PlayerModalTab.NONE -> ""
                         }
 
-                        Icon(
-                            imageVector = titleIcon,
-                            contentDescription = null,
-                            tint = if (isMonochrome) Color.White else focusColor,
-                            modifier = Modifier.size(22.dp)
-                        )
+                        if (!titleFlag.isNullOrBlank() && buttonStyle != BUTTON_STYLE_TEXT_ONLY) {
+                            Text(
+                                text = titleFlag,
+                                fontSize = 22.sp,
+                                modifier = Modifier.monochromeFilter(isMonochrome)
+                            )
+                        } else {
+                            Icon(
+                                imageVector = titleIcon,
+                                contentDescription = null,
+                                tint = if (isMonochrome) Color.White else focusColor,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
                         Text(
                             text = titleText,
                             color = Color.White,
@@ -2765,7 +2823,6 @@ private fun TrackOptionItem(
     onClick: () -> Unit
 ) {
     val showIcons = buttonStyle != BUTTON_STYLE_TEXT_ONLY
-    val showText = buttonStyle != BUTTON_STYLE_ICONS_ONLY
 
     Surface(
         onClick = onClick,
@@ -2809,7 +2866,7 @@ private fun TrackOptionItem(
                     if (!flagEmoji.isNullOrBlank()) {
                         Text(
                             text = flagEmoji,
-                            fontSize = if (!showText) 20.sp else 16.sp,
+                            fontSize = 18.sp,
                             modifier = Modifier.monochromeFilter(isMonochrome)
                         )
                     } else if (icon != null) {
@@ -2828,15 +2885,13 @@ private fun TrackOptionItem(
                         )
                     }
                 }
-                if (showText) {
-                    Text(
-                        text = label,
-                        fontSize = 13.sp,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
+                Text(
+                    text = label,
+                    fontSize = 13.sp,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
 
             if (isSelected) {
