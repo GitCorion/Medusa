@@ -2178,23 +2178,18 @@ private fun PlayerCustomModalSheet(
                                 }
                             }
 
-                            // 2. Modo Nocturno / DRC (Segmented Option Card)
+                            // 2. Modo Nocturno / DRC (Clean Toggle Card)
                             item {
-                                Spacer(modifier = Modifier.height(6.dp))
-                                TvSegmentedControlRow(
+                                Spacer(modifier = Modifier.height(10.dp))
+                                val isNightModeActive = nightModeAudio > 0
+                                TvToggleOptionRow(
                                     title = stringResource(R.string.player_night_mode),
                                     subtitle = stringResource(R.string.player_night_mode_desc),
                                     icon = Icons.Default.Bedtime,
-                                    options = listOf(0, 1, 2),
-                                    selectedOption = nightModeAudio,
-                                    optionLabel = { level ->
-                                        when (level) {
-                                            1 -> stringResource(R.string.player_night_mode_soft)
-                                            2 -> stringResource(R.string.player_night_mode_strong)
-                                            else -> stringResource(R.string.player_night_mode_off)
-                                        }
+                                    isChecked = isNightModeActive,
+                                    onToggle = { enable ->
+                                        onSelectNightMode(if (enable) 1 else 0)
                                     },
-                                    onOptionSelected = { onSelectNightMode(it) },
                                     isMonochrome = isMonochrome,
                                     focusColor = focusColor,
                                     focusContent = focusContent,
@@ -2202,25 +2197,42 @@ private fun PlayerCustomModalSheet(
                                 )
                             }
 
-                            // 3. Amplificador de Volumen / Diálogos (Segmented Option Card)
+                            // 3. Amplificador de Volumen / Diálogos con indicador de decibelios (Kodi Slider Row)
                             item {
-                                Spacer(modifier = Modifier.height(2.dp))
-                                TvSegmentedControlRow(
+                                Spacer(modifier = Modifier.height(10.dp))
+                                val boostSteps = listOf(0, 3, 6, 10, 15)
+                                val currentIdx = boostSteps.indexOf(audioVolumeBoostDb).let { if (it >= 0) it else 0 }
+                                val boostLabel = when (audioVolumeBoostDb) {
+                                    3 -> "+3 dB"
+                                    6 -> "+6 dB"
+                                    10 -> "+10 dB"
+                                    15 -> "+15 dB"
+                                    else -> "0 dB (${stringResource(R.string.player_volume_boost_original)})"
+                                }
+                                KodiAudioSliderRow(
                                     title = stringResource(R.string.player_volume_boost),
                                     subtitle = stringResource(R.string.player_volume_boost_desc),
+                                    currentValueLabel = boostLabel,
+                                    progressFraction = currentIdx.toFloat() / (boostSteps.size - 1),
+                                    canDecrease = currentIdx > 0,
+                                    canIncrease = currentIdx < boostSteps.size - 1,
                                     icon = Icons.AutoMirrored.Filled.VolumeUp,
-                                    options = listOf(0, 3, 6, 10, 15),
-                                    selectedOption = audioVolumeBoostDb,
-                                    optionLabel = { db ->
-                                        when (db) {
-                                            0 -> stringResource(R.string.player_volume_boost_original)
-                                            else -> "+$db dB"
-                                        }
-                                    },
-                                    onOptionSelected = { onSelectVolumeBoost(it) },
                                     isMonochrome = isMonochrome,
                                     focusColor = focusColor,
-                                    focusContent = focusContent
+                                    onDecrease = {
+                                        if (currentIdx > 0) {
+                                            onSelectVolumeBoost(boostSteps[currentIdx - 1])
+                                        }
+                                    },
+                                    onIncrease = {
+                                        if (currentIdx < boostSteps.size - 1) {
+                                            onSelectVolumeBoost(boostSteps[currentIdx + 1])
+                                        }
+                                    },
+                                    onCycleNext = {
+                                        val nextIdx = (currentIdx + 1) % boostSteps.size
+                                        onSelectVolumeBoost(boostSteps[nextIdx])
+                                    }
                                 )
                             }
                         }
@@ -2445,6 +2457,315 @@ private fun TrackOptionItem(
                     contentDescription = null,
                     tint = if (isMonochrome) Color.White else focusColor,
                     modifier = Modifier.size(18.dp)
+                )
+            }
+        }
+    }
+}
+
+@ExperimentalTvMaterial3Api
+@Composable
+private fun TvToggleOptionRow(
+    title: String,
+    subtitle: String? = null,
+    icon: ImageVector? = null,
+    isChecked: Boolean,
+    onToggle: (Boolean) -> Unit,
+    isMonochrome: Boolean = false,
+    focusColor: Color = Color.White,
+    focusContent: Color = Color(0xFF0F172A),
+    firstFocusRequester: FocusRequester? = null
+) {
+    var isFocused by remember { mutableStateOf(false) }
+
+    Surface(
+        onClick = { onToggle(!isChecked) },
+        shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(12.dp)),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.02f),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = if (isChecked) (if (isMonochrome) Color(0x2EFFFFFF) else focusColor.copy(alpha = 0.20f)) else Color(0x14FFFFFF),
+            focusedContainerColor = if (isMonochrome) Color.White else focusColor,
+            pressedContainerColor = if (isMonochrome) Color(0x55FFFFFF) else focusColor.copy(alpha = 0.45f)
+        ),
+        border = ClickableSurfaceDefaults.border(
+            border = Border(
+                border = BorderStroke(
+                    1.dp,
+                    if (isChecked) (if (isMonochrome) Color(0x44FFFFFF) else focusColor.copy(alpha = 0.35f)) else Color(0x18FFFFFF)
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ),
+            focusedBorder = Border(
+                border = BorderStroke(
+                    2.dp,
+                    if (isMonochrome) Color.White else focusColor
+                ),
+                shape = RoundedCornerShape(12.dp)
+            )
+        ),
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(if (firstFocusRequester != null) Modifier.focusRequester(firstFocusRequester) else Modifier)
+            .onFocusChanged { isFocused = it.isFocused }
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.weight(1f, fill = false)
+            ) {
+                if (icon != null) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                        tint = if (isFocused) {
+                            if (isMonochrome) Color(0xFF0F172A) else focusContent
+                        } else if (isChecked) {
+                            if (isMonochrome) Color.White else focusColor
+                        } else Color(0xFF94A3B8)
+                    )
+                }
+                Column {
+                    Text(
+                        text = title,
+                        color = if (isFocused) (if (isMonochrome) Color(0xFF0F172A) else focusContent) else Color.White,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    if (subtitle != null) {
+                        Text(
+                            text = subtitle,
+                            color = if (isFocused) (if (isMonochrome) Color(0xCC0F172A) else focusContent.copy(alpha = 0.7f)) else Color(0x88CBD5E1),
+                            fontSize = 11.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+            }
+
+            // Status Badge
+            androidx.compose.material3.Surface(
+                shape = RoundedCornerShape(6.dp),
+                color = if (isChecked) {
+                    if (isFocused) (if (isMonochrome) Color(0x330F172A) else focusContent.copy(alpha = 0.15f))
+                    else (if (isMonochrome) Color.White.copy(alpha = 0.25f) else focusColor.copy(alpha = 0.30f))
+                } else Color(0x1AFFFFFF),
+                border = BorderStroke(
+                    1.dp,
+                    if (isChecked) {
+                        if (isFocused) (if (isMonochrome) Color(0x660F172A) else focusContent.copy(alpha = 0.3f))
+                        else (if (isMonochrome) Color.White.copy(alpha = 0.6f) else focusColor.copy(alpha = 0.7f))
+                    } else Color(0x22FFFFFF)
+                )
+            ) {
+                Text(
+                    text = if (isChecked) stringResource(R.string.settings_seasonal_audio_enabled) else stringResource(R.string.player_night_mode_off),
+                    color = if (isFocused) (if (isMonochrome) Color(0xFF0F172A) else focusContent)
+                            else if (isChecked && !isMonochrome) focusColor else Color.White,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                )
+            }
+        }
+    }
+}
+
+@ExperimentalTvMaterial3Api
+@Composable
+private fun KodiAudioSliderRow(
+    title: String,
+    subtitle: String,
+    currentValueLabel: String,
+    progressFraction: Float, // 0f to 1f
+    canDecrease: Boolean,
+    canIncrease: Boolean,
+    icon: ImageVector? = null,
+    isMonochrome: Boolean = false,
+    focusColor: Color = Color.White,
+    focusRequester: FocusRequester? = null,
+    onDecrease: () -> Unit,
+    onIncrease: () -> Unit,
+    onCycleNext: () -> Unit = onIncrease
+) {
+    var isFocused by remember { mutableStateOf(false) }
+
+    Surface(
+        onClick = onCycleNext,
+        shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(12.dp)),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.02f),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = if (progressFraction > 0f) (if (isMonochrome) Color(0x2EFFFFFF) else focusColor.copy(alpha = 0.20f)) else Color(0x14FFFFFF),
+            focusedContainerColor = if (isMonochrome) Color(0x40FFFFFF) else focusColor.copy(alpha = 0.35f),
+            pressedContainerColor = if (isMonochrome) Color(0x55FFFFFF) else focusColor.copy(alpha = 0.45f)
+        ),
+        border = ClickableSurfaceDefaults.border(
+            border = Border(
+                border = BorderStroke(
+                    1.dp,
+                    if (progressFraction > 0f) (if (isMonochrome) Color(0x44FFFFFF) else focusColor.copy(alpha = 0.35f)) else Color(0x18FFFFFF)
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ),
+            focusedBorder = Border(
+                border = BorderStroke(
+                    2.dp,
+                    if (isMonochrome) Color.White else focusColor
+                ),
+                shape = RoundedCornerShape(12.dp)
+            )
+        ),
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
+            .onFocusChanged { isFocused = it.isFocused }
+            .onPreviewKeyEvent { event ->
+                if (event.type == KeyEventType.KeyDown) {
+                    when (event.key) {
+                        Key.DirectionLeft -> {
+                            if (canDecrease) {
+                                onDecrease()
+                                true
+                            } else {
+                                false
+                            }
+                        }
+                        Key.DirectionRight -> {
+                            if (canIncrease) {
+                                onIncrease()
+                                true
+                            } else {
+                                true
+                            }
+                        }
+                        else -> false
+                    }
+                } else false
+            }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // Header: Icon + Title + Value Badge
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.weight(1f, fill = false)
+                ) {
+                    if (icon != null) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                            tint = if (progressFraction > 0f) {
+                                if (isMonochrome) Color.White else focusColor
+                            } else Color(0xFF94A3B8)
+                        )
+                    }
+                    Column {
+                        Text(
+                            text = title,
+                            color = Color.White,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = subtitle,
+                            color = Color(0x88CBD5E1),
+                            fontSize = 11.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+
+                // Decibel / Value Badge
+                androidx.compose.material3.Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = if (progressFraction > 0f) {
+                        if (isMonochrome) Color.White.copy(alpha = 0.25f) else focusColor.copy(alpha = 0.30f)
+                    } else Color(0x1AFFFFFF),
+                    border = BorderStroke(
+                        1.dp,
+                        if (progressFraction > 0f) {
+                            if (isMonochrome) Color.White.copy(alpha = 0.6f) else focusColor.copy(alpha = 0.7f)
+                        } else Color(0x22FFFFFF)
+                    )
+                ) {
+                    Text(
+                        text = currentValueLabel,
+                        color = if (progressFraction > 0f && !isMonochrome) focusColor else Color.White,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
+                    )
+                }
+            }
+
+            // Slider track (Kodi style) with arrow indicators
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "◀",
+                    fontSize = 11.sp,
+                    color = if (canDecrease) {
+                        if (isFocused) (if (isMonochrome) Color.White else focusColor) else Color.White
+                    } else Color(0x33FFFFFF)
+                )
+
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(Color(0x33FFFFFF))
+                ) {
+                    val activeColor = if (isMonochrome) Color.White else focusColor
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .fillMaxWidth(progressFraction.coerceIn(0f, 1f))
+                            .clip(RoundedCornerShape(3.dp))
+                            .background(
+                                Brush.horizontalGradient(
+                                    listOf(
+                                        activeColor.copy(alpha = 0.7f),
+                                        activeColor
+                                    )
+                                )
+                            )
+                    )
+                }
+
+                Text(
+                    text = "▶",
+                    fontSize = 11.sp,
+                    color = if (canIncrease) {
+                        if (isFocused) (if (isMonochrome) Color.White else focusColor) else Color.White
+                    } else Color(0x33FFFFFF)
                 )
             }
         }

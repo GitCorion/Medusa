@@ -173,8 +173,8 @@ class PlayerViewModel @Inject constructor(
     ): String? {
         val downloadEndpoints = listOfNotNull(
             "$baseUrl/Items/$playableId/Download?api_key=$token",
-            if (mediaSourceId.isNotBlank()) "$baseUrl/Videos/$playableId/stream?static=true&MediaSourceId=$mediaSourceId&api_key=$token" else null,
-            "$baseUrl/Videos/$playableId/stream?static=true&api_key=$token"
+            if (mediaSourceId.isNotBlank()) "$baseUrl/Videos/$playableId/stream?MediaSourceId=$mediaSourceId&api_key=$token" else null,
+            "$baseUrl/Videos/$playableId/stream?api_key=$token"
         )
 
         for (targetUrl in downloadEndpoints) {
@@ -185,23 +185,29 @@ class PlayerViewModel @Inject constructor(
                     .header("X-Emby-Authorization", authHeader)
                     .build()
 
-                val content = withContext(Dispatchers.IO) {
+                val (lineWithUrl, redirectedUrl) = withContext(Dispatchers.IO) {
                     NetworkClientFactory.okHttpClient.newCall(request).execute().use { response ->
-                        if (response.isSuccessful) {
-                            response.body?.string()?.trim()
+                        val finalUrl = response.request.url.toString()
+                        val redirect = if (finalUrl != targetUrl && (finalUrl.startsWith("http://", ignoreCase = true) || finalUrl.startsWith("https://", ignoreCase = true))) {
+                            finalUrl
                         } else null
+
+                        val content = if (response.isSuccessful && response.header("Content-Type")?.contains("video", ignoreCase = true) != true) {
+                            runCatching { response.peekBody(4096).string().trim() }.getOrNull()
+                        } else null
+
+                        val extracted = content?.lineSequence()
+                            ?.map { it.trim() }
+                            ?.firstOrNull { it.startsWith("http://", ignoreCase = true) || it.startsWith("https://", ignoreCase = true) }
+
+                        Pair(extracted, redirect)
                     }
                 }
 
-                if (!content.isNullOrBlank()) {
-                    val lineWithUrl = content.lineSequence()
-                        .map { it.trim() }
-                        .firstOrNull { it.startsWith("http://", ignoreCase = true) || it.startsWith("https://", ignoreCase = true) }
-
-                    if (lineWithUrl != null) {
-                        Log.i("PlayerViewModel", "Extracted target URL from .strm file: $lineWithUrl")
-                        return lineWithUrl
-                    }
+                val resolved = lineWithUrl ?: redirectedUrl
+                if (resolved != null) {
+                    Log.i("PlayerViewModel", "Extracted target URL from .strm file: $resolved")
+                    return resolved
                 }
             } catch (e: Exception) {
                 Log.w("PlayerViewModel", "Failed to resolve .strm from $targetUrl: ${e.message}")
@@ -581,38 +587,18 @@ class PlayerViewModel @Inject constructor(
 
                 Log.d("PlayerViewModel", "Using MediaSource id=$mediaSourceId name='${mediaSource.name}' container=$container isStrm=$isStrm path=$path")
 
-                // For .strm files:
-                // 1. Direct static stream from Jellyfin (static=true forces Jellyfin to stream raw bytes with HTTP Range 206)
+                // Remote descriptor / stream resolution for .strm files:
                 if (isStrm) {
-                    if (mediaSourceId.isNotBlank()) {
-                        val staticStream = "$baseUrl/Videos/$playableId/stream?static=true&MediaSourceId=$mediaSourceId&api_key=$effectiveToken"
-                        if (!candidateUrls.contains(staticStream)) {
-                            candidateUrls.add(staticStream)
+                    // 1. Direct path if it's already an HTTP/HTTPS URL
+                    if (path.startsWith("http://", ignoreCase = true) || path.startsWith("https://", ignoreCase = true)) {
+                        val pathUri = runCatching { Uri.parse(path) }.getOrNull()
+                        val pathHost = pathUri?.host
+                        if (!isDockerOrLocalhostHost(pathHost) && !pathHost.isNullOrBlank()) {
+                            if (!candidateUrls.contains(path)) candidateUrls.add(path)
                         }
                     }
 
-                    // 2. DirectStreamUrl provided by Jellyfin API if available
-                    val dsUrl = mediaSource.directStreamUrl
-                    if (!dsUrl.isNullOrBlank()) {
-                        val fullDsUrl = if (dsUrl.startsWith("http", ignoreCase = true)) dsUrl else "$baseUrl$dsUrl"
-                        val authDsUrl = if (!fullDsUrl.contains("api_key=")) "$fullDsUrl&api_key=$effectiveToken" else fullDsUrl
-                        if (!candidateUrls.contains(authDsUrl)) {
-                            candidateUrls.add(authDsUrl)
-                        }
-                    }
-
-                    // 3. Alternative versions (e.g. 1080p SDR versions) as direct static candidates
-                    // Allows seamless fallback if 4K HDR HEVC hardware decoder fails
-                    mediaSources?.filter { it.id != mediaSourceId }?.forEach { altSource ->
-                        if (altSource.id.isNotBlank()) {
-                            val altStatic = "$baseUrl/Videos/$playableId/stream?static=true&MediaSourceId=${altSource.id}&api_key=$effectiveToken"
-                            if (!candidateUrls.contains(altStatic)) {
-                                candidateUrls.add(altStatic)
-                            }
-                        }
-                    }
-
-                    // 4. Extracted direct URL as fallback if Jellyfin streaming fails
+                    // 2. Extracted direct target URL from the .strm descriptor
                     val extractedStrmUrl = resolveStrmTargetUrl(
                         baseUrl = baseUrl,
                         token = effectiveToken,
@@ -627,13 +613,31 @@ class PlayerViewModel @Inject constructor(
                         if (!candidateUrls.contains(extractedStrmUrl)) candidateUrls.add(extractedStrmUrl)
                     }
 
-                    // 5. Direct path if valid public routable IP
-                    if (path.startsWith("http://", ignoreCase = true) || path.startsWith("https://", ignoreCase = true)) {
-                        val pathUri = runCatching { Uri.parse(path) }.getOrNull()
-                        val pathHost = pathUri?.host
+                    // 3. DirectStreamUrl provided by Jellyfin API if available
+                    val dsUrl = mediaSource.directStreamUrl
+                    if (!dsUrl.isNullOrBlank()) {
+                        val fullDsUrl = if (dsUrl.startsWith("http", ignoreCase = true)) dsUrl else "$baseUrl$dsUrl"
+                        val authDsUrl = if (!fullDsUrl.contains("api_key=")) "$fullDsUrl&api_key=$effectiveToken" else fullDsUrl
+                        if (!candidateUrls.contains(authDsUrl)) {
+                            candidateUrls.add(authDsUrl)
+                        }
+                    }
 
-                        if (!isDockerOrLocalhostHost(pathHost) && !pathHost.isNullOrBlank()) {
-                            if (!candidateUrls.contains(path)) candidateUrls.add(path)
+                    // 4. Stream through Jellyfin gateway (WITHOUT static=true to avoid 503 on .strm items)
+                    if (mediaSourceId.isNotBlank()) {
+                        val dynamicStream = "$baseUrl/Videos/$playableId/stream?MediaSourceId=$mediaSourceId&api_key=$effectiveToken"
+                        if (!candidateUrls.contains(dynamicStream)) {
+                            candidateUrls.add(dynamicStream)
+                        }
+                    }
+
+                    // 5. Alternative versions (e.g. 1080p SDR versions)
+                    mediaSources?.filter { it.id != mediaSourceId }?.forEach { altSource ->
+                        if (altSource.id.isNotBlank()) {
+                            val altDynamic = "$baseUrl/Videos/$playableId/stream?MediaSourceId=${altSource.id}&api_key=$effectiveToken"
+                            if (!candidateUrls.contains(altDynamic)) {
+                                candidateUrls.add(altDynamic)
+                            }
                         }
                     }
 
