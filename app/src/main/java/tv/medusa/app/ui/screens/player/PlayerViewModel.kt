@@ -37,6 +37,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -92,7 +94,19 @@ class PlayerViewModel @Inject constructor(
     val accentColor: StateFlow<String> = userPreferencesRepository.accentColor
     val isProUser: StateFlow<Boolean> = userPreferencesRepository.isProUser
     val nightModeAudio: StateFlow<Int> = userPreferencesRepository.nightModeAudio
-    val audioVolumeBoostDb: StateFlow<Int> = userPreferencesRepository.audioVolumeBoostDb
+    private val _audioVolumeBoostDb = MutableStateFlow(userPreferencesRepository.audioVolumeBoostDb.value)
+    val audioVolumeBoostDb: StateFlow<Int> = _audioVolumeBoostDb.asStateFlow()
+    private var volumeBoostPersistJob: Job? = null
+
+    init {
+        viewModelScope.launch {
+            userPreferencesRepository.audioVolumeBoostDb.collect { db ->
+                if (volumeBoostPersistJob == null || !volumeBoostPersistJob!!.isActive) {
+                    _audioVolumeBoostDb.value = db
+                }
+            }
+        }
+    }
     val subtitleSize: StateFlow<String> = userPreferencesRepository.subtitleSize
     val subtitleBackground: StateFlow<Boolean> = userPreferencesRepository.subtitleBackground
     val autoFrameRateEnabled: StateFlow<Boolean> = userPreferencesRepository.autoFrameRateEnabled
@@ -111,8 +125,12 @@ class PlayerViewModel @Inject constructor(
     }
 
     fun setAudioVolumeBoostDb(db: Int) {
-        viewModelScope.launch {
-            userPreferencesRepository.setAudioVolumeBoostDb(db)
+        val clamped = db.coerceIn(0, 20)
+        _audioVolumeBoostDb.value = clamped
+        volumeBoostPersistJob?.cancel()
+        volumeBoostPersistJob = viewModelScope.launch {
+            delay(350L)
+            userPreferencesRepository.setAudioVolumeBoostDb(clamped)
         }
     }
 

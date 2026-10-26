@@ -3040,23 +3040,26 @@ private fun TvAudioVolumeSliderRow(
 ) {
     val showIcons = buttonStyle != BUTTON_STYLE_TEXT_ONLY
     var isFocused by remember { mutableStateOf(false) }
-    val fraction = (currentDb.toFloat() / maxDb.toFloat()).coerceIn(0f, 1f)
+    var localDb by remember(currentDb) { mutableIntStateOf(currentDb) }
+
+    val fraction = (localDb.toFloat() / maxDb.toFloat()).coerceIn(0f, 1f)
     val animatedFraction by animateFloatAsState(
         targetValue = fraction,
-        animationSpec = tween(durationMillis = 100, easing = LinearOutSlowInEasing),
+        animationSpec = tween(durationMillis = 60, easing = LinearOutSlowInEasing),
         label = "volume_slider_fraction"
     )
 
-    val isBoosted = currentDb > 0
+    val isBoosted = localDb > 0
 
     val iconVector = when {
-        currentDb == 0 -> Icons.AutoMirrored.Filled.VolumeDown
+        localDb == 0 -> Icons.AutoMirrored.Filled.VolumeDown
         else -> Icons.AutoMirrored.Filled.VolumeUp
     }
 
     Surface(
         onClick = {
-            val nextDb = if (currentDb == 0) 6 else 0
+            val nextDb = if (localDb == 0) 6 else 0
+            localDb = nextDb
             onValueChange(nextDb)
         },
         shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(14.dp)),
@@ -3094,15 +3097,17 @@ private fun TvAudioVolumeSliderRow(
                 if (event.type == KeyEventType.KeyDown) {
                     when (event.key) {
                         Key.DirectionLeft -> {
-                            val newDb = (currentDb - 1).coerceAtLeast(0)
-                            if (newDb != currentDb) {
+                            val newDb = (localDb - 1).coerceAtLeast(0)
+                            if (newDb != localDb) {
+                                localDb = newDb
                                 onValueChange(newDb)
                             }
                             true
                         }
                         Key.DirectionRight -> {
-                            val newDb = (currentDb + 1).coerceAtMost(maxDb)
-                            if (newDb != currentDb) {
+                            val newDb = (localDb + 1).coerceAtMost(maxDb)
+                            if (newDb != localDb) {
+                                localDb = newDb
                                 onValueChange(newDb)
                             }
                             true
@@ -3168,7 +3173,7 @@ private fun TvAudioVolumeSliderRow(
                     )
                 ) {
                     Text(
-                        text = if (currentDb == 0) "0 dB" else "+$currentDb dB",
+                        text = if (localDb == 0) "0 dB" else "+$localDb dB",
                         color = if (isBoosted && !isMonochrome) focusColor else Color.White,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
@@ -3187,13 +3192,20 @@ private fun TvAudioVolumeSliderRow(
                     modifier = Modifier
                         .size(24.dp)
                         .clip(CircleShape)
-                        .background(if (isFocused && currentDb > 0) (if (isMonochrome) Color(0x40FFFFFF) else focusColor.copy(alpha = 0.3f)) else Color(0x15FFFFFF)),
+                        .background(if (isFocused && localDb > 0) (if (isMonochrome) Color(0x40FFFFFF) else focusColor.copy(alpha = 0.3f)) else Color(0x15FFFFFF))
+                        .clickable {
+                            val newDb = (localDb - 1).coerceAtLeast(0)
+                            if (newDb != localDb) {
+                                localDb = newDb
+                                onValueChange(newDb)
+                            }
+                        },
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = "◀",
                         fontSize = 10.sp,
-                        color = if (currentDb > 0) {
+                        color = if (localDb > 0) {
                             if (isFocused) (if (isMonochrome) Color.White else focusColor) else Color.White
                         } else Color(0x33FFFFFF)
                     )
@@ -3256,13 +3268,20 @@ private fun TvAudioVolumeSliderRow(
                     modifier = Modifier
                         .size(24.dp)
                         .clip(CircleShape)
-                        .background(if (isFocused && currentDb < maxDb) (if (isMonochrome) Color(0x40FFFFFF) else focusColor.copy(alpha = 0.3f)) else Color(0x15FFFFFF)),
+                        .background(if (isFocused && localDb < maxDb) (if (isMonochrome) Color(0x40FFFFFF) else focusColor.copy(alpha = 0.3f)) else Color(0x15FFFFFF))
+                        .clickable {
+                            val newDb = (localDb + 1).coerceAtMost(maxDb)
+                            if (newDb != localDb) {
+                                localDb = newDb
+                                onValueChange(newDb)
+                            }
+                        },
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = "▶",
                         fontSize = 10.sp,
-                        color = if (currentDb < maxDb) {
+                        color = if (localDb < maxDb) {
                             if (isFocused) (if (isMonochrome) Color.White else focusColor) else Color.White
                         } else Color(0x33FFFFFF)
                     )
