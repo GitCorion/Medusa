@@ -1429,6 +1429,9 @@ private fun PlayerContent(
         if (showResumeDialog && info.startPositionMs >= 10_000L) {
             ResumePlaybackDialog(
                 savedPositionMs = info.startPositionMs,
+                isMonochrome = isMonochrome,
+                focusColor = focusColor,
+                focusContent = focusContent,
                 onResume = {
                     showResumeDialog = false
                     resumeDecisionMade = true
@@ -1446,10 +1449,7 @@ private fun PlayerContent(
                     exoPlayer.prepare()
                     exoPlayer.playWhenReady = true
                     exoPlayer.play()
-                },
-                isMonochrome = isMonochrome,
-                focusColor = focusColor,
-                focusContent = focusContent
+                }
             )
         }
 
@@ -3877,10 +3877,10 @@ private fun ResumePlaybackDialog(
                     .handleTouchClick { onResume() }
                     .focusRequester(resumeFocusRequester),
                 colors = ButtonDefaults.colors(
-                    containerColor = Color.White,
-                    contentColor = Color(0xFF0F172A),
-                    focusedContainerColor = Color.White,
-                    focusedContentColor = Color(0xFF0F172A)
+                    containerColor = if (isMonochrome) Color.White else focusColor,
+                    contentColor = focusContent,
+                    focusedContainerColor = focusColor,
+                    focusedContentColor = focusContent
                 ),
                 shape = ButtonDefaults.shape(shape = RoundedCornerShape(12.dp))
             ) {
@@ -3909,8 +3909,8 @@ private fun ResumePlaybackDialog(
                 colors = ButtonDefaults.colors(
                     containerColor = Color(0x20FFFFFF),
                     contentColor = Color.White,
-                    focusedContainerColor = Color.White,
-                    focusedContentColor = Color(0xFF0F172A)
+                    focusedContainerColor = focusColor,
+                    focusedContentColor = focusContent
                 ),
                 shape = ButtonDefaults.shape(shape = RoundedCornerShape(12.dp))
             ) {

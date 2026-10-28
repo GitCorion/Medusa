@@ -21,6 +21,11 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -53,7 +58,7 @@ fun GenreRow(
     ) {
         val isMonochrome = LocalIsMonochromeTheme.current
         val accentKey = LocalAccentColor.current
-        val accentColor = TvAccent.getColor(accentKey)
+        val focusColor = if (isMonochrome) Color.White else TvAccent.getColor(accentKey)
 
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -62,43 +67,18 @@ fun GenreRow(
             if (!isMonochrome) {
                 Box(
                     modifier = Modifier
-                        .width(3.5.dp)
                         .height(18.dp)
-                        .background(
-                            brush = Brush.verticalGradient(
-                                listOf(
-                                    accentColor,
-                                    accentColor.copy(alpha = 0.35f)
-                                )
-                            ),
-                            shape = RoundedCornerShape(2.dp)
-                        )
+                        .width(3.dp)
+                        .background(focusColor, RoundedCornerShape(1.5.dp))
                 )
                 Spacer(modifier = Modifier.width(10.dp))
             }
-
-            if (isMonochrome) {
-                Text(
-                    text = stringResource(R.string.genre_favorites_title),
-                    style = MaterialTheme.typography.titleLarge,
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold
-                )
-            } else {
-                Text(
-                    text = stringResource(R.string.genre_favorites_title),
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        brush = Brush.horizontalGradient(
-                            listOf(
-                                Color(0xFFFFFFFF),
-                                Color(0xFFE2E8F0),
-                                accentColor.copy(alpha = 0.85f)
-                            )
-                        )
-                    ),
-                    fontWeight = FontWeight.Bold
-                )
-            }
+            Text(
+                text = stringResource(R.string.genre_favorites_title),
+                style = MaterialTheme.typography.titleLarge,
+                color = Color.White,
+                fontWeight = FontWeight.SemiBold
+            )
         }
 
         LazyRow(
@@ -127,16 +107,19 @@ private fun GenreChip(
 ) {
     val isMonochrome = LocalIsMonochromeTheme.current
     val accentKey = LocalAccentColor.current
-    val accentColor = TvAccent.getColor(accentKey)
+    val focusColor = if (isMonochrome) Color.White else TvAccent.getColor(accentKey)
     val focusContent = if (isMonochrome) Color(0xFF0F172A) else TvAccent.getFocusedContentColor(accentKey)
+    var isFocused by remember { mutableStateOf(false) }
 
     Surface(
         onClick = onClick,
-        modifier = Modifier.handleTouchClick { onClick() },
+        modifier = Modifier
+            .onFocusChanged { isFocused = it.isFocused }
+            .handleTouchClick { onClick() },
         shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(10.dp)),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = Color(0x10FFFFFF),
-            focusedContainerColor = if (isMonochrome) Color.White else accentColor,
+            focusedContainerColor = focusColor,
             contentColor = Color(0xFFF1F5F9),
             focusedContentColor = focusContent
         ),
@@ -152,6 +135,7 @@ private fun GenreChip(
         ) {
             Text(
                 text = genreName,
+                color = if (isFocused) focusContent else Color(0xFFF1F5F9),
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 13.sp,
                 letterSpacing = 0.5.sp

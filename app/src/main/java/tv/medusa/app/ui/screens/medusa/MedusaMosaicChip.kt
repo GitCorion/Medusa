@@ -30,7 +30,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -97,30 +96,19 @@ fun MedusaMosaicChip(
 
     val borderColor by animateColorAsState(
         targetValue = when {
-            isFocused -> Color.White
-            tag.isSelected -> if (isMonochrome) Color.White else Color(0xFF00E5FF)
-            else -> categoryColor.copy(alpha = 0.35f)
+            isFocused -> Color.White.copy(alpha = 0.90f)
+            tag.isSelected -> Color.White.copy(alpha = 0.60f)
+            else -> Color(0x18FFFFFF)
         },
         label = "mosaicBorderColor"
     )
 
-    val borderWidth = if (isFocused) 2.dp else if (tag.isSelected) 1.4.dp else 0.8.dp
+    val borderWidth = if (isFocused) 1.5.dp else if (tag.isSelected) 1.dp else 0.5.dp
 
-    val backgroundBrush = remember(isFocused, tag.isSelected, categoryColor) {
-        when {
-            isFocused && tag.isSelected -> Brush.horizontalGradient(
-                listOf(categoryColor.copy(alpha = 0.6f), Color(0x661E1B4B))
-            )
-            isFocused -> Brush.horizontalGradient(
-                listOf(Color(0x38FFFFFF), Color(0x20334155))
-            )
-            tag.isSelected -> Brush.horizontalGradient(
-                listOf(categoryColor.copy(alpha = 0.35f), Color(0x400F172A))
-            )
-            else -> Brush.horizontalGradient(
-                listOf(Color(0x22131926), Color(0x180A0E17))
-            )
-        }
+    val backgroundColor = when {
+        isFocused -> Color(0xFF1E222D)
+        tag.isSelected -> Color(0x28FFFFFF)
+        else -> Color(0x10FFFFFF)
     }
 
     Box(
@@ -128,7 +116,7 @@ fun MedusaMosaicChip(
             .scale(scale)
             .height(44.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(backgroundBrush)
+            .background(backgroundColor)
             .border(borderWidth, borderColor, RoundedCornerShape(12.dp))
             .clickable(
                 interactionSource = interactionSource,
@@ -162,13 +150,13 @@ fun MedusaMosaicChip(
                         modifier = Modifier
                             .size(16.dp)
                             .clip(CircleShape)
-                            .background(if (isMonochrome) Color.White else Color(0xFF00E5FF)),
+                            .background(Color.White),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.Check,
                             contentDescription = null,
-                            tint = Color(0xFF05070B),
+                            tint = Color(0xFF0F172A),
                             modifier = Modifier.size(12.dp)
                         )
                     }
@@ -177,7 +165,7 @@ fun MedusaMosaicChip(
                         modifier = Modifier
                             .size(7.dp)
                             .clip(CircleShape)
-                            .background(categoryColor)
+                            .background(categoryColor.copy(alpha = 0.75f))
                     )
                 }
 
@@ -187,11 +175,11 @@ fun MedusaMosaicChip(
                     text = tag.label,
                     color = when {
                         isFocused -> Color.White
-                        tag.isSelected -> if (isMonochrome) Color.White else Color(0xFFF0FDF4)
+                        tag.isSelected -> Color.White
                         else -> Color(0xFFE2E8F0)
                     },
                     fontSize = 13.sp,
-                    fontWeight = if (tag.isSelected || isFocused) FontWeight.Bold else FontWeight.SemiBold,
+                    fontWeight = if (tag.isSelected || isFocused) FontWeight.SemiBold else FontWeight.Medium,
                     fontFamily = FontFamily.SansSerif,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -204,22 +192,14 @@ fun MedusaMosaicChip(
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(6.dp))
-                    .background(
-                        if (isFocused) Color(0x35000000)
-                        else if (tag.isSelected) categoryColor.copy(alpha = 0.25f)
-                        else Color(0x20FFFFFF)
-                    )
+                    .background(Color(0x22000000))
                     .padding(horizontal = 6.dp, vertical = 2.dp)
             ) {
                 Text(
                     text = "${tag.movieCount}",
-                    color = when {
-                        isFocused -> Color.White
-                        tag.isSelected -> if (isMonochrome) Color.White else Color(0xFF00E5FF)
-                        else -> Color(0xBB94A3B8)
-                    },
+                    color = if (isFocused) Color.White else Color(0xFF94A3B8),
                     fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.SemiBold,
                     fontFamily = FontFamily.SansSerif
                 )
             }

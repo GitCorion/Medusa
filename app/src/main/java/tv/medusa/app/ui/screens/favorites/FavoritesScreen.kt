@@ -119,8 +119,8 @@ fun FavoritesScreen(
                             colors = ButtonDefaults.colors(
                                 containerColor = Color(0x22FFFFFF),
                                 contentColor = Color.White,
-                                focusedContainerColor = Color.White,
-                                focusedContentColor = Color(0xFF0F172A)
+                                focusedContainerColor = focusColor,
+                                focusedContentColor = focusContent
                             )
                         ) {
                             Text(stringResource(R.string.common_retry), fontWeight = FontWeight.Bold)
@@ -205,41 +205,11 @@ fun FavoritesScreen(
                                 .padding(horizontal = 48.dp, vertical = 12.dp)
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                if (!isMonochrome) {
-                                    Box(
-                                        modifier = Modifier
-                                            .width(3.5.dp)
-                                            .height(18.dp)
-                                            .background(
-                                                brush = Brush.verticalGradient(
-                                                    listOf(
-                                                        focusColor,
-                                                        focusColor.copy(alpha = 0.35f)
-                                                    )
-                                                ),
-                                                shape = RoundedCornerShape(2.dp)
-                                            )
-                                    )
-                                    Spacer(modifier = Modifier.width(10.dp))
-                                }
-
                                 Text(
                                     text = stringResource(R.string.favorites_collection_count, state.filteredItems.size),
-                                    style = if (isMonochrome) {
-                                        MaterialTheme.typography.titleLarge
-                                    } else {
-                                        MaterialTheme.typography.titleLarge.copy(
-                                            brush = Brush.horizontalGradient(
-                                                listOf(
-                                                    Color(0xFFFFFFFF),
-                                                    Color(0xFFE0F7FE),
-                                                    Color(0xFFBAE6FD)
-                                                )
-                                            )
-                                        )
-                                    },
+                                    style = MaterialTheme.typography.titleLarge,
                                     color = Color.White,
-                                    fontWeight = FontWeight.Bold
+                                    fontWeight = FontWeight.SemiBold
                                 )
                             }
 

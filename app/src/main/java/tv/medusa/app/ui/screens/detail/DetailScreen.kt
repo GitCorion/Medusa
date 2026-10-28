@@ -58,6 +58,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import kotlinx.coroutines.delay
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -173,8 +174,8 @@ fun DetailScreen(
 
             is DetailUiState.Success -> {
                 val entity = state.entity
-                val focusColor = TvAccent.getColor(state.accentColor)
-                val focusContent = TvAccent.getFocusedContentColor(state.accentColor)
+                val focusColor = if (isMonochrome) Color.White else TvAccent.getColor(state.accentColor)
+                val focusContent = if (isMonochrome) Color(0xFF0F172A) else TvAccent.getFocusedContentColor(state.accentColor)
                 val isTv = entity.type.equals("Series", ignoreCase = true) || entity.type.equals("Episode", ignoreCase = true)
                 val isTvSeries = entity.type.equals("Series", ignoreCase = true)
 
@@ -287,32 +288,14 @@ fun DetailScreen(
                         }
 
                         if (state.logoUrl.isNullOrBlank() || !isLogoLoaded) {
-                            if (isMonochrome) {
-                                Text(
-                                    text = entity.title,
-                                    style = MaterialTheme.typography.headlineLarge,
-                                    color = Color.White,
-                                    fontWeight = FontWeight.Black,
-                                    maxLines = 2,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            } else {
-                                Text(
-                                    text = entity.title,
-                                    style = MaterialTheme.typography.headlineLarge.copy(
-                                        brush = Brush.horizontalGradient(
-                                            listOf(
-                                                Color(0xFFFFFFFF),
-                                                Color(0xFFE0F7FE),
-                                                Color(0xFF67E8F9).copy(alpha = 0.85f)
-                                            )
-                                        )
-                                    ),
-                                    fontWeight = FontWeight.Black,
-                                    maxLines = 2,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
+                            Text(
+                                text = entity.title,
+                                style = MaterialTheme.typography.headlineLarge,
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
                         }
 
                         if (isEpisode) {
@@ -337,12 +320,7 @@ fun DetailScreen(
                             }
 
                             if (entity.productionYear != null) {
-                                TvPill(
-                                    text = "${entity.productionYear}",
-                                    containerColor = Color(0x18FFFFFF),
-                                    textColor = Color(0xFFE2E8F0),
-                                    borderColor = Color(0x22FFFFFF)
-                                )
+                                TvPill(text = "${entity.productionYear}")
                             }
 
                             TvPill(
@@ -351,23 +329,15 @@ fun DetailScreen(
                                     isEpisode -> stringResource(R.string.detail_type_episode, sNum, eNum)
                                     isTvSeries -> stringResource(R.string.detail_type_series)
                                     else -> stringResource(R.string.detail_type_movie)
-                                },
-                                containerColor = if (state.isCollection) Color(0x3338BDF8) else Color(0x18FFFFFF),
-                                textColor = if (state.isCollection && !isMonochrome) Color(0xFF7DD3FC) else Color(0xFFE2E8F0),
-                                borderColor = if (state.isCollection) Color(0x6638BDF8) else Color(0x22FFFFFF)
+                                }
                             )
 
                             // Age Rating Badge (OfficialRating: PG-13, R, TV-MA, etc.)
                             if (!entity.officialRating.isNullOrBlank()) {
-                                TvPill(
-                                    text = entity.officialRating,
-                                    containerColor = if (isMonochrome) Color(0x18FFFFFF) else Color(0x28F59E0B),
-                                    textColor = if (isMonochrome) Color.White else Color(0xFFFCD34D),
-                                    borderColor = if (isMonochrome) Color(0x33FFFFFF) else Color(0x55F59E0B)
-                                )
+                                TvPill(text = entity.officialRating)
                             }
 
-                            // Series Status Badge (Terminada, Continúa, Suspendida / Sin final)
+                            // Series Status Badge (Terminada, Continúa, Suspendida / Sin final) - No slot emoji balls
                             if (state.seriesStatus != null && state.seriesStatus.type != SeriesStatusType.UNKNOWN) {
                                 val statusLabel = when (state.seriesStatus.type) {
                                     SeriesStatusType.CANCELED -> stringResource(R.string.series_status_canceled)
@@ -375,36 +345,23 @@ fun DetailScreen(
                                     SeriesStatusType.CONTINUING -> stringResource(R.string.series_status_continuing)
                                     SeriesStatusType.UNKNOWN -> ""
                                 }
-                                when (state.seriesStatus.type) {
-                                    SeriesStatusType.CANCELED -> {
-                                        TvPill(
-                                            text = if (isMonochrome) statusLabel else stringResource(R.string.detail_status_canceled, statusLabel),
-                                            containerColor = if (isMonochrome) Color(0x18FFFFFF) else Color(0x33EF4444),
-                                            textColor = if (isMonochrome) Color.White else Color(0xFFFCA5A5),
-                                            borderColor = if (isMonochrome) Color(0x33FFFFFF) else Color(0x66EF4444)
-                                        )
+                                if (statusLabel.isNotBlank()) {
+                                    val (statusBg, statusBorder, statusText) = when {
+                                        isMonochrome -> Triple(Color(0x18FFFFFF), Color(0x22FFFFFF), Color(0xFFCBD5E1))
+                                        state.seriesStatus.type == SeriesStatusType.CONTINUING -> Triple(Color(0x2010B981), Color(0x3510B981), Color(0xFF6EE7B7))
+                                        state.seriesStatus.type == SeriesStatusType.CANCELED -> Triple(Color(0x20EF4444), Color(0x35EF4444), Color(0xFFFCA5A5))
+                                        else -> Triple(Color(0x18FFFFFF), Color(0x22FFFFFF), Color(0xFFCBD5E1))
                                     }
-                                    SeriesStatusType.ENDED -> {
-                                        TvPill(
-                                            text = if (isMonochrome) statusLabel else stringResource(R.string.detail_status_ended, statusLabel),
-                                            containerColor = Color(0x18FFFFFF),
-                                            textColor = Color(0xFFE2E8F0),
-                                            borderColor = Color(0x33FFFFFF)
-                                        )
-                                    }
-                                    SeriesStatusType.CONTINUING -> {
-                                        TvPill(
-                                            text = if (isMonochrome) statusLabel else stringResource(R.string.detail_status_continuing, statusLabel),
-                                            containerColor = if (isMonochrome) Color(0x18FFFFFF) else Color(0x2E10B981),
-                                            textColor = if (isMonochrome) Color.White else Color(0xFF6EE7B7),
-                                            borderColor = if (isMonochrome) Color(0x33FFFFFF) else Color(0x5510B981)
-                                        )
-                                    }
-                                    SeriesStatusType.UNKNOWN -> {}
+                                    TvPill(
+                                        text = statusLabel,
+                                        containerColor = statusBg,
+                                        borderColor = statusBorder,
+                                        textColor = statusText
+                                    )
                                 }
                             }
 
-                            // Individual Genre Pills
+                            // Individual Genre Pills (Neutral obsidian glass, not casino purple)
                             val genreList = entity.genres
                                 ?.split(",", ";")
                                 ?.map { it.trim() }
@@ -412,12 +369,7 @@ fun DetailScreen(
                                 ?: emptyList()
 
                             genreList.forEach { genre ->
-                                TvPill(
-                                    text = genre,
-                                    containerColor = if (isMonochrome) Color(0x12FFFFFF) else Color(0x188B5CF6),
-                                    textColor = if (isMonochrome) Color(0xFF94A3B8) else Color(0xFFC4B5FD),
-                                    borderColor = if (isMonochrome) Color(0x18FFFFFF) else Color(0x338B5CF6)
-                                )
+                                TvPill(text = genre)
                             }
 
                             val totalEps = entity.totalItemCount
@@ -430,36 +382,36 @@ fun DetailScreen(
                             if (hasSeriesProgress) {
                                 TvPill(
                                     text = stringResource(R.string.detail_progress, playedEps, totalEps ?: 0),
-                                    containerColor = Color(0x22FFFFFF),
-                                    textColor = if (isMonochrome) Color.White else Color(0xFF38BDF8),
-                                    borderColor = if (isMonochrome) Color(0x33FFFFFF) else Color(0x5500A4DC)
+                                    containerColor = if (isMonochrome) Color(0x22FFFFFF) else focusColor.copy(alpha = 0.16f),
+                                    textColor = if (isMonochrome) Color.White else focusColor,
+                                    borderColor = if (isMonochrome) Color(0x44FFFFFF) else focusColor.copy(alpha = 0.40f)
                                 )
                             }
 
                             if (hasItemProgress) {
                                 TvPill(
                                     text = stringResource(R.string.badge_in_progress),
-                                    containerColor = Color(0x22FFFFFF),
-                                    textColor = if (isMonochrome) Color.White else Color(0xFF38BDF8),
-                                    borderColor = if (isMonochrome) Color(0x33FFFFFF) else Color(0x5500A4DC)
+                                    containerColor = if (isMonochrome) Color(0x22FFFFFF) else focusColor.copy(alpha = 0.16f),
+                                    textColor = if (isMonochrome) Color.White else focusColor,
+                                    borderColor = if (isMonochrome) Color(0x44FFFFFF) else focusColor.copy(alpha = 0.40f)
                                 )
                             }
 
                             if (state.isFavorite) {
                                 TvPill(
                                     text = stringResource(R.string.badge_favorite),
-                                    containerColor = Color(0x22FFFFFF),
-                                    textColor = if (isMonochrome) Color.White else Color(0xFFEF4444),
-                                    borderColor = if (isMonochrome) Color(0x33FFFFFF) else Color(0x66EF4444)
+                                    containerColor = if (isMonochrome) Color(0x18FFFFFF) else Color(0x20F43F5E),
+                                    textColor = if (isMonochrome) Color(0xFFE2E8F0) else Color(0xFFFDA4AF),
+                                    borderColor = if (isMonochrome) Color(0x25FFFFFF) else Color(0x35F43F5E)
                                 )
                             }
 
                             if (isSeriesFinished && !hasSeriesProgress && !hasItemProgress) {
                                 TvPill(
                                     text = stringResource(R.string.badge_watched),
-                                    containerColor = Color(0x22FFFFFF),
-                                    textColor = if (isMonochrome) Color.White else Color(0xFF6EE7B7),
-                                    borderColor = if (isMonochrome) Color(0x33FFFFFF) else Color(0x3310B981)
+                                    containerColor = if (isMonochrome) Color(0x18FFFFFF) else Color(0x2010B981),
+                                    textColor = if (isMonochrome) Color(0xFFE2E8F0) else Color(0xFF6EE7B7),
+                                    borderColor = if (isMonochrome) Color(0x25FFFFFF) else Color(0x3510B981)
                                 )
                             }
                         }
@@ -499,14 +451,14 @@ fun DetailScreen(
                                     onPlay(playTargetId)
                                 },
                                 colors = ButtonDefaults.colors(
-                                    containerColor = if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.22f),
-                                    contentColor = if (isMonochrome) Color.White else focusColor,
+                                    containerColor = Color(0x28FFFFFF),
+                                    contentColor = Color.White,
                                     focusedContainerColor = focusColor,
                                     focusedContentColor = focusContent
                                 ),
                                 border = ButtonDefaults.border(
                                     border = Border(
-                                        border = BorderStroke(1.dp, Color(0x28FFFFFF)),
+                                        border = BorderStroke(0.5.dp, Color(0x28FFFFFF)),
                                         shape = RoundedCornerShape(12.dp)
                                     ),
                                     focusedBorder = Border.None
@@ -529,7 +481,7 @@ fun DetailScreen(
                                     }
                                     if (showText) {
                                         if (showIcons) Spacer(modifier = Modifier.width(6.dp))
-                                        Text(playLabel, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                        Text(playLabel, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
                                     }
                                 }
                             }
@@ -569,9 +521,12 @@ fun DetailScreen(
                             }
 
                             // 2. Favorite Toggle Button
+                            var isFavFocused by remember { mutableStateOf(false) }
                             Button(
                                 onClick = { viewModel.toggleFavorite() },
-                                modifier = Modifier.handleTouchClick { viewModel.toggleFavorite() },
+                                modifier = Modifier
+                                    .onFocusChanged { isFavFocused = it.isFocused }
+                                    .handleTouchClick { viewModel.toggleFavorite() },
                                 colors = ButtonDefaults.colors(
                                     containerColor = if (state.isFavorite) Color(0x28FFFFFF) else Color(0x14FFFFFF),
                                     contentColor = Color.White,
@@ -584,7 +539,7 @@ fun DetailScreen(
                                         Icon(
                                             imageVector = if (state.isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
                                             contentDescription = if (state.isFavorite) stringResource(R.string.detail_in_favorites) else stringResource(R.string.detail_add_favorites),
-                                            tint = if (state.isFavorite && !isMonochrome) Color(0xFFEF4444) else Color.White,
+                                            tint = if (isFavFocused) focusContent else (if (state.isFavorite && !isMonochrome) Color(0xFFEF4444) else Color.White),
                                             modifier = Modifier.size(17.dp)
                                         )
                                     }
@@ -592,6 +547,7 @@ fun DetailScreen(
                                         if (showIcons) Spacer(modifier = Modifier.width(6.dp))
                                         Text(
                                             text = if (state.isFavorite) stringResource(R.string.detail_in_favorites) else stringResource(R.string.detail_add_favorites),
+                                            color = if (isFavFocused) focusContent else Color.White,
                                             fontWeight = FontWeight.SemiBold,
                                             fontSize = 13.sp
                                         )
@@ -621,16 +577,19 @@ fun DetailScreen(
                                         }
                                         if (showText) {
                                             if (showIcons) Spacer(modifier = Modifier.width(6.dp))
-                                            Text(stringResource(R.string.detail_watch_trailer), fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                            Text(stringResource(R.string.detail_watch_trailer), fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
                                         }
                                     }
                                 }
                             }
 
                             // 4. Mark as Watched / Watched Button
+                            var isWatchedFocused by remember { mutableStateOf(false) }
                             Button(
                                 onClick = { viewModel.togglePlayed() },
-                                modifier = Modifier.handleTouchClick { viewModel.togglePlayed() },
+                                modifier = Modifier
+                                    .onFocusChanged { isWatchedFocused = it.isFocused }
+                                    .handleTouchClick { viewModel.togglePlayed() },
                                 colors = ButtonDefaults.colors(
                                     containerColor = if (state.isPlayed) Color(0x28FFFFFF) else Color(0x14FFFFFF),
                                     contentColor = Color.White,
@@ -643,7 +602,7 @@ fun DetailScreen(
                                         Icon(
                                             imageVector = if (state.isPlayed) Icons.Rounded.CheckCircle else Icons.Rounded.Check,
                                             contentDescription = if (state.isPlayed) "Visto" else "Marcar como visto",
-                                            tint = if (state.isPlayed && !isMonochrome) Color(0xFF10B981) else Color.White,
+                                            tint = if (isWatchedFocused) focusContent else (if (state.isPlayed && !isMonochrome) Color(0xFF10B981) else Color.White),
                                             modifier = Modifier.size(17.dp)
                                         )
                                     }
@@ -651,6 +610,7 @@ fun DetailScreen(
                                         if (showIcons) Spacer(modifier = Modifier.width(6.dp))
                                         Text(
                                             text = if (state.isPlayed) "Visto" else "Marcar como visto",
+                                            color = if (isWatchedFocused) focusContent else Color.White,
                                             fontWeight = FontWeight.SemiBold,
                                             fontSize = 13.sp
                                         )
@@ -665,7 +625,7 @@ fun DetailScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .background(Color(0xFF111220), RoundedCornerShape(12.dp))
-                                .border(1.dp, Color(0xFF222438), RoundedCornerShape(12.dp))
+                                .border(0.5.dp, Color(0x18FFFFFF), RoundedCornerShape(12.dp))
                                 .padding(18.dp)
                         ) {
                             Column {
@@ -695,22 +655,17 @@ fun DetailScreen(
                                     if (!isMonochrome) {
                                         Box(
                                             modifier = Modifier
-                                                .width(3.dp)
                                                 .height(13.dp)
-                                                .background(
-                                                    brush = Brush.verticalGradient(
-                                                        listOf(Color(0xFF00E5FF), focusColor)
-                                                    ),
-                                                    shape = RoundedCornerShape(2.dp)
-                                                )
+                                                .width(2.5.dp)
+                                                .background(focusColor, RoundedCornerShape(1.25.dp))
                                         )
-                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Spacer(modifier = Modifier.width(7.dp))
                                     }
                                     Text(
                                         text = stringResource(R.string.detail_seasons),
-                                        color = if (isMonochrome) Color(0xFF94A3B8) else Color(0xFFBAE6FD),
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
+                                        color = if (!isMonochrome) Color(0xFFCBD5E1) else Color(0xFF94A3B8),
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.SemiBold,
                                         letterSpacing = 1.sp
                                     )
                                 }
@@ -730,19 +685,15 @@ fun DetailScreen(
                                             onClick = { viewModel.selectSeason(season.id) },
                                             modifier = Modifier.handleTouchClick { viewModel.selectSeason(season.id) },
                                             colors = ButtonDefaults.colors(
-                                                containerColor = if (isSelected) {
-                                                    if (isMonochrome) Color(0x33FFFFFF) else focusColor.copy(alpha = 0.22f)
-                                                } else Color(0x10FFFFFF),
-                                                contentColor = if (isSelected) {
-                                                    if (isMonochrome) Color.White else focusColor
-                                                } else Color(0xFF94A3B8),
+                                                containerColor = if (isSelected) (if (isMonochrome) Color(0x33FFFFFF) else focusColor.copy(alpha = 0.22f)) else Color(0x10FFFFFF),
+                                                contentColor = if (isSelected) (if (isMonochrome) Color.White else focusColor) else Color(0xFF94A3B8),
                                                 focusedContainerColor = focusColor,
                                                 focusedContentColor = focusContent
                                             ),
                                             border = ButtonDefaults.border(
                                                 border = Border(
                                                     border = BorderStroke(
-                                                        1.dp,
+                                                        0.5.dp,
                                                         if (isSelected) Color(0x33FFFFFF) else Color(0x18FFFFFF)
                                                     ),
                                                     shape = RoundedCornerShape(16.dp)
@@ -753,7 +704,7 @@ fun DetailScreen(
                                         ) {
                                             Text(
                                                 text = season.name,
-                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
                                                 fontSize = 12.sp
                                             )
                                         }
@@ -766,22 +717,17 @@ fun DetailScreen(
                                 if (!isMonochrome) {
                                     Box(
                                         modifier = Modifier
-                                            .width(3.dp)
                                             .height(13.dp)
-                                            .background(
-                                                brush = Brush.verticalGradient(
-                                                    listOf(Color(0xFF00E5FF), focusColor)
-                                                ),
-                                                shape = RoundedCornerShape(2.dp)
-                                            )
+                                            .width(2.5.dp)
+                                            .background(focusColor, RoundedCornerShape(1.25.dp))
                                     )
-                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Spacer(modifier = Modifier.width(7.dp))
                                 }
                                 Text(
                                     text = stringResource(R.string.detail_episodes_count, state.episodes.size),
-                                    color = if (isMonochrome) Color(0xFF94A3B8) else Color(0xFFBAE6FD),
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
+                                    color = if (!isMonochrome) Color(0xFFCBD5E1) else Color(0xFF94A3B8),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
                                     letterSpacing = 1.sp
                                 )
                             }
@@ -836,44 +782,19 @@ fun DetailScreen(
                                 if (!isMonochrome) {
                                     Box(
                                         modifier = Modifier
-                                            .width(3.5.dp)
-                                            .height(18.dp)
-                                            .background(
-                                                brush = Brush.verticalGradient(
-                                                    listOf(Color(0xFF00E5FF), focusColor)
-                                                ),
-                                                shape = RoundedCornerShape(2.dp)
-                                            )
+                                            .height(16.dp)
+                                            .width(3.dp)
+                                            .background(focusColor, RoundedCornerShape(1.5.dp))
                                     )
-                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
                                 }
-                                TvPill(
-                                    text = stringResource(R.string.detail_collection),
-                                    containerColor = if (isMonochrome) Color(0x3338BDF8) else focusColor.copy(alpha = 0.20f),
-                                    textColor = if (isMonochrome) Color(0xFF7DD3FC) else focusColor,
-                                    borderColor = if (isMonochrome) Color(0x6638BDF8) else focusColor.copy(alpha = 0.55f)
+                                Text(
+                                    text = stringResource(R.string.detail_collection_titles, state.collectionItems.size),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = Color.White,
+                                    fontWeight = FontWeight.SemiBold,
+                                    letterSpacing = 0.5.sp
                                 )
-                                Spacer(modifier = Modifier.width(10.dp))
-                                if (isMonochrome) {
-                                    Text(
-                                        text = stringResource(R.string.detail_collection_titles, state.collectionItems.size),
-                                        color = Color.White,
-                                        fontSize = 14.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        letterSpacing = 0.5.sp
-                                    )
-                                } else {
-                                    Text(
-                                        text = stringResource(R.string.detail_collection_titles, state.collectionItems.size),
-                                        style = MaterialTheme.typography.titleMedium.copy(
-                                            brush = Brush.horizontalGradient(
-                                                listOf(Color.White, Color(0xFFE0F7FE), Color(0xFFBAE6FD))
-                                            ),
-                                            fontWeight = FontWeight.Bold,
-                                            letterSpacing = 0.5.sp
-                                        )
-                                    )
-                                }
                             }
                             Spacer(modifier = Modifier.height(12.dp))
                             LazyRow(
@@ -911,44 +832,19 @@ fun DetailScreen(
                                     if (!isMonochrome) {
                                         Box(
                                             modifier = Modifier
-                                                .width(3.5.dp)
-                                                .height(18.dp)
-                                                .background(
-                                                    brush = Brush.verticalGradient(
-                                                        listOf(Color(0xFF00E5FF), focusColor)
-                                                    ),
-                                                    shape = RoundedCornerShape(2.dp)
-                                                )
+                                                .height(16.dp)
+                                                .width(3.dp)
+                                                .background(focusColor, RoundedCornerShape(1.5.dp))
                                         )
-                                        Spacer(modifier = Modifier.width(10.dp))
+                                        Spacer(modifier = Modifier.width(8.dp))
                                     }
-                                    TvPill(
-                                        text = stringResource(R.string.detail_recommended),
-                                        containerColor = if (isMonochrome) Color(0x18FFFFFF) else focusColor.copy(alpha = 0.18f),
-                                        textColor = if (isMonochrome) Color(0xFFCBD5E1) else focusColor,
-                                        borderColor = if (isMonochrome) Color(0x22FFFFFF) else focusColor.copy(alpha = 0.50f)
+                                    Text(
+                                        text = stringResource(R.string.detail_similar_titles),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = Color.White,
+                                        fontWeight = FontWeight.SemiBold,
+                                        letterSpacing = 0.5.sp
                                     )
-                                    Spacer(modifier = Modifier.width(10.dp))
-                                    if (isMonochrome) {
-                                        Text(
-                                            text = stringResource(R.string.detail_similar_titles),
-                                            color = Color.White,
-                                            fontSize = 14.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            letterSpacing = 0.5.sp
-                                        )
-                                    } else {
-                                        Text(
-                                            text = stringResource(R.string.detail_similar_titles),
-                                            style = MaterialTheme.typography.titleMedium.copy(
-                                                brush = Brush.horizontalGradient(
-                                                    listOf(Color.White, Color(0xFFE0F7FE), Color(0xFFBAE6FD))
-                                                ),
-                                                fontWeight = FontWeight.Bold,
-                                                letterSpacing = 0.5.sp
-                                            )
-                                        )
-                                    }
                                 }
                                 Spacer(modifier = Modifier.height(12.dp))
                                 LazyRow(
@@ -976,44 +872,19 @@ fun DetailScreen(
                                     if (!isMonochrome) {
                                         Box(
                                             modifier = Modifier
-                                                .width(3.5.dp)
-                                                .height(18.dp)
-                                                .background(
-                                                    brush = Brush.verticalGradient(
-                                                        listOf(Color(0xFF00E5FF), focusColor)
-                                                    ),
-                                                    shape = RoundedCornerShape(2.dp)
-                                                )
+                                                .height(16.dp)
+                                                .width(3.dp)
+                                                .background(focusColor, RoundedCornerShape(1.5.dp))
                                         )
-                                        Spacer(modifier = Modifier.width(10.dp))
+                                        Spacer(modifier = Modifier.width(8.dp))
                                     }
-                                    TvPill(
-                                        text = stringResource(R.string.detail_genre),
-                                        containerColor = if (isMonochrome) Color(0x18FFFFFF) else focusColor.copy(alpha = 0.18f),
-                                        textColor = if (isMonochrome) Color(0xFFCBD5E1) else focusColor,
-                                        borderColor = if (isMonochrome) Color(0x22FFFFFF) else focusColor.copy(alpha = 0.50f)
+                                    Text(
+                                        text = stringResource(R.string.detail_more_from_genre, state.genreName!!.uppercase()),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = Color.White,
+                                        fontWeight = FontWeight.SemiBold,
+                                        letterSpacing = 0.5.sp
                                     )
-                                    Spacer(modifier = Modifier.width(10.dp))
-                                    if (isMonochrome) {
-                                        Text(
-                                            text = stringResource(R.string.detail_more_from_genre, state.genreName!!.uppercase()),
-                                            color = Color.White,
-                                            fontSize = 14.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            letterSpacing = 0.5.sp
-                                        )
-                                    } else {
-                                        Text(
-                                            text = stringResource(R.string.detail_more_from_genre, state.genreName!!.uppercase()),
-                                            style = MaterialTheme.typography.titleMedium.copy(
-                                                brush = Brush.horizontalGradient(
-                                                    listOf(Color.White, Color(0xFFE0F7FE), Color(0xFFBAE6FD))
-                                                ),
-                                                fontWeight = FontWeight.Bold,
-                                                letterSpacing = 0.5.sp
-                                            )
-                                        )
-                                    }
                                 }
                                 Spacer(modifier = Modifier.height(12.dp))
                                 LazyRow(

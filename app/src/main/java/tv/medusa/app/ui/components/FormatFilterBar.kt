@@ -85,16 +85,8 @@ fun FormatFilterBar(
                     onClick = { onToggleHideWatched() },
                     contentPadding = buttonPadding,
                     colors = ButtonDefaults.colors(
-                        containerColor = if (hideWatched) {
-                            if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.22f)
-                        } else {
-                            if (isMonochrome) Color(0x0CFFFFFF) else Color(0x0E00A4DC)
-                        },
-                        contentColor = if (hideWatched) {
-                            if (isMonochrome) Color.White else focusColor
-                        } else {
-                            Color(0xFF94A3B8)
-                        },
+                        containerColor = if (hideWatched) (if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.22f)) else Color(0x0CFFFFFF),
+                        contentColor = if (hideWatched) (if (isMonochrome) Color.White else focusColor) else Color(0xFF94A3B8),
                         focusedContainerColor = focusColor,
                         focusedContentColor = focusContent
                     ),
@@ -102,12 +94,8 @@ fun FormatFilterBar(
                     border = ButtonDefaults.border(
                         border = Border(
                             border = BorderStroke(
-                                width = if (hideWatched) 1.dp else 0.75.dp,
-                                color = if (hideWatched) {
-                                    if (isMonochrome) Color(0x33FFFFFF) else focusColor.copy(alpha = 0.45f)
-                                } else {
-                                    Color(0x14FFFFFF)
-                                }
+                                width = if (hideWatched) 1.dp else 0.5.dp,
+                                color = if (hideWatched) (if (isMonochrome) Color(0x33FFFFFF) else focusColor.copy(alpha = 0.45f)) else Color(0x14FFFFFF)
                             ),
                             shape = RoundedCornerShape(14.dp)
                         ),
@@ -149,16 +137,8 @@ fun FormatFilterBar(
                     onClick = { onSelect(format) },
                     contentPadding = buttonPadding,
                     colors = ButtonDefaults.colors(
-                        containerColor = if (isSelected) {
-                            if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.22f)
-                        } else {
-                            if (isMonochrome) Color(0x0CFFFFFF) else Color(0x0E00A4DC)
-                        },
-                        contentColor = if (isSelected) {
-                            if (isMonochrome) Color.White else focusColor
-                        } else {
-                            if (isMonochrome) Color(0xFF94A3B8) else Color(0xFF94A3B8)
-                        },
+                        containerColor = if (isSelected) (if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.22f)) else Color(0x0CFFFFFF),
+                        contentColor = if (isSelected) (if (isMonochrome) Color.White else focusColor) else Color(0xFF94A3B8),
                         focusedContainerColor = focusColor,
                         focusedContentColor = focusContent
                     ),
@@ -166,8 +146,8 @@ fun FormatFilterBar(
                     border = ButtonDefaults.border(
                         border = Border(
                             border = BorderStroke(
-                                width = if (isSelected) 1.dp else 0.75.dp,
-                                color = if (isSelected) Color(0x33FFFFFF) else Color(0x14FFFFFF)
+                                width = if (isSelected) 1.dp else 0.5.dp,
+                                color = if (isSelected) (if (isMonochrome) Color(0x33FFFFFF) else focusColor.copy(alpha = 0.45f)) else Color(0x14FFFFFF)
                             ),
                             shape = RoundedCornerShape(14.dp)
                         ),

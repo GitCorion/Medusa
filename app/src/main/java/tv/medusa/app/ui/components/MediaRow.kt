@@ -50,7 +50,7 @@ fun MediaRow(
     ) {
         val isMonochrome = LocalIsMonochromeTheme.current
         val accentKey = LocalAccentColor.current
-        val accentColor = TvAccent.getColor(accentKey)
+        val focusColor = if (isMonochrome) Color.White else TvAccent.getColor(accentKey)
 
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -59,17 +59,9 @@ fun MediaRow(
             if (!isMonochrome) {
                 Box(
                     modifier = Modifier
-                        .width(3.5.dp)
                         .height(18.dp)
-                        .background(
-                            brush = Brush.verticalGradient(
-                                listOf(
-                                    accentColor,
-                                    accentColor.copy(alpha = 0.35f)
-                                )
-                            ),
-                            shape = RoundedCornerShape(2.dp)
-                        )
+                        .width(3.dp)
+                        .background(focusColor, RoundedCornerShape(1.5.dp))
                 )
                 Spacer(modifier = Modifier.width(10.dp))
             }
@@ -78,35 +70,19 @@ fun MediaRow(
             if (!badgeText.isNullOrBlank()) {
                 TvPill(
                     text = badgeText,
-                    containerColor = if (isMonochrome) Color(0x18FFFFFF) else accentColor.copy(alpha = 0.18f),
-                    textColor = if (isMonochrome) Color(0xFFE2E8F0) else Color(0xFF7DD3FC),
-                    borderColor = if (isMonochrome) Color(0x22FFFFFF) else accentColor.copy(alpha = 0.45f)
+                    containerColor = if (isMonochrome) Color(0x18FFFFFF) else focusColor.copy(alpha = 0.16f),
+                    textColor = if (isMonochrome) Color(0xFFCBD5E1) else Color(0xFF7DD3FC),
+                    borderColor = if (isMonochrome) Color(0x22FFFFFF) else focusColor.copy(alpha = 0.35f)
                 )
                 Spacer(modifier = Modifier.width(10.dp))
             }
 
-            if (isMonochrome) {
-                Text(
-                    text = localizedSectionTitle(section),
-                    style = MaterialTheme.typography.titleLarge,
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold
-                )
-            } else {
-                Text(
-                    text = localizedSectionTitle(section),
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        brush = Brush.horizontalGradient(
-                            listOf(
-                                Color(0xFFFFFFFF),
-                                Color(0xFFE0F7FE),
-                                Color(0xFFBAE6FD)
-                            )
-                        )
-                    ),
-                    fontWeight = FontWeight.Bold
-                )
-            }
+            Text(
+                text = localizedSectionTitle(section),
+                style = MaterialTheme.typography.titleLarge,
+                color = Color.White,
+                fontWeight = FontWeight.SemiBold
+            )
         }
 
         val uniqueItems = remember(section.items) {

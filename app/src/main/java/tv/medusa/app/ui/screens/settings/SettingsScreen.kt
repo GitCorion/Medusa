@@ -65,6 +65,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -115,6 +116,8 @@ import tv.medusa.app.data.remote.trakt.TraktUserListDto
 import tv.medusa.app.ui.components.TvNavTab
 import tv.medusa.app.ui.components.TvTopBar
 import tv.medusa.app.ui.theme.TvAccent
+import tv.medusa.app.ui.theme.LocalAccentColor
+import tv.medusa.app.ui.theme.LocalIsMonochromeTheme
 import tv.medusa.app.ui.theme.TvColors
 import kotlinx.coroutines.delay
 
@@ -194,7 +197,8 @@ fun SettingsScreen(
                         title = stringResource(R.string.settings_nav_jellyfin),
                         isSelected = uiState.activeCategory == 0,
                         onClick = { viewModel.selectCategory(0) },
-                        focusColor = focusColor
+                        focusColor = focusColor,
+                        focusContent = focusContent
                     )
 
                     TvSettingsNavRailItem(
@@ -202,7 +206,8 @@ fun SettingsScreen(
                         title = stringResource(R.string.settings_nav_trakt),
                         isSelected = uiState.activeCategory == 1,
                         onClick = { viewModel.selectCategory(1) },
-                        focusColor = focusColor
+                        focusColor = focusColor,
+                        focusContent = focusContent
                     )
 
                     TvSettingsNavRailItem(
@@ -210,7 +215,8 @@ fun SettingsScreen(
                         title = stringResource(R.string.settings_nav_platforms),
                         isSelected = uiState.activeCategory == 2,
                         onClick = { viewModel.selectCategory(2) },
-                        focusColor = focusColor
+                        focusColor = focusColor,
+                        focusContent = focusContent
                     )
 
                     TvSettingsNavRailItem(
@@ -218,7 +224,8 @@ fun SettingsScreen(
                         title = stringResource(R.string.settings_nav_appearance),
                         isSelected = uiState.activeCategory == 3,
                         onClick = { viewModel.selectCategory(3) },
-                        focusColor = focusColor
+                        focusColor = focusColor,
+                        focusContent = focusContent
                     )
 
                     TvSettingsNavRailItem(
@@ -226,7 +233,8 @@ fun SettingsScreen(
                         title = stringResource(R.string.settings_nav_about),
                         isSelected = uiState.activeCategory == 4,
                         onClick = { viewModel.selectCategory(4) },
-                        focusColor = focusColor
+                        focusColor = focusColor,
+                        focusContent = focusContent
                     )
                 }
 
@@ -798,7 +806,7 @@ private fun PlatformsCategory(
                             if (isCurrent) focusColor.copy(alpha = 0.6f) else Color(0x14FFFFFF)
                         )
                     ),
-                    focusedBorder = Border(border = BorderStroke(1.5.dp, Color.White))
+                    focusedBorder = Border(border = BorderStroke(1.5.dp, focusColor))
                 ),
                 scale = ClickableSurfaceDefaults.scale(focusedScale = 1.02f)
             ) {
@@ -1119,18 +1127,24 @@ private fun TvSettingsNavRailItem(
     isSelected: Boolean,
     onClick: () -> Unit,
     focusColor: Color,
+    focusContent: Color,
     modifier: Modifier = Modifier
 ) {
+    var isFocused by remember { mutableStateOf(false) }
+
     Surface(
         onClick = onClick,
         modifier = modifier
             .handleTouchClick { onClick() }
+            .onFocusChanged { isFocused = it.isFocused }
             .fillMaxWidth()
             .padding(vertical = 2.dp),
         shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(10.dp)),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = if (isSelected) Color(0x18FFFFFF) else Color.Transparent,
-            focusedContainerColor = Color(0x28FFFFFF)
+            focusedContainerColor = focusColor,
+            contentColor = if (isSelected) Color.White else Color(0xFFCBD5E1),
+            focusedContentColor = focusContent
         ),
         border = ClickableSurfaceDefaults.border(
             border = Border(
@@ -1139,7 +1153,7 @@ private fun TvSettingsNavRailItem(
                     if (isSelected) Color(0x28FFFFFF) else Color.Transparent
                 )
             ),
-            focusedBorder = Border(border = BorderStroke(1.5.dp, Color.White))
+            focusedBorder = Border.None
         ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1.01f)
     ) {
@@ -1152,7 +1166,7 @@ private fun TvSettingsNavRailItem(
             Icon(
                 imageVector = icon,
                 contentDescription = title,
-                tint = if (isSelected) focusColor else Color(0xFF94A3B8),
+                tint = if (isFocused) focusContent else (if (isSelected) focusColor else Color(0xFF94A3B8)),
                 modifier = Modifier.size(18.dp)
             )
 
@@ -1160,8 +1174,8 @@ private fun TvSettingsNavRailItem(
 
             Text(
                 text = title,
-                color = if (isSelected) Color.White else Color(0xFFCBD5E1),
-                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                color = if (isFocused) focusContent else (if (isSelected) Color.White else Color(0xFFCBD5E1)),
+                fontWeight = if (isSelected || isFocused) FontWeight.SemiBold else FontWeight.Normal,
                 fontSize = 14.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -1179,6 +1193,10 @@ private fun TvSettingRow(
     trailingContent: (@Composable () -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    val isMonochrome = LocalIsMonochromeTheme.current
+    val accentKey = LocalAccentColor.current
+    val focusColor = if (isMonochrome) Color.White else TvAccent.getColor(accentKey)
+
     if (onClick != null) {
         Surface(
             onClick = onClick,
@@ -1193,7 +1211,7 @@ private fun TvSettingRow(
             ),
             border = ClickableSurfaceDefaults.border(
                 border = Border(border = BorderStroke(0.5.dp, Color(0x14FFFFFF))),
-                focusedBorder = Border(border = BorderStroke(1.5.dp, Color.White))
+                focusedBorder = Border(border = BorderStroke(1.5.dp, focusColor))
             ),
             scale = ClickableSurfaceDefaults.scale(focusedScale = 1.01f)
         ) {
@@ -1278,6 +1296,7 @@ private fun <T> TvSegmentedSelector(
     focusContent: Color,
     modifier: Modifier = Modifier
 ) {
+    val isMonochrome = LocalIsMonochromeTheme.current
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -1286,24 +1305,30 @@ private fun <T> TvSegmentedSelector(
     ) {
         options.forEach { (option, label) ->
             val isSelected = option == selectedOption
+            var isFocused by remember { mutableStateOf(false) }
+
             Surface(
                 onClick = { onOptionSelected(option) },
                 modifier = Modifier
                     .handleTouchClick { onOptionSelected(option) }
+                    .onFocusChanged { isFocused = it.isFocused }
                     .weight(1f),
                 shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(10.dp)),
                 colors = ClickableSurfaceDefaults.colors(
-                    containerColor = if (isSelected) Color(0x20FFFFFF) else Color(0x08FFFFFF),
-                    focusedContainerColor = Color(0x35FFFFFF)
+                    containerColor = if (isSelected) (if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.22f)) else Color(0x0AFFFFFF),
+                    focusedContainerColor = focusColor,
+                    contentColor = if (isSelected) (if (isMonochrome) Color.White else focusColor) else Color(0xFFCBD5E1),
+                    focusedContentColor = focusContent
                 ),
                 border = ClickableSurfaceDefaults.border(
                     border = Border(
                         border = BorderStroke(
                             if (isSelected) 1.dp else 0.5.dp,
-                            if (isSelected) focusColor.copy(alpha = 0.6f) else Color(0x14FFFFFF)
-                        )
+                            if (isSelected) (if (isMonochrome) Color(0x40FFFFFF) else focusColor.copy(alpha = 0.45f)) else Color(0x14FFFFFF)
+                        ),
+                        shape = RoundedCornerShape(10.dp)
                     ),
-                    focusedBorder = Border(border = BorderStroke(1.5.dp, Color.White))
+                    focusedBorder = Border.None
                 ),
                 scale = ClickableSurfaceDefaults.scale(focusedScale = 1.02f)
             ) {
@@ -1318,7 +1343,7 @@ private fun <T> TvSegmentedSelector(
                         Icon(
                             imageVector = Icons.Rounded.Check,
                             contentDescription = null,
-                            tint = focusColor,
+                            tint = if (isFocused) focusContent else (if (isMonochrome) Color.White else focusColor),
                             modifier = Modifier.size(14.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
@@ -1326,8 +1351,8 @@ private fun <T> TvSegmentedSelector(
                     Text(
                         text = label,
                         fontSize = 13.sp,
-                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                        color = if (isSelected) Color.White else Color(0xFFCBD5E1),
+                        fontWeight = if (isSelected || isFocused) FontWeight.SemiBold else FontWeight.Normal,
+                        color = if (isFocused) focusContent else (if (isSelected) Color.White else Color(0xFFCBD5E1)),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -1365,7 +1390,7 @@ private fun TvTraktListToggleRow(
                     if (isVisible) Color(0x22FFFFFF) else Color(0x0EFFFFFF)
                 )
             ),
-            focusedBorder = Border(border = BorderStroke(1.5.dp, Color.White))
+            focusedBorder = Border(border = BorderStroke(1.5.dp, focusColor))
         ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1.01f)
     ) {
@@ -1470,7 +1495,7 @@ private fun TvPlatformToggleRow(
                     if (isSelected) Color(0x22FFFFFF) else Color(0x0EFFFFFF)
                 )
             ),
-            focusedBorder = Border(border = BorderStroke(1.5.dp, Color.White))
+            focusedBorder = Border(border = BorderStroke(1.5.dp, focusColor))
         ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1.01f)
     ) {
@@ -1778,8 +1803,8 @@ private fun TvEditDialog(
                             colors = ButtonDefaults.colors(
                                 containerColor = Color(0x18FFFFFF),
                                 contentColor = Color.White,
-                                focusedContainerColor = Color.White,
-                                focusedContentColor = Color(0xFF0F172A)
+                                focusedContainerColor = focusColor,
+                                focusedContentColor = focusContent
                             )
                         ) {
                             Text(stringResource(R.string.settings_dialog_cancel), fontSize = 13.sp)

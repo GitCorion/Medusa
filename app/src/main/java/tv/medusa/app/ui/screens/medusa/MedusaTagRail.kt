@@ -191,35 +191,33 @@ fun MedusaTagPill(
         onFocusChange(isFocused)
     }
 
-    val focusColor = if (isMonochrome) Color.White else accentColor
-    val focusContent = if (isMonochrome) Color(0xFF0F172A) else Color(0xFF0F172A)
-
     val scale by animateFloatAsState(
         targetValue = if (isFocused) 1.08f else 1.0f,
         animationSpec = spring(dampingRatio = 0.8f, stiffness = 500f),
         label = "pillScale"
     )
 
-    // Exactamente los mismos estados y colores que FormatFilterBar y TvTopBar
+    val focusColor = if (isMonochrome) Color.White else accentColor
+
     val containerColor = when {
         isFocused -> focusColor
         tag.isSelected -> if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.22f)
-        else -> if (isMonochrome) Color(0x0CFFFFFF) else Color(0x0E00A4DC)
+        else -> Color(0x0CFFFFFF)
     }
 
     val contentColor = when {
-        isFocused -> focusContent
+        isFocused -> Color(0xFF0F172A)
         tag.isSelected -> if (isMonochrome) Color.White else focusColor
-        else -> if (isMonochrome) Color(0xFF94A3B8) else Color(0xFFCBD5E1)
+        else -> Color(0xFF94A3B8)
     }
 
     val borderColor = when {
         isFocused -> Color.Transparent
-        tag.isSelected -> if (isMonochrome) Color(0x33FFFFFF) else focusColor.copy(alpha = 0.70f)
-        else -> if (isMonochrome) Color(0x14FFFFFF) else focusColor.copy(alpha = 0.18f)
+        tag.isSelected -> if (isMonochrome) Color(0x33FFFFFF) else focusColor.copy(alpha = 0.45f)
+        else -> Color(0x14FFFFFF)
     }
 
-    val borderWidth = if (tag.isSelected) 1.dp else 0.75.dp
+    val borderWidth = if (tag.isSelected) 1.dp else 0.5.dp
 
     Box(
         modifier = modifier

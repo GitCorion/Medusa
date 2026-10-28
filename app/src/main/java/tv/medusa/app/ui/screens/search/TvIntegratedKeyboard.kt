@@ -239,8 +239,8 @@ fun TvIntegratedKeyboard(
                     disabledContentColor = Color(0xFF475569).copy(alpha = 0.35f)
                 ),
                 border = ButtonDefaults.border(
-                    border = Border(border = BorderStroke(1.dp, Color(0x35FFFFFF))),
-                    focusedBorder = Border(border = BorderStroke(2.dp, focusColor)),
+                    border = Border(border = BorderStroke(0.5.dp, Color(0x35FFFFFF))),
+                    focusedBorder = Border(border = BorderStroke(1.5.dp, focusColor)),
                     disabledBorder = Border.None
                 ),
                 modifier = Modifier
@@ -296,8 +296,8 @@ fun TvIntegratedKeyboard(
                     disabledContentColor = Color(0xFF475569).copy(alpha = 0.35f)
                 ),
                 border = ButtonDefaults.border(
-                    border = Border(border = BorderStroke(1.dp, Color(0x35FFFFFF))),
-                    focusedBorder = Border(border = BorderStroke(2.dp, focusColor)),
+                    border = Border(border = BorderStroke(0.5.dp, Color(0x35FFFFFF))),
+                    focusedBorder = Border(border = BorderStroke(1.5.dp, focusColor)),
                     disabledBorder = Border.None
                 ),
                 modifier = Modifier
@@ -349,8 +349,8 @@ fun TvIntegratedKeyboard(
                     disabledContentColor = Color(0xFF475569).copy(alpha = 0.35f)
                 ),
                 border = ButtonDefaults.border(
-                    border = Border(border = BorderStroke(1.dp, Color(0x35FFFFFF))),
-                    focusedBorder = Border(border = BorderStroke(2.dp, focusColor)),
+                    border = Border(border = BorderStroke(0.5.dp, Color(0x35FFFFFF))),
+                    focusedBorder = Border(border = BorderStroke(1.5.dp, focusColor)),
                     disabledBorder = Border.None
                 ),
                 modifier = Modifier
@@ -423,8 +423,8 @@ private fun TvKeyButton(
             disabledContentColor = Color(0xFF334155).copy(alpha = 0.20f)
         ),
         border = ButtonDefaults.border(
-            border = Border(border = BorderStroke(1.dp, Color(0x20FFFFFF))),
-            focusedBorder = Border(border = BorderStroke(2.dp, focusColor)),
+            border = Border(border = BorderStroke(0.5.dp, Color(0x20FFFFFF))),
+            focusedBorder = Border(border = BorderStroke(1.5.dp, focusColor)),
             disabledBorder = Border.None
         ),
         modifier = modifier

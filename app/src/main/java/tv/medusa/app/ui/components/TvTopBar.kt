@@ -204,7 +204,7 @@ fun TvTopBar(
                 border = if (isHomeActive) {
                     ButtonDefaults.border(
                         border = Border(
-                            border = BorderStroke(1.dp, Color(0x28FFFFFF)),
+                            border = BorderStroke(1.dp, if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.40f)),
                             shape = CircleShape
                         ),
                         focusedBorder = Border.None
@@ -265,7 +265,7 @@ fun TvTopBar(
                 border = if (isDiscoverActive) {
                     ButtonDefaults.border(
                         border = Border(
-                            border = BorderStroke(1.dp, Color(0x28FFFFFF)),
+                            border = BorderStroke(1.dp, if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.40f)),
                             shape = CircleShape
                         ),
                         focusedBorder = Border.None
@@ -314,7 +314,7 @@ fun TvTopBar(
                 border = if (isFavoritesActive) {
                     ButtonDefaults.border(
                         border = Border(
-                            border = BorderStroke(1.dp, Color(0x28FFFFFF)),
+                            border = BorderStroke(1.dp, if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.40f)),
                             shape = CircleShape
                         ),
                         focusedBorder = Border.None
@@ -363,7 +363,7 @@ fun TvTopBar(
                 border = if (isSearchActive) {
                     ButtonDefaults.border(
                         border = Border(
-                            border = BorderStroke(1.dp, Color(0x28FFFFFF)),
+                            border = BorderStroke(1.dp, if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.40f)),
                             shape = CircleShape
                         ),
                         focusedBorder = Border.None
@@ -412,7 +412,7 @@ fun TvTopBar(
                 border = if (isSettingsActive) {
                     ButtonDefaults.border(
                         border = Border(
-                            border = BorderStroke(1.dp, Color(0x28FFFFFF)),
+                            border = BorderStroke(1.dp, if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.40f)),
                             shape = CircleShape
                         ),
                         focusedBorder = Border.None

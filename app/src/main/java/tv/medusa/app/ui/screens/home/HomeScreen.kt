@@ -123,8 +123,8 @@ fun HomeScreen(
     val showTopIcons = buttonStyleKey != BUTTON_STYLE_TEXT_ONLY
     val showTopText = buttonStyleKey != BUTTON_STYLE_ICONS_ONLY
 
-    val focusColor = TvAccent.getColor(accentColorKey)
-    val focusContent = TvAccent.getFocusedContentColor(accentColorKey)
+    val focusColor = if (isMonochrome) Color.White else TvAccent.getColor(accentColorKey)
+    val focusContent = if (isMonochrome) Color(0xFF0F172A) else TvAccent.getFocusedContentColor(accentColorKey)
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -269,8 +269,8 @@ fun HomeScreen(
                                 colors = ButtonDefaults.colors(
                                     containerColor = Color(0x22FFFFFF),
                                     contentColor = Color.White,
-                                    focusedContainerColor = Color.White,
-                                    focusedContentColor = Color(0xFF0F172A)
+                                    focusedContainerColor = focusColor,
+                                    focusedContentColor = focusContent
                                 )
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -340,8 +340,8 @@ fun HomeScreen(
                                 colors = ButtonDefaults.colors(
                                     containerColor = Color.White,
                                     contentColor = Color(0xFF0F172A),
-                                    focusedContainerColor = Color.White,
-                                    focusedContentColor = Color(0xFF0F172A)
+                                    focusedContainerColor = focusColor,
+                                    focusedContentColor = focusContent
                                 )
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -361,8 +361,8 @@ fun HomeScreen(
                                 colors = ButtonDefaults.colors(
                                     containerColor = Color(0x18FFFFFF),
                                     contentColor = Color.White,
-                                    focusedContainerColor = Color.White,
-                                    focusedContentColor = Color(0xFF0F172A)
+                                    focusedContainerColor = focusColor,
+                                    focusedContentColor = focusContent
                                 )
                             ) {
                                 Text(text = stringResource(R.string.nav_settings), fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false)
@@ -394,8 +394,8 @@ fun HomeScreen(
                             colors = ButtonDefaults.colors(
                                 containerColor = Color(0x22FFFFFF),
                                 contentColor = Color.White,
-                                focusedContainerColor = Color.White,
-                                focusedContentColor = Color(0xFF0F172A)
+                                focusedContainerColor = focusColor,
+                                focusedContentColor = focusContent
                             )
                         ) {
                             Text(text = stringResource(R.string.common_retry), fontWeight = FontWeight.Bold)

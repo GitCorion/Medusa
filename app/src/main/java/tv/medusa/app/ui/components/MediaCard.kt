@@ -72,6 +72,7 @@ fun MediaCard(
     val indicatorTheme = LocalIndicatorTheme.current
     val isMonochrome = LocalIsMonochromeTheme.current ||
             indicatorTheme == INDICATOR_THEME_MONOCHROME
+    val focusColor = if (isMonochrome) Color.White else accentColor
 
     val contextMenuController = tv.medusa.app.ui.components.contextmenu.LocalContextMenuController.current
     val view = androidx.compose.ui.platform.LocalView.current
@@ -115,7 +116,7 @@ fun MediaCard(
             .clip(RoundedCornerShape(10.dp))
             .border(
                 width = if (isFocused) 1.5.dp else 0.5.dp,
-                color = if (isFocused) Color.White.copy(alpha = 0.90f) else Color(0x18FFFFFF),
+                color = if (isFocused) focusColor else Color(0x18FFFFFF),
                 shape = RoundedCornerShape(10.dp)
             )
     ) {
@@ -188,6 +189,19 @@ fun MediaCard(
                     )
                 }
 
+                val indicatorTheme = LocalIndicatorTheme.current
+                val isMonochrome = LocalIsMonochromeTheme.current ||
+                        indicatorTheme == INDICATOR_THEME_MONOCHROME
+
+                val isTvSeries = item.type.equals("Series", ignoreCase = true)
+                val hasEpisodeProgress = !item.isPlayed &&
+                        isTvSeries &&
+                        item.playedEpisodes != null &&
+                        item.playedEpisodes > 0
+                val hasMovieProgress = !item.isPlayed &&
+                        !isTvSeries &&
+                        item.playbackPositionTicks > 0
+
                 // Top-Left Badges: Favorito, Visto
                 Row(
                     modifier = Modifier
@@ -196,18 +210,6 @@ fun MediaCard(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    val indicatorTheme = LocalIndicatorTheme.current
-                    val isMonochrome = LocalIsMonochromeTheme.current ||
-                            indicatorTheme == INDICATOR_THEME_MONOCHROME
-
-                    val isTvSeries = item.type.equals("Series", ignoreCase = true)
-                    val hasEpisodeProgress = !item.isPlayed &&
-                            isTvSeries &&
-                            item.playedEpisodes != null &&
-                            item.playedEpisodes > 0
-                    val hasMovieProgress = !item.isPlayed &&
-                            !isTvSeries &&
-                            item.playbackPositionTicks > 0
 
                     if (hasEpisodeProgress) {
                         val progressText = if (item.totalEpisodes != null && item.totalEpisodes > 0) {
@@ -268,10 +270,34 @@ fun MediaCard(
                             Icon(
                                 imageVector = Icons.Rounded.Check,
                                 contentDescription = stringResource(R.string.common_watched),
-                                tint = Color.White.copy(alpha = 0.90f),
+                                tint = if (isMonochrome) Color.White.copy(alpha = 0.90f) else Color(0xFF10B981),
                                 modifier = Modifier.size(14.dp)
                             )
                         }
+                    }
+                }
+
+                val progressFraction = when {
+                    hasEpisodeProgress && (item.totalEpisodes ?: 0) > 0 ->
+                        (item.playedEpisodes!!.toFloat() / item.totalEpisodes!!.toFloat()).coerceIn(0.05f, 0.98f)
+                    hasMovieProgress -> 0.40f
+                    else -> null
+                }
+
+                if (progressFraction != null) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .fillMaxWidth()
+                            .height(3.dp)
+                            .background(Color(0x66000000))
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(progressFraction)
+                                .height(3.dp)
+                                .background(if (isMonochrome) Color.White else focusColor)
+                        )
                     }
                 }
 

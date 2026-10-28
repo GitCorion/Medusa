@@ -36,12 +36,16 @@ import androidx.compose.material.icons.rounded.Tv
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -248,26 +252,11 @@ fun MediaContextMenuDialog(
             Box(
                 modifier = Modifier
                     .width(620.dp)
-                    .clip(RoundedCornerShape(22.dp))
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                Color(0xFF161922),
-                                Color(0xFF0C0E14)
-                            )
-                        )
-                    )
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(Color(0xF2090B14))
                     .border(
-                        border = BorderStroke(
-                            1.dp,
-                            Brush.verticalGradient(
-                                colors = listOf(
-                                    focusColor.copy(alpha = 0.45f),
-                                    Color(0x18FFFFFF)
-                                )
-                            )
-                        ),
-                        shape = RoundedCornerShape(22.dp)
+                        border = BorderStroke(0.5.dp, Color(0x24FFFFFF)),
+                        shape = RoundedCornerShape(18.dp)
                     )
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
@@ -290,7 +279,7 @@ fun MediaContextMenuDialog(
                                 .width(150.dp)
                                 .aspectRatio(2f / 3f)
                                 .clip(RoundedCornerShape(12.dp))
-                                .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(12.dp))
+                                .border(0.5.dp, Color(0x24FFFFFF), RoundedCornerShape(12.dp))
                                 .background(Color(0xFF12141D)),
                             contentAlignment = Alignment.Center
                         ) {
@@ -395,6 +384,7 @@ fun MediaContextMenuDialog(
 
                         actions.forEachIndexed { index, actionItem ->
                             val isFirst = index == 0
+                            var isBtnFocused by remember { mutableStateOf(false) }
                             Button(
                                 onClick = {
                                     if (android.os.SystemClock.uptimeMillis() - dialogOpenedTime < 450L) {
@@ -405,14 +395,14 @@ fun MediaContextMenuDialog(
                                     actionItem.action()
                                 },
                                 colors = ButtonDefaults.colors(
-                                    containerColor = Color(0x12FFFFFF),
+                                    containerColor = Color(0x18FFFFFF),
                                     contentColor = Color.White,
                                     focusedContainerColor = focusColor,
                                     focusedContentColor = focusContent
                                 ),
                                 border = ButtonDefaults.border(
                                     border = Border(
-                                        border = BorderStroke(1.dp, Color(0x1EFFFFFF)),
+                                        border = BorderStroke(0.5.dp, Color(0x18FFFFFF)),
                                         shape = RoundedCornerShape(10.dp)
                                     ),
                                     focusedBorder = Border.None
@@ -420,6 +410,7 @@ fun MediaContextMenuDialog(
                                 shape = ButtonDefaults.shape(shape = RoundedCornerShape(10.dp)),
                                 modifier = Modifier
                                     .fillMaxWidth()
+                                    .onFocusChanged { isBtnFocused = it.isFocused }
                                     .then(if (isFirst) Modifier.focusRequester(firstFocusRequester) else Modifier)
                             ) {
                                 Row(
@@ -431,7 +422,11 @@ fun MediaContextMenuDialog(
                                     Icon(
                                         imageVector = actionItem.icon,
                                         contentDescription = null,
-                                        tint = actionItem.iconTint ?: androidx.compose.ui.graphics.Color.Unspecified,
+                                        tint = if (isBtnFocused) {
+                                            focusContent
+                                        } else {
+                                            actionItem.iconTint ?: Color.White
+                                        },
                                         modifier = Modifier.size(18.dp)
                                     )
                                     Spacer(modifier = Modifier.width(12.dp))
@@ -441,6 +436,7 @@ fun MediaContextMenuDialog(
                                             fontWeight = FontWeight.SemiBold,
                                             fontSize = 14.sp
                                         ),
+                                        color = if (isBtnFocused) focusContent else Color.White,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
                                     )

@@ -1,9 +1,6 @@
 package tv.medusa.app.ui.components
 
 import tv.medusa.app.data.local.ACCENT_CYAN
-import tv.medusa.app.data.local.INDICATOR_THEME_MONOCHROME
-import tv.medusa.app.ui.theme.LocalIndicatorTheme
-import tv.medusa.app.ui.theme.LocalIsMonochromeTheme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -16,14 +13,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -33,11 +26,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -56,8 +45,10 @@ import tv.medusa.app.ui.util.handleTouchClick
 import coil.compose.AsyncImage
 import tv.medusa.app.R
 import tv.medusa.app.domain.model.EpisodeItem
-import tv.medusa.app.ui.theme.TvAccent
 import tv.medusa.app.ui.theme.TvPill
+import tv.medusa.app.ui.theme.TvAccent
+import tv.medusa.app.ui.theme.LocalIsMonochromeTheme
+import tv.medusa.app.ui.theme.LocalAccentColor
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
@@ -67,68 +58,30 @@ fun EpisodeCard(
     accentColor: String = ACCENT_CYAN,
     modifier: Modifier = Modifier
 ) {
+    val isMonochrome = LocalIsMonochromeTheme.current
+    val effectiveAccent = if (accentColor.isNotBlank()) accentColor else LocalAccentColor.current
+    val focusColor = if (isMonochrome) Color.White else TvAccent.getColor(effectiveAccent)
+    val focusContent = if (isMonochrome) Color(0xFF0F172A) else TvAccent.getFocusedContentColor(effectiveAccent)
     var isFocused by remember { mutableStateOf(false) }
-    val focusBorderColor = TvAccent.getColor(accentColor)
-    val indicatorTheme = LocalIndicatorTheme.current
-    val isMonochrome = LocalIsMonochromeTheme.current ||
-            indicatorTheme == INDICATOR_THEME_MONOCHROME
-    val activeGlowColor = if (isMonochrome) Color.White else focusBorderColor
 
-    // Igual que MediaCard: transición creada siempre, valor leído en drawBehind
-    // (deferred read) para no recomponer la tarjeta en cada frame.
-    val infiniteTransition = rememberInfiniteTransition(label = "EpisodeCardGlow")
-    val pulseGlow = infiniteTransition.animateFloat(
-        initialValue = 0.50f,
-        targetValue = 0.90f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1600, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
+    Card(
+        onClick = onClick,
+        colors = CardDefaults.colors(
+            containerColor = if (isFocused) Color(0xFF1E222D) else Color(0xFF111319),
+            focusedContainerColor = Color(0xFF1E222D)
         ),
-        label = "episodePulseGlow"
-    )
-
-    Box(
+        scale = CardDefaults.scale(focusedScale = 1.0f),
         modifier = modifier
-            .drawBehind {
-                if (isFocused) {
-                    val glow = pulseGlow.value
-                    val glowRadius = size.width * 0.75f
-                    val glowCenter = Offset(size.width / 2f, size.height * 0.45f)
-                    drawRect(
-                        brush = Brush.radialGradient(
-                            colors = listOf(
-                                activeGlowColor.copy(alpha = 0.42f * glow),
-                                activeGlowColor.copy(alpha = 0.20f * glow),
-                                activeGlowColor.copy(alpha = 0.05f * glow),
-                                Color.Transparent
-                            ),
-                            center = glowCenter,
-                            radius = glowRadius
-                        ),
-                        topLeft = Offset(-24.dp.toPx(), -24.dp.toPx()),
-                        size = Size(size.width + 48.dp.toPx(), size.height + 48.dp.toPx())
-                    )
-                }
-            }
+            .handleTouchClick { onClick() }
+            .width(220.dp)
+            .onFocusChanged { isFocused = it.isFocused }
+            .clip(RoundedCornerShape(10.dp))
+            .border(
+                width = if (isFocused) 1.5.dp else 0.5.dp,
+                color = if (isFocused) focusColor else Color(0x18FFFFFF),
+                shape = RoundedCornerShape(10.dp)
+            )
     ) {
-        Card(
-            onClick = onClick,
-            colors = CardDefaults.colors(
-                containerColor = if (isFocused) Color(0xFF1E222D) else Color(0xFF111319),
-                focusedContainerColor = Color(0xFF1E222D)
-            ),
-            scale = CardDefaults.scale(focusedScale = 1.0f),
-            modifier = Modifier
-                .handleTouchClick { onClick() }
-                .width(220.dp)
-                .onFocusChanged { isFocused = it.isFocused }
-                .clip(RoundedCornerShape(10.dp))
-                .border(
-                    width = if (isFocused) 1.5.dp else 0.5.dp,
-                    color = if (isFocused) focusBorderColor else Color(0x18FFFFFF),
-                    shape = RoundedCornerShape(10.dp)
-                )
-        ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             // Thumbnail
             Box(
@@ -162,20 +115,45 @@ fun EpisodeCard(
 
                 // Watched badge
                 if (episode.isPlayed) {
-                    val indicatorTheme = LocalIndicatorTheme.current
-                    val isMonochrome = LocalIsMonochromeTheme.current ||
-                            indicatorTheme == INDICATOR_THEME_MONOCHROME
-
                     Box(
                         modifier = Modifier
                             .align(Alignment.TopStart)
                             .padding(6.dp)
+                            .size(20.dp)
+                            .background(
+                                color = Color(0xCC000000),
+                                shape = CircleShape
+                            ),
+                        contentAlignment = Alignment.Center
                     ) {
-                        TvPill(
-                            text = stringResource(R.string.common_watched_check),
-                            containerColor = if (isMonochrome) Color(0xCC334155) else Color(0xB310B981),
-                            textColor = Color.White,
-                            borderColor = if (isMonochrome) Color(0x88FFFFFF) else Color.Transparent
+                        Icon(
+                            imageVector = Icons.Rounded.Check,
+                            contentDescription = stringResource(R.string.common_watched),
+                            tint = if (isMonochrome) Color.White.copy(alpha = 0.90f) else Color(0xFF10B981),
+                            modifier = Modifier.size(13.dp)
+                        )
+                    }
+                }
+
+                // Progress bar
+                if (!episode.isPlayed && episode.playbackPositionTicks > 0) {
+                    val durationTicks = episode.durationMinutes?.let { it.toLong() * 600_000_000L }
+                    val progressFraction = if (durationTicks != null && durationTicks > 0L) {
+                        (episode.playbackPositionTicks.toFloat() / durationTicks.toFloat()).coerceIn(0.05f, 0.98f)
+                    } else 0.40f
+
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .fillMaxWidth()
+                            .height(3.dp)
+                            .background(Color(0x66000000))
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(progressFraction)
+                                .height(3.dp)
+                                .background(if (isMonochrome) Color.White else focusColor)
                         )
                     }
                 }
@@ -190,8 +168,8 @@ fun EpisodeCard(
                         TvPill(
                             text = episode.formattedDuration!!,
                             containerColor = Color(0xCC000000),
-                            textColor = Color(0xFFE2E8F0),
-                            borderColor = Color(0x33FFFFFF)
+                            textColor = Color.White.copy(alpha = 0.90f),
+                            borderColor = Color(0x24FFFFFF)
                         )
                     }
                 }
@@ -202,13 +180,13 @@ fun EpisodeCard(
                         modifier = Modifier
                             .align(Alignment.Center)
                             .size(36.dp)
-                            .background(focusBorderColor, RoundedCornerShape(18.dp)),
+                            .background(focusColor, RoundedCornerShape(18.dp)),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.PlayArrow,
                             contentDescription = stringResource(R.string.common_play),
-                            tint = Color(0xFF0F172A),
+                            tint = focusContent,
                             modifier = Modifier.size(22.dp)
                         )
                     }
@@ -224,12 +202,8 @@ fun EpisodeCard(
                 Text(
                     text = "${episode.episodeNumber}. ${episode.name}",
                     style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = if (isFocused) {
-                        if (isMonochrome) Color.White else focusBorderColor
-                    } else {
-                        Color(0xFFE2E8F0)
-                    },
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (isFocused) Color.White else Color(0xFFE2E8F0),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -248,6 +222,5 @@ fun EpisodeCard(
             }
         }
     }
-}
 }
 

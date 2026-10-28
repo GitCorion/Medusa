@@ -472,9 +472,9 @@ private fun MedusaMoviesHeader(
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(
             text = "$movieCount ${formatNounPlural.uppercase()}",
-            color = if (isMonochrome) Color.White else accentColor,
+            color = Color.White.copy(alpha = 0.90f),
             fontSize = 11.sp,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.SemiBold,
             letterSpacing = 1.2.sp,
             fontFamily = FontFamily.SansSerif
         )
@@ -524,34 +524,28 @@ private fun SelectedTagBadge(
         onFocusChange(isFocused)
     }
 
-    val focusColor = if (isMonochrome) Color.White else accentColor
-    val focusContent = if (isMonochrome) Color(0xFF0F172A) else Color(0xFF0F172A)
-
     val scale by animateFloatAsState(
         targetValue = if (isFocused) 1.08f else 1.0f,
         animationSpec = spring(dampingRatio = 0.8f, stiffness = 500f),
         label = "badgeScale"
     )
 
-    // Exactamente los mismos estados de FormatFilterBar y TvTopBar:
-    // Foco -> Sólido cian con texto oscuro
-    // Seleccionado en reposo -> Fondo translúcido con borde cian y texto cian
     val containerColor = if (isFocused) {
-        focusColor
+        Color.White
     } else {
-        if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.22f)
+        Color(0x28FFFFFF)
     }
 
     val contentColor = if (isFocused) {
-        focusContent
+        Color(0xFF0F172A)
     } else {
-        if (isMonochrome) Color.White else focusColor
+        Color.White
     }
 
     val borderColor = if (isFocused) {
         Color.Transparent
     } else {
-        if (isMonochrome) Color(0x33FFFFFF) else focusColor.copy(alpha = 0.70f)
+        Color(0x33FFFFFF)
     }
 
     Box(

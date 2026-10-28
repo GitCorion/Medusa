@@ -257,7 +257,7 @@
 
     <!-- Appearance -->
     <string name="settings_section_theme">THEME</string>
-    <string name="settings_theme_neon">Medusa Neon</string>
+    <string name="settings_theme_neon">Medusa</string>
     <string name="settings_theme_monochrome">Monochrome</string>
     <string name="settings_section_buttons">BUTTONS ON CARDS</string>
     <string name="settings_btn_style_icons">Icons only</string>

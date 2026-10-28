@@ -591,8 +591,9 @@ fun HeroBanner(
                 Spacer(modifier = Modifier.height(14.dp))
 
                 // Action button: single stable instance across ALL slides
-                val focusColor = TvAccent.getColor(accentColor)
-                val focusContent = TvAccent.getFocusedContentColor(accentColor)
+                val isMonochrome = LocalIsMonochromeTheme.current
+                val focusColor = if (isMonochrome) Color.White else TvAccent.getColor(accentColor)
+                val focusContent = if (isMonochrome) Color(0xFF0F172A) else TvAccent.getFocusedContentColor(accentColor)
                 val showIcons = buttonStyle != BUTTON_STYLE_TEXT_ONLY
                 val showText = buttonStyle != BUTTON_STYLE_ICONS_ONLY
 
@@ -606,9 +607,9 @@ fun HeroBanner(
                 }
 
                 val buttonContainerColor = Color(0x28FFFFFF)
-                val buttonFocusedContainerColor = Color.White
+                val buttonFocusedContainerColor = if (isMonochrome) Color.White else activeEventAccent
                 val buttonContentColor = Color.White
-                val buttonFocusedContentColor = Color(0xFF0F172A)
+                val buttonFocusedContentColor = focusContent
                 val buttonBorderColor = Color(0x28FFFFFF)
 
                 Row(verticalAlignment = Alignment.CenterVertically) {

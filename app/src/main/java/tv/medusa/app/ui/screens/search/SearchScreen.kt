@@ -90,8 +90,8 @@ fun SearchScreen(
     val accentColorKey by viewModel.accentColor.collectAsStateWithLifecycle()
     val buttonStyleKey by viewModel.buttonStyle.collectAsStateWithLifecycle()
     val isMonochrome by viewModel.isMonochrome.collectAsStateWithLifecycle()
-    val focusColor = TvAccent.getColor(accentColorKey)
-    val focusContent = TvAccent.getFocusedContentColor(accentColorKey)
+    val focusColor = if (isMonochrome) Color.White else TvAccent.getColor(accentColorKey)
+    val focusContent = if (isMonochrome) Color(0xFF0F172A) else TvAccent.getFocusedContentColor(accentColorKey)
 
     val context = LocalContext.current
     val voicePrompt = stringResource(R.string.search_voice_prompt)
@@ -185,8 +185,8 @@ fun SearchScreen(
                         .height(38.dp)
                         .background(Color(0xFF131622), RoundedCornerShape(8.dp))
                         .border(
-                            1.dp,
-                            if (uiState.query.isNotEmpty()) focusColor.copy(alpha = 0.5f) else Color(0x18FFFFFF),
+                            0.5.dp,
+                            if (uiState.query.isNotEmpty()) Color.White.copy(alpha = 0.5f) else Color(0x18FFFFFF),
                             RoundedCornerShape(8.dp)
                         )
                         .padding(horizontal = 12.dp),
@@ -336,28 +336,16 @@ fun SearchScreen(
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(68.dp)
-                                    .background(
-                                        brush = Brush.radialGradient(
-                                            listOf(
-                                                (if (isMonochrome) Color.White else focusColor).copy(alpha = 0.15f),
-                                                Color.Transparent
-                                            )
-                                        ),
-                                        shape = CircleShape
-                                    )
-                                    .border(
-                                        1.dp,
-                                        (if (isMonochrome) Color.White else focusColor).copy(alpha = 0.25f),
-                                        CircleShape
-                                    ),
+                                    .size(64.dp)
+                                    .background(Color(0x12FFFFFF), CircleShape)
+                                    .border(0.5.dp, Color(0x22FFFFFF), CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     imageVector = Icons.Rounded.Search,
                                     contentDescription = null,
-                                    tint = if (isMonochrome) Color.White else focusColor,
-                                    modifier = Modifier.size(30.dp)
+                                    tint = Color.White.copy(alpha = 0.85f),
+                                    modifier = Modifier.size(28.dp)
                                 )
                             }
 

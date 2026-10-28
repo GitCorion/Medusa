@@ -48,6 +48,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.tv.material3.Button
+import tv.medusa.app.ui.theme.TvAccent
+import tv.medusa.app.ui.theme.LocalAccentColor
+import tv.medusa.app.ui.theme.LocalIsMonochromeTheme
 import androidx.tv.material3.ButtonDefaults
 import tv.medusa.app.ui.util.handleTouchClick
 import androidx.tv.material3.ExperimentalTvMaterial3Api
@@ -66,6 +69,10 @@ fun MedusaProDialog(
 ) {
     val context = LocalContext.current
     val buyButtonFocusRequester = remember { FocusRequester() }
+    val isMonochrome = LocalIsMonochromeTheme.current
+    val accentKey = LocalAccentColor.current
+    val focusColor = if (isMonochrome) Color.White else TvAccent.getColor(accentKey)
+    val focusContent = if (isMonochrome) Color(0xFF0F172A) else TvAccent.getFocusedContentColor(accentKey)
 
     // Precio real de Play Billing; cae al fallback mientras no esté cargado.
     val productDetails by billingManager.proProductDetails.collectAsStateWithLifecycle()
@@ -109,23 +116,10 @@ fun MedusaProDialog(
             modifier = Modifier
                 .fillMaxWidth(0.68f)
                 .clip(RoundedCornerShape(20.dp))
-                .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            Color(0xFF141724),
-                            Color(0xFF0C0E17)
-                        )
-                    )
-                )
+                .background(Color(0xF2090B14))
                 .border(
-                    width = 1.dp,
-                    brush = Brush.linearGradient(
-                        colors = listOf(
-                            Color(0xFF00E5FF).copy(alpha = 0.6f),
-                            Color(0x3300E5FF),
-                            Color(0x11FFFFFF)
-                        )
-                    ),
+                    width = 0.5.dp,
+                    color = Color(0x24FFFFFF),
                     shape = RoundedCornerShape(20.dp)
                 )
                 .padding(28.dp)
@@ -137,24 +131,16 @@ fun MedusaProDialog(
                 // Insignia Premium
                 Box(
                     modifier = Modifier
-                        .size(56.dp)
-                        .background(
-                            brush = Brush.radialGradient(
-                                colors = listOf(
-                                    Color(0xFF00E5FF).copy(alpha = 0.25f),
-                                    Color.Transparent
-                                )
-                            ),
-                            shape = CircleShape
-                        )
-                        .border(1.dp, Color(0xFF00E5FF).copy(alpha = 0.5f), CircleShape),
+                        .size(52.dp)
+                        .background(Color(0x14FFFFFF), CircleShape)
+                        .border(0.5.dp, Color(0x28FFFFFF), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Rounded.WorkspacePremium,
                         contentDescription = stringResource(R.string.pro_logo_content_description),
-                        tint = Color(0xFF00E5FF),
-                        modifier = Modifier.size(32.dp)
+                        tint = Color.White,
+                        modifier = Modifier.size(30.dp)
                     )
                 }
 
@@ -164,8 +150,8 @@ fun MedusaProDialog(
                     text = stringResource(R.string.pro_title),
                     color = Color.White,
                     fontSize = 22.sp,
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = 1.sp
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.5.sp
                 )
 
                 Spacer(modifier = Modifier.height(4.dp))
@@ -234,10 +220,10 @@ fun MedusaProDialog(
                             }
                             .focusRequester(buyButtonFocusRequester),
                         colors = ButtonDefaults.colors(
-                            containerColor = Color(0xFF00E5FF),
-                            contentColor = Color(0xFF05070B),
-                            focusedContainerColor = Color.White,
-                            focusedContentColor = Color.Black
+                            containerColor = if (isMonochrome) Color.White else focusColor,
+                            contentColor = focusContent,
+                            focusedContainerColor = focusColor,
+                            focusedContentColor = focusContent
                         ),
                         shape = ButtonDefaults.shape(RoundedCornerShape(12.dp))
                     ) {
@@ -246,7 +232,7 @@ fun MedusaProDialog(
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = stringResource(R.string.pro_buy, effectivePrice),
-                                fontWeight = FontWeight.Bold,
+                                fontWeight = FontWeight.SemiBold,
                                 fontSize = 13.sp
                             )
                         }
@@ -260,8 +246,8 @@ fun MedusaProDialog(
                         colors = ButtonDefaults.colors(
                             containerColor = Color(0x18FFFFFF),
                             contentColor = Color(0xFFCBD5E1),
-                            focusedContainerColor = Color(0x35FFFFFF),
-                            focusedContentColor = Color.White
+                            focusedContainerColor = focusColor,
+                            focusedContentColor = focusContent
                         ),
                         shape = ButtonDefaults.shape(RoundedCornerShape(12.dp))
                     ) {
@@ -278,8 +264,8 @@ fun MedusaProDialog(
                         colors = ButtonDefaults.colors(
                             containerColor = Color.Transparent,
                             contentColor = Color(0xFF64748B),
-                            focusedContainerColor = Color(0x22FFFFFF),
-                            focusedContentColor = Color.White
+                            focusedContainerColor = focusColor,
+                            focusedContentColor = focusContent
                         ),
                         shape = ButtonDefaults.shape(RoundedCornerShape(12.dp))
                     ) {
@@ -309,13 +295,13 @@ private fun ProFeatureRow(
         Box(
             modifier = Modifier
                 .size(32.dp)
-                .background(Color(0x1500E5FF), RoundedCornerShape(8.dp)),
+                .background(Color(0x18FFFFFF), RoundedCornerShape(8.dp)),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = Color(0xFF00E5FF),
+                tint = Color.White.copy(alpha = 0.90f),
                 modifier = Modifier.size(18.dp)
             )
         }

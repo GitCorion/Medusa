@@ -111,15 +111,9 @@ fun CompactFocusedHeader(
                         if (!isLogoLoaded) {
                             Text(
                                 text = item.title,
-                                style = MaterialTheme.typography.titleLarge.copy(
-                                    brush = if (!isMonochrome) {
-                                        Brush.horizontalGradient(
-                                            listOf(Color.White, Color(0xFFE2E8F0), focusColor.copy(alpha = 0.85f))
-                                        )
-                                    } else null
-                                ),
-                                color = if (isMonochrome) Color.White else Color.Unspecified,
-                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.titleLarge,
+                                color = Color.White,
+                                fontWeight = FontWeight.SemiBold,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -128,15 +122,9 @@ fun CompactFocusedHeader(
                 } else {
                     Text(
                         text = item.title,
-                        style = MaterialTheme.typography.titleLarge.copy(
-                            brush = if (!isMonochrome) {
-                                Brush.horizontalGradient(
-                                    listOf(Color.White, Color(0xFFE2E8F0), focusColor.copy(alpha = 0.85f))
-                                )
-                            } else null
-                        ),
-                        color = if (isMonochrome) Color.White else Color.Unspecified,
-                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = Color.White,
+                        fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )

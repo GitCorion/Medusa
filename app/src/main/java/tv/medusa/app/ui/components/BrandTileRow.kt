@@ -110,6 +110,7 @@ private fun BrandCard(
 
     val accentKey = LocalAccentColor.current
     val accentColor = TvAccent.getColor(accentKey)
+    val focusColor = if (isMonochrome) Color.White else accentColor
 
     Card(
         onClick = onClick,
@@ -126,7 +127,7 @@ private fun BrandCard(
             .clip(RoundedCornerShape(10.dp))
             .border(
                 width = if (isFocused) 1.5.dp else 0.5.dp,
-                color = if (isFocused) Color.White.copy(alpha = 0.90f) else Color(0x18FFFFFF),
+                color = if (isFocused) focusColor else Color(0x18FFFFFF),
                 shape = RoundedCornerShape(10.dp)
             )
     ) {

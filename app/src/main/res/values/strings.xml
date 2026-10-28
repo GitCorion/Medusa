@@ -257,7 +257,7 @@
 
     <!-- Apariencia -->
     <string name="settings_section_theme">TEMA</string>
-    <string name="settings_theme_neon">Medusa Neón</string>
+    <string name="settings_theme_neon">Medusa</string>
     <string name="settings_theme_monochrome">Monocromático</string>
     <string name="settings_section_buttons">BOTONES EN FICHAS</string>
     <string name="settings_btn_style_icons">Solo iconos</string>
