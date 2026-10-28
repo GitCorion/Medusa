@@ -156,6 +156,8 @@ fun GenreScreen(
                                 accentColorKey = accentColorKey,
                                 buttonStyleKey = buttonStyleKey,
                                 isMonochrome = isMonochrome,
+                                hideWatched = state.hideWatched,
+                                onToggleHideWatched = { viewModel.toggleHideWatched() },
                                 modifier = Modifier.padding(bottom = 8.dp)
                             )
                         }

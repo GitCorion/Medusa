@@ -50,7 +50,8 @@ sealed interface BrandUiState {
         val brand: BrandInfo,
         val sections: List<HomeSection>,
         val focusedItem: MediaItem? = null,
-        val format: MediaFormatFilter = MediaFormatFilter.ALL
+        val format: MediaFormatFilter = MediaFormatFilter.ALL,
+        val hideWatched: Boolean = false
     ) : BrandUiState
     data class Error(val message: String) : BrandUiState
 }
@@ -77,6 +78,7 @@ class BrandViewModel @Inject constructor(
     val accentColor: StateFlow<String> = userPreferencesRepository.accentColor
     val buttonStyle: StateFlow<String> = userPreferencesRepository.buttonStyle
     val isMonochrome: StateFlow<Boolean> = userPreferencesRepository.isMonochrome
+    val hideWatched: StateFlow<Boolean> = userPreferencesRepository.hideWatched
 
     private val _uiState = MutableStateFlow<BrandUiState>(BrandUiState.Loading)
     val uiState: StateFlow<BrandUiState> = _uiState.asStateFlow()
@@ -84,11 +86,27 @@ class BrandViewModel @Inject constructor(
     private var allRawSections: List<HomeSection> = emptyList()
     private var currentFormat = MediaFormatFilter.ALL
 
+    init {
+        viewModelScope.launch {
+            userPreferencesRepository.hideWatched.collect { hide ->
+                val state = _uiState.value as? BrandUiState.Success ?: return@collect
+                if (state.hideWatched != hide) {
+                    val filtered = filterSections(allRawSections, currentFormat, hide)
+                    _uiState.value = state.copy(
+                        sections = filtered,
+                        focusedItem = filtered.firstOrNull()?.items?.firstOrNull(),
+                        hideWatched = hide
+                    )
+                }
+            }
+        }
+    }
+
     fun setFormat(format: MediaFormatFilter) {
         currentFormat = format
         val state = _uiState.value
         if (state is BrandUiState.Success) {
-            val filtered = filterSections(allRawSections, format)
+            val filtered = filterSections(allRawSections, format, state.hideWatched)
             _uiState.value = state.copy(
                 sections = filtered,
                 focusedItem = filtered.firstOrNull()?.items?.firstOrNull(),
@@ -97,19 +115,29 @@ class BrandViewModel @Inject constructor(
         }
     }
 
+    fun toggleHideWatched() {
+        viewModelScope.launch {
+            userPreferencesRepository.toggleHideWatched()
+        }
+    }
+
     private fun filterSections(
         rawSections: List<HomeSection>,
-        format: MediaFormatFilter
+        format: MediaFormatFilter,
+        hideWatched: Boolean = userPreferencesRepository.hideWatched.value
     ): List<HomeSection> {
         val result = when (format) {
-            MediaFormatFilter.ALL -> rawSections
+            MediaFormatFilter.ALL -> rawSections.mapNotNull { section ->
+                val items = if (hideWatched) section.items.filter { !it.isPlayed } else section.items
+                if (items.isNotEmpty()) section.copy(items = items) else null
+            }
             MediaFormatFilter.MOVIES -> rawSections.mapNotNull { section ->
-                val filteredItems = section.items.filter { it.type.equals("Movie", ignoreCase = true) }
+                val filteredItems = section.items.filter { it.type.equals("Movie", ignoreCase = true) && (!hideWatched || !it.isPlayed) }
                 if (filteredItems.isNotEmpty()) section.copy(items = filteredItems) else null
             }
             MediaFormatFilter.SERIES -> rawSections.mapNotNull { section ->
                 val filteredItems = section.items.filter {
-                    it.type.equals("Series", ignoreCase = true) || it.type.equals("Episode", ignoreCase = true)
+                    (it.type.equals("Series", ignoreCase = true) || it.type.equals("Episode", ignoreCase = true)) && (!hideWatched || !it.isPlayed)
                 }
                 if (filteredItems.isNotEmpty()) section.copy(items = filteredItems) else null
             }
@@ -418,13 +446,15 @@ class BrandViewModel @Inject constructor(
                     if (idx != -1) idx else 999
                 }
             }
-            val filtered = filterSections(allRawSections, currentFormat)
+            val hide = userPreferencesRepository.hideWatched.value
+            val filtered = filterSections(allRawSections, currentFormat, hide)
             val currentFocused = (_uiState.value as? BrandUiState.Success)?.focusedItem
             val successState = BrandUiState.Success(
                 brand = brand,
                 sections = filtered,
                 focusedItem = currentFocused ?: filtered.firstOrNull()?.items?.firstOrNull(),
-                format = currentFormat
+                format = currentFormat,
+                hideWatched = hide
             )
             if (sections.isNotEmpty()) {
                 brandCache[brandId] = successState.copy(sections = allRawSections, format = MediaFormatFilter.ALL)

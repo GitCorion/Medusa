@@ -26,6 +26,7 @@ sealed interface FavoritesUiState {
         val allItems: List<MediaItem>,
         val filteredItems: List<MediaItem>,
         val activeFilter: FavoriteFilter,
+        val hideWatched: Boolean = false,
         val isSyncing: Boolean = false
     ) : FavoritesUiState
     data class Error(val message: String) : FavoritesUiState
@@ -39,6 +40,7 @@ class FavoritesViewModel @Inject constructor(
 
     val accentColor: StateFlow<String> = userPreferencesRepository.accentColor
     val buttonStyle: StateFlow<String> = userPreferencesRepository.buttonStyle
+    val hideWatched: StateFlow<Boolean> = userPreferencesRepository.hideWatched
 
     private val _uiState = MutableStateFlow<FavoritesUiState>(FavoritesUiState.Loading)
     val uiState: StateFlow<FavoritesUiState> = _uiState.asStateFlow()
@@ -46,6 +48,17 @@ class FavoritesViewModel @Inject constructor(
     private var currentFilter = FavoriteFilter.ALL
 
     init {
+        viewModelScope.launch {
+            userPreferencesRepository.hideWatched.collect { hide ->
+                val state = _uiState.value as? FavoritesUiState.Success ?: return@collect
+                if (state.hideWatched != hide) {
+                    _uiState.value = state.copy(
+                        hideWatched = hide,
+                        filteredItems = applyFilter(state.allItems, currentFilter, hide)
+                    )
+                }
+            }
+        }
         loadFavorites()
     }
 
@@ -53,14 +66,16 @@ class FavoritesViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = FavoritesUiState.Loading
             val prefs = userPreferencesRepository.userPreferencesFlow.first()
+            val hide = prefs.hideWatched
 
             // 1. First observe local DB favorites
             val local = mediaRepository.getFavoritesLocal()
             val mediaItems = local.map { it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken) }
             _uiState.value = FavoritesUiState.Success(
                 allItems = mediaItems,
-                filteredItems = applyFilter(mediaItems, currentFilter),
+                filteredItems = applyFilter(mediaItems, currentFilter, hide),
                 activeFilter = currentFilter,
+                hideWatched = hide,
                 isSyncing = true
             )
 
@@ -75,15 +90,17 @@ class FavoritesViewModel @Inject constructor(
                 val syncedItems = syncedList.map { it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken) }
                 _uiState.value = FavoritesUiState.Success(
                     allItems = syncedItems,
-                    filteredItems = applyFilter(syncedItems, currentFilter),
+                    filteredItems = applyFilter(syncedItems, currentFilter, hide),
                     activeFilter = currentFilter,
+                    hideWatched = hide,
                     isSyncing = false
                 )
             } else {
                 _uiState.value = FavoritesUiState.Success(
                     allItems = mediaItems,
-                    filteredItems = applyFilter(mediaItems, currentFilter),
+                    filteredItems = applyFilter(mediaItems, currentFilter, hide),
                     activeFilter = currentFilter,
+                    hideWatched = hide,
                     isSyncing = false
                 )
             }
@@ -95,18 +112,25 @@ class FavoritesViewModel @Inject constructor(
         val state = _uiState.value as? FavoritesUiState.Success ?: return
         _uiState.value = state.copy(
             activeFilter = filter,
-            filteredItems = applyFilter(state.allItems, filter)
+            filteredItems = applyFilter(state.allItems, filter, state.hideWatched)
         )
     }
 
-    private fun applyFilter(items: List<MediaItem>, filter: FavoriteFilter): List<MediaItem> {
-        return when (filter) {
+    fun toggleHideWatched() {
+        viewModelScope.launch {
+            userPreferencesRepository.toggleHideWatched()
+        }
+    }
+
+    private fun applyFilter(items: List<MediaItem>, filter: FavoriteFilter, hideWatched: Boolean): List<MediaItem> {
+        val byFormat = when (filter) {
             FavoriteFilter.ALL -> items
             FavoriteFilter.MOVIES -> items.filter { it.type.equals("Movie", ignoreCase = true) }
             FavoriteFilter.SERIES -> items.filter {
                 it.type.equals("Series", ignoreCase = true) || it.type.equals("TvProgram", ignoreCase = true)
             }
         }
+        return if (hideWatched) byFormat.filter { !it.isPlayed } else byFormat
     }
 
     private fun JellyfinMediaEntity.toMediaItem(baseUrl: String, token: String): MediaItem {

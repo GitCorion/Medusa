@@ -80,6 +80,7 @@ import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import tv.medusa.app.ui.util.handleTouchClick
 import tv.medusa.app.R
 import tv.medusa.app.data.local.BUTTON_STYLE_ICONS_ONLY
 import tv.medusa.app.data.local.BUTTON_STYLE_TEXT_ONLY
@@ -116,6 +117,8 @@ fun HomeScreen(
     val selectedPlatforms by viewModel.selectedPlatforms.collectAsStateWithLifecycle()
     val isProUser by viewModel.isProUser.collectAsStateWithLifecycle()
     val seasonalAudioEnabled by viewModel.seasonalAudioEnabled.collectAsStateWithLifecycle()
+    val particleScale by viewModel.particleScale.collectAsStateWithLifecycle()
+    val watchRegion by viewModel.watchRegion.collectAsStateWithLifecycle()
     var showProDialog by remember { mutableStateOf(false) }
     val showTopIcons = buttonStyleKey != BUTTON_STYLE_TEXT_ONLY
     val showTopText = buttonStyleKey != BUTTON_STYLE_ICONS_ONLY
@@ -262,6 +265,7 @@ fun HomeScreen(
                         ) {
                             Button(
                                 onClick = onOpenSettings,
+                                modifier = Modifier.handleTouchClick { onOpenSettings() },
                                 colors = ButtonDefaults.colors(
                                     containerColor = Color(0x22FFFFFF),
                                     contentColor = Color.White,
@@ -282,6 +286,7 @@ fun HomeScreen(
 
                             Button(
                                 onClick = { viewModel.activateDemoMode() },
+                                modifier = Modifier.handleTouchClick { viewModel.activateDemoMode() },
                                 colors = ButtonDefaults.colors(
                                     containerColor = Color(0x22FFFFFF),
                                     contentColor = Color.White,
@@ -331,6 +336,7 @@ fun HomeScreen(
                         Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                             Button(
                                 onClick = { viewModel.loadHomeFeed() },
+                                modifier = Modifier.handleTouchClick { viewModel.loadHomeFeed() },
                                 colors = ButtonDefaults.colors(
                                     containerColor = Color.White,
                                     contentColor = Color(0xFF0F172A),
@@ -351,6 +357,7 @@ fun HomeScreen(
 
                             Button(
                                 onClick = onOpenSettings,
+                                modifier = Modifier.handleTouchClick { onOpenSettings() },
                                 colors = ButtonDefaults.colors(
                                     containerColor = Color(0x18FFFFFF),
                                     contentColor = Color.White,
@@ -383,6 +390,7 @@ fun HomeScreen(
                         Spacer(modifier = Modifier.height(16.dp))
                         Button(
                             onClick = { viewModel.loadHomeFeed() },
+                            modifier = Modifier.handleTouchClick { viewModel.loadHomeFeed() },
                             colors = ButtonDefaults.colors(
                                 containerColor = Color(0x22FFFFFF),
                                 contentColor = Color.White,
@@ -479,6 +487,7 @@ fun HomeScreen(
                                 }
                             },
                             visiblePlatforms = selectedPlatforms.takeIf { it.isNotEmpty() },
+                            watchRegion = watchRegion,
                             isProUser = isProUser,
                             modifier = Modifier.onFocusChanged { focusState ->
                                 if (focusState.hasFocus) {
@@ -510,12 +519,13 @@ fun HomeScreen(
         }
     }
 
-        // Capa ambiental estacional (Seasonal) por encima de toda la pantalla (cubriendo el Hero y las filas)
-        if (activeSeasonalEvent != null && activeSeasonalEvent.particleType != ParticleType.NONE) {
+        // Capa ambiental estacional (Seasonal) sutil por encima de toda la pantalla
+        if (activeSeasonalEvent != null && activeSeasonalEvent.particleType != ParticleType.NONE && particleScale > 0.05f) {
             SeasonalParticles(
                 particleType = activeSeasonalEvent.particleType,
+                particleScale = particleScale,
                 modifier = Modifier.fillMaxSize(),
-                particleCount = 28
+                particleCount = (10 * particleScale).toInt().coerceAtLeast(3)
             )
         }
 

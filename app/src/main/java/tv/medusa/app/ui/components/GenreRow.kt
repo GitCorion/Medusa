@@ -34,6 +34,7 @@ import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
+import tv.medusa.app.ui.util.handleTouchClick
 import tv.medusa.app.R
 
 @OptIn(ExperimentalTvMaterial3Api::class)
@@ -131,6 +132,7 @@ private fun GenreChip(
 
     Surface(
         onClick = onClick,
+        modifier = Modifier.handleTouchClick { onClick() },
         shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(10.dp)),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = Color(0x10FFFFFF),

@@ -427,6 +427,7 @@
     <string name="format_all">All</string>
     <string name="format_movies">Movies</string>
     <string name="format_series">Series</string>
+    <string name="filter_hide_watched">Watched</string>
 
     <!-- Search results header -->
     <string name="search_counter_searching">Searching your Jellyfin server...</string>

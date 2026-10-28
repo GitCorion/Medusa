@@ -72,16 +72,23 @@ class SeasonalEventsManagerTest {
         assertEquals("3335", halloween.tmdbKeywordId)
         assertEquals(ParticleType.LEAVES, halloween.particleType)
         assertTrue(halloween.backdropResId != 0)
+        assertTrue("Halloween should have Trakt curated lists", halloween.traktCuratedLists.isNotEmpty())
+        assertTrue("Halloween should have multiple TMDB keywords", halloween.tmdbKeywords.size > 1)
+        assertTrue("Halloween should have local search terms", halloween.searchTerms.isNotEmpty())
 
         val christmas = SeasonalEventsManager.ALL_EVENTS.first { it.id == "christmas" }
         assertEquals("207317", christmas.tmdbKeywordId)
         assertEquals(ParticleType.SNOW, christmas.particleType)
         assertTrue(christmas.backdropResId != 0)
+        assertTrue("Christmas should have Trakt curated lists", christmas.traktCuratedLists.isNotEmpty())
+        assertTrue("Christmas should have multiple TMDB keywords", christmas.tmdbKeywords.size > 1)
 
         val valentines = SeasonalEventsManager.ALL_EVENTS.first { it.id == "valentines" }
         assertEquals("9840", valentines.tmdbKeywordId)
         assertEquals(ParticleType.EMBERS, valentines.particleType)
         assertTrue(valentines.backdropResId != 0)
+        assertTrue("Valentines should have Trakt curated lists", valentines.traktCuratedLists.isNotEmpty())
+        assertTrue("Valentines should have multiple TMDB keywords", valentines.tmdbKeywords.size > 1)
     }
 
     @Test

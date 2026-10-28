@@ -49,6 +49,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
+import tv.medusa.app.ui.util.handleTouchClick
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Icon
 import androidx.tv.material3.Text
@@ -224,7 +225,14 @@ fun MedusaProDialog(
                                 billingManager.launchBillingFlow(activity)
                             }
                         },
-                        modifier = Modifier.focusRequester(buyButtonFocusRequester),
+                        modifier = Modifier
+                            .handleTouchClick {
+                                val activity = context as? Activity
+                                if (activity != null) {
+                                    billingManager.launchBillingFlow(activity)
+                                }
+                            }
+                            .focusRequester(buyButtonFocusRequester),
                         colors = ButtonDefaults.colors(
                             containerColor = Color(0xFF00E5FF),
                             contentColor = Color(0xFF05070B),
@@ -248,6 +256,7 @@ fun MedusaProDialog(
                         onClick = {
                             billingManager.queryPurchases()
                         },
+                        modifier = Modifier.handleTouchClick { billingManager.queryPurchases() },
                         colors = ButtonDefaults.colors(
                             containerColor = Color(0x18FFFFFF),
                             contentColor = Color(0xFFCBD5E1),
@@ -265,6 +274,7 @@ fun MedusaProDialog(
 
                     Button(
                         onClick = onDismiss,
+                        modifier = Modifier.handleTouchClick { onDismiss() },
                         colors = ButtonDefaults.colors(
                             containerColor = Color.Transparent,
                             contentColor = Color(0xFF64748B),

@@ -232,15 +232,18 @@ class PlayerViewModel @Inject constructor(
 
     private fun isDockerOrLocalhostHost(host: String?): Boolean {
         if (host.isNullOrBlank()) return false
-        if (host.equals("localhost", ignoreCase = true) || host == "127.0.0.1") return true
-        val parts = host.split(".")
+        val cleanHost = host.substringBefore(":")
+        if (cleanHost.equals("localhost", ignoreCase = true) || cleanHost == "127.0.0.1") return true
+        val parts = cleanHost.split(".")
         if (parts.size == 4) {
             val p0 = parts[0].toIntOrNull() ?: return false
             val p1 = parts[1].toIntOrNull() ?: return false
             // Docker default / bridge subnets: 172.16.0.0 - 172.31.255.255
             if (p0 == 172 && p1 in 16..31) return true
-            // Also 10.0.0.0 - 10.255.255.255 if in a docker overlay
-            if (p0 == 10 && p1 in 0..1) return true
+            // Private 10.0.0.0/8 subnet
+            if (p0 == 10) return true
+            // Private 192.168.0.0/16 subnet
+            if (p0 == 192 && p1 == 168) return true
         }
         return false
     }
@@ -596,8 +599,12 @@ class PlayerViewModel @Inject constructor(
 
                 // Remote descriptor / stream resolution for .strm and rclone files:
                 if (isStrm) {
-                    // 1. Direct static stream from Jellyfin (static=true forces Jellyfin to stream raw bytes with HTTP Range 206)
+                    // 1. Direct remux stream from Jellyfin (without static=true, allowing Jellyfin to remux/transcode .strm files cleanly)
                     if (mediaSourceId.isNotBlank()) {
+                        val remuxStream = "$baseUrl/Videos/$playableId/stream?MediaSourceId=$mediaSourceId&api_key=$effectiveToken"
+                        if (!candidateUrls.contains(remuxStream)) {
+                            candidateUrls.add(remuxStream)
+                        }
                         val staticStream = "$baseUrl/Videos/$playableId/stream?static=true&MediaSourceId=$mediaSourceId&api_key=$effectiveToken"
                         if (!candidateUrls.contains(staticStream)) {
                             candidateUrls.add(staticStream)
@@ -614,7 +621,7 @@ class PlayerViewModel @Inject constructor(
                         }
                     }
 
-                    // 3. Alternative versions as direct static candidates (seamless fallback si la versión primaria falla)
+                    // 3. Alternative versions as direct static candidates
                     mediaSources?.filter { it.id != mediaSourceId }?.forEach { altSource ->
                         if (altSource.id.isNotBlank()) {
                             val altStatic = "$baseUrl/Videos/$playableId/stream?static=true&MediaSourceId=${altSource.id}&api_key=$effectiveToken"
@@ -633,7 +640,7 @@ class PlayerViewModel @Inject constructor(
                         }
                     }
 
-                    // 5. Extracted direct target URL from the .strm descriptor as fallback
+                    // 5. Extracted direct target URL from the .strm descriptor (ONLY if publicly routable, NOT internal docker IPs)
                     val extractedStrmUrl = resolveStrmTargetUrl(
                         baseUrl = baseUrl,
                         token = effectiveToken,
@@ -644,11 +651,7 @@ class PlayerViewModel @Inject constructor(
                     if (!extractedStrmUrl.isNullOrBlank()) {
                         val strmUri = runCatching { Uri.parse(extractedStrmUrl) }.getOrNull()
                         val strmHost = strmUri?.host
-                        val serverHost = runCatching { Uri.parse(baseUrl).host }.getOrNull()
-                        if (!serverHost.isNullOrBlank() && isDockerOrLocalhostHost(strmHost)) {
-                            val transformed = extractedStrmUrl.replaceFirst(strmHost!!, serverHost)
-                            if (!candidateUrls.contains(transformed)) candidateUrls.add(transformed)
-                        } else if (!isDockerOrLocalhostHost(strmHost) && !strmHost.isNullOrBlank()) {
+                        if (!isDockerOrLocalhostHost(strmHost) && !strmHost.isNullOrBlank()) {
                             if (!candidateUrls.contains(extractedStrmUrl)) candidateUrls.add(extractedStrmUrl)
                         }
                     }

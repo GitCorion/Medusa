@@ -52,6 +52,7 @@ import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import tv.medusa.app.ui.util.handleTouchClick
 import coil.compose.AsyncImage
 import tv.medusa.app.R
 import tv.medusa.app.domain.model.EpisodeItem
@@ -118,6 +119,7 @@ fun EpisodeCard(
             ),
             scale = CardDefaults.scale(focusedScale = 1.0f),
             modifier = Modifier
+                .handleTouchClick { onClick() }
                 .width(220.dp)
                 .onFocusChanged { isFocused = it.isFocused }
                 .clip(RoundedCornerShape(10.dp))

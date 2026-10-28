@@ -1,7 +1,9 @@
 package tv.medusa.app.ui.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -15,6 +17,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.Movie
 import androidx.compose.material.icons.rounded.Tv
+import androidx.compose.material.icons.rounded.Visibility
+import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -29,6 +33,7 @@ import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Icon
 import androidx.tv.material3.Text
+import tv.medusa.app.ui.util.handleTouchClick
 import tv.medusa.app.R
 import tv.medusa.app.data.local.BUTTON_STYLE_ICONS_ONLY
 import tv.medusa.app.data.local.BUTTON_STYLE_TEXT_ONLY
@@ -36,7 +41,7 @@ import tv.medusa.app.domain.model.MediaFormatFilter
 import tv.medusa.app.ui.theme.TvAccent
 
 /**
- * Barra de filtros de formato universal (Todos / Películas / Series).
+ * Barra de filtros de formato universal (Todos / Películas / Series) con opción de filtro de vistos.
  * Proporciona homogeneidad visual absoluta en todas las pantallas principales (Inicio, Marcas, Géneros, Favoritos).
  * Diseño fino, elegante, centrado y más compacto que el menú superior para TV.
  */
@@ -48,13 +53,21 @@ fun FormatFilterBar(
     accentColorKey: String,
     buttonStyleKey: String,
     isMonochrome: Boolean,
+    hideWatched: Boolean = false,
+    onToggleHideWatched: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val focusColor = if (isMonochrome) Color.White else TvAccent.getColor(accentColorKey)
     val focusContent = if (isMonochrome) Color(0xFF0F172A) else TvAccent.getFocusedContentColor(accentColorKey)
 
     val showIcons = buttonStyleKey != BUTTON_STYLE_TEXT_ONLY
-    val showText = true
+    val showText = buttonStyleKey != BUTTON_STYLE_ICONS_ONLY
+
+    val buttonPadding = if (!showText) {
+        PaddingValues(horizontal = 9.dp, vertical = 2.dp)
+    } else {
+        PaddingValues(horizontal = 12.dp, vertical = 2.dp)
+    }
 
     Row(
         modifier = modifier
@@ -67,11 +80,74 @@ fun FormatFilterBar(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            if (onToggleHideWatched != null) {
+                Button(
+                    onClick = { onToggleHideWatched() },
+                    contentPadding = buttonPadding,
+                    colors = ButtonDefaults.colors(
+                        containerColor = if (hideWatched) {
+                            if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.22f)
+                        } else {
+                            if (isMonochrome) Color(0x0CFFFFFF) else Color(0x0E00A4DC)
+                        },
+                        contentColor = if (hideWatched) {
+                            if (isMonochrome) Color.White else focusColor
+                        } else {
+                            Color(0xFF94A3B8)
+                        },
+                        focusedContainerColor = focusColor,
+                        focusedContentColor = focusContent
+                    ),
+                    shape = ButtonDefaults.shape(shape = RoundedCornerShape(14.dp)),
+                    border = ButtonDefaults.border(
+                        border = Border(
+                            border = BorderStroke(
+                                width = if (hideWatched) 1.dp else 0.75.dp,
+                                color = if (hideWatched) {
+                                    if (isMonochrome) Color(0x33FFFFFF) else focusColor.copy(alpha = 0.45f)
+                                } else {
+                                    Color(0x14FFFFFF)
+                                }
+                            ),
+                            shape = RoundedCornerShape(14.dp)
+                        ),
+                        focusedBorder = Border.None
+                    ),
+                    modifier = Modifier
+                        .handleTouchClick { onToggleHideWatched() }
+                        .height(28.dp)
+                ) {
+                    val hideWatchedLabel = stringResource(R.string.filter_hide_watched)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        if (showIcons) {
+                            val icon = if (hideWatched) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility
+                            Icon(
+                                imageVector = icon,
+                                contentDescription = hideWatchedLabel,
+                                modifier = Modifier.size(13.dp)
+                            )
+                        }
+
+                        if (showText) {
+                            if (showIcons) Spacer(modifier = Modifier.width(5.dp))
+                            Text(
+                                text = hideWatchedLabel,
+                                fontSize = 11.5.sp,
+                                fontWeight = if (hideWatched) FontWeight.Bold else FontWeight.Medium
+                            )
+                        }
+                    }
+                }
+            }
+
             MediaFormatFilter.entries.forEach { format ->
                 val isSelected = selected == format
                 Button(
                     onClick = { onSelect(format) },
-                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 2.dp),
+                    contentPadding = buttonPadding,
                     colors = ButtonDefaults.colors(
                         containerColor = if (isSelected) {
                             if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.22f)
@@ -97,7 +173,9 @@ fun FormatFilterBar(
                         ),
                         focusedBorder = Border.None
                     ),
-                    modifier = Modifier.height(28.dp)
+                    modifier = Modifier
+                        .handleTouchClick { onSelect(format) }
+                        .height(28.dp)
                 ) {
                     val formatLabel = when (format) {
                         MediaFormatFilter.ALL -> stringResource(R.string.format_all)

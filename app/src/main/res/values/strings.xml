@@ -427,6 +427,7 @@
     <string name="format_all">Todo</string>
     <string name="format_movies">Películas</string>
     <string name="format_series">Series</string>
+    <string name="filter_hide_watched">Vistos</string>
 
     <!-- Búsqueda (cabecera de resultados) -->
     <string name="search_counter_searching">Buscando en tu servidor Jellyfin...</string>

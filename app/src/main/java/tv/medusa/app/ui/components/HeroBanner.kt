@@ -80,6 +80,7 @@ import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import tv.medusa.app.ui.util.handleTouchClick
 import coil.compose.AsyncImage
 import tv.medusa.app.R
 import tv.medusa.app.data.local.ACCENT_CYAN
@@ -630,6 +631,13 @@ fun HeroBanner(
                             }
                         },
                         modifier = Modifier
+                            .handleTouchClick {
+                                when (currentSlideState) {
+                                    is HeroSlideState.Seasonal -> onExploreSeasonal?.invoke()
+                                    is HeroSlideState.Movie -> onDetailClick(currentSlideState.item)
+                                    HeroSlideState.Empty -> {}
+                                }
+                            }
                             .focusRequester(actionButtonFocusRequester)
                             .focusProperties {
                                 left = FocusRequester.Cancel

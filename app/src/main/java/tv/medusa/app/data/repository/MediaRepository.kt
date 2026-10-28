@@ -230,7 +230,7 @@ class MediaRepository(
     suspend fun getTmdbByGenre(apiKey: String, genreId: String, isTv: Boolean = false): Result<List<TmdbItemDto>> =
         tmdb.getTmdbByGenre(apiKey, genreId, isTv)
 
-    suspend fun getTmdbByProvider(apiKey: String, providerId: String, region: String = "ES", maxPages: Int = 4): Result<List<TmdbItemDto>> =
+    suspend fun getTmdbByProvider(apiKey: String, providerId: String, region: String = tv.medusa.app.data.remote.ApiConfig.TMDB_WATCH_REGION, maxPages: Int = 4): Result<List<TmdbItemDto>> =
         tmdb.getTmdbByProvider(apiKey, providerId, region, maxPages)
 
     suspend fun getTmdbMovieDetail(apiKey: String, movieId: Long): TmdbMovieDetailDto? =
@@ -239,7 +239,7 @@ class MediaRepository(
     suspend fun getTmdbTvDetail(apiKey: String, seriesId: Long): TmdbTvDetailDto? =
         tmdb.getTmdbTvDetail(apiKey, seriesId)
 
-    suspend fun getTmdbTopRated(apiKey: String): Result<List<TmdbItemDto>> = tmdb.getTmdbTopRated(apiKey)
+    suspend fun getTmdbTopRated(apiKey: String, maxPages: Int = 3): Result<List<TmdbItemDto>> = tmdb.getTmdbTopRated(apiKey, maxPages)
 
     suspend fun getSeriesStatus(tmdbApiKey: String, tmdbId: Long?, jellyfinStatus: String?): SeriesStatus =
         tmdb.getSeriesStatus(tmdbApiKey, tmdbId, jellyfinStatus)
@@ -308,6 +308,11 @@ class MediaRepository(
     suspend fun getTopSeriesLocal(limit: Int = 20): List<JellyfinMediaEntity> = local.getTopSeriesLocal(limit)
 
     suspend fun getTopRatedLocal(limit: Int = 20): List<JellyfinMediaEntity> = local.getTopRatedLocal(limit)
+    suspend fun getRewatchableMoviesLocal(limit: Int = 20): List<JellyfinMediaEntity> = local.getRewatchableMoviesLocal(limit)
+    suspend fun getBoxSetsLocal(limit: Int = 20): List<JellyfinMediaEntity> = local.getBoxSetsLocal(limit)
+    suspend fun getDocumentariesLocal(limit: Int = 20): List<JellyfinMediaEntity> = local.getDocumentariesLocal(limit)
+    suspend fun getNationalCinemaLocal(pattern: String, limit: Int = 20): List<JellyfinMediaEntity> = local.getNationalCinemaLocal(pattern, limit)
+    suspend fun getSpanishCinemaLocal(limit: Int = 20): List<JellyfinMediaEntity> = local.getSpanishCinemaLocal(limit)
 
     suspend fun searchLocalMedia(query: String, limit: Int = 40): List<JellyfinMediaEntity> = local.searchLocalMedia(query, limit)
 

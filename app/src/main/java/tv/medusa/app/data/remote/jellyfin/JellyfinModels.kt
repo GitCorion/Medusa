@@ -246,6 +246,7 @@ data class JellyfinItemDto(
     @SerialName("BackdropImageTags") val backdropImageTags: List<String>? = null,
     @SerialName("CommunityRating") val communityRating: Float? = null,
     @SerialName("ProductionYear") val productionYear: Int? = null,
+    @SerialName("PremiereDate") val premiereDate: String? = null,
     @SerialName("Genres") val genres: List<String>? = null,
     @SerialName("Tags") val tags: List<String>? = null,
     @SerialName("OfficialRating") val officialRating: String? = null,

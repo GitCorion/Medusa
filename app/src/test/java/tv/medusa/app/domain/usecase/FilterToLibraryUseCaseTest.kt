@@ -301,6 +301,36 @@ class FakeJellyfinDao : JellyfinDao {
 
     override fun getFavoritesFlowRestricted(): Flow<List<JellyfinMediaEntity>> = getFavoritesFlow()
 
+    override suspend fun getRewatchableMoviesLocal(limit: Int): List<JellyfinMediaEntity> =
+        localDb.filter { it.type == "Movie" && it.isPlayed }.take(limit)
+
+    override suspend fun getRewatchableMoviesLocalRestricted(limit: Int): List<JellyfinMediaEntity> =
+        getRewatchableMoviesLocal(limit)
+
+    override suspend fun getBoxSetsLocal(limit: Int): List<JellyfinMediaEntity> =
+        localDb.filter { it.type == "BoxSet" }.take(limit)
+
+    override suspend fun getBoxSetsLocalRestricted(limit: Int): List<JellyfinMediaEntity> =
+        getBoxSetsLocal(limit)
+
+    override suspend fun getDocumentariesLocal(limit: Int): List<JellyfinMediaEntity> =
+        localDb.filter { it.genres?.contains("documental", ignoreCase = true) == true || it.genres?.contains("documentary", ignoreCase = true) == true }.take(limit)
+
+    override suspend fun getDocumentariesLocalRestricted(limit: Int): List<JellyfinMediaEntity> =
+        getDocumentariesLocal(limit)
+
+    override suspend fun getNationalCinemaLocal(pattern: String, limit: Int): List<JellyfinMediaEntity> =
+        localDb.filter { it.type == "Movie" && (it.genres?.contains(pattern, ignoreCase = true) == true || it.tags?.contains(pattern, ignoreCase = true) == true) }.take(limit)
+
+    override suspend fun getNationalCinemaLocalRestricted(pattern: String, limit: Int): List<JellyfinMediaEntity> =
+        getNationalCinemaLocal(pattern, limit)
+
+    override suspend fun getSpanishCinemaLocal(limit: Int): List<JellyfinMediaEntity> =
+        getNationalCinemaLocal("españ", limit)
+
+    override suspend fun getSpanishCinemaLocalRestricted(limit: Int): List<JellyfinMediaEntity> =
+        getSpanishCinemaLocal(limit)
+
     override suspend fun clearAll() {
         localDb.clear()
     }

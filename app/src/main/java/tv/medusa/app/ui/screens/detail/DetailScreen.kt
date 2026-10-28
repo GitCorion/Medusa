@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.heightIn
@@ -39,6 +40,9 @@ import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.Movie
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Tv
+import androidx.compose.foundation.layout.statusBarsPadding
+import tv.medusa.app.ui.util.handleTouchClick
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -71,6 +75,7 @@ import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import tv.medusa.app.ui.util.handleTouchClick
 import coil.compose.AsyncImage
 import tv.medusa.app.R
 import tv.medusa.app.data.local.BUTTON_STYLE_ICONS_ONLY
@@ -218,7 +223,7 @@ fun DetailScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(start = 48.dp, end = 48.dp, top = 40.dp, bottom = 24.dp),
+                        .padding(start = 48.dp, end = 48.dp, top = 64.dp, bottom = 24.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     // Poster Card
@@ -508,6 +513,10 @@ fun DetailScreen(
                                 ),
                                 shape = ButtonDefaults.shape(shape = RoundedCornerShape(12.dp)),
                                 modifier = Modifier
+                                    .handleTouchClick {
+                                        isLaunchingPlayer = true
+                                        onPlay(playTargetId)
+                                    }
                                     .focusRequester(playButtonFocusRequester)
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -531,6 +540,7 @@ fun DetailScreen(
                                     onClick = {
                                         onNavigateToDetail(entity.seriesId)
                                     },
+                                    modifier = Modifier.handleTouchClick { onNavigateToDetail(entity.seriesId) },
                                     colors = ButtonDefaults.colors(
                                         containerColor = Color(0x14FFFFFF),
                                         contentColor = Color.White,
@@ -561,6 +571,7 @@ fun DetailScreen(
                             // 2. Favorite Toggle Button
                             Button(
                                 onClick = { viewModel.toggleFavorite() },
+                                modifier = Modifier.handleTouchClick { viewModel.toggleFavorite() },
                                 colors = ButtonDefaults.colors(
                                     containerColor = if (state.isFavorite) Color(0x28FFFFFF) else Color(0x14FFFFFF),
                                     contentColor = Color.White,
@@ -592,6 +603,7 @@ fun DetailScreen(
                             if (state.trailerUrl != null) {
                                 Button(
                                     onClick = { isShowingTrailer = true },
+                                    modifier = Modifier.handleTouchClick { isShowingTrailer = true },
                                     colors = ButtonDefaults.colors(
                                         containerColor = Color(0x14FFFFFF),
                                         contentColor = Color.White,
@@ -618,6 +630,7 @@ fun DetailScreen(
                             // 4. Mark as Watched / Watched Button
                             Button(
                                 onClick = { viewModel.togglePlayed() },
+                                modifier = Modifier.handleTouchClick { viewModel.togglePlayed() },
                                 colors = ButtonDefaults.colors(
                                     containerColor = if (state.isPlayed) Color(0x28FFFFFF) else Color(0x14FFFFFF),
                                     contentColor = Color.White,
@@ -715,6 +728,7 @@ fun DetailScreen(
                                         val isSelected = season.id == state.selectedSeasonId
                                         Button(
                                             onClick = { viewModel.selectSeason(season.id) },
+                                            modifier = Modifier.handleTouchClick { viewModel.selectSeason(season.id) },
                                             colors = ButtonDefaults.colors(
                                                 containerColor = if (isSelected) {
                                                     if (isMonochrome) Color(0x33FFFFFF) else focusColor.copy(alpha = 0.22f)
@@ -1020,6 +1034,41 @@ fun DetailScreen(
                                     }
                                 }
                             }
+                        }
+                    }
+                }
+
+                // Botón Volver (esquina superior izquierda con insets táctil y TV)
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .statusBarsPadding()
+                        .padding(start = 24.dp, top = 18.dp)
+                ) {
+                    Button(
+                        onClick = onBack,
+                        colors = ButtonDefaults.colors(
+                            containerColor = Color(0x33FFFFFF),
+                            contentColor = Color.White,
+                            focusedContainerColor = focusColor,
+                            focusedContentColor = focusContent
+                        ),
+                        shape = ButtonDefaults.shape(CircleShape),
+                        border = ButtonDefaults.border(
+                            border = Border(border = BorderStroke(1.dp, Color(0x33FFFFFF)), shape = CircleShape),
+                            focusedBorder = Border.None
+                        ),
+                        modifier = Modifier
+                            .size(48.dp)
+                            .handleTouchClick { onBack() }
+                    ) {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                                contentDescription = stringResource(R.string.common_back),
+                                tint = Color.White,
+                                modifier = Modifier.size(22.dp)
+                            )
                         }
                     }
                 }

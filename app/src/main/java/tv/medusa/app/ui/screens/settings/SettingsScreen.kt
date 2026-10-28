@@ -94,6 +94,7 @@ import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Icon
 import androidx.tv.material3.Surface
+import tv.medusa.app.ui.util.handleTouchClick
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import tv.medusa.app.R
@@ -401,6 +402,7 @@ private fun JellyfinCategory(
         ) {
             Button(
                 onClick = { viewModel.forceSyncCatalog() },
+                modifier = Modifier.handleTouchClick(enabled = !uiState.isSyncingCatalog) { viewModel.forceSyncCatalog() },
                 colors = ButtonDefaults.colors(
                     containerColor = Color(0x14FFFFFF),
                     contentColor = Color.White,
@@ -428,6 +430,7 @@ private fun JellyfinCategory(
 
             Button(
                 onClick = { viewModel.testServerConnection() },
+                modifier = Modifier.handleTouchClick { viewModel.testServerConnection() },
                 colors = ButtonDefaults.colors(
                     containerColor = Color(0x14FFFFFF),
                     contentColor = Color.White,
@@ -444,6 +447,7 @@ private fun JellyfinCategory(
 
             Button(
                 onClick = { viewModel.disconnectJellyfin() },
+                modifier = Modifier.handleTouchClick { viewModel.disconnectJellyfin() },
                 colors = ButtonDefaults.colors(
                     containerColor = Color(0x14FFFFFF),
                     contentColor = Color(0xFFEF4444),
@@ -471,6 +475,7 @@ private fun JellyfinCategory(
         Spacer(modifier = Modifier.height(6.dp))
         Button(
             onClick = { viewModel.activateDemoMode() },
+            modifier = Modifier.handleTouchClick { viewModel.activateDemoMode() },
             colors = ButtonDefaults.colors(
                 containerColor = Color(0x18FFFFFF),
                 contentColor = Color.White,
@@ -489,6 +494,7 @@ private fun JellyfinCategory(
             Spacer(modifier = Modifier.height(4.dp))
             Button(
                 onClick = { viewModel.testServerConnection() },
+                modifier = Modifier.handleTouchClick { viewModel.testServerConnection() },
                 colors = ButtonDefaults.colors(
                     containerColor = Color(0x14FFFFFF),
                     contentColor = Color.White,
@@ -524,6 +530,7 @@ private fun JellyfinCategory(
                 // Quick Connect
                 Button(
                     onClick = { viewModel.startJellyfinQuickConnect() },
+                    modifier = Modifier.handleTouchClick(enabled = !uiState.isLoading) { viewModel.startJellyfinQuickConnect() },
                     colors = ButtonDefaults.colors(
                         containerColor = Color(0x14FFFFFF),
                         contentColor = Color.White,
@@ -565,6 +572,7 @@ private fun JellyfinCategory(
 
                 Button(
                     onClick = { viewModel.saveAndConnect() },
+                    modifier = Modifier.handleTouchClick(enabled = !uiState.isLoading) { viewModel.saveAndConnect() },
                     colors = ButtonDefaults.colors(
                         containerColor = focusColor,
                         contentColor = focusContent,
@@ -774,7 +782,7 @@ private fun PlatformsCategory(
     ) {
         // La región del sistema va primera: es el valor por defecto y así siempre se puede
         // recuperar con el mando después de haber elegido otra (si no, solo se podría escribiendo).
-        (listOf(ApiConfig.TMDB_WATCH_REGION) + listOf("ES", "MX", "US", "AR", "CO")).distinct().forEach { code ->
+        (listOf(ApiConfig.TMDB_WATCH_REGION) + listOf("ES", "MX", "US", "AR", "CO", "CL", "PE")).distinct().forEach { code ->
             val isCurrent = uiState.watchRegion.equals(code, ignoreCase = true)
             Surface(
                 onClick = { viewModel.updateWatchRegion(code) },
@@ -821,7 +829,8 @@ private fun PlatformsCategory(
     TvSectionHeader(title = stringResource(R.string.settings_section_filter_platform))
 
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        SUPPORTED_PLATFORMS.forEach { platform ->
+        val region = uiState.watchRegion.ifBlank { ApiConfig.TMDB_WATCH_REGION }
+        SUPPORTED_PLATFORMS.filter { it.isAvailableIn(region) }.forEach { platform ->
             val isSelected = platform.id in uiState.selectedPlatforms
             TvPlatformToggleRow(
                 platform = platform,
@@ -1115,6 +1124,7 @@ private fun TvSettingsNavRailItem(
     Surface(
         onClick = onClick,
         modifier = modifier
+            .handleTouchClick { onClick() }
             .fillMaxWidth()
             .padding(vertical = 2.dp),
         shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(10.dp)),
@@ -1173,6 +1183,7 @@ private fun TvSettingRow(
         Surface(
             onClick = onClick,
             modifier = modifier
+                .handleTouchClick { onClick() }
                 .fillMaxWidth()
                 .padding(vertical = 2.dp),
             shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(10.dp)),
@@ -1277,7 +1288,9 @@ private fun <T> TvSegmentedSelector(
             val isSelected = option == selectedOption
             Surface(
                 onClick = { onOptionSelected(option) },
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .handleTouchClick { onOptionSelected(option) }
+                    .weight(1f),
                 shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(10.dp)),
                 colors = ClickableSurfaceDefaults.colors(
                     containerColor = if (isSelected) Color(0x20FFFFFF) else Color(0x08FFFFFF),
@@ -1337,6 +1350,7 @@ private fun TvTraktListToggleRow(
     Surface(
         onClick = onToggle,
         modifier = modifier
+            .handleTouchClick { onToggle() }
             .fillMaxWidth()
             .padding(vertical = 2.dp),
         shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(10.dp)),
@@ -1441,6 +1455,7 @@ private fun TvPlatformToggleRow(
     Surface(
         onClick = onToggle,
         modifier = modifier
+            .handleTouchClick { onToggle() }
             .fillMaxWidth()
             .padding(vertical = 2.dp),
         shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(10.dp)),
@@ -1708,13 +1723,15 @@ private fun TvEditDialog(
                         Spacer(modifier = Modifier.height(10.dp))
                         Button(
                             onClick = { isPasswordVisible = !isPasswordVisible },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .handleTouchClick { isPasswordVisible = !isPasswordVisible },
                             colors = ButtonDefaults.colors(
                                 containerColor = Color(0x12FFFFFF),
                                 contentColor = Color.White,
                                 focusedContainerColor = focusColor,
                                 focusedContentColor = focusContent
-                            ),
-                            modifier = Modifier.fillMaxWidth()
+                            )
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
@@ -1740,26 +1757,30 @@ private fun TvEditDialog(
                     ) {
                         Button(
                             onClick = onCommit,
+                            modifier = Modifier
+                                .weight(1f)
+                                .handleTouchClick { onCommit() },
                             colors = ButtonDefaults.colors(
                                 containerColor = focusColor,
                                 contentColor = focusContent,
                                 focusedContainerColor = focusColor,
                                 focusedContentColor = focusContent
-                            ),
-                            modifier = Modifier.weight(1f)
+                            )
                         ) {
                             Text(stringResource(R.string.settings_dialog_save), fontWeight = FontWeight.Bold, fontSize = 13.sp)
                         }
 
                         Button(
                             onClick = onDismiss,
+                            modifier = Modifier
+                                .weight(1f)
+                                .handleTouchClick { onDismiss() },
                             colors = ButtonDefaults.colors(
                                 containerColor = Color(0x18FFFFFF),
                                 contentColor = Color.White,
                                 focusedContainerColor = Color.White,
                                 focusedContentColor = Color(0xFF0F172A)
-                            ),
-                            modifier = Modifier.weight(1f)
+                            )
                         ) {
                             Text(stringResource(R.string.settings_dialog_cancel), fontSize = 13.sp)
                         }

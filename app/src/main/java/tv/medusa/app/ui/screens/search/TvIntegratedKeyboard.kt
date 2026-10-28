@@ -40,6 +40,7 @@ import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Icon
 import androidx.tv.material3.Text
+import tv.medusa.app.ui.util.handleTouchClick
 import tv.medusa.app.R
 
 import androidx.compose.ui.focus.FocusRequester
@@ -243,6 +244,7 @@ fun TvIntegratedKeyboard(
                     disabledBorder = Border.None
                 ),
                 modifier = Modifier
+                    .handleTouchClick(enabled = isSpaceEnabled) { onKeyClick(' ') }
                     .weight(1.2f)
                     .height(36.dp)
                     .focusRequester(spaceFocusRequester)
@@ -299,6 +301,7 @@ fun TvIntegratedKeyboard(
                     disabledBorder = Border.None
                 ),
                 modifier = Modifier
+                    .handleTouchClick(enabled = isBackspaceEnabled) { onBackspace() }
                     .weight(1.0f)
                     .height(36.dp)
                     .focusRequester(backspaceFocusRequester)
@@ -351,6 +354,7 @@ fun TvIntegratedKeyboard(
                     disabledBorder = Border.None
                 ),
                 modifier = Modifier
+                    .handleTouchClick(enabled = isClearEnabled) { onClear() }
                     .weight(0.9f)
                     .height(36.dp)
                     .focusRequester(clearFocusRequester)
@@ -424,6 +428,7 @@ private fun TvKeyButton(
             disabledBorder = Border.None
         ),
         modifier = modifier
+            .handleTouchClick(enabled = isEnabled) { onClick() }
             .focusProperties {
                 canFocus = isEnabled
                 right = rightRequester

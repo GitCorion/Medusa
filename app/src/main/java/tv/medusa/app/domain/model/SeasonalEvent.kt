@@ -12,7 +12,8 @@ enum class ParticleType {
 
 /**
  * Representa un evento temático estacional (Halloween, Navidad, San Valentín).
- * Con soporte para fondo cinematográfico 16:9, partículas ambientales y keyword de TMDb.
+ * Soporta curaduría multinivel: listas editoriales de Trakt, palabras clave y géneros de TMDb,
+ * y escaneo por términos de búsqueda en la biblioteca local.
  */
 data class SeasonalEvent(
     val id: String,
@@ -27,10 +28,18 @@ data class SeasonalEvent(
     val homeSectionTitle: String,
     val backdropResId: Int,
     val particleType: ParticleType,
-    val tmdbKeywordId: String,
-    val primaryGenreName: String,
+    val traktCuratedLists: List<Pair<String, String>> = emptyList(), // Pair(username/userSlug, listSlugOrId)
+    val tmdbKeywords: List<String> = emptyList(),
+    val genreNames: List<String> = emptyList(),
+    val searchTerms: List<String> = emptyList(),
     val soundResId: Int = 0
 ) {
+    /** Propiedad de compatibilidad hacia atrás: devuelve la primera palabra clave o string vacío. */
+    val tmdbKeywordId: String get() = tmdbKeywords.firstOrNull() ?: ""
+
+    /** Propiedad de compatibilidad hacia atrás: devuelve el género principal o "Terror". */
+    val primaryGenreName: String get() = genreNames.firstOrNull() ?: "Terror"
+
     fun isActive(calendar: Calendar = Calendar.getInstance()): Boolean {
         val month = calendar.get(Calendar.MONTH)
         val day = calendar.get(Calendar.DAY_OF_MONTH)
@@ -64,8 +73,21 @@ object SeasonalEventsManager {
             homeSectionTitle = "Selección de Halloween",
             backdropResId = R.drawable.bg_seasonal_halloween,
             particleType = ParticleType.LEAVES,
-            tmdbKeywordId = "3335",
-            primaryGenreName = "Terror"
+            traktCuratedLists = listOf(
+                "trakt" to "official-halloween-movies-and-tv-shows",
+                "movist" to "halloween",
+                "" to "halloween-movies",
+                "" to "spooky-season",
+                "" to "essential-horror-movies"
+            ),
+            tmdbKeywords = listOf("3335", "12339", "616", "3133", "162804", "12377", "10224", "10292", "9715"),
+            genreNames = listOf("Terror", "Horror", "Misterio", "Fantasía", "Thriller"),
+            searchTerms = listOf(
+                "halloween", "noche de brujas", "bruja", "witch", "fantasma", "ghost",
+                "vampiro", "vampire", "zombie", "zombi", "slasher", "terror", "horror",
+                "misterio", "sobrenatural", "supernatural", "demonio", "demon",
+                "monstruo", "monster", "posesion", "posensión", "espeluznante", "spooky", "asesino"
+            )
         ),
         SeasonalEvent(
             id = "christmas",
@@ -80,8 +102,18 @@ object SeasonalEventsManager {
             homeSectionTitle = "Selección de Navidad",
             backdropResId = R.drawable.bg_seasonal_christmas,
             particleType = ParticleType.SNOW,
-            tmdbKeywordId = "207317",
-            primaryGenreName = "Familiar"
+            traktCuratedLists = listOf(
+                "trakt" to "official-christmas-movies",
+                "movist" to "christmas",
+                "" to "christmas-classics",
+                "" to "holiday-movies"
+            ),
+            tmdbKeywords = listOf("207317", "6513", "192500", "18035", "9882"),
+            genreNames = listOf("Familiar", "Animación", "Comedia"),
+            searchTerms = listOf(
+                "navidad", "christmas", "santa", "papá noel", "papa noel", "reyes magos",
+                "navideño", "navideña", "fiestas", "invierno", "snow", "nieve", "familiar", "espíritu navideño"
+            )
         ),
         SeasonalEvent(
             id = "valentines",
@@ -96,8 +128,17 @@ object SeasonalEventsManager {
             homeSectionTitle = "Selección Romántica",
             backdropResId = R.drawable.bg_seasonal_valentines,
             particleType = ParticleType.EMBERS,
-            tmdbKeywordId = "9840",
-            primaryGenreName = "Romance"
+            traktCuratedLists = listOf(
+                "trakt" to "official-valentines-day-movies",
+                "movist" to "valentines-day",
+                "" to "romantic-movies"
+            ),
+            tmdbKeywords = listOf("9840", "9799", "1453"),
+            genreNames = listOf("Romance", "Drama"),
+            searchTerms = listOf(
+                "san valentín", "san valentin", "amor", "romance", "romántico", "romántica",
+                "love", "valentín", "valentin", "pareja", "enamorados"
+            )
         )
     )
 

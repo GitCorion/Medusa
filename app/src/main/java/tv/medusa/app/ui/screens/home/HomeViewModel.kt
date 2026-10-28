@@ -68,6 +68,12 @@ class HomeViewModel @Inject constructor(
     val selectedPlatforms: StateFlow<Set<String>> = userPreferencesRepository.selectedPlatforms
     val isProUser: StateFlow<Boolean> = userPreferencesRepository.isProUser
     val seasonalAudioEnabled: StateFlow<Boolean> = userPreferencesRepository.seasonalAudioEnabled
+    val particleScale: StateFlow<Float> = userPreferencesRepository.userPreferencesFlow
+        .map { it.getEffectiveParticleScale(context) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 1.0f)
+    val watchRegion: StateFlow<String> = userPreferencesRepository.userPreferencesFlow
+        .map { it.watchRegion }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), tv.medusa.app.data.remote.ApiConfig.TMDB_WATCH_REGION)
 
     val syncProgress: StateFlow<SyncProgress> = MediaRepository.syncProgress
     val localMediaCount: StateFlow<Int> = mediaRepository.getLibraryStatsFlow()

@@ -58,6 +58,7 @@ import androidx.tv.material3.CardDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
+import tv.medusa.app.ui.util.handleTouchClick
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import tv.medusa.app.R
@@ -152,6 +153,7 @@ fun MediaCard(
             ),
             scale = CardDefaults.scale(focusedScale = 1.0f),
             modifier = Modifier
+                .handleTouchClick(onLongClick = effectiveLongClick, onClick = safeOnClick)
                 .width(150.dp)
                 .onFocusChanged {
                     isFocused = it.isFocused

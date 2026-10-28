@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -57,6 +58,7 @@ import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Icon
 import androidx.tv.material3.Text
+import tv.medusa.app.ui.util.handleTouchClick
 import tv.medusa.app.R
 import tv.medusa.app.data.local.BUTTON_STYLE_ICONS_ONLY
 import tv.medusa.app.data.local.BUTTON_STYLE_TEXT_ONLY
@@ -105,6 +107,7 @@ fun TvTopBar(
 
     Row(
         modifier = modifier
+            .statusBarsPadding()
             .fillMaxWidth()
             .height(76.dp)
             .padding(horizontal = 48.dp),
@@ -190,6 +193,7 @@ fun TvTopBar(
             val isHomeActive = selectedTab == TvNavTab.HOME
             Button(
                 onClick = onNavigateHome,
+                modifier = Modifier.handleTouchClick { onNavigateHome() },
                 colors = ButtonDefaults.colors(
                     containerColor = if (isHomeActive) (if (isMonochrome) Color(0x24FFFFFF) else focusColor.copy(alpha = 0.20f)) else Color(0x0AFFFFFF),
                     contentColor = if (isHomeActive) (if (isMonochrome) Color.White else focusColor) else (if (isMonochrome) Color(0xFFCBD5E1) else Color(0xFF94A3B8)),
@@ -240,6 +244,7 @@ fun TvTopBar(
             Button(
                 onClick = onOpenMedusa,
                 modifier = Modifier
+                    .handleTouchClick { onOpenMedusa() }
                     .then(if (medusaFocusRequester != null) Modifier.focusRequester(medusaFocusRequester) else Modifier)
                     .onFocusChanged { isDiscoverFocused = it.isFocused }
                     .onKeyEvent { keyEvent ->
@@ -298,6 +303,7 @@ fun TvTopBar(
             val isFavoritesActive = selectedTab == TvNavTab.FAVORITES
             Button(
                 onClick = onOpenFavorites,
+                modifier = Modifier.handleTouchClick { onOpenFavorites() },
                 colors = ButtonDefaults.colors(
                     containerColor = if (isFavoritesActive) (if (isMonochrome) Color(0x24FFFFFF) else focusColor.copy(alpha = 0.20f)) else Color(0x0AFFFFFF),
                     contentColor = if (isFavoritesActive) (if (isMonochrome) Color.White else focusColor) else (if (isMonochrome) Color(0xFFCBD5E1) else Color(0xFF94A3B8)),
@@ -346,6 +352,7 @@ fun TvTopBar(
             val isSearchActive = selectedTab == TvNavTab.SEARCH
             Button(
                 onClick = onOpenSearch,
+                modifier = Modifier.handleTouchClick { onOpenSearch() },
                 colors = ButtonDefaults.colors(
                     containerColor = if (isSearchActive) (if (isMonochrome) Color(0x24FFFFFF) else focusColor.copy(alpha = 0.20f)) else Color(0x0AFFFFFF),
                     contentColor = if (isSearchActive) (if (isMonochrome) Color.White else focusColor) else (if (isMonochrome) Color(0xFFCBD5E1) else Color(0xFF94A3B8)),
@@ -394,6 +401,7 @@ fun TvTopBar(
             val isSettingsActive = selectedTab == TvNavTab.SETTINGS
             Button(
                 onClick = onOpenSettings,
+                modifier = Modifier.handleTouchClick { onOpenSettings() },
                 colors = ButtonDefaults.colors(
                     containerColor = if (isSettingsActive) (if (isMonochrome) Color(0x24FFFFFF) else focusColor.copy(alpha = 0.20f)) else Color(0x0AFFFFFF),
                     contentColor = if (isSettingsActive) (if (isMonochrome) Color.White else focusColor) else (if (isMonochrome) Color(0xFFCBD5E1) else Color(0xFF94A3B8)),

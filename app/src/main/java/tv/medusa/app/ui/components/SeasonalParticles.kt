@@ -16,6 +16,8 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.graphics.drawscope.translate
+import kotlinx.coroutines.delay
 import tv.medusa.app.domain.model.ParticleType
 import kotlin.math.cos
 import kotlin.math.sin
@@ -52,7 +54,8 @@ private class FlyingBatShadow(
     val waveFreq: Float,
     val flapPhase: Float,
     val direction: Float, // -1f = izquierda, 1f = derecha
-    val alpha: Float
+    val alpha: Float,
+    val path: Path = Path()
 )
 
 private class HolidayStar(
@@ -92,14 +95,19 @@ private class FloatingHeart(
 fun SeasonalParticles(
     particleType: ParticleType,
     modifier: Modifier = Modifier,
-    particleCount: Int = 26
+    particleCount: Int = 10,
+    particleScale: Float = 1.0f
 ) {
-    if (particleType == ParticleType.NONE) return
+    if (particleType == ParticleType.NONE || particleScale <= 0.05f) return
+
+    val effectiveCount = remember(particleCount, particleScale) {
+        (particleCount * particleScale).toInt().coerceAtLeast(2)
+    }
 
     // 1. Partículas base (hojas, copos o ascuas)
-    val particles = remember(particleType, particleCount) {
+    val particles = remember(particleType, effectiveCount) {
         val rand = Random(4242)
-        List(particleCount) {
+        List(effectiveCount) {
             val leafShape = LeafShape.entries[rand.nextInt(LeafShape.entries.size)]
             val (color, size, speed) = when (particleType) {
                 ParticleType.LEAVES -> {
@@ -113,7 +121,7 @@ fun SeasonalParticles(
                     )
                     Triple(
                         leafColors[rand.nextInt(leafColors.size)],
-                        rand.nextFloat() * 14f + 22f, // 22dp a 36dp
+                        rand.nextFloat() * 10f + 14f, // 14dp a 24dp (tamaño discreto y elegante)
                         rand.nextFloat() * 0.9f + 0.6f
                     )
                 }
@@ -163,8 +171,8 @@ fun SeasonalParticles(
     }
 
     // 2. Sombras puras de murciélagos: elegantes, aerodinámicas y sin colores chillones
-    val batShadows = remember(particleType) {
-        if (particleType == ParticleType.LEAVES) {
+    val batShadows = remember(particleType, particleScale) {
+        if (particleType == ParticleType.LEAVES && particleScale > 0.15f) {
             val slots = listOf(
                 // (x, y, size, direction, speedX, alpha)
                 Triple(0.20f, 0.14f, 48f) to Triple(1f, 1.3f, 0.58f),  // Grande, primer plano
@@ -172,8 +180,9 @@ fun SeasonalParticles(
                 Triple(0.50f, 0.10f, 42f) to Triple(1f, 1.2f, 0.50f),  // Centro superior
                 Triple(0.35f, 0.36f, 30f) to Triple(-1f, 1.0f, 0.36f)  // Sombra suave más lejana
             )
+            val selectedSlots = if (particleScale <= 0.35f) slots.take(1) else if (particleScale < 0.8f) slots.take(2) else slots
 
-            slots.mapIndexed { idx, (posAndSize, flight) ->
+            selectedSlots.mapIndexed { idx, (posAndSize, flight) ->
                 val (x, y, size) = posAndSize
                 val (dir, spdX, alpha) = flight
                 FlyingBatShadow(
@@ -194,10 +203,11 @@ fun SeasonalParticles(
     }
 
     // 3. Estrellas mágicas navideñas
-    val holidayStars = remember(particleType) {
-        if (particleType == ParticleType.SNOW) {
+    val holidayStars = remember(particleType, particleScale) {
+        if (particleType == ParticleType.SNOW && particleScale > 0.15f) {
+            val count = (14 * particleScale).toInt().coerceAtLeast(3)
             val rand = Random(888)
-            List(14) {
+            List(count) {
                 val starColors = listOf(
                     Color(0xFFFDE047),
                     Color(0xFFFEF08A),
@@ -218,10 +228,11 @@ fun SeasonalParticles(
     }
 
     // 4. Corazones flotantes de San Valentín
-    val floatingHearts = remember(particleType) {
-        if (particleType == ParticleType.EMBERS) {
+    val floatingHearts = remember(particleType, particleScale) {
+        if (particleType == ParticleType.EMBERS && particleScale > 0.15f) {
+            val count = (7 * particleScale).toInt().coerceAtLeast(2)
             val rand = Random(999)
-            List(7) { idx ->
+            List(count) { idx ->
                 val heartColors = listOf(
                     Color(0xFFFB7185),
                     Color(0xFFF43F5E),
@@ -252,6 +263,7 @@ fun SeasonalParticles(
             val delta = (currentTime - lastTime) / 1000f
             lastTime = currentTime
             timeSeconds += delta
+            delay(33L)
         }
     }
 
@@ -281,7 +293,8 @@ fun SeasonalParticles(
                     size = bat.size,
                     flap = flap,
                     facingRight = bat.direction > 0,
-                    alpha = bat.alpha
+                    alpha = bat.alpha,
+                    batPath = bat.path
                 )
             }
         }
@@ -396,7 +409,8 @@ private fun DrawScope.drawBatShadow(
     size: Float,
     flap: Float, // -1f .. 1f
     facingRight: Boolean,
-    alpha: Float
+    alpha: Float,
+    batPath: Path
 ) {
     val scaleX = if (facingRight) 1f else -1f
     scale(scaleX = scaleX, scaleY = 1f, pivot = center) {
@@ -404,71 +418,137 @@ private fun DrawScope.drawBatShadow(
         val flapOffset = flap * (s * 0.45f)
         val shadowColor = Color(0xFF000000).copy(alpha = alpha)
 
-        val batPath = Path().apply {
-            // Oreja izquierda
-            moveTo(center.x - s * 0.12f, center.y - s * 0.45f)
-            // Coronilla
-            lineTo(center.x, center.y - s * 0.28f)
-            // Oreja derecha
-            lineTo(center.x + s * 0.12f, center.y - s * 0.45f)
-            // Hombro derecho
-            lineTo(center.x + s * 0.18f, center.y - s * 0.18f)
+        batPath.reset()
+        // Oreja izquierda
+        batPath.moveTo(center.x - s * 0.12f, center.y - s * 0.45f)
+        // Coronilla
+        batPath.lineTo(center.x, center.y - s * 0.28f)
+        // Oreja derecha
+        batPath.lineTo(center.x + s * 0.12f, center.y - s * 0.45f)
+        // Hombro derecho
+        batPath.lineTo(center.x + s * 0.18f, center.y - s * 0.18f)
 
-            // Borde superior curvado del ala derecha hacia la punta
-            cubicTo(
-                center.x + s * 0.52f, center.y - s * 0.45f - flapOffset * 0.6f,
-                center.x + s * 0.95f, center.y - s * 0.52f - flapOffset * 0.9f,
-                center.x + s * 1.50f, center.y - s * 0.22f - flapOffset
-            )
+        // Borde superior curvado del ala derecha hacia la punta
+        batPath.cubicTo(
+            center.x + s * 0.52f, center.y - s * 0.45f - flapOffset * 0.6f,
+            center.x + s * 0.95f, center.y - s * 0.52f - flapOffset * 0.9f,
+            center.x + s * 1.50f, center.y - s * 0.22f - flapOffset
+        )
 
-            // 3 festones inferiores del ala derecha
-            // Festón 1 (exterior)
-            quadraticTo(
-                center.x + s * 1.15f, center.y + s * 0.08f - flapOffset * 0.5f,
-                center.x + s * 0.92f, center.y + s * 0.28f - flapOffset * 0.3f
-            )
-            // Festón 2 (medio)
-            quadraticTo(
-                center.x + s * 0.72f, center.y + s * 0.18f - flapOffset * 0.2f,
-                center.x + s * 0.52f, center.y + s * 0.34f - flapOffset * 0.1f
-            )
-            // Festón 3 (interior hacia la cola)
-            quadraticTo(
-                center.x + s * 0.32f, center.y + s * 0.24f,
-                center.x + s * 0.08f, center.y + s * 0.44f
-            )
+        // 3 festones inferiores del ala derecha
+        // Festón 1 (exterior)
+        batPath.quadraticTo(
+            center.x + s * 1.15f, center.y + s * 0.08f - flapOffset * 0.5f,
+            center.x + s * 0.92f, center.y + s * 0.28f - flapOffset * 0.3f
+        )
+        // Festón 2 (medio)
+        batPath.quadraticTo(
+            center.x + s * 0.72f, center.y + s * 0.18f - flapOffset * 0.2f,
+            center.x + s * 0.52f, center.y + s * 0.34f - flapOffset * 0.1f
+        )
+        // Festón 3 (interior hacia la cola)
+        batPath.quadraticTo(
+            center.x + s * 0.32f, center.y + s * 0.24f,
+            center.x + s * 0.08f, center.y + s * 0.44f
+        )
 
-            // Punta estilizada de la cola
-            lineTo(center.x, center.y + s * 0.58f)
+        // Punta estilizada de la cola
+        batPath.lineTo(center.x, center.y + s * 0.58f)
 
-            // Festón 3 ala izquierda
-            lineTo(center.x - s * 0.08f, center.y + s * 0.44f)
-            quadraticTo(
-                center.x - s * 0.32f, center.y + s * 0.24f,
-                center.x - s * 0.52f, center.y + s * 0.34f - flapOffset * 0.1f
-            )
-            // Festón 2
-            quadraticTo(
-                center.x - s * 0.72f, center.y + s * 0.18f - flapOffset * 0.2f,
-                center.x - s * 0.92f, center.y + s * 0.28f - flapOffset * 0.3f
-            )
-            // Festón 1 hacia la punta izquierda
-            quadraticTo(
-                center.x - s * 1.15f, center.y + s * 0.08f - flapOffset * 0.5f,
-                center.x - s * 1.50f, center.y - s * 0.22f - flapOffset
-            )
+        // Festón 3 ala izquierda
+        batPath.lineTo(center.x - s * 0.08f, center.y + s * 0.44f)
+        batPath.quadraticTo(
+            center.x - s * 0.32f, center.y + s * 0.24f,
+            center.x - s * 0.52f, center.y + s * 0.34f - flapOffset * 0.1f
+        )
+        // Festón 2
+        batPath.quadraticTo(
+            center.x - s * 0.72f, center.y + s * 0.18f - flapOffset * 0.2f,
+            center.x - s * 0.92f, center.y + s * 0.28f - flapOffset * 0.3f
+        )
+        // Festón 1 hacia la punta izquierda
+        batPath.quadraticTo(
+            center.x - s * 1.15f, center.y + s * 0.08f - flapOffset * 0.5f,
+            center.x - s * 1.50f, center.y - s * 0.22f - flapOffset
+        )
 
-            // Borde superior ala izquierda hacia el hombro
-            cubicTo(
-                center.x - s * 0.95f, center.y - s * 0.52f - flapOffset * 0.9f,
-                center.x - s * 0.52f, center.y - s * 0.45f - flapOffset * 0.6f,
-                center.x - s * 0.18f, center.y - s * 0.18f
-            )
+        // Borde superior ala izquierda hacia el hombro
+        batPath.cubicTo(
+            center.x - s * 0.95f, center.y - s * 0.52f - flapOffset * 0.9f,
+            center.x - s * 0.52f, center.y - s * 0.45f - flapOffset * 0.6f,
+            center.x - s * 0.18f, center.y - s * 0.18f
+        )
 
-            close()
-        }
+        batPath.close()
 
         drawPath(path = batPath, color = shadowColor)
+    }
+}
+
+private val UnitHolidayStarPath by lazy {
+    Path().apply {
+        moveTo(0f, -1f)
+        lineTo(0.22f, 0f)
+        lineTo(0f, 1f)
+        lineTo(-0.22f, 0f)
+        close()
+        moveTo(-1f, 0f)
+        lineTo(0f, 0.22f)
+        lineTo(1f, 0f)
+        lineTo(0f, -0.22f)
+        close()
+    }
+}
+
+private val UnitFloatingHeartPath by lazy {
+    Path().apply {
+        moveTo(0f, 0.8f)
+        cubicTo(-1.15f, 0.2f, -1.15f, -0.75f, 0f, -0.35f)
+        cubicTo(1.15f, -0.75f, 1.15f, 0.2f, 0f, 0.8f)
+        close()
+    }
+}
+
+private val UnitMapleLeafPath by lazy {
+    Path().apply {
+        moveTo(0f, 1.4f)
+        lineTo(0f, 0.85f)
+        cubicTo(-0.45f, 0.55f, -0.85f, 0.3f, -1.15f, -0.05f)
+        lineTo(-0.6f, -0.25f)
+        cubicTo(-0.95f, -0.65f, -0.65f, -1.05f, -0.3f, -1.25f)
+        lineTo(0f, -1.7f)
+        lineTo(0.3f, -1.25f)
+        cubicTo(0.65f, -1.05f, 0.95f, -0.65f, 0.6f, -0.25f)
+        lineTo(1.15f, -0.05f)
+        cubicTo(0.85f, 0.3f, 0.45f, 0.55f, 0f, 0.85f)
+        close()
+    }
+}
+
+private val UnitOakLeafPath by lazy {
+    Path().apply {
+        moveTo(0f, 1.4f)
+        lineTo(0f, 0.9f)
+        cubicTo(-0.5f, 0.7f, -0.7f, 0.4f, -0.4f, 0.2f)
+        cubicTo(-0.8f, 0.0f, -0.85f, -0.4f, -0.45f, -0.55f)
+        cubicTo(-0.7f, -0.75f, -0.6f, -1.2f, -0.2f, -1.35f)
+        cubicTo(-0.1f, -1.55f, 0.1f, -1.55f, 0.2f, -1.35f)
+        cubicTo(0.6f, -1.2f, 0.7f, -0.75f, 0.45f, -0.55f)
+        cubicTo(0.85f, -0.4f, 0.8f, 0.0f, 0.4f, 0.2f)
+        cubicTo(0.7f, 0.4f, 0.5f, 0.7f, 0f, 0.9f)
+        close()
+    }
+}
+
+private val UnitBirchLeafPath by lazy {
+    Path().apply {
+        moveTo(0f, 1.3f)
+        lineTo(0f, 0.8f)
+        cubicTo(-0.75f, 0.6f, -0.9f, -0.1f, -0.45f, -0.8f)
+        lineTo(0f, -1.5f)
+        lineTo(0.45f, -0.8f)
+        cubicTo(0.9f, -0.1f, 0.75f, 0.6f, 0f, 0.8f)
+        close()
     }
 }
 
@@ -488,19 +568,11 @@ private fun DrawScope.drawHolidayStar(
     val alpha = twinkle * 0.85f
     val r = size * (0.65f + twinkle * 0.35f)
 
-    val path = Path().apply {
-        moveTo(center.x, center.y - r)
-        lineTo(center.x + r * 0.22f, center.y)
-        lineTo(center.x, center.y + r)
-        lineTo(center.x - r * 0.22f, center.y)
-        close()
-        moveTo(center.x - r, center.y)
-        lineTo(center.x, center.y + r * 0.22f)
-        lineTo(center.x + r, center.y)
-        lineTo(center.x, center.y - r * 0.22f)
-        close()
+    translate(left = center.x, top = center.y) {
+        scale(scaleX = r, scaleY = r, pivot = Offset.Zero) {
+            drawPath(UnitHolidayStarPath, color.copy(alpha = alpha))
+        }
     }
-    drawPath(path, color.copy(alpha = alpha))
     drawCircle(
         color = Color.White.copy(alpha = alpha),
         radius = r * 0.18f,
@@ -518,21 +590,11 @@ private fun DrawScope.drawFloatingHeart(
     alpha: Float
 ) {
     val s = size * 0.5f
-    val path = Path().apply {
-        moveTo(center.x, center.y + s * 0.8f)
-        cubicTo(
-            center.x - s * 1.15f, center.y + s * 0.2f,
-            center.x - s * 1.15f, center.y - s * 0.75f,
-            center.x, center.y - s * 0.35f
-        )
-        cubicTo(
-            center.x + s * 1.15f, center.y - s * 0.75f,
-            center.x + s * 1.15f, center.y + s * 0.2f,
-            center.x, center.y + s * 0.8f
-        )
-        close()
+    translate(left = center.x, top = center.y) {
+        scale(scaleX = s, scaleY = s, pivot = Offset.Zero) {
+            drawPath(path = UnitFloatingHeartPath, color = color.copy(alpha = alpha))
+        }
     }
-    drawPath(path = path, color = color.copy(alpha = alpha))
 }
 
 /**
@@ -545,39 +607,11 @@ private fun DrawScope.drawMapleLeaf(
     alpha: Float
 ) {
     val s = size * 0.75f
-    val path = Path().apply {
-        moveTo(center.x, center.y + s * 1.4f)
-        lineTo(center.x, center.y + s * 0.85f)
-
-        cubicTo(
-            center.x - s * 0.45f, center.y + s * 0.55f,
-            center.x - s * 0.85f, center.y + s * 0.3f,
-            center.x - s * 1.15f, center.y - s * 0.05f
-        )
-        lineTo(center.x - s * 0.6f, center.y - s * 0.25f)
-        cubicTo(
-            center.x - s * 0.95f, center.y - s * 0.65f,
-            center.x - s * 0.65f, center.y - s * 1.05f,
-            center.x - s * 0.3f, center.y - s * 1.25f
-        )
-        lineTo(center.x, center.y - s * 1.7f)
-        lineTo(center.x + s * 0.3f, center.y - s * 1.25f)
-        cubicTo(
-            center.x + s * 0.65f, center.y - s * 1.05f,
-            center.x + s * 0.95f, center.y - s * 0.65f,
-            center.x + s * 0.6f, center.y - s * 0.25f
-        )
-        lineTo(center.x + s * 1.15f, center.y - s * 0.05f)
-        cubicTo(
-            center.x + s * 0.85f, center.y + s * 0.3f,
-            center.x + s * 0.45f, center.y + s * 0.55f,
-            center.x, center.y + s * 0.85f
-        )
-        close()
+    translate(left = center.x, top = center.y) {
+        scale(scaleX = s, scaleY = s, pivot = Offset.Zero) {
+            drawPath(path = UnitMapleLeafPath, color = color.copy(alpha = alpha))
+        }
     }
-
-    drawPath(path = path, color = color.copy(alpha = alpha))
-
     drawLine(
         color = Color(0xFFFEF3C7).copy(alpha = alpha * 0.45f),
         start = Offset(center.x, center.y + s * 0.85f),
@@ -596,24 +630,11 @@ private fun DrawScope.drawOakLeaf(
     alpha: Float
 ) {
     val s = size * 0.7f
-    val path = Path().apply {
-        moveTo(center.x, center.y + s * 1.4f)
-        lineTo(center.x, center.y + s * 0.9f)
-
-        cubicTo(center.x - s * 0.5f, center.y + s * 0.7f, center.x - s * 0.7f, center.y + s * 0.4f, center.x - s * 0.4f, center.y + s * 0.2f)
-        cubicTo(center.x - s * 0.8f, center.y + s * 0.0f, center.x - s * 0.85f, center.y - s * 0.4f, center.x - s * 0.45f, center.y - s * 0.55f)
-        cubicTo(center.x - s * 0.7f, center.y - s * 0.75f, center.x - s * 0.6f, center.y - s * 1.2f, center.x - s * 0.2f, center.y - s * 1.35f)
-
-        cubicTo(center.x - s * 0.1f, center.y - s * 1.55f, center.x + s * 0.1f, center.y - s * 1.55f, center.x + s * 0.2f, center.y - s * 1.35f)
-
-        cubicTo(center.x + s * 0.6f, center.y - s * 1.2f, center.x + s * 0.7f, center.y - s * 0.75f, center.x + s * 0.45f, center.y - s * 0.55f)
-        cubicTo(center.x + s * 0.85f, center.y - s * 0.4f, center.x + s * 0.8f, center.y + s * 0.0f, center.x + s * 0.4f, center.y + s * 0.2f)
-        cubicTo(center.x + s * 0.7f, center.y + s * 0.4f, center.x + s * 0.5f, center.y + s * 0.7f, center.x, center.y + s * 0.9f)
-        close()
+    translate(left = center.x, top = center.y) {
+        scale(scaleX = s, scaleY = s, pivot = Offset.Zero) {
+            drawPath(path = UnitOakLeafPath, color = color.copy(alpha = alpha))
+        }
     }
-
-    drawPath(path = path, color = color.copy(alpha = alpha))
-
     drawLine(
         color = Color(0xFFFEF3C7).copy(alpha = alpha * 0.4f),
         start = Offset(center.x, center.y + s * 0.9f),
@@ -632,27 +653,11 @@ private fun DrawScope.drawBirchLeaf(
     alpha: Float
 ) {
     val s = size * 0.72f
-    val path = Path().apply {
-        moveTo(center.x, center.y + s * 1.3f)
-        lineTo(center.x, center.y + s * 0.8f)
-
-        cubicTo(
-            center.x - s * 0.75f, center.y + s * 0.6f,
-            center.x - s * 0.9f, center.y - s * 0.1f,
-            center.x - s * 0.45f, center.y - s * 0.8f
-        )
-        lineTo(center.x, center.y - s * 1.5f)
-        lineTo(center.x + s * 0.45f, center.y - s * 0.8f)
-        cubicTo(
-            center.x + s * 0.9f, center.y - s * 0.1f,
-            center.x + s * 0.75f, center.y + s * 0.6f,
-            center.x, center.y + s * 0.8f
-        )
-        close()
+    translate(left = center.x, top = center.y) {
+        scale(scaleX = s, scaleY = s, pivot = Offset.Zero) {
+            drawPath(path = UnitBirchLeafPath, color = color.copy(alpha = alpha))
+        }
     }
-
-    drawPath(path = path, color = color.copy(alpha = alpha))
-
     drawLine(
         color = Color(0xFFFEF3C7).copy(alpha = alpha * 0.4f),
         start = Offset(center.x, center.y + s * 0.8f),

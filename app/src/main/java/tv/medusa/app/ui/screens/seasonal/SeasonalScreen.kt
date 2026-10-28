@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -277,6 +278,8 @@ fun SeasonalScreen(
                                 accentColorKey = accentColorKey,
                                 buttonStyleKey = buttonStyleKey,
                                 isMonochrome = isMonochrome,
+                                hideWatched = state.hideWatched,
+                                onToggleHideWatched = { viewModel.toggleHideWatched() },
                                 modifier = Modifier.padding(bottom = 12.dp)
                             )
                         }
@@ -313,11 +316,11 @@ fun SeasonalScreen(
                     }
                 }
 
-                // Capa ambiental estacional por encima de toda la pantalla
+                // Capa ambiental estacional sutil por encima de toda la pantalla
                 SeasonalParticles(
                     particleType = event.particleType,
                     modifier = Modifier.fillMaxSize(),
-                    particleCount = 30
+                    particleCount = 12
                 )
             }
         }

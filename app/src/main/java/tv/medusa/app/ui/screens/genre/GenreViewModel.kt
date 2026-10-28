@@ -37,6 +37,7 @@ sealed interface GenreUiState {
         val genreName: String,
         val sections: List<HomeSection>,
         val format: GenreFormat = GenreFormat.ALL,
+        val hideWatched: Boolean = false,
         val focusedItem: MediaItem? = null
     ) : GenreUiState
     data class Error(val message: String) : GenreUiState
@@ -60,10 +61,22 @@ class GenreViewModel @Inject constructor(
     val accentColor: StateFlow<String> = userPreferencesRepository.accentColor
     val isMonochrome: StateFlow<Boolean> = userPreferencesRepository.isMonochrome
     val buttonStyle: StateFlow<String> = userPreferencesRepository.buttonStyle
+    val hideWatched: StateFlow<Boolean> = userPreferencesRepository.hideWatched
 
     private var formatSections: List<Pair<GenreFormat, HomeSection>> = emptyList()
     private var currentFormat: GenreFormat = GenreFormat.ALL
     private var currentGenre: String = ""
+
+    init {
+        viewModelScope.launch {
+            userPreferencesRepository.hideWatched.collect { hide ->
+                val state = _uiState.value as? GenreUiState.Success ?: return@collect
+                if (state.hideWatched != hide) {
+                    applyFormat(hide)
+                }
+            }
+        }
+    }
 
     fun loadGenreFeed(genreName: String, forceRefresh: Boolean = false) {
         if (forceRefresh) {
@@ -117,14 +130,33 @@ class GenreViewModel @Inject constructor(
                 val collected = mutableListOf<Pair<GenreFormat, HomeSection>>()
                 val shownMediaIds = mutableSetOf<String>()
 
-                val curatedTopCandidates = (tmdbMovies + tmdbSeries + sanitizedLocalMovies + sanitizedLocalSeries)
-                    .distinctBy { it.id }
-                    .filter { (it.rating ?: 0f) >= 6.8f }
-                    .sortedByDescending { item ->
-                        val isTmdb = item.source == MediaSource.TMDB_TRENDING
-                        val baseRating = item.rating ?: 0f
-                        if (isTmdb) baseRating * 10f + 5f else baseRating * 10f
+                val unplayedLocalMovies = sanitizedLocalMovies.filter { !it.isPlayed && it.playbackPositionTicks <= 0L }
+                val unplayedLocalSeries = sanitizedLocalSeries.filter { !it.isPlayed && it.playbackPositionTicks <= 0L }
+
+                val calculateCompositeScore = { item: MediaItem ->
+                    val baseRating = item.rating ?: 0f
+                    val isTmdbTrending = item.source == MediaSource.TMDB_TRENDING
+                    val year = item.year ?: 2000
+
+                    var score = baseRating * 1.0f
+                    if (isTmdbTrending) {
+                        score += 3.0f
                     }
+                    if (year >= 2024) {
+                        score += 1.8f
+                    } else if (year >= 2020) {
+                        score += 1.0f
+                    } else if (year >= 2010) {
+                        score += 0.5f
+                    }
+                    score
+                }
+
+                val curatedTopCandidates = (tmdbMovies + tmdbSeries + unplayedLocalMovies + unplayedLocalSeries)
+                    .distinctBy { it.id }
+                    .filter { !it.isPlayed && it.playbackPositionTicks <= 0L }
+                    .filter { (it.rating ?: 0f) >= 6.8f }
+                    .sortedByDescending { calculateCompositeScore(it) }
                     .take(10)
 
                 if (curatedTopCandidates.isNotEmpty()) {
@@ -141,7 +173,16 @@ class GenreViewModel @Inject constructor(
 
                 val allLocalSanitized = (sanitizedLocalMovies + sanitizedLocalSeries).distinctBy { it.id }
                 val hiddenGems = allLocalSanitized
-                    .filter { it.id !in shownMediaIds && !it.isPlayed && (it.rating ?: 0f) in 7.0f..9.5f }
+                    .filter { it.id !in shownMediaIds && !it.isPlayed }
+                    .filter { (it.rating ?: 0f) in 7.5f..9.3f }
+                    .filter {
+                        val titleLower = it.title.lowercase()
+                        !titleLower.contains("short") &&
+                        !titleLower.contains("promo") &&
+                        !titleLower.contains("extra") &&
+                        !titleLower.contains("trailer") &&
+                        !titleLower.contains("featurette")
+                    }
                     .sortedByDescending { it.rating ?: 0f }
                     .take(15)
 
@@ -285,23 +326,33 @@ class GenreViewModel @Inject constructor(
         applyFormat()
     }
 
-    private fun applyFormat() {
+    fun toggleHideWatched() {
+        viewModelScope.launch {
+            userPreferencesRepository.toggleHideWatched()
+        }
+    }
+
+    private fun applyFormat(hideWatchedOverride: Boolean? = null) {
         if (formatSections.isEmpty()) {
             _uiState.value = GenreUiState.Error(context.getString(R.string.genre_empty_no_content, currentGenre))
             return
         }
 
+        val hide = hideWatchedOverride ?: userPreferencesRepository.hideWatched.value
         val filtered = when (currentFormat) {
-            GenreFormat.ALL -> formatSections.map { it.second }
+            GenreFormat.ALL -> formatSections.mapNotNull { (_, section) ->
+                val items = if (hide) section.items.filter { !it.isPlayed } else section.items
+                if (items.isNotEmpty()) section.copy(items = items) else null
+            }
             GenreFormat.MOVIES -> formatSections.mapNotNull { (format, section) ->
                 if (format == GenreFormat.SERIES) return@mapNotNull null
-                val movieItems = section.items.filter { it.type.equals("Movie", ignoreCase = true) }
+                val movieItems = section.items.filter { it.type.equals("Movie", ignoreCase = true) && (!hide || !it.isPlayed) }
                 if (movieItems.isNotEmpty()) section.copy(items = movieItems) else null
             }
             GenreFormat.SERIES -> formatSections.mapNotNull { (format, section) ->
                 if (format == GenreFormat.MOVIES) return@mapNotNull null
                 val seriesItems = section.items.filter {
-                    it.type.equals("Series", ignoreCase = true) || it.type.equals("Episode", ignoreCase = true)
+                    (it.type.equals("Series", ignoreCase = true) || it.type.equals("Episode", ignoreCase = true)) && (!hide || !it.isPlayed)
                 }
                 if (seriesItems.isNotEmpty()) section.copy(items = seriesItems) else null
             }
@@ -312,6 +363,7 @@ class GenreViewModel @Inject constructor(
             genreName = currentGenre,
             sections = filtered,
             format = currentFormat,
+            hideWatched = hide,
             focusedItem = firstItem
         )
         _uiState.value = successState

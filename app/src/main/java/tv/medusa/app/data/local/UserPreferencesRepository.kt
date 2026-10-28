@@ -96,7 +96,8 @@ data class UserPreferences(
     val autoFrameRateEnabled: Boolean = false,
     val seasonalAudioEnabled: Boolean = true,
     val navigationSoundEnabled: Boolean = true,
-    val audioPassthroughMode: Int = AUDIO_PASSTHROUGH_OFF
+    val audioPassthroughMode: Int = AUDIO_PASSTHROUGH_OFF,
+    val hideWatched: Boolean = false
 ) {
     val isMonochrome: Boolean
         get() = indicatorTheme == INDICATOR_THEME_MONOCHROME || accentColor == ACCENT_WHITE
@@ -104,7 +105,7 @@ data class UserPreferences(
     fun getEffectiveParticleScale(context: Context): Float {
         return when (performanceMode) {
             PERFORMANCE_MODE_HIGH -> 1.0f
-            PERFORMANCE_MODE_LOW -> 0.25f
+            PERFORMANCE_MODE_LOW -> 0.0f
             else -> DeviceUtils.getRecommendedParticleScale(context)
         }
     }
@@ -171,6 +172,7 @@ class UserPreferencesRepository(context: Context) {
         val SEASONAL_AUDIO_ENABLED = stringPreferencesKey("seasonal_audio_enabled")
         val NAVIGATION_SOUND_ENABLED = stringPreferencesKey("navigation_sound_enabled")
         val AUDIO_PASSTHROUGH_MODE = intPreferencesKey("audio_passthrough_mode")
+        val HIDE_WATCHED = stringPreferencesKey("hide_watched")
         // Versión del algoritmo de sincronización aplicada. Si la almacenada es menor que la
         // actual, se fuerza un sync completo para reconstruir catálogos truncados por versiones
         // anteriores (p. ej. paginación que cortaba al recibir páginas más cortas que el límite).
@@ -223,6 +225,9 @@ class UserPreferencesRepository(context: Context) {
 
     val subtitleBackground: StateFlow<Boolean> =
         userPreferences.map { it.subtitleBackground }.stateIn(appScope, SharingStarted.Eagerly, false)
+
+    val hideWatched: StateFlow<Boolean> =
+        userPreferences.map { it.hideWatched }.stateIn(appScope, SharingStarted.Eagerly, false)
 
     val autoFrameRateEnabled: StateFlow<Boolean> =
         userPreferences.map { it.autoFrameRateEnabled }.stateIn(appScope, SharingStarted.Eagerly, false)
@@ -325,7 +330,7 @@ class UserPreferencesRepository(context: Context) {
         }
     }
 
-    suspend fun updateTmdbConfig(apiKey: String, region: String = "ES") {
+    suspend fun updateTmdbConfig(apiKey: String, region: String = ApiConfig.TMDB_WATCH_REGION) {
         appContext.dataStore.edit { prefs ->
             prefs[Keys.TMDB_API_KEY] = apiKey
             prefs[Keys.WATCH_REGION] = region
@@ -389,6 +394,19 @@ class UserPreferencesRepository(context: Context) {
     suspend fun updateNavigationSoundEnabled(enabled: Boolean) {
         appContext.dataStore.edit { prefs ->
             prefs[Keys.NAVIGATION_SOUND_ENABLED] = enabled.toString()
+        }
+    }
+
+    suspend fun setHideWatched(enabled: Boolean) {
+        appContext.dataStore.edit { prefs ->
+            prefs[Keys.HIDE_WATCHED] = enabled.toString()
+        }
+    }
+
+    suspend fun toggleHideWatched() {
+        appContext.dataStore.edit { prefs ->
+            val current = prefs[Keys.HIDE_WATCHED] == "true"
+            prefs[Keys.HIDE_WATCHED] = (!current).toString()
         }
     }
 
@@ -629,7 +647,8 @@ class UserPreferencesRepository(context: Context) {
                 autoFrameRateEnabled = (this[Keys.AUTO_FRAME_RATE] ?: "false") == "true",
                 seasonalAudioEnabled = (this[Keys.SEASONAL_AUDIO_ENABLED] ?: "true") != "false",
                 navigationSoundEnabled = (this[Keys.NAVIGATION_SOUND_ENABLED] ?: "true") != "false",
-                audioPassthroughMode = this[Keys.AUDIO_PASSTHROUGH_MODE] ?: AUDIO_PASSTHROUGH_OFF
+                audioPassthroughMode = this[Keys.AUDIO_PASSTHROUGH_MODE] ?: AUDIO_PASSTHROUGH_OFF,
+                hideWatched = this[Keys.HIDE_WATCHED] == "true"
             )
         }
     }

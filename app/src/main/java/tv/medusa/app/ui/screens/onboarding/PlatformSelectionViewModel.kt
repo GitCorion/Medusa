@@ -17,7 +17,8 @@ class PlatformSelectionViewModel @Inject constructor(
     private val userPreferencesRepository: UserPreferencesRepository
 ) : ViewModel() {
 
-    private val _selected = MutableStateFlow<Set<String>>(DEFAULT_SELECTED_PLATFORMS)
+    val availablePlatforms = SUPPORTED_PLATFORMS.filter { it.isAvailableIn(tv.medusa.app.data.remote.ApiConfig.TMDB_WATCH_REGION) }
+    private val _selected = MutableStateFlow<Set<String>>(availablePlatforms.map { it.id }.toSet())
     val selected: StateFlow<Set<String>> = _selected.asStateFlow()
 
     fun togglePlatform(id: String) {
@@ -26,7 +27,7 @@ class PlatformSelectionViewModel @Inject constructor(
     }
 
     fun selectAll() {
-        _selected.value = SUPPORTED_PLATFORMS.map { it.id }.toSet()
+        _selected.value = availablePlatforms.map { it.id }.toSet()
     }
 
     fun deselectAll() {

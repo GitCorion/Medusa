@@ -240,41 +240,56 @@ class MedusaTagMatrixEngine {
 
     private fun resolveMatchingIndices(
         chain: List<MedusaMosaicTag>,
-        format: MediaFormat
+        format: MediaFormat,
+        hideWatched: Boolean = false
     ): IntArray {
         if (indexedEntities.isEmpty()) return IntArray(0)
 
-        if (chain.isEmpty()) {
-            return when (format) {
+        val rawIndices = if (chain.isEmpty()) {
+            when (format) {
                 MediaFormat.ALL -> allIndices
                 MediaFormat.MOVIES -> moviesIndices
                 MediaFormat.SERIES -> seriesIndices
             }
-        }
-
-        // Buscar posting lists para cada tag de la cadena
-        val postingLists = ArrayList<IntArray>(chain.size)
-        for (item in chain) {
-            val key = item.rawTag.trim().lowercase(Locale.ROOT)
-            val indices = tagToEntityIndices[key]
-                ?: tagToEntityIndices[TagTranslations.stripAccents(key).lowercase(Locale.ROOT)]
-            if (indices == null || indices.isEmpty()) {
-                // Si alguna etiqueta de la cadena "AND" no tiene obras, la intersección es vacía
-                return IntArray(0)
+        } else {
+            // Buscar posting lists para cada tag de la cadena
+            val postingLists = ArrayList<IntArray>(chain.size)
+            for (item in chain) {
+                val key = item.rawTag.trim().lowercase(Locale.ROOT)
+                val indices = tagToEntityIndices[key]
+                    ?: tagToEntityIndices[TagTranslations.stripAccents(key).lowercase(Locale.ROOT)]
+                if (indices == null || indices.isEmpty()) {
+                    // Si alguna etiqueta de la cadena "AND" no tiene obras, la intersección es vacía
+                    return IntArray(0)
+                }
+                postingLists.add(indices)
             }
-            postingLists.add(indices)
+
+            // Ordenar las listas por tamaño ascendente para minimizar comparaciones
+            postingLists.sortBy { it.size }
+
+            var current = postingLists[0]
+            for (i in 1 until postingLists.size) {
+                current = intersectSorted(current, postingLists[i])
+                if (current.isEmpty()) return IntArray(0)
+            }
+
+            filterByFormat(current, format)
         }
 
-        // Ordenar las listas por tamaño ascendente para minimizar comparaciones
-        postingLists.sortBy { it.size }
+        if (!hideWatched || rawIndices.isEmpty()) return rawIndices
 
-        var current = postingLists[0]
-        for (i in 1 until postingLists.size) {
-            current = intersectSorted(current, postingLists[i])
-            if (current.isEmpty()) return IntArray(0)
+        var count = 0
+        for (idx in rawIndices) {
+            if (!indexedEntities[idx].isPlayed) count++
         }
-
-        return filterByFormat(current, format)
+        if (count == rawIndices.size) return rawIndices
+        val res = IntArray(count)
+        var k = 0
+        for (idx in rawIndices) {
+            if (!indexedEntities[idx].isPlayed) res[k++] = idx
+        }
+        return res
     }
 
     private fun intersectSorted(a: IntArray, b: IntArray): IntArray {
@@ -341,9 +356,10 @@ class MedusaTagMatrixEngine {
         format: MediaFormat = MediaFormat.ALL,
         serverUrl: String = "",
         accessToken: String = "",
-        limit: Int = 120
+        limit: Int = 120,
+        hideWatched: Boolean = false
     ): List<MediaItem> {
-        val matchingIndices = resolveMatchingIndices(chain, format)
+        val matchingIndices = resolveMatchingIndices(chain, format, hideWatched)
         val takeCount = minOf(matchingIndices.size, limit)
         val result = ArrayList<MediaItem>(takeCount)
         for (i in 0 until takeCount) {
@@ -358,9 +374,10 @@ class MedusaTagMatrixEngine {
      */
     fun getMatchingCount(
         chain: List<MedusaMosaicTag>,
-        format: MediaFormat = MediaFormat.ALL
+        format: MediaFormat = MediaFormat.ALL,
+        hideWatched: Boolean = false
     ): Int {
-        return resolveMatchingIndices(chain, format).size
+        return resolveMatchingIndices(chain, format, hideWatched).size
     }
 
     /**
@@ -372,7 +389,8 @@ class MedusaTagMatrixEngine {
     fun generateMosaicTags(
         activeChain: List<MedusaMosaicTag>,
         format: MediaFormat = MediaFormat.ALL,
-        targetCapacity: Int = DEFAULT_MOSAIC_CAPACITY
+        targetCapacity: Int = DEFAULT_MOSAIC_CAPACITY,
+        hideWatched: Boolean = false
     ): List<MedusaMosaicTag> {
         if (indexedEntities.isEmpty()) return activeChain
 
@@ -383,7 +401,7 @@ class MedusaTagMatrixEngine {
             MediaFormat.SERIES -> seriesIndices.size
         }.coerceAtLeast(1)
 
-        val matchingIndices = resolveMatchingIndices(activeChain, format)
+        val matchingIndices = resolveMatchingIndices(activeChain, format, hideWatched)
         if (matchingIndices.isEmpty()) {
             return activeChain
         }

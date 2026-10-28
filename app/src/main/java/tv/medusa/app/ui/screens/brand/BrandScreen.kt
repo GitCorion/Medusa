@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
+import tv.medusa.app.ui.util.handleTouchClick
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
@@ -190,6 +191,8 @@ fun BrandScreen(
                                 accentColorKey = accentColorKey,
                                 buttonStyleKey = buttonStyleKey,
                                 isMonochrome = isMonochrome,
+                                hideWatched = state.hideWatched,
+                                onToggleHideWatched = { viewModel.toggleHideWatched() },
                                 modifier = Modifier.padding(bottom = 8.dp)
                             )
                         }
@@ -220,6 +223,7 @@ fun BrandScreen(
                                         Spacer(modifier = Modifier.height(24.dp))
                                         Button(
                                             onClick = { viewModel.loadBrandFeed(brandId, forceRefresh = true) },
+                                            modifier = Modifier.handleTouchClick { viewModel.loadBrandFeed(brandId, forceRefresh = true) },
                                             colors = ButtonDefaults.colors(
                                                 containerColor = Color(0xFF1E222D),
                                                 focusedContainerColor = focusColor,

@@ -62,8 +62,10 @@ object ApiConfig {
      * el usuario lo elige (se guarda en DataStore y sobrevive al cambio de región del sistema).
      */
     val TMDB_WATCH_REGION: String
-        get() = Locale.getDefault().country
-            .takeIf { it.length == 2 && it.all(Char::isLetter) }
-            ?.uppercase()
-            ?: if (Locale.getDefault().language == "es") "ES" else "US"
+        get() {
+            val country = Locale.getDefault().country
+                .takeIf { it.length == 2 && it.all(Char::isLetter) }
+                ?.uppercase()
+            return country ?: if (Locale.getDefault().language == "es") "ES" else "US"
+        }
 }

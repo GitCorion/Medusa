@@ -42,6 +42,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -181,6 +184,7 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.NonInteractiveSurfaceDefaults
 import androidx.tv.material3.Surface
+import tv.medusa.app.ui.util.handleTouchClick
 import androidx.tv.material3.Text
 import tv.medusa.app.R
 import tv.medusa.app.data.local.BUTTON_STYLE_ICONS_AND_TEXT
@@ -1347,9 +1351,27 @@ private fun PlayerContent(
                     else -> false
                 }
             }
-            .clickable(enabled = !showResumeDialog) {
-                notifyInteraction()
-                showOverlayControls = !showOverlayControls
+            .pointerInput(showResumeDialog) {
+                if (showResumeDialog) return@pointerInput
+                detectTapGestures(
+                    onTap = {
+                        notifyInteraction()
+                        showOverlayControls = !showOverlayControls
+                    },
+                    onDoubleTap = { offset ->
+                        notifyInteraction()
+                        val width = size.width
+                        if (width > 0) {
+                            if (offset.x < width * 0.35f) {
+                                seekRelative(-10_000L)
+                            } else if (offset.x > width * 0.65f) {
+                                seekRelative(+10_000L)
+                            } else {
+                                if (exoPlayer.isPlaying) exoPlayer.pause() else exoPlayer.play()
+                            }
+                        }
+                    }
+                )
             }
     ) {
         // Video Player Surface
@@ -1510,7 +1532,12 @@ private fun PlayerContent(
                                 playerErrorMessage = null
                                 retryTrigger++
                             },
-                            modifier = Modifier.focusRequester(retryFocusRequester),
+                            modifier = Modifier
+                                .handleTouchClick {
+                                    playerErrorMessage = null
+                                    retryTrigger++
+                                }
+                                .focusRequester(retryFocusRequester),
                             colors = ButtonDefaults.colors(
                                 containerColor = Color(0xFF3F51B5),
                                 focusedContainerColor = Color(0xFF5C6BC0)
@@ -1520,6 +1547,7 @@ private fun PlayerContent(
                         }
                         Button(
                             onClick = onBack,
+                            modifier = Modifier.handleTouchClick { onBack() },
                             colors = ButtonDefaults.colors(
                                 containerColor = Color(0xFF2C2D3C),
                                 focusedContainerColor = Color(0xFF424458)
@@ -1627,6 +1655,7 @@ private fun PlayerContent(
                 // Top Bar: Back Button + Title + Minimal Metadata
                 Row(
                     modifier = Modifier
+                        .statusBarsPadding()
                         .fillMaxWidth()
                         .align(Alignment.TopStart)
                         .background(
@@ -1641,6 +1670,33 @@ private fun PlayerContent(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(18.dp)
                 ) {
+                    Button(
+                        onClick = onBack,
+                        modifier = Modifier
+                            .handleTouchClick { onBack() }
+                            .size(44.dp),
+                        colors = ButtonDefaults.colors(
+                            containerColor = Color(0x33FFFFFF),
+                            contentColor = Color.White,
+                            focusedContainerColor = focusColor,
+                            focusedContentColor = focusContent
+                        ),
+                        shape = ButtonDefaults.shape(CircleShape),
+                        border = ButtonDefaults.border(
+                            border = Border(border = BorderStroke(1.dp, Color(0x33FFFFFF)), shape = CircleShape),
+                            focusedBorder = Border.None
+                        )
+                    ) {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                                contentDescription = stringResource(R.string.common_back),
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+
                     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(
                             text = info.title.ifBlank { stringResource(R.string.player_playing) },
@@ -2281,6 +2337,7 @@ private fun TvCircularIconButton(
             focusedBorder = Border(border = BorderStroke(1.5.dp, if (isMonochrome) Color.White else focusColor), shape = CircleShape)
         ),
         modifier = modifier
+            .handleTouchClick { onClick() }
             .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
             .onFocusChanged { isFocused = it.isFocused }
             .size(size)
@@ -2337,6 +2394,7 @@ private fun TvPillButton(
             )
         ),
         modifier = modifier
+            .handleTouchClick { onClick() }
             .onFocusChanged { isFocused = it.isFocused }
             .height(40.dp)
     ) {
@@ -2518,13 +2576,15 @@ private fun PlayerCustomModalSheet(
 
                     Button(
                         onClick = onClose,
+                        modifier = Modifier
+                            .handleTouchClick { onClose() }
+                            .size(34.dp),
                         colors = ButtonDefaults.colors(
                             containerColor = Color(0x18FFFFFF),
                             contentColor = Color.White,
                             focusedContainerColor = if (isMonochrome) Color.White else focusColor,
                             focusedContentColor = if (isMonochrome) Color(0xFF0F172A) else focusContent
-                        ),
-                        modifier = Modifier.size(34.dp)
+                        )
                     ) {
                         Icon(
                             imageVector = Icons.Default.Close,
@@ -2847,6 +2907,7 @@ private fun TrackOptionItem(
             )
         ),
         modifier = Modifier
+            .handleTouchClick { onClick() }
             .fillMaxWidth()
             .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
     ) {
@@ -2949,6 +3010,7 @@ private fun TvToggleOptionRow(
             )
         ),
         modifier = Modifier
+            .handleTouchClick { onToggle(!isChecked) }
             .fillMaxWidth()
             .then(if (firstFocusRequester != null) Modifier.focusRequester(firstFocusRequester) else Modifier)
             .onFocusChanged { isFocused = it.isFocused }
@@ -3377,6 +3439,7 @@ private fun <T> TvSegmentedControlRow(
                 Surface(
                     onClick = { onOptionSelected(option) },
                     modifier = Modifier
+                        .handleTouchClick { onOptionSelected(option) }
                         .weight(1f)
                         .then(if (index == 0 && firstFocusRequester != null) Modifier.focusRequester(firstFocusRequester) else Modifier),
                     shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(8.dp)),
@@ -3810,7 +3873,9 @@ private fun ResumePlaybackDialog(
             // Resume button (focused by default) with position included
             Button(
                 onClick = onResume,
-                modifier = Modifier.focusRequester(resumeFocusRequester),
+                modifier = Modifier
+                    .handleTouchClick { onResume() }
+                    .focusRequester(resumeFocusRequester),
                 colors = ButtonDefaults.colors(
                     containerColor = if (isMonochrome) Color.White else focusColor,
                     contentColor = if (isMonochrome) Color(0xFF0F172A) else focusContent,
@@ -3840,6 +3905,7 @@ private fun ResumePlaybackDialog(
             // Start from beginning button
             Button(
                 onClick = onStartOver,
+                modifier = Modifier.handleTouchClick { onStartOver() },
                 colors = ButtonDefaults.colors(
                     containerColor = Color(0x22FFFFFF),
                     contentColor = Color.White,

@@ -16,14 +16,22 @@
     <uses-feature
         android:name="android.hardware.touchscreen"
         android:required="false" />
-    <!-- Lanzamiento TV-only: la app solo se distribuye para Android TV. Play filtra los
-         dispositivos móviles y el target API exigido es el de TV (API 34+), no el de móvil. -->
+    <!-- Soporte para Android TV y Tablets: leanback no requerido permite que Play Store
+         y los dispositivos táctiles (Tablets) puedan instalar la aplicación manteniendo 
+         compatibilidad total con Android TV y Google TV. -->
     <uses-feature
         android:name="android.software.leanback"
-        android:required="true" />
+        android:required="false" />
     <uses-feature
         android:name="android.hardware.microphone"
         android:required="false" />
+
+    <supports-screens
+        android:smallScreens="true"
+        android:normalScreens="true"
+        android:largeScreens="true"
+        android:xlargeScreens="true"
+        android:anyDensity="true" />
 
     <queries>
         <package android:name="org.jellyfin.androidtv" />
@@ -80,6 +88,7 @@
             android:banner="@drawable/banner"
             android:screenOrientation="sensorLandscape"
             android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenLayout|screenSize|smallestScreenSize|uiMode"
+            android:supportsPictureInPicture="true"
             android:launchMode="singleTask">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

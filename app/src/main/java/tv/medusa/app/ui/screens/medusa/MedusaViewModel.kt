@@ -32,10 +32,20 @@ data class MedusaUiState(
     val matchingMovies: List<MediaItem> = emptyList(),
     val totalMatchingCount: Int = 0,
     val format: MediaFormat = MediaFormat.ALL,
+    val hideWatched: Boolean = false,
     val showMoviesOverlay: Boolean = false,
     val totalCatalogCount: Int = 0,
     val isLoading: Boolean = true
 )
+
+private object MedusaCache {
+    var rawCatalog: List<JellyfinMediaEntity> = emptyList()
+    var matrixEngine: MedusaTagMatrixEngine? = null
+    var uiState: MedusaUiState? = null
+    var selectedMovie: MediaItem? = null
+    var lastFavorites: List<JellyfinMediaEntity> = emptyList()
+    var lastRecentWatched: List<JellyfinMediaEntity> = emptyList()
+}
 
 typealias ConstellationUiState = MedusaUiState
 
@@ -48,7 +58,7 @@ class MedusaViewModel @Inject constructor(
     private val filterToLibraryUseCase: FilterToLibraryUseCase
 ) : ViewModel() {
 
-    private val matrixEngine = MedusaTagMatrixEngine()
+    private val matrixEngine = MedusaCache.matrixEngine ?: MedusaTagMatrixEngine()
     private var rawCatalog: List<JellyfinMediaEntity> = emptyList()
     private var serverUrl: String = ""
     private var accessToken: String = ""
@@ -63,7 +73,7 @@ class MedusaViewModel @Inject constructor(
     val buttonStyle: StateFlow<String> = userPreferencesRepository.buttonStyle
     val isMonochrome: StateFlow<Boolean> = userPreferencesRepository.isMonochrome
 
-    private val _uiState = MutableStateFlow(MedusaUiState())
+    private val _uiState = MutableStateFlow(MedusaCache.uiState ?: MedusaUiState())
     val uiState: StateFlow<MedusaUiState> = _uiState.asStateFlow()
 
     // Foco y selección aislados del uiState: cambian con cada movimiento del D-pad y antes
@@ -71,7 +81,7 @@ class MedusaViewModel @Inject constructor(
     private val _focusedTag = MutableStateFlow<MedusaMosaicTag?>(null)
     val focusedTag: StateFlow<MedusaMosaicTag?> = _focusedTag.asStateFlow()
 
-    private val _selectedMovie = MutableStateFlow<MediaItem?>(null)
+    private val _selectedMovie = MutableStateFlow<MediaItem?>(MedusaCache.selectedMovie)
     val selectedMovie: StateFlow<MediaItem?> = _selectedMovie.asStateFlow()
 
     init {
@@ -79,17 +89,37 @@ class MedusaViewModel @Inject constructor(
         viewModelScope.launch {
             TagTranslations.syncRemoteDictionary(context)
         }
+        viewModelScope.launch {
+            userPreferencesRepository.hideWatched.collect { hide ->
+                if (_uiState.value.hideWatched != hide) {
+                    _uiState.update { it.copy(hideWatched = hide) }
+                    applyFilter(_uiState.value.activeChain, _uiState.value.format, hideWatched = hide)
+                }
+            }
+        }
         loadData()
     }
 
     fun loadData() {
         filterJob?.cancel()
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+            val cachedState = MedusaCache.uiState
+            val hasValidCache = cachedState != null && MedusaCache.rawCatalog.isNotEmpty()
+
+            if (hasValidCache) {
+                rawCatalog = MedusaCache.rawCatalog
+                lastFavorites = MedusaCache.lastFavorites
+                lastRecentWatched = MedusaCache.lastRecentWatched
+                _selectedMovie.value = MedusaCache.selectedMovie
+                _uiState.value = cachedState.copy(isLoading = false)
+            } else {
+                _uiState.update { it.copy(isLoading = true) }
+            }
 
             val prefs = userPreferencesRepository.userPreferencesFlow.first()
             serverUrl = prefs.jellyfinServerUrl
             accessToken = prefs.jellyfinAccessToken
+            val hideWatched = prefs.hideWatched
 
             val (catalog, localTop) = coroutineScope {
                 val catD = async(Dispatchers.IO) {
@@ -118,21 +148,35 @@ class MedusaViewModel @Inject constructor(
                     recentWatched = recentWatched,
                     favorites = favorites
                 )
-                val tags = matrixEngine.generateMosaicTags(emptyList(), format, targetCapacity = 20)
-                val movs = matrixEngine.getMatchingMovies(emptyList(), format, serverUrl, accessToken)
+                val tags = matrixEngine.generateMosaicTags(_uiState.value.activeChain, format, targetCapacity = 20, hideWatched = hideWatched)
+                val movs = matrixEngine.getMatchingMovies(_uiState.value.activeChain, format, serverUrl, accessToken, hideWatched = hideWatched)
                 Pair(tags, movs)
             }
 
-            _selectedMovie.value = initialMovies.firstOrNull()
-            _uiState.update { current ->
-                current.copy(
-                    mosaicTags = initialTags,
-                    matchingMovies = initialMovies,
-                    activeChain = emptyList(),
-                    totalCatalogCount = rawCatalog.size,
-                    isLoading = false
-                )
+            if (_selectedMovie.value == null || !hasValidCache) {
+                _selectedMovie.value = initialMovies.firstOrNull()
             }
+
+            val totalCount = withContext(Dispatchers.Default) {
+                matrixEngine.getMatchingCount(_uiState.value.activeChain, format, hideWatched = hideWatched)
+            }
+
+            val newState = _uiState.value.copy(
+                mosaicTags = initialTags,
+                matchingMovies = initialMovies,
+                totalMatchingCount = totalCount,
+                totalCatalogCount = rawCatalog.size,
+                hideWatched = hideWatched,
+                isLoading = false
+            )
+            _uiState.value = newState
+
+            MedusaCache.rawCatalog = rawCatalog
+            MedusaCache.matrixEngine = matrixEngine
+            MedusaCache.uiState = newState
+            MedusaCache.selectedMovie = _selectedMovie.value
+            MedusaCache.lastFavorites = favorites
+            MedusaCache.lastRecentWatched = recentWatched
 
             // Enriquecer en segundo plano con TMDB si hay conexión sin bloquear la UI
             val tmdbKey = prefs.tmdbApiKey.trim()
@@ -184,27 +228,38 @@ class MedusaViewModel @Inject constructor(
     private fun applyFilter(
         newChain: List<MedusaMosaicTag>,
         format: MediaFormat,
-        updateChainImmediately: Boolean = true
+        updateChainImmediately: Boolean = true,
+        hideWatched: Boolean = _uiState.value.hideWatched
     ) {
         if (updateChainImmediately) {
-            _uiState.update { it.copy(activeChain = newChain, format = format) }
+            _uiState.update { it.copy(activeChain = newChain, format = format, hideWatched = hideWatched) }
         }
         filterJob?.cancel()
         filterJob = viewModelScope.launch(Dispatchers.Default) {
-            val newTags = matrixEngine.generateMosaicTags(newChain, format, targetCapacity = 20)
-            val newMovies = matrixEngine.getMatchingMovies(newChain, format, serverUrl, accessToken, limit = 120)
-            val totalCount = matrixEngine.getMatchingCount(newChain, format)
+            val newTags = matrixEngine.generateMosaicTags(newChain, format, targetCapacity = 20, hideWatched = hideWatched)
+            val newMovies = matrixEngine.getMatchingMovies(newChain, format, serverUrl, accessToken, limit = 120, hideWatched = hideWatched)
+            val totalCount = matrixEngine.getMatchingCount(newChain, format, hideWatched = hideWatched)
 
             _selectedMovie.value = newMovies.firstOrNull()
             _uiState.update { current ->
-                current.copy(
+                val nextState = current.copy(
                     activeChain = newChain,
                     format = format,
+                    hideWatched = hideWatched,
                     mosaicTags = newTags,
                     matchingMovies = newMovies,
                     totalMatchingCount = totalCount
                 )
+                MedusaCache.uiState = nextState
+                MedusaCache.selectedMovie = _selectedMovie.value
+                nextState
             }
+        }
+    }
+
+    fun toggleHideWatched() {
+        viewModelScope.launch {
+            userPreferencesRepository.toggleHideWatched()
         }
     }
 

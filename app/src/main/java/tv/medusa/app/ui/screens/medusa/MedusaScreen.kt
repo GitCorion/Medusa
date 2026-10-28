@@ -146,7 +146,7 @@ fun MedusaScreen(
         // Fondo: Solo proyectar backdrop si el usuario ha seleccionado alguna temática.
         // La selección se lee en su propio composable para no recomponer la pantalla al
         // mover el foco entre tarjetas.
-        if (uiState.activeChain.isNotEmpty()) {
+        if (uiState.matchingMovies.isNotEmpty()) {
             MedusaBackdrop(
                 selectedMovieFlow = viewModel.selectedMovie,
                 fallbackBackdropUrl = uiState.matchingMovies.firstOrNull()?.backdropUrl
@@ -223,6 +223,8 @@ fun MedusaScreen(
                 accentColorKey = accentColorKey,
                 buttonStyleKey = buttonStyleKey,
                 isMonochrome = isMonochrome,
+                hideWatched = uiState.hideWatched,
+                onToggleHideWatched = { viewModel.toggleHideWatched() },
                 modifier = Modifier
                     .onFocusChanged {
                         if (it.hasFocus) {
@@ -313,7 +315,7 @@ fun MedusaScreen(
                 // =========================================================================
                 // 5. SECCIÓN PROTAGONISTA: PELÍCULAS DESCUBIERTAS
                 // =========================================================================
-                if (uiState.activeChain.isNotEmpty() && uiState.matchingMovies.isNotEmpty()) {
+                if (uiState.matchingMovies.isNotEmpty()) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -328,7 +330,7 @@ fun MedusaScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             MedusaMoviesHeader(
-                                movieCount = uiState.totalMatchingCount,
+                                movieCount = if (uiState.activeChain.isNotEmpty()) uiState.totalMatchingCount else uiState.matchingMovies.size,
                                 formatNounPlural = formatNounPlural,
                                 selectedMovieFlow = viewModel.selectedMovie,
                                 fallbackMovie = uiState.matchingMovies.firstOrNull(),
@@ -410,9 +412,13 @@ fun MedusaScreen(
                         letterSpacing = 0.5.sp
                     )
 
-                    if (uiState.activeChain.isNotEmpty()) {
+                    if (uiState.matchingMovies.isNotEmpty()) {
                         Text(
-                            text = stringResource(R.string.medusa_available_count, uiState.totalMatchingCount, formatNounPlural),
+                            text = if (uiState.activeChain.isNotEmpty()) {
+                                stringResource(R.string.medusa_available_count, uiState.totalMatchingCount, formatNounPlural)
+                            } else {
+                                stringResource(R.string.medusa_available_count, uiState.matchingMovies.size, formatNounPlural)
+                            },
                             color = if (isMonochrome) Color.White else accentColor,
                             fontSize = 10.5.sp,
                             fontWeight = FontWeight.Bold

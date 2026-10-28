@@ -189,23 +189,28 @@ class TmdbRepository(
         }.getOrNull()
     }
 
-    suspend fun getTmdbTopRated(apiKey: String): Result<List<TmdbItemDto>> {
-        MediaCaches.tmdbTopRatedCache.get(apiKey)?.let { return Result.success(it) }
+    suspend fun getTmdbTopRated(apiKey: String, maxPages: Int = 3): Result<List<TmdbItemDto>> {
+        val cacheKey = "$apiKey-$maxPages"
+        MediaCaches.tmdbTopRatedCache.get(cacheKey)?.let { return Result.success(it) }
 
         return runCatching {
             val api = NetworkClientFactory.createService(ApiConfig.TMDB_BASE_URL, TmdbApiService::class.java)
             val (movies, tv) = coroutineScope {
                 val m = async {
-                    runCatching { api.getTopRatedMovies(apiKey = apiKey) }.getOrNull()?.results ?: emptyList()
+                    (1..maxPages).map { p ->
+                        async { runCatching { api.getTopRatedMovies(apiKey = apiKey, page = p) }.getOrNull()?.results ?: emptyList() }
+                    }.awaitAll().flatten()
                 }
                 val t = async {
-                    runCatching { api.getTopRatedTv(apiKey = apiKey) }.getOrNull()?.results ?: emptyList()
+                    (1..maxPages).map { p ->
+                        async { runCatching { api.getTopRatedTv(apiKey = apiKey, page = p) }.getOrNull()?.results ?: emptyList() }
+                    }.awaitAll().flatten()
                 }
                 Pair(m.await(), t.await())
             }
-            val combined = movies + tv
+            val combined = (movies + tv).distinctBy { it.id }
             if (combined.isNotEmpty()) {
-                MediaCaches.tmdbTopRatedCache.put(apiKey, combined)
+                MediaCaches.tmdbTopRatedCache.put(cacheKey, combined)
             }
             combined
         }

@@ -382,7 +382,10 @@ class GetHomeFeedUseCase(
                     }
                 }
 
-                val top10Pool = (trendingMatched + localTopMovies + localTopSeries).distinctBy { it.id }
+                val top10Pool = (trendingMatched + localTopMovies + localTopSeries)
+                    .distinctBy { it.id }
+                    .filter { !it.isPlayed && it.playbackPositionTicks <= 0L }
+                    .filter { (it.communityRating ?: 0f) >= 6.5f }
                 if (top10Pool.size >= 10) {
                     val top10Items = top10Pool.take(10).mapIndexed { idx, it ->
                         it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TMDB_TRENDING).copy(rank = idx + 1)

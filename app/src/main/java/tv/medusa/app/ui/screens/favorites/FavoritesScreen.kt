@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
+import tv.medusa.app.ui.util.handleTouchClick
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
@@ -114,6 +115,7 @@ fun FavoritesScreen(
                         Spacer(modifier = Modifier.height(16.dp))
                         Button(
                             onClick = { viewModel.loadFavorites() },
+                            modifier = Modifier.handleTouchClick { viewModel.loadFavorites() },
                             colors = ButtonDefaults.colors(
                                 containerColor = Color(0x22FFFFFF),
                                 contentColor = Color.White,
@@ -142,134 +144,125 @@ fun FavoritesScreen(
                         isMonochrome = isMonochrome
                     )
 
-                    LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        item(key = "favorites_format_filter_bar", contentType = "filter_bar") {
-                            FormatFilterBar(
-                                selected = state.activeFilter,
-                                onSelect = { viewModel.setFilter(it) },
-                                accentColorKey = accentColorKey,
-                                buttonStyleKey = buttonStyleKey,
-                                isMonochrome = isMonochrome,
-                                modifier = Modifier.padding(bottom = 8.dp)
-                            )
-                        }
+                    FormatFilterBar(
+                        selected = state.activeFilter,
+                        onSelect = { viewModel.setFilter(it) },
+                        accentColorKey = accentColorKey,
+                        buttonStyleKey = buttonStyleKey,
+                        isMonochrome = isMonochrome,
+                        hideWatched = state.hideWatched,
+                        onToggleHideWatched = { viewModel.toggleHideWatched() },
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
 
-                        if (state.filteredItems.isEmpty()) {
-                            item(key = "favorites_empty", contentType = "empty_placeholder") {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(400.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        modifier = Modifier.padding(32.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Rounded.FavoriteBorder,
-                                            contentDescription = null,
-                                            tint = Color(0xFF64748B),
-                                            modifier = Modifier.size(64.dp)
-                                        )
-                                        Spacer(modifier = Modifier.height(16.dp))
-                                        Text(
-                                            text = if (state.allItems.isEmpty()) {
-                                                "No tienes elementos en favoritos"
-                                            } else {
-                                                "No hay elementos con este filtro"
-                                            },
-                                            style = MaterialTheme.typography.titleMedium,
-                                            color = Color.White,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                        Text(
-                                            text = if (state.allItems.isEmpty()) {
-                                                stringResource(R.string.favorites_empty_hint)
-                                            } else {
-                                                stringResource(R.string.favorites_filter_hint)
-                                            },
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = Color(0xFF94A3B8),
-                                            textAlign = TextAlign.Center
-                                        )
-                                    }
-                                }
+                    if (state.filteredItems.isEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.padding(32.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.FavoriteBorder,
+                                    contentDescription = null,
+                                    tint = Color(0xFF64748B),
+                                    modifier = Modifier.size(64.dp)
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text(
+                                    text = if (state.allItems.isEmpty()) {
+                                        "No tienes elementos en favoritos"
+                                    } else {
+                                        "No hay elementos con este filtro"
+                                    },
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = if (state.allItems.isEmpty()) {
+                                        stringResource(R.string.favorites_empty_hint)
+                                    } else {
+                                        stringResource(R.string.favorites_filter_hint)
+                                    },
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = Color(0xFF94A3B8),
+                                    textAlign = TextAlign.Center
+                                )
                             }
-                        } else {
-                            // Grid of favorites (Directly accessible without giant hero header)
-                            item(key = "favorites_grid_content", contentType = "grid_content") {
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 48.dp, vertical = 12.dp)
-                                ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        if (!isMonochrome) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .width(3.5.dp)
-                                                    .height(18.dp)
-                                                    .background(
-                                                        brush = Brush.verticalGradient(
-                                                            listOf(
-                                                                focusColor,
-                                                                focusColor.copy(alpha = 0.35f)
-                                                            )
-                                                        ),
-                                                        shape = RoundedCornerShape(2.dp)
-                                                    )
-                                            )
-                                            Spacer(modifier = Modifier.width(10.dp))
-                                        }
-
-                                        if (isMonochrome) {
-                                            Text(
-                                                text = stringResource(R.string.favorites_collection_count, state.filteredItems.size),
-                                                style = MaterialTheme.typography.titleLarge,
-                                                color = Color.White,
-                                                fontWeight = FontWeight.Bold
-                                            )
-                                        } else {
-                                            Text(
-                                                text = stringResource(R.string.favorites_collection_count, state.filteredItems.size),
-                                                style = MaterialTheme.typography.titleLarge.copy(
-                                                    brush = Brush.horizontalGradient(
-                                                        listOf(
-                                                            Color(0xFFFFFFFF),
-                                                            Color(0xFFE0F7FE),
-                                                            Color(0xFFBAE6FD)
-                                                        )
+                        }
+                    } else {
+                        // Grid of favorites (Directly accessible without nested scrolling)
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f)
+                                .padding(horizontal = 48.dp, vertical = 12.dp)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                if (!isMonochrome) {
+                                    Box(
+                                        modifier = Modifier
+                                            .width(3.5.dp)
+                                            .height(18.dp)
+                                            .background(
+                                                brush = Brush.verticalGradient(
+                                                    listOf(
+                                                        focusColor,
+                                                        focusColor.copy(alpha = 0.35f)
                                                     )
                                                 ),
-                                                fontWeight = FontWeight.Bold
+                                                shape = RoundedCornerShape(2.dp)
                                             )
-                                        }
-                                    }
+                                    )
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                }
 
-                                    Spacer(modifier = Modifier.height(16.dp))
-
-                                    LazyVerticalGrid(
-                                        columns = GridCells.Adaptive(150.dp),
-                                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(520.dp),
-                                        contentPadding = PaddingValues(bottom = 32.dp)
-                                    ) {
-                                        items(
-                                            items = state.filteredItems,
-                                            key = { it.id },
-                                            contentType = { "media_card" }
-                                        ) { item ->
-                                            MediaCard(
-                                                item = item,
-                                                onClick = { onDetailMedia(item.id) }
+                                Text(
+                                    text = stringResource(R.string.favorites_collection_count, state.filteredItems.size),
+                                    style = if (isMonochrome) {
+                                        MaterialTheme.typography.titleLarge
+                                    } else {
+                                        MaterialTheme.typography.titleLarge.copy(
+                                            brush = Brush.horizontalGradient(
+                                                listOf(
+                                                    Color(0xFFFFFFFF),
+                                                    Color(0xFFE0F7FE),
+                                                    Color(0xFFBAE6FD)
+                                                )
                                             )
-                                        }
-                                    }
+                                        )
+                                    },
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            LazyVerticalGrid(
+                                columns = GridCells.Adaptive(150.dp),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(16.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f),
+                                contentPadding = PaddingValues(bottom = 32.dp)
+                            ) {
+                                items(
+                                    items = state.filteredItems,
+                                    key = { it.id },
+                                    contentType = { "media_card" }
+                                ) { item ->
+                                    MediaCard(
+                                        item = item,
+                                        onClick = { onDetailMedia(item.id) }
+                                    )
                                 }
                             }
                         }

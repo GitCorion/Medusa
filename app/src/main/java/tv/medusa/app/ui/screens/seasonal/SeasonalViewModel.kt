@@ -16,6 +16,10 @@ import tv.medusa.app.domain.usecase.GetSeasonalFeedUseCase
 import tv.medusa.app.domain.usecase.SeasonalFeedResult
 import javax.inject.Inject
 
+private object SeasonalCache {
+    val cache = mutableMapOf<String, SeasonalFeedResult>()
+}
+
 sealed interface SeasonalUiState {
     data object Loading : SeasonalUiState
     data class Success(
@@ -23,6 +27,7 @@ sealed interface SeasonalUiState {
         val items: List<MediaItem>,
         val sections: List<HomeSection> = emptyList(),
         val format: MediaFormatFilter = MediaFormatFilter.ALL,
+        val hideWatched: Boolean = false,
         val focusedItem: MediaItem? = null
     ) : SeasonalUiState
     data class Error(val message: String) : SeasonalUiState
@@ -41,18 +46,41 @@ class SeasonalViewModel @Inject constructor(
     val isMonochrome: StateFlow<Boolean> = userPreferencesRepository.isMonochrome
     val buttonStyle: StateFlow<String> = userPreferencesRepository.buttonStyle
     val seasonalAudioEnabled: StateFlow<Boolean> = userPreferencesRepository.seasonalAudioEnabled
+    val hideWatched: StateFlow<Boolean> = userPreferencesRepository.hideWatched
 
     private var rawResult: SeasonalFeedResult? = null
     private var currentFormat: MediaFormatFilter = MediaFormatFilter.ALL
 
-    fun loadFeed(eventId: String) {
+    init {
         viewModelScope.launch {
-            _uiState.value = SeasonalUiState.Loading
+            userPreferencesRepository.hideWatched.collect { hide ->
+                val state = _uiState.value as? SeasonalUiState.Success ?: return@collect
+                if (state.hideWatched != hide) {
+                    applyFormatFilter(currentFormat, hide)
+                }
+            }
+        }
+    }
+
+    fun loadFeed(eventId: String, forceRefresh: Boolean = false) {
+        viewModelScope.launch {
+            if (forceRefresh) {
+                SeasonalCache.cache.remove(eventId)
+            }
+            val cached = SeasonalCache.cache[eventId]
+            if (cached != null) {
+                rawResult = cached
+                applyFormatFilter(currentFormat)
+            } else {
+                _uiState.value = SeasonalUiState.Loading
+            }
+
             val result = getSeasonalFeedUseCase.getSeasonalFeed(eventId)
             if (result != null && result.sections.isNotEmpty()) {
                 rawResult = result
+                SeasonalCache.cache[eventId] = result
                 applyFormatFilter(currentFormat)
-            } else {
+            } else if (cached == null) {
                 _uiState.value = SeasonalUiState.Error("No se encontraron contenidos de la festividad en tu catálogo.")
             }
         }
@@ -63,6 +91,12 @@ class SeasonalViewModel @Inject constructor(
         applyFormatFilter(format)
     }
 
+    fun toggleHideWatched() {
+        viewModelScope.launch {
+            userPreferencesRepository.toggleHideWatched()
+        }
+    }
+
     fun setFocusedItem(item: MediaItem?) {
         val current = _uiState.value
         if (current is SeasonalUiState.Success) {
@@ -70,16 +104,20 @@ class SeasonalViewModel @Inject constructor(
         }
     }
 
-    private fun applyFormatFilter(format: MediaFormatFilter) {
+    private fun applyFormatFilter(format: MediaFormatFilter, hideWatchedOverride: Boolean? = null) {
         val result = rawResult ?: return
+        val hide = hideWatchedOverride ?: userPreferencesRepository.hideWatched.value
         val filteredSections = when (format) {
-            MediaFormatFilter.ALL -> result.sections
+            MediaFormatFilter.ALL -> result.sections.mapNotNull { section ->
+                val items = if (hide) section.items.filter { !it.isPlayed } else section.items
+                if (items.isNotEmpty()) section.copy(items = items) else null
+            }
             MediaFormatFilter.MOVIES -> result.sections.mapNotNull { section ->
-                val filteredItems = section.items.filter { it.type.equals("Movie", ignoreCase = true) }
+                val filteredItems = section.items.filter { it.type.equals("Movie", ignoreCase = true) && (!hide || !it.isPlayed) }
                 if (filteredItems.isNotEmpty()) section.copy(items = filteredItems) else null
             }
             MediaFormatFilter.SERIES -> result.sections.mapNotNull { section ->
-                val filteredItems = section.items.filter { it.type.equals("Series", ignoreCase = true) }
+                val filteredItems = section.items.filter { it.type.equals("Series", ignoreCase = true) && (!hide || !it.isPlayed) }
                 if (filteredItems.isNotEmpty()) section.copy(items = filteredItems) else null
             }
         }
@@ -91,6 +129,7 @@ class SeasonalViewModel @Inject constructor(
             items = allItems,
             sections = filteredSections,
             format = format,
+            hideWatched = hide,
             focusedItem = allItems.firstOrNull()
         )
     }

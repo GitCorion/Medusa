@@ -419,10 +419,14 @@ class SettingsViewModel @Inject constructor(
                 if (cleanUrl.isNotBlank() && !cleanUrl.startsWith("http://", ignoreCase = true) && !cleanUrl.startsWith("https://", ignoreCase = true)) {
                     cleanUrl = "http://$cleanUrl"
                 }
+                val urlChanged = _uiState.value.serverUrl != cleanUrl
                 _uiState.value = _uiState.value.copy(serverUrl = cleanUrl)
                 viewModelScope.launch {
                     userPreferencesRepository.updateJellyfinServerUrl(cleanUrl)
                     userPreferencesRepository.updateJellyfinLanServerUrl("")
+                    if (urlChanged && _uiState.value.isJellyfinConnected) {
+                        disconnectJellyfin()
+                    }
                 }
             }
             SettingField.USERNAME -> {
@@ -491,7 +495,7 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun updateWatchRegion(region: String) {
-        val clean = region.ifBlank { "ES" }.uppercase()
+        val clean = region.ifBlank { tv.medusa.app.data.remote.ApiConfig.TMDB_WATCH_REGION }.uppercase()
         _uiState.value = _uiState.value.copy(watchRegion = clean)
         viewModelScope.launch {
             userPreferencesRepository.updateTmdbConfig(

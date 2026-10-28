@@ -163,6 +163,37 @@ class LocalMediaRepository(
             jellyfinDao.getTopRatedLocal(limit).deduplicateMediaEntities()
         }
 
+    suspend fun getRewatchableMoviesLocal(limit: Int = 20): List<JellyfinMediaEntity> =
+        if (restrictionsActive()) {
+            jellyfinDao.getRewatchableMoviesLocalRestricted(limit).deduplicateMediaEntities()
+        } else {
+            jellyfinDao.getRewatchableMoviesLocal(limit).deduplicateMediaEntities()
+        }
+
+    suspend fun getBoxSetsLocal(limit: Int = 20): List<JellyfinMediaEntity> =
+        if (restrictionsActive()) {
+            jellyfinDao.getBoxSetsLocalRestricted(limit).deduplicateMediaEntities()
+        } else {
+            jellyfinDao.getBoxSetsLocal(limit).deduplicateMediaEntities()
+        }
+
+    suspend fun getDocumentariesLocal(limit: Int = 20): List<JellyfinMediaEntity> =
+        if (restrictionsActive()) {
+            jellyfinDao.getDocumentariesLocalRestricted(limit).deduplicateMediaEntities()
+        } else {
+            jellyfinDao.getDocumentariesLocal(limit).deduplicateMediaEntities()
+        }
+
+    suspend fun getNationalCinemaLocal(pattern: String, limit: Int = 20): List<JellyfinMediaEntity> =
+        if (restrictionsActive()) {
+            jellyfinDao.getNationalCinemaLocalRestricted(pattern, limit).deduplicateMediaEntities()
+        } else {
+            jellyfinDao.getNationalCinemaLocal(pattern, limit).deduplicateMediaEntities()
+        }
+
+    suspend fun getSpanishCinemaLocal(limit: Int = 20): List<JellyfinMediaEntity> =
+        getNationalCinemaLocal("españ", limit)
+
     suspend fun searchLocalMedia(query: String, limit: Int = 40): List<JellyfinMediaEntity> {
         val clean = query.trim()
         if (clean.isBlank()) return emptyList()
@@ -503,8 +534,9 @@ class LocalMediaRepository(
             genreItems.filter {
                 it.type.equals("Movie", ignoreCase = true)
                     && it.id !in addedIds
-                    && !it.isPlayed  // ya vista → no mostrar
-                    && ((it.communityRating ?: 0f) >= 5.0f || it.communityRating == null) // tolerante con contenido sin puntuación
+                    && !it.isPlayed
+                    && it.playbackPositionTicks <= 0L
+                    && ((it.communityRating ?: 0f) >= 5.0f || it.communityRating == null)
             }.take(maxPerGenre)
         }
 
@@ -531,7 +563,7 @@ class LocalMediaRepository(
             } else {
                 jellyfinDao.getTopMoviesLocal(limit = 50)
             }
-            topCandidates.filter { it.id !in addedIds && !it.isPlayed }
+            topCandidates.filter { it.id !in addedIds && !it.isPlayed && it.playbackPositionTicks <= 0L }
                 .take(limit - resultList.size)
                 .forEach {
                     resultList.add(it)

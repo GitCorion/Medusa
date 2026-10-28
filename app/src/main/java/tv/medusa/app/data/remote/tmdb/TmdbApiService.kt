@@ -84,6 +84,7 @@ interface TmdbApiService {
         @Query("api_key") apiKey: String,
         @Query("with_watch_providers", encoded = true) providerId: String,
         @Query("watch_region") watchRegion: String = ApiConfig.TMDB_WATCH_REGION,
+        @Query("with_watch_monetization_types") monetizationTypes: String? = "flatrate|free|ads",
         @Query("sort_by") sortBy: String = "popularity.desc",
         @Query("vote_count.gte") voteCountGte: Int? = null,
         @Query("page") page: Int = 1,
@@ -95,6 +96,7 @@ interface TmdbApiService {
         @Query("api_key") apiKey: String,
         @Query("with_watch_providers", encoded = true) providerId: String,
         @Query("watch_region") watchRegion: String = ApiConfig.TMDB_WATCH_REGION,
+        @Query("with_watch_monetization_types") monetizationTypes: String? = "flatrate|free|ads",
         @Query("sort_by") sortBy: String = "popularity.desc",
         @Query("vote_count.gte") voteCountGte: Int? = null,
         @Query("page") page: Int = 1,
@@ -104,12 +106,14 @@ interface TmdbApiService {
     @GET("movie/top_rated")
     suspend fun getTopRatedMovies(
         @Query("api_key") apiKey: String,
+        @Query("page") page: Int = 1,
         @Query("language") language: String = ApiConfig.TMDB_LANGUAGE
     ): TmdbTrendingResponse
 
     @GET("tv/top_rated")
     suspend fun getTopRatedTv(
         @Query("api_key") apiKey: String,
+        @Query("page") page: Int = 1,
         @Query("language") language: String = ApiConfig.TMDB_LANGUAGE
     ): TmdbTrendingResponse
 

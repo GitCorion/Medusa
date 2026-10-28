@@ -31,7 +31,63 @@ fun localizedSectionTitle(section: HomeSection): String {
         title == "Top 10 Imprescindibles" -> stringResource(R.string.section_top10_essentials)
         title == "Novedades Recientes" -> stringResource(R.string.section_new_releases)
         title == "Últimos estrenos" -> stringResource(R.string.section_latest_releases)
+        title.startsWith("Top 10 en ") -> {
+            val country = title.removePrefix("Top 10 en ").removeSuffix(" hoy").trim()
+            if (java.util.Locale.getDefault().language == "en") {
+                val englishCountry = when (country) {
+                    "España" -> "Spain"
+                    "México" -> "Mexico"
+                    "Argentina" -> "Argentina"
+                    "Colombia" -> "Colombia"
+                    "Chile" -> "Chile"
+                    "Perú" -> "Peru"
+                    "EE. UU." -> "the US"
+                    "Reino Unido" -> "the UK"
+                    "Francia" -> "France"
+                    "Alemania" -> "Germany"
+                    "Italia" -> "Italy"
+                    else -> country
+                }
+                "Top 10 in $englishCountry Today"
+            } else {
+                title
+            }
+        }
         title == "Top 10 en España hoy" -> stringResource(R.string.section_top10_spain)
+        title == "Top 10 hoy" || title == "Top 10 Global hoy" -> {
+            if (java.util.Locale.getDefault().language == "en") "Top 10 Today" else "Top 10 hoy"
+        }
+        title == "Grandes Éxitos de tu colección" -> {
+            if (java.util.Locale.getDefault().language == "en") "Blockbusters in Your Library" else title
+        }
+        title == "Sagas y Colecciones Legendarias" -> {
+            if (java.util.Locale.getDefault().language == "en") "Legendary Sagas & Collections" else title
+        }
+        title == "Volver a disfrutar" -> {
+            if (java.util.Locale.getDefault().language == "en") "Rewatch Favorites" else title
+        }
+        title == "Documentales y Grandes Reportajes" -> {
+            if (java.util.Locale.getDefault().language == "en") "Documentaries & Feature Stories" else title
+        }
+        title == "Joyas Ocultas Inéditas" -> {
+            if (java.util.Locale.getDefault().language == "en") "Unseen Hidden Gems" else title
+        }
+        title.contains("Producción Nacional") -> {
+            if (java.util.Locale.getDefault().language == "en") {
+                title.replace("y Producción Nacional", "& Local Production")
+                    .replace("Cine Español", "Spanish Cinema")
+                    .replace("Cine Mexicano", "Mexican Cinema")
+                    .replace("Cine Argentino", "Argentine Cinema")
+                    .replace("Cine Colombiano", "Colombian Cinema")
+                    .replace("Cine Chileno", "Chilean Cinema")
+                    .replace("Cine Peruano", "Peruvian Cinema")
+            } else {
+                title
+            }
+        }
+        title == "Cine Español e Iberoamericano" -> {
+            if (java.util.Locale.getDefault().language == "en") "Spanish & Ibero-American Cinema" else title
+        }
         title == "Recomendado por la comunidad Trakt" -> stringResource(R.string.section_trakt_community)
         title == "Tu Watchlist de Trakt.tv" -> stringResource(R.string.section_trakt_watchlist)
         title == "Tendencias en Trakt.tv" -> stringResource(R.string.section_trakt_trending)
@@ -61,5 +117,10 @@ fun localizedSectionBadge(badge: String?): String? = when (badge) {
     "PENDIENTE" -> stringResource(R.string.badge_pending)
     "PARA TI" -> stringResource(R.string.badge_for_you)
     "POPULAR" -> stringResource(R.string.badge_popular)
+    "NACIONAL" -> if (java.util.Locale.getDefault().language == "en") "LOCAL" else "NACIONAL"
+    "FAVORITOS" -> if (java.util.Locale.getDefault().language == "en") "FAVORITES" else "FAVORITOS"
+    "SAGAS" -> "SAGAS"
+    "DOCS" -> "DOCS"
+    "CINE" -> if (java.util.Locale.getDefault().language == "en") "CINEMA" else "CINE"
     else -> badge
 }

@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Card
 import androidx.tv.material3.CardDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
+import tv.medusa.app.ui.util.handleTouchClick
 import tv.medusa.app.R
 import tv.medusa.app.data.model.SUPPORTED_PLATFORMS
 
@@ -52,14 +53,17 @@ fun BrandTileRow(
     onSelectBrand: (String) -> Unit,
     modifier: Modifier = Modifier,
     visiblePlatforms: Set<String>? = null,
+    watchRegion: String? = null,
     isProUser: Boolean = true
 ) {
-    val platforms = remember(visiblePlatforms) {
-        if (visiblePlatforms != null) {
+    val platforms = remember(visiblePlatforms, watchRegion) {
+        val base = if (visiblePlatforms != null) {
             SUPPORTED_PLATFORMS.filter { it.id in visiblePlatforms }
         } else {
             SUPPORTED_PLATFORMS
         }
+        val region = watchRegion?.takeIf { it.isNotBlank() } ?: tv.medusa.app.data.remote.ApiConfig.TMDB_WATCH_REGION
+        base.filter { it.isAvailableIn(region) }
     }
 
     Column(
@@ -115,6 +119,7 @@ private fun BrandCard(
         ),
         scale = CardDefaults.scale(focusedScale = 1.04f),
         modifier = modifier
+            .handleTouchClick { onClick() }
             .width(132.dp)
             .height(64.dp)
             .onFocusChanged { isFocused = it.isFocused }

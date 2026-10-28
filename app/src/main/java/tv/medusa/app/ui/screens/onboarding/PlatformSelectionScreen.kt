@@ -45,6 +45,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.Card
@@ -55,6 +57,19 @@ import androidx.tv.material3.Text
 import tv.medusa.app.R
 import tv.medusa.app.data.model.StreamPlatform
 import tv.medusa.app.data.model.SUPPORTED_PLATFORMS
+
+fun Modifier.handleTouchClick(
+    enabled: Boolean = true,
+    onLongClick: (() -> Unit)? = null,
+    onClick: () -> Unit
+): Modifier = if (enabled) {
+    this.pointerInput(onClick, onLongClick) {
+        detectTapGestures(
+            onLongPress = { if (onLongClick != null) onLongClick() },
+            onTap = { onClick() }
+        )
+    }
+} else this
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
@@ -96,6 +111,7 @@ fun PlatformSelectionScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Button(
                         onClick = { viewModel.selectAll() },
+                        modifier = Modifier.handleTouchClick { viewModel.selectAll() },
                         colors = ButtonDefaults.colors(
                             containerColor = Color(0x1AFFFFFF),
                             contentColor = Color.White,
@@ -109,6 +125,7 @@ fun PlatformSelectionScreen(
 
                     Button(
                         onClick = { viewModel.deselectAll() },
+                        modifier = Modifier.handleTouchClick { viewModel.deselectAll() },
                         colors = ButtonDefaults.colors(
                             containerColor = Color(0x1AFFFFFF),
                             contentColor = Color(0xFF94A3B8),
@@ -149,7 +166,7 @@ fun PlatformSelectionScreen(
                     .weight(1f)
             ) {
                 items(
-                    items = SUPPORTED_PLATFORMS,
+                    items = viewModel.availablePlatforms,
                     key = { it.id },
                     contentType = { "platform_tile" }
                 ) { platform ->
@@ -182,7 +199,7 @@ fun PlatformSelectionScreen(
                         fontWeight = FontWeight.Medium
                     )
                     Text(
-                        text = stringResource(R.string.onboarding_platforms_count, selected.size, SUPPORTED_PLATFORMS.size),
+                        text = stringResource(R.string.onboarding_platforms_count, selected.size, viewModel.availablePlatforms.size),
                         fontSize = 14.sp,
                         color = Color.White,
                         fontWeight = FontWeight.Bold
@@ -191,6 +208,7 @@ fun PlatformSelectionScreen(
 
                 Button(
                     onClick = { viewModel.onContinue(onDone) },
+                    modifier = Modifier.handleTouchClick { viewModel.onContinue(onDone) },
                     colors = ButtonDefaults.colors(
                         containerColor = Color(0xFF4F46E5),
                         contentColor = Color.White,
@@ -235,6 +253,7 @@ private fun PlatformTileCard(
         ),
         scale = CardDefaults.scale(focusedScale = 1.04f),
         modifier = modifier
+            .handleTouchClick { onToggle() }
             .fillMaxWidth()
             .height(84.dp)
             .onFocusChanged { isFocused = it.isFocused }

@@ -377,6 +377,23 @@ fun MedusaApp(
                 navController.navigate("detail/$itemId")
             }
         ) {
+            val navigateToTopTab: (String) -> Unit = { route ->
+                if (route == "home") {
+                    navController.navigate("home") {
+                        popUpTo("home") { inclusive = false }
+                        launchSingleTop = true
+                    }
+                } else {
+                    navController.navigate(route) {
+                        popUpTo(navController.graph.startDestinationId) {
+                            saveState = true
+                        }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                }
+            }
+
             NavHost(
                 navController = navController,
                 startDestination = startDestination
@@ -399,15 +416,9 @@ fun MedusaApp(
                 onDetailMedia = { itemId ->
                     navController.navigate("detail/$itemId")
                 },
-                onOpenSettings = {
-                    navController.navigate("settings")
-                },
-                onOpenSearch = {
-                    navController.navigate("search")
-                },
-                onOpenFavorites = {
-                    navController.navigate("favorites")
-                },
+                onOpenSettings = { navigateToTopTab("settings") },
+                onOpenSearch = { navigateToTopTab("search") },
+                onOpenFavorites = { navigateToTopTab("favorites") },
                 onOpenBrand = { brandId ->
                     navController.navigate("brand/$brandId")
                 },
@@ -417,29 +428,16 @@ fun MedusaApp(
                 onOpenSeasonal = { eventId ->
                     navController.navigate("seasonal/$eventId")
                 },
-                onOpenMedusa = {
-                    navController.navigate("medusa") { launchSingleTop = true }
-                }
+                onOpenMedusa = { navigateToTopTab("medusa") }
             )
         }
 
         composable("medusa") {
             MedusaScreen(
-                onNavigateHome = {
-                    navController.navigate("home") {
-                        popUpTo("home") { inclusive = false }
-                        launchSingleTop = true
-                    }
-                },
-                onOpenFavorites = {
-                    navController.navigate("favorites")
-                },
-                onOpenSearch = {
-                    navController.navigate("search")
-                },
-                onOpenSettings = {
-                    navController.navigate("settings")
-                },
+                onNavigateHome = { navigateToTopTab("home") },
+                onOpenFavorites = { navigateToTopTab("favorites") },
+                onOpenSearch = { navigateToTopTab("search") },
+                onOpenSettings = { navigateToTopTab("settings") },
                 onPlayMedia = { itemId ->
                     navController.navigate("player/$itemId")
                 },
@@ -460,21 +458,10 @@ fun MedusaApp(
                 onDetailMedia = { itemId ->
                     navController.navigate("detail/$itemId")
                 },
-                onNavigateHome = {
-                    navController.navigate("home") {
-                        popUpTo("home") { inclusive = false }
-                        launchSingleTop = true
-                    }
-                },
-                onOpenMedusa = {
-                    navController.navigate("medusa") { launchSingleTop = true }
-                },
-                onOpenSearch = {
-                    navController.navigate("search")
-                },
-                onOpenSettings = {
-                    navController.navigate("settings")
-                }
+                onNavigateHome = { navigateToTopTab("home") },
+                onOpenMedusa = { navigateToTopTab("medusa") },
+                onOpenSearch = { navigateToTopTab("search") },
+                onOpenSettings = { navigateToTopTab("settings") }
             )
         }
 
@@ -489,21 +476,10 @@ fun MedusaApp(
                 onDetailMedia = { itemId ->
                     navController.navigate("detail/$itemId")
                 },
-                onNavigateHome = {
-                    navController.navigate("home") {
-                        popUpTo("home") { inclusive = false }
-                        launchSingleTop = true
-                    }
-                },
-                onOpenMedusa = {
-                    navController.navigate("medusa") { launchSingleTop = true }
-                },
-                onOpenFavorites = {
-                    navController.navigate("favorites")
-                },
-                onOpenSettings = {
-                    navController.navigate("settings")
-                }
+                onNavigateHome = { navigateToTopTab("home") },
+                onOpenMedusa = { navigateToTopTab("medusa") },
+                onOpenFavorites = { navigateToTopTab("favorites") },
+                onOpenSettings = { navigateToTopTab("settings") }
             )
         }
 
@@ -523,24 +499,11 @@ fun MedusaApp(
                 onDetailMedia = { itemId ->
                     navController.navigate("detail/$itemId")
                 },
-                onNavigateHome = {
-                    navController.navigate("home") {
-                        popUpTo("home") { inclusive = false }
-                        launchSingleTop = true
-                    }
-                },
-                onOpenMedusa = {
-                    navController.navigate("medusa") { launchSingleTop = true }
-                },
-                onOpenFavorites = {
-                    navController.navigate("favorites")
-                },
-                onOpenSearch = {
-                    navController.navigate("search")
-                },
-                onOpenSettings = {
-                    navController.navigate("settings")
-                }
+                onNavigateHome = { navigateToTopTab("home") },
+                onOpenMedusa = { navigateToTopTab("medusa") },
+                onOpenFavorites = { navigateToTopTab("favorites") },
+                onOpenSearch = { navigateToTopTab("search") },
+                onOpenSettings = { navigateToTopTab("settings") }
             )
         }
 
@@ -560,24 +523,11 @@ fun MedusaApp(
                 onDetailMedia = { itemId ->
                     navController.navigate("detail/$itemId")
                 },
-                onNavigateHome = {
-                    navController.navigate("home") {
-                        popUpTo("home") { inclusive = false }
-                        launchSingleTop = true
-                    }
-                },
-                onOpenMedusa = {
-                    navController.navigate("medusa") { launchSingleTop = true }
-                },
-                onOpenFavorites = {
-                    navController.navigate("favorites")
-                },
-                onOpenSearch = {
-                    navController.navigate("search")
-                },
-                onOpenSettings = {
-                    navController.navigate("settings")
-                }
+                onNavigateHome = { navigateToTopTab("home") },
+                onOpenMedusa = { navigateToTopTab("medusa") },
+                onOpenFavorites = { navigateToTopTab("favorites") },
+                onOpenSearch = { navigateToTopTab("search") },
+                onOpenSettings = { navigateToTopTab("settings") }
             )
         }
 
@@ -597,24 +547,11 @@ fun MedusaApp(
                 onDetailMedia = { itemId ->
                     navController.navigate("detail/$itemId")
                 },
-                onNavigateHome = {
-                    navController.navigate("home") {
-                        popUpTo("home") { inclusive = false }
-                        launchSingleTop = true
-                    }
-                },
-                onOpenMedusa = {
-                    navController.navigate("medusa") { launchSingleTop = true }
-                },
-                onOpenFavorites = {
-                    navController.navigate("favorites")
-                },
-                onOpenSearch = {
-                    navController.navigate("search")
-                },
-                onOpenSettings = {
-                    navController.navigate("settings")
-                }
+                onNavigateHome = { navigateToTopTab("home") },
+                onOpenMedusa = { navigateToTopTab("medusa") },
+                onOpenFavorites = { navigateToTopTab("favorites") },
+                onOpenSearch = { navigateToTopTab("search") },
+                onOpenSettings = { navigateToTopTab("settings") }
             )
         }
 
