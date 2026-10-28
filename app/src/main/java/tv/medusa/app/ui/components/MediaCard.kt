@@ -21,12 +21,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Favorite
@@ -40,11 +34,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -83,23 +73,6 @@ fun MediaCard(
     val isMonochrome = LocalIsMonochromeTheme.current ||
             indicatorTheme == INDICATOR_THEME_MONOCHROME
 
-    val activeGlowColor = if (isMonochrome) Color.White else accentColor
-    val focusBorderColor = if (isMonochrome) Color.White else accentColor
-
-    // La transición se crea SIEMPRE (estructura estable) pero su valor NO se lee en
-    // composición: se lee dentro de drawBehind, así el pulso solo invalida la fase de
-    // dibujo y no recompone la tarjeta (ni su AsyncImage) cuadro a cuadro.
-    val infiniteTransition = rememberInfiniteTransition(label = "MediaCardGlow")
-    val pulseGlow = infiniteTransition.animateFloat(
-        initialValue = 0.50f,
-        targetValue = 0.90f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1600, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "pulseGlow"
-    )
-
     val contextMenuController = tv.medusa.app.ui.components.contextmenu.LocalContextMenuController.current
     val view = androidx.compose.ui.platform.LocalView.current
     var lastLongClickTimestamp by remember { mutableStateOf(0L) }
@@ -119,55 +92,33 @@ fun MediaCard(
         }
     }
 
-    Box(
+    Card(
+        onClick = safeOnClick,
+        onLongClick = effectiveLongClick,
+        colors = CardDefaults.colors(
+            containerColor = if (isFocused) Color(0xFF1E222D) else Color(0xFF111319),
+            focusedContainerColor = Color(0xFF1E222D)
+        ),
+        scale = CardDefaults.scale(
+            scale = 1.0f,
+            focusedScale = 1.05f
+        ),
         modifier = modifier
-            .drawBehind {
-                if (isFocused) {
-                    val glow = pulseGlow.value
-                    // Difusión radial ultra suave (estilo iluminación posterior OLED, sin cajas ni bordes duros)
-                    val glowRadius = size.width * 0.95f
-                    val glowCenter = Offset(size.width / 2f, size.height * 0.48f)
-                    drawRect(
-                        brush = Brush.radialGradient(
-                            colors = listOf(
-                                activeGlowColor.copy(alpha = 0.42f * glow),
-                                activeGlowColor.copy(alpha = 0.20f * glow),
-                                activeGlowColor.copy(alpha = 0.05f * glow),
-                                Color.Transparent
-                            ),
-                            center = glowCenter,
-                            radius = glowRadius
-                        ),
-                        topLeft = Offset(-24.dp.toPx(), -24.dp.toPx()),
-                        size = Size(size.width + 48.dp.toPx(), size.height + 48.dp.toPx())
-                    )
+            .handleTouchClick(onLongClick = effectiveLongClick, onClick = safeOnClick)
+            .width(150.dp)
+            .onFocusChanged {
+                isFocused = it.isFocused
+                if (it.isFocused) {
+                    onFocus()
                 }
             }
+            .clip(RoundedCornerShape(10.dp))
+            .border(
+                width = if (isFocused) 1.5.dp else 0.5.dp,
+                color = if (isFocused) Color.White.copy(alpha = 0.90f) else Color(0x18FFFFFF),
+                shape = RoundedCornerShape(10.dp)
+            )
     ) {
-        Card(
-            onClick = safeOnClick,
-            onLongClick = effectiveLongClick,
-            colors = CardDefaults.colors(
-                containerColor = if (isFocused) Color(0xFF1E222D) else Color(0xFF111319),
-                focusedContainerColor = Color(0xFF1E222D)
-            ),
-            scale = CardDefaults.scale(focusedScale = 1.0f),
-            modifier = Modifier
-                .handleTouchClick(onLongClick = effectiveLongClick, onClick = safeOnClick)
-                .width(150.dp)
-                .onFocusChanged {
-                    isFocused = it.isFocused
-                    if (it.isFocused) {
-                        onFocus()
-                    }
-                }
-                .clip(RoundedCornerShape(10.dp))
-                .border(
-                    width = if (isFocused) 1.5.dp else 0.5.dp,
-                    color = if (isFocused) focusBorderColor else Color(0x18FFFFFF),
-                    shape = RoundedCornerShape(10.dp)
-                )
-        ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -259,96 +210,65 @@ fun MediaCard(
                             item.playbackPositionTicks > 0
 
                     if (hasEpisodeProgress) {
-                        val progressBorder = if (isMonochrome) Color(0x66FFFFFF) else Color(0x9900A4DC)
-                        val progressTextColor = if (isMonochrome) Color.White else Color(0xFF38BDF8)
                         val progressText = if (item.totalEpisodes != null && item.totalEpisodes > 0) {
                             "${item.playedEpisodes}/${item.totalEpisodes}"
                         } else {
-                            "${item.playedEpisodes} caps"
+                            null
                         }
 
-                        Box(
-                            modifier = Modifier
-                                .background(
-                                    color = Color(0xE60F172A),
-                                    shape = RoundedCornerShape(6.dp)
+                        if (progressText != null) {
+                            Box(
+                                modifier = Modifier
+                                    .background(
+                                        color = Color(0xCC000000),
+                                        shape = RoundedCornerShape(4.dp)
+                                    )
+                                    .padding(horizontal = 6.dp, vertical = 2.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = progressText,
+                                    color = Color.White.copy(alpha = 0.95f),
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 11.sp
                                 )
-                                .border(1.dp, progressBorder, RoundedCornerShape(6.dp))
-                                .padding(horizontal = 6.dp, vertical = 2.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = progressText,
-                                color = progressTextColor,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 9.sp,
-                                letterSpacing = 0.5.sp
-                            )
-                        }
-                    } else if (hasMovieProgress) {
-                        val progressBorder = if (isMonochrome) Color(0x66FFFFFF) else Color(0x9900A4DC)
-                        val progressTextColor = if (isMonochrome) Color.White else Color(0xFF38BDF8)
-                        Box(
-                            modifier = Modifier
-                                .background(
-                                    color = Color(0xE60F172A),
-                                    shape = RoundedCornerShape(6.dp)
-                                )
-                                .border(1.dp, progressBorder, RoundedCornerShape(6.dp))
-                                .padding(horizontal = 6.dp, vertical = 2.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = stringResource(R.string.common_in_progress),
-                                color = progressTextColor,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 9.sp,
-                                letterSpacing = 0.5.sp
-                            )
+                            }
                         }
                     }
 
                     if (item.isFavorite) {
-                        val favColor = if (isMonochrome) Color.White else Color(0xFFEF4444)
-                        val favBorder = if (isMonochrome) Color(0x66FFFFFF) else Color(0x88EF4444)
-
                         Box(
                             modifier = Modifier
                                 .size(22.dp)
                                 .background(
-                                    color = Color(0xE60F172A),
+                                    color = Color(0xCC000000),
                                     shape = CircleShape
-                                )
-                                .border(1.dp, favBorder, CircleShape),
+                                ),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Rounded.Favorite,
                                 contentDescription = stringResource(R.string.common_favorite),
-                                tint = favColor,
+                                tint = if (isMonochrome) Color.White else Color(0xFFF43F5E),
                                 modifier = Modifier.size(12.dp)
                             )
                         }
                     }
 
                     if (item.isPlayed && !hasEpisodeProgress && !hasMovieProgress) {
-                        val checkColor = if (isMonochrome) Color.White else Color(0xFF10B981)
-                        val checkBorder = if (isMonochrome) Color(0x66FFFFFF) else Color(0x9910B981)
-
                         Box(
                             modifier = Modifier
                                 .size(22.dp)
                                 .background(
-                                    color = Color(0xE60F172A),
+                                    color = Color(0xCC000000),
                                     shape = CircleShape
-                                )
-                                .border(1.dp, checkBorder, CircleShape),
+                                ),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Rounded.Check,
                                 contentDescription = stringResource(R.string.common_watched),
-                                tint = checkColor,
+                                tint = Color.White.copy(alpha = 0.90f),
                                 modifier = Modifier.size(14.dp)
                             )
                         }
@@ -361,43 +281,22 @@ fun MediaCard(
                             .fillMaxSize()
                             .background(
                                 brush = Brush.verticalGradient(
-                                    colors = listOf(Color.Transparent, Color(0xEE000000)),
-                                    startY = 80f
+                                    colors = listOf(Color.Transparent, Color(0xD9000000)),
+                                    startY = 90f
                                 )
                             )
                     )
 
-                    if (isMonochrome) {
-                        Text(
-                            text = "${item.rank}",
-                            color = Color.White,
-                            fontWeight = FontWeight.Black,
-                            fontStyle = FontStyle.Italic,
-                            fontSize = 42.sp,
-                            modifier = Modifier
-                                .align(Alignment.BottomStart)
-                                .padding(start = 6.dp, bottom = 2.dp)
-                        )
-                    } else {
-                        Text(
-                            text = "${item.rank}",
-                            style = MaterialTheme.typography.displayMedium.copy(
-                                brush = Brush.verticalGradient(
-                                    listOf(
-                                        Color(0xFFFFFFFF),
-                                        Color(0xFF38BDF8),
-                                        Color(0xFFA775F8)
-                                    )
-                                ),
-                                fontWeight = FontWeight.Black,
-                                fontStyle = FontStyle.Italic,
-                                fontSize = 42.sp
-                            ),
-                            modifier = Modifier
-                                .align(Alignment.BottomStart)
-                                .padding(start = 6.dp, bottom = 2.dp)
-                        )
-                    }
+                    Text(
+                        text = "${item.rank}",
+                        color = Color.White.copy(alpha = 0.95f),
+                        fontWeight = FontWeight.Black,
+                        fontStyle = FontStyle.Italic,
+                        fontSize = 42.sp,
+                        modifier = Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(start = 6.dp, bottom = 2.dp)
+                    )
                 }
             }
 
@@ -409,12 +308,8 @@ fun MediaCard(
                 Text(
                     text = item.title,
                     style = MaterialTheme.typography.labelMedium,
-                    color = if (isFocused) {
-                        if (isMonochrome) Color.White else focusBorderColor
-                    } else {
-                        Color(0xFFE2E8F0)
-                    },
-                    fontWeight = FontWeight.Bold,
+                    color = if (isFocused) Color.White else Color(0xFFE2E8F0),
+                    fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -447,14 +342,13 @@ fun MediaCard(
                         text = stringResource(if (isTv) R.string.type_series else R.string.type_movie),
                         style = MaterialTheme.typography.bodySmall,
                         color = Color(0xFF94A3B8),
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.SemiBold
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium
                     )
                 }
             }
         }
     }
-}
 }
 
 

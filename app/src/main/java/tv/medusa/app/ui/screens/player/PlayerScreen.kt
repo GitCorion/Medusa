@@ -3865,9 +3865,9 @@ private fun ResumePlaybackDialog(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp),
             modifier = Modifier
-                .clip(RoundedCornerShape(20.dp))
-                .background(Color(0xEE121424))
-                .border(1.dp, if (isMonochrome) Color(0x33FFFFFF) else focusColor.copy(alpha = 0.45f), RoundedCornerShape(20.dp))
+                .clip(RoundedCornerShape(18.dp))
+                .background(Color(0xF2090B14))
+                .border(0.5.dp, Color(0x24FFFFFF), RoundedCornerShape(18.dp))
                 .padding(horizontal = 20.dp, vertical = 16.dp)
         ) {
             // Resume button (focused by default) with position included
@@ -3877,17 +3877,17 @@ private fun ResumePlaybackDialog(
                     .handleTouchClick { onResume() }
                     .focusRequester(resumeFocusRequester),
                 colors = ButtonDefaults.colors(
-                    containerColor = if (isMonochrome) Color.White else focusColor,
-                    contentColor = if (isMonochrome) Color(0xFF0F172A) else focusContent,
-                    focusedContainerColor = if (isMonochrome) Color(0xFFE0E7FF) else focusColor,
-                    focusedContentColor = if (isMonochrome) Color(0xFF0F172A) else focusContent
+                    containerColor = Color.White,
+                    contentColor = Color(0xFF0F172A),
+                    focusedContainerColor = Color.White,
+                    focusedContentColor = Color(0xFF0F172A)
                 ),
                 shape = ButtonDefaults.shape(shape = RoundedCornerShape(12.dp))
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.PlayArrow,
@@ -3896,7 +3896,7 @@ private fun ResumePlaybackDialog(
                     )
                     Text(
                         text = stringResource(R.string.player_resume, formatTime(savedPositionMs)),
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.SemiBold,
                         fontSize = 14.sp
                     )
                 }
@@ -3907,17 +3907,17 @@ private fun ResumePlaybackDialog(
                 onClick = onStartOver,
                 modifier = Modifier.handleTouchClick { onStartOver() },
                 colors = ButtonDefaults.colors(
-                    containerColor = Color(0x22FFFFFF),
+                    containerColor = Color(0x20FFFFFF),
                     contentColor = Color.White,
-                    focusedContainerColor = if (isMonochrome) Color.White else focusColor,
-                    focusedContentColor = if (isMonochrome) Color(0xFF0F172A) else focusContent
+                    focusedContainerColor = Color.White,
+                    focusedContentColor = Color(0xFF0F172A)
                 ),
                 shape = ButtonDefaults.shape(shape = RoundedCornerShape(12.dp))
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Replay,

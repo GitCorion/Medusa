@@ -605,20 +605,10 @@ fun HeroBanner(
                     focusColor
                 }
 
-                val buttonContainerColor = if (isMonochrome) {
-                    if (isSeasonalActive) Color(0x33FFFFFF) else Color(0x28FFFFFF)
-                } else {
-                    if (isSeasonalActive) activeEventAccent.copy(alpha = 0.35f) else focusColor.copy(alpha = 0.22f)
-                }
-
-                val buttonFocusedContainerColor = if (isMonochrome) {
-                    Color.White
-                } else {
-                    if (isSeasonalActive) activeEventAccent else focusColor
-                }
-
-                val buttonContentColor = if (isMonochrome) Color.White else if (isSeasonalActive) Color.White else focusColor
-                val buttonFocusedContentColor = if (isMonochrome) Color(0xFF0F172A) else if (isSeasonalActive) Color.White else focusContent
+                val buttonContainerColor = Color(0x28FFFFFF)
+                val buttonFocusedContainerColor = Color.White
+                val buttonContentColor = Color.White
+                val buttonFocusedContentColor = Color(0xFF0F172A)
                 val buttonBorderColor = Color(0x28FFFFFF)
 
                 Row(verticalAlignment = Alignment.CenterVertically) {

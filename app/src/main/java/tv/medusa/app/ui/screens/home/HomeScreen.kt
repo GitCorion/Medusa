@@ -519,15 +519,7 @@ fun HomeScreen(
         }
     }
 
-        // Capa ambiental estacional (Seasonal) sutil por encima de toda la pantalla
-        if (activeSeasonalEvent != null && activeSeasonalEvent.particleType != ParticleType.NONE && particleScale > 0.05f) {
-            SeasonalParticles(
-                particleType = activeSeasonalEvent.particleType,
-                particleScale = particleScale,
-                modifier = Modifier.fillMaxSize(),
-                particleCount = (10 * particleScale).toInt().coerceAtLeast(3)
-            )
-        }
+
 
         val billingManager = LocalBillingManager.current
         if (showProDialog && billingManager != null) {

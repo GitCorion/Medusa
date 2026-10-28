@@ -125,8 +125,8 @@ private fun BrandCard(
             .onFocusChanged { isFocused = it.isFocused }
             .clip(RoundedCornerShape(10.dp))
             .border(
-                width = if (isFocused) 2.dp else 0.75.dp,
-                color = if (isFocused) (if (isMonochrome) Color.White else accentColor) else Color(0x18FFFFFF),
+                width = if (isFocused) 1.5.dp else 0.5.dp,
+                color = if (isFocused) Color.White.copy(alpha = 0.90f) else Color(0x18FFFFFF),
                 shape = RoundedCornerShape(10.dp)
             )
     ) {
