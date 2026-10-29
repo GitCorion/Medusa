@@ -514,6 +514,7 @@ private fun PlayerContent(
     val audioButtonFocusRequester = remember { FocusRequester() }
     val subtitleButtonFocusRequester = remember { FocusRequester() }
     val settingsButtonFocusRequester = remember { FocusRequester() }
+    val playerRootFocusRequester = remember { FocusRequester() }
 
     var isProgressBarFocused by remember { mutableStateOf(false) }
     var pendingFocusProgressBar by remember { mutableStateOf(false) }
@@ -1010,9 +1011,20 @@ private fun PlayerContent(
         }
     }
 
-    // Auto-focus the play/pause button (or progress bar if opened via UP) when controls overlay is visible
-    LaunchedEffect(showOverlayControls) {
-        if (showOverlayControls && playerErrorMessage == null && !showResumeDialog) {
+    // Auto-focus the play/pause button (or progress bar if opened via UP) when controls overlay is visible,
+    // and restore focus to the root player container when controls auto-hide or close, ensuring D-Pad remote events
+    // are always captured by onKeyEvent even when controls overlay is not in the composition tree.
+    LaunchedEffect(
+        showOverlayControls,
+        showResumeDialog,
+        activeModalTab,
+        showSkipIntroBanner,
+        showSkipCreditsBanner,
+        showNextEpisodeOverlay
+    ) {
+        if (showResumeDialog) return@LaunchedEffect
+
+        if (showOverlayControls && playerErrorMessage == null) {
             delay(50L)
             try {
                 if (pendingFocusProgressBar) {
@@ -1021,6 +1033,16 @@ private fun PlayerContent(
                 } else {
                     playPauseFocusRequester.requestFocus()
                 }
+            } catch (_: Exception) {}
+        } else if (!showOverlayControls &&
+            activeModalTab == PlayerModalTab.NONE &&
+            !showSkipIntroBanner &&
+            !showSkipCreditsBanner &&
+            !showNextEpisodeOverlay
+        ) {
+            delay(50L)
+            try {
+                playerRootFocusRequester.requestFocus()
             } catch (_: Exception) {}
         }
     }
@@ -1254,6 +1276,8 @@ private fun PlayerContent(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
+            .focusRequester(playerRootFocusRequester)
+            .focusable()
             .onKeyEvent { keyEvent ->
                 if (showResumeDialog) return@onKeyEvent false
                 if (keyEvent.type != KeyEventType.KeyDown) return@onKeyEvent false
@@ -1382,6 +1406,8 @@ private fun PlayerContent(
                     useController = false
                     resizeMode = currentResizeMode
                     keepScreenOn = true
+                    isFocusable = false
+                    isFocusableInTouchMode = false
                 }
             },
             update = { playerView ->
