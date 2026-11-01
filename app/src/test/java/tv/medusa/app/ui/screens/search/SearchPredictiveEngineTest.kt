@@ -78,24 +78,18 @@ class SearchPredictiveEngineTest {
     fun testDirectionResolverExactUserCaseCPL() {
         val activeChars = setOf('C', 'L', 'P')
 
-        // 1. Desde 'C' hacia la DERECHA debe ir a 'P' (columna 3), no saltar al panel derecho ni a 'L'
+        // 1. Desde 'C' hacia la DERECHA debe ir a 'L' (siguiente columna activa)
         val fromC = KeyboardDirectionResolver.findNextKey('C', KeyboardDirectionResolver.Direction.RIGHT, activeChars)
-        assertEquals('P', fromC)
+        assertEquals('L', fromC)
 
-        // 2. Desde 'P' hacia la DERECHA debe ir a 'L' (columna 5)
-        val fromP = KeyboardDirectionResolver.findNextKey('P', KeyboardDirectionResolver.Direction.RIGHT, activeChars)
-        assertEquals('L', fromP)
+        // 2. Desde 'L' hacia la DERECHA debe devolver null (salir al panel de resultados)
+        assertEquals(null, KeyboardDirectionResolver.findNextKey('L', KeyboardDirectionResolver.Direction.RIGHT, activeChars))
 
-        // 3. Desde 'L' hacia la DERECHA debe devolver null (para salir naturalmente al panel de resultados)
-        val fromL = KeyboardDirectionResolver.findNextKey('L', KeyboardDirectionResolver.Direction.RIGHT, activeChars)
-        assertEquals(null, fromL)
-
-        // 4. Navegación hacia la IZQUIERDA
-        assertEquals('P', KeyboardDirectionResolver.findNextKey('L', KeyboardDirectionResolver.Direction.LEFT, activeChars))
-        assertEquals('C', KeyboardDirectionResolver.findNextKey('P', KeyboardDirectionResolver.Direction.LEFT, activeChars))
+        // 3. Navegación hacia la IZQUIERDA
+        assertEquals('C', KeyboardDirectionResolver.findNextKey('L', KeyboardDirectionResolver.Direction.LEFT, activeChars))
         assertEquals(null, KeyboardDirectionResolver.findNextKey('C', KeyboardDirectionResolver.Direction.LEFT, activeChars))
 
-        // 5. Navegación VERTICAL
+        // 4. Navegación VERTICAL: desde C baja a P (misma columna, fila de abajo)
         assertEquals('P', KeyboardDirectionResolver.findNextKey('C', KeyboardDirectionResolver.Direction.DOWN, activeChars))
         assertEquals(null, KeyboardDirectionResolver.findNextKey('P', KeyboardDirectionResolver.Direction.DOWN, activeChars))
 
@@ -120,10 +114,10 @@ class SearchPredictiveEngineTest {
         val allChars = KeyboardDirectionResolver.ALL_CHARS.toSet()
 
         // En cuadrícula completa normal:
-        // C(0, 2) -> Derecha es D(0, 3), Izquierda es B(0, 1), Abajo es I(1, 2)
+        // C(0, 2) -> Derecha es D(0, 3), Izquierda es B(0, 1), Abajo es J(1, 2)
         assertEquals('D', KeyboardDirectionResolver.findNextKey('C', KeyboardDirectionResolver.Direction.RIGHT, allChars))
         assertEquals('B', KeyboardDirectionResolver.findNextKey('C', KeyboardDirectionResolver.Direction.LEFT, allChars))
-        assertEquals('I', KeyboardDirectionResolver.findNextKey('C', KeyboardDirectionResolver.Direction.DOWN, allChars))
+        assertEquals('J', KeyboardDirectionResolver.findNextKey('C', KeyboardDirectionResolver.Direction.DOWN, allChars))
         assertEquals(null, KeyboardDirectionResolver.findNextKey('C', KeyboardDirectionResolver.Direction.UP, allChars))
     }
 

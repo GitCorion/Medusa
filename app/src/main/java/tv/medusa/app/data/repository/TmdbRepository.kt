@@ -34,19 +34,32 @@ class TmdbRepository(
         }
     }
 
-    suspend fun getTmdbTrendingDay(apiKey: String, maxPages: Int = 5): Result<List<TmdbItemDto>> {
-        val cacheKey = "trending-day-$apiKey-$maxPages"
+    suspend fun getTmdbTrendingDay(apiKey: String, maxPages: Int = 3): Result<List<TmdbItemDto>> {
+        val cacheKey = "trending-day-es-$apiKey-$maxPages"
         MediaCaches.tmdbTrendingDayCache.get(cacheKey)?.let { return Result.success(it) }
         return runCatching {
             val api = NetworkClientFactory.createService(ApiConfig.TMDB_BASE_URL, TmdbApiService::class.java)
-            val pages = coroutineScope {
-                (1..maxPages).map { p ->
-                    async {
-                        runCatching { api.getTrendingDay(apiKey = apiKey, page = p) }.getOrNull()?.results ?: emptyList()
+            val (moviePages, tvPages) = coroutineScope {
+                val m = async {
+                    (1..maxPages).flatMap { p ->
+                        runCatching { api.getTrendingMoviesDay(apiKey = apiKey, page = p, language = "es-ES") }.getOrNull()?.results ?: emptyList()
                     }
-                }.awaitAll()
+                }
+                val t = async {
+                    (1..maxPages).flatMap { p ->
+                        runCatching { api.getTrendingTvDay(apiKey = apiKey, page = p, language = "es-ES") }.getOrNull()?.results ?: emptyList()
+                    }
+                }
+                Pair(m.await(), t.await())
             }
-            val distinct = pages.flatten().distinctBy { it.id }
+
+            val interleaved = mutableListOf<TmdbItemDto>()
+            val maxLen = maxOf(moviePages.size, tvPages.size)
+            for (i in 0 until maxLen) {
+                if (i < moviePages.size) interleaved.add(moviePages[i])
+                if (i < tvPages.size) interleaved.add(tvPages[i])
+            }
+            val distinct = interleaved.distinctBy { it.id }
             if (distinct.isNotEmpty()) {
                 MediaCaches.tmdbTrendingDayCache.put(cacheKey, distinct)
             }

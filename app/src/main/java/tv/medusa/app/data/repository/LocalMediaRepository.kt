@@ -3,11 +3,13 @@ package tv.medusa.app.data.repository
 import tv.medusa.app.data.local.db.JellyfinDao
 import tv.medusa.app.data.local.db.JellyfinMediaEntity
 import tv.medusa.app.data.local.db.LibraryStats
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 
 /**
  * Consultas locales (Room) sobre el catálogo sincronizado: listados, búsquedas,
@@ -32,7 +34,11 @@ class LocalMediaRepository(
         if (!accessPolicy.hasRestrictions()) return false
         val catalog = jellyfinDao.getCount()
         if (catalog <= 0) return false
-        return accessPolicy.allowedCount() >= catalog
+        val allowed = accessPolicy.allowedCount()
+        // La lista completa es un espejo del catálogo: filtrar por ella no aporta nada y
+        // añade un IN (SELECT ...) a todas las consultas. Solo hay restricción real cuando
+        // la lista permitida es un subconjunto del catálogo.
+        return allowed in 1 until catalog
     }
 
     private fun restrictionsActiveFlow(): Flow<Boolean> =
@@ -41,7 +47,7 @@ class LocalMediaRepository(
             jellyfinDao.getCountFlow(),
             accessPolicy.allowedCountFlow()
         ) { has, catalog, allowed ->
-            has && catalog > 0 && allowed >= catalog
+            has && catalog > 0 && allowed in 1 until catalog
         }
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -57,7 +63,7 @@ class LocalMediaRepository(
         } else {
             jellyfinDao.getMovies()
         }
-        return items.deduplicateMediaEntities()
+        return withContext(Dispatchers.Default) { items.deduplicateMediaEntities() }
     }
 
     suspend fun getLocalSeries(): List<JellyfinMediaEntity> {
@@ -66,7 +72,7 @@ class LocalMediaRepository(
         } else {
             jellyfinDao.getSeries()
         }
-        return items.deduplicateMediaEntities()
+        return withContext(Dispatchers.Default) { items.deduplicateMediaEntities() }
     }
 
     suspend fun getAllCatalog(): List<JellyfinMediaEntity> {
@@ -75,7 +81,27 @@ class LocalMediaRepository(
         } else {
             jellyfinDao.getAllCatalog()
         }
-        return items.deduplicateMediaEntities()
+        // El deduplicado es O(n) pero con 32k filas crea varios mapas y un array de índices:
+        // debe ejecutarse fuera del hilo principal.
+        return withContext(Dispatchers.Default) { items.deduplicateMediaEntities() }
+    }
+
+    suspend fun hasRealRestrictions(): Boolean = restrictionsActive()
+
+    suspend fun getSeasonalCandidates(query: androidx.sqlite.db.SupportSQLiteQuery): List<JellyfinMediaEntity> =
+        jellyfinDao.getSeasonalCandidates(query)
+
+    /**
+     * Proyección ligera usada para construir índices de eventos estacionales: sin `overview`,
+     * `tags` ni ids de scrapers. Evita cargar decenas de MB para filtrar el catálogo completo.
+     */
+    suspend fun getCatalogLight(): List<JellyfinMediaEntity> {
+        val items = if (restrictionsActive()) {
+            jellyfinDao.getCatalogForMatrixRestricted()
+        } else {
+            jellyfinDao.getCatalogForMatrix()
+        }
+        return withContext(Dispatchers.Default) { items.deduplicateMediaEntities() }
     }
 
     suspend fun getItemById(id: String): JellyfinMediaEntity? = jellyfinDao.getItemById(id)
@@ -251,7 +277,7 @@ class LocalMediaRepository(
         } else {
             jellyfinDao.getFavorites()
         }
-        return items.deduplicateMediaEntities()
+        return withContext(Dispatchers.Default) { items.deduplicateMediaEntities() }
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)

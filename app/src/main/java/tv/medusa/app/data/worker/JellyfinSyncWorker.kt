@@ -57,8 +57,9 @@ class JellyfinSyncWorker @AssistedInject constructor(
             if (syncResult.isSuccess) {
                 // Estadísticas del planificador SQLite: bootstrapea con ANALYZE la primera vez
                 // (para que se usen los índices compuestos) y luego se mantiene con PRAGMA optimize.
-                // Si la reproducción está activa, se pospone para no bloquear SQLite con un cerrojo exclusivo.
-                if (!tv.medusa.app.util.AppForeground.isPlaybackActive) {
+                // Con la app en primer plano se pospone: en un catálogo de 33k filas ANALYZE puede
+                // adquirir un cerrojo costoso justo cuando el usuario está navegando.
+                if (!tv.medusa.app.util.AppForeground.isPlaybackActive && !tv.medusa.app.util.AppForeground.isVisible) {
                     runCatching {
                         val sqliteDb = database.openHelper.writableDatabase
                         val hasStats = sqliteDb

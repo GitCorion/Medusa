@@ -11,7 +11,7 @@ interface HomeSectionCacheDao {
     @Query("SELECT * FROM home_section_cache WHERE sectionKey = :key")
     suspend fun getSection(key: String): HomeSectionCacheEntity?
 
-    @Query("SELECT * FROM home_section_cache ORDER BY rowid")
+    @Query("SELECT * FROM home_section_cache ORDER BY sortOrder ASC, rowid ASC")
     suspend fun getAllSections(): List<HomeSectionCacheEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)

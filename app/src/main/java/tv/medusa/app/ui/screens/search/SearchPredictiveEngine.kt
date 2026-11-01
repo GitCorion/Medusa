@@ -5,7 +5,7 @@ import java.util.Locale
 
 object SearchPredictiveEngine {
 
-    val ALL_KEYBOARD_CHARS: Set<Char> = (('A'..'Z') + ('0'..'9')).toSet()
+    val ALL_KEYBOARD_CHARS: Set<Char> = (('A'..'Z') + 'Ñ' + ('0'..'9')).toSet()
 
     private val DIACRITICS_REGEX = Regex("\\p{InCombiningDiacriticalMarks}+")
     private val SPACES_REGEX = Regex("\\s+")

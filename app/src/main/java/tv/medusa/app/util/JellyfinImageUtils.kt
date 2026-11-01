@@ -33,6 +33,7 @@ object JellyfinImageUtils {
         }
         if (!imageTag.isNullOrBlank() && imageTag.startsWith("tmdb:")) {
             val path = imageTag.removePrefix("tmdb:")
+            if (path == "none" || path.isBlank()) return null
             return "${ApiConfig.TMDB_IMAGE_BASE_W500}$path"
         }
         if (baseUrl.isBlank() || itemId.isBlank()) return null
@@ -66,6 +67,7 @@ object JellyfinImageUtils {
         }
         if (!imageTag.isNullOrBlank() && imageTag.startsWith("tmdb:")) {
             val path = imageTag.removePrefix("tmdb:")
+            if (path == "none" || path.isBlank()) return null
             return "${ApiConfig.TMDB_IMAGE_BASE_W1280}$path"
         }
         if (baseUrl.isBlank() || itemId.isBlank()) return null

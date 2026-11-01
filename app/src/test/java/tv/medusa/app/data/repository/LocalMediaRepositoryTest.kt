@@ -67,23 +67,7 @@ class LocalMediaRepositoryTest {
     }
 
     @Test
-    fun getLocalMovies_callsRestrictedQuery_whenRestrictionsCoverCatalog() = runTest {
-        val fakeDao = TrackingFakeJellyfinDao()
-        fakeDao.setLocalItems(listOf(JellyfinMediaEntity(id = "m1", title = "M1", type = "Movie")))
-        val fakeAllowedDao = FakeAllowedMediaDao()
-        val policy = MediaAccessPolicy(allowedMediaDao = fakeAllowedDao)
-        // Lista completa (cubre el catálogo): el filtro es un no-op y se usa la query restringida.
-        policy.saveAllowedIds("user-1", setOf("m1"))
-        val repo = LocalMediaRepository(fakeDao, policy)
-
-        repo.getLocalMovies()
-
-        assertTrue(fakeDao.getMoviesRestrictedCalled)
-        assertTrue(!fakeDao.getMoviesCalled)
-    }
-
-    @Test
-    fun getLocalMovies_ignoresStalePartialAllowedList() = runTest {
+    fun getLocalMovies_callsRestrictedQuery_whenAllowedListIsASubset() = runTest {
         val fakeDao = TrackingFakeJellyfinDao()
         fakeDao.setLocalItems(
             listOf(
@@ -94,7 +78,23 @@ class LocalMediaRepositoryTest {
         )
         val fakeAllowedDao = FakeAllowedMediaDao()
         val policy = MediaAccessPolicy(allowedMediaDao = fakeAllowedDao)
-        // Lista de permitidos desincronizada (1 de 3): filtrar ocultaría casi todo → se ignora.
+        // Restricción real: 1 permitido de 3 → hay que filtrar en SQL.
+        policy.saveAllowedIds("user-1", setOf("m1"))
+        val repo = LocalMediaRepository(fakeDao, policy)
+
+        repo.getLocalMovies()
+
+        assertTrue(fakeDao.getMoviesRestrictedCalled)
+        assertTrue(!fakeDao.getMoviesCalled)
+    }
+
+    @Test
+    fun getLocalMovies_usesUnrestrictedQuery_whenAllowedListCoversCatalog() = runTest {
+        val fakeDao = TrackingFakeJellyfinDao()
+        fakeDao.setLocalItems(listOf(JellyfinMediaEntity(id = "m1", title = "M1", type = "Movie")))
+        val fakeAllowedDao = FakeAllowedMediaDao()
+        val policy = MediaAccessPolicy(allowedMediaDao = fakeAllowedDao)
+        // Espejo completo del catálogo: no hay restricción efectiva y no debe añadirse el IN.
         policy.saveAllowedIds("user-1", setOf("m1"))
         val repo = LocalMediaRepository(fakeDao, policy)
 
@@ -132,7 +132,12 @@ class LocalMediaRepositoryTest {
         assertTrue(fakeDao.getTopMoviesCalled)
 
         val fakeDaoRestricted = TrackingFakeJellyfinDao()
-        fakeDaoRestricted.setLocalItems(listOf(JellyfinMediaEntity(id = "m1", title = "M1", type = "Movie")))
+        fakeDaoRestricted.setLocalItems(
+            listOf(
+                JellyfinMediaEntity(id = "m1", title = "M1", type = "Movie"),
+                JellyfinMediaEntity(id = "m2", title = "M2", type = "Movie")
+            )
+        )
         policy.saveAllowedIds("user-1", setOf("m1"))
         val repoRestricted = LocalMediaRepository(fakeDaoRestricted, policy)
 

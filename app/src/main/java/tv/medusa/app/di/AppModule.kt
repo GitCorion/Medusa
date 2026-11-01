@@ -6,6 +6,7 @@ import tv.medusa.app.data.local.db.AllowedMediaDao
 import tv.medusa.app.data.local.db.AppDatabase
 import tv.medusa.app.data.local.db.HomeSectionCacheDao
 import tv.medusa.app.data.local.db.JellyfinDao
+import tv.medusa.app.data.local.db.SeasonalDao
 import tv.medusa.app.data.local.db.TmdbVoteCacheDao
 import tv.medusa.app.data.remote.update.AppUpdateManager
 import tv.medusa.app.data.repository.MediaRepository
@@ -37,6 +38,9 @@ object AppModule {
     fun provideHomeSectionCacheDao(database: AppDatabase): HomeSectionCacheDao = database.homeSectionCacheDao()
 
     @Provides
+    fun provideSeasonalDao(database: AppDatabase): SeasonalDao = database.seasonalDao()
+
+    @Provides
     @Singleton
     fun provideUserPreferencesRepository(@ApplicationContext context: Context): UserPreferencesRepository =
         UserPreferencesRepository(context)
@@ -48,11 +52,19 @@ object AppModule {
     @Singleton
     fun provideMediaRepository(
         @ApplicationContext context: Context,
+        database: AppDatabase,
         jellyfinDao: JellyfinDao,
         userPreferencesRepository: UserPreferencesRepository,
         tmdbVoteCacheDao: TmdbVoteCacheDao,
         allowedMediaDao: AllowedMediaDao
-    ): MediaRepository = MediaRepository(jellyfinDao, userPreferencesRepository, tmdbVoteCacheDao, allowedMediaDao, context)
+    ): MediaRepository = MediaRepository(
+        jellyfinDao = jellyfinDao,
+        userPreferencesRepository = userPreferencesRepository,
+        tmdbVoteCacheDao = tmdbVoteCacheDao,
+        allowedMediaDao = allowedMediaDao,
+        appContext = context,
+        appDatabase = database
+    )
 
     @Provides
     @Singleton
@@ -62,10 +74,11 @@ object AppModule {
     @Provides
     @Singleton
     fun provideGetHomeFeedUseCase(
+        @ApplicationContext context: Context,
         mediaRepository: MediaRepository,
         filterToLibraryUseCase: FilterToLibraryUseCase,
         homeSectionCacheDao: HomeSectionCacheDao
-    ): GetHomeFeedUseCase = GetHomeFeedUseCase(mediaRepository, filterToLibraryUseCase, homeSectionCacheDao)
+    ): GetHomeFeedUseCase = GetHomeFeedUseCase(mediaRepository, filterToLibraryUseCase, homeSectionCacheDao, context)
 
     @Provides
     @Singleton

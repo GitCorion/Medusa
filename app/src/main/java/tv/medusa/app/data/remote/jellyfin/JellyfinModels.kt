@@ -155,6 +155,7 @@ data class JellyfinMediaSourceDto(
     @SerialName("DirectStreamUrl") val directStreamUrl: String? = null,
     @SerialName("TranscodingUrl") val transcodingUrl: String? = null,
     @SerialName("Name") val name: String? = null,
+    @SerialName("RunTimeTicks") val runTimeTicks: Long? = null,
     @SerialName("SupportsDirectPlay") val supportsDirectPlay: Boolean = false,
     @SerialName("SupportsDirectStream") val supportsDirectStream: Boolean = false,
     @SerialName("SupportsTranscoding") val supportsTranscoding: Boolean = false,

@@ -21,6 +21,9 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -89,6 +92,10 @@ fun MediaRow(
             section.items.distinctBy { it.id }
         }
 
+        val currentOnItemClick by androidx.compose.runtime.rememberUpdatedState(onItemClick)
+        val currentOnItemFocus by androidx.compose.runtime.rememberUpdatedState(onItemFocus)
+        val currentOnLongClick by androidx.compose.runtime.rememberUpdatedState(onItemLongClick)
+
         LazyRow(
             contentPadding = PaddingValues(horizontal = 48.dp, vertical = 6.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -98,22 +105,30 @@ fun MediaRow(
                 key = { _, it -> it.id },
                 contentType = { _, _ -> "media_card" }
             ) { index, item ->
-                val displayItem = if (section.isRanked && item.rank == null) {
-                    item.copy(rank = index + 1)
-                } else {
-                    item
+                val displayItem = remember(item, section.isRanked, index) {
+                    if (section.isRanked && item.rank == null) {
+                        item.copy(rank = index + 1)
+                    } else {
+                        item
+                    }
                 }
                 val view = androidx.compose.ui.platform.LocalView.current
-                MediaCard(
-                    item = displayItem,
-                    onClick = { onItemClick(displayItem) },
-                    onFocus = { onItemFocus(displayItem) },
-                    onLongClick = onItemLongClick?.let { callback ->
+                val onClickLambda = remember(displayItem.id) { { currentOnItemClick(displayItem) } }
+                val onFocusLambda = remember(displayItem.id) { { currentOnItemFocus(displayItem) } }
+                val onLongClickLambda: (() -> Unit)? = remember(displayItem.id, currentOnLongClick) {
+                    if (currentOnLongClick != null) {
                         {
                             view.playSoundEffect(android.view.SoundEffectConstants.CLICK)
-                            callback(displayItem)
+                            currentOnLongClick?.invoke(displayItem)
                         }
-                    }
+                    } else null
+                }
+
+                MediaCard(
+                    item = displayItem,
+                    onClick = onClickLambda,
+                    onFocus = onFocusLambda,
+                    onLongClick = onLongClickLambda
                 )
             }
         }

@@ -8,8 +8,17 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
-    entities = [JellyfinMediaEntity::class, TmdbVoteCacheEntity::class, HomeSectionCacheEntity::class, JellyfinMediaFts::class, AllowedMediaIdEntity::class],
-    version = 17,
+    entities = [
+        JellyfinMediaEntity::class,
+        TmdbVoteCacheEntity::class,
+        HomeSectionCacheEntity::class,
+        JellyfinMediaFts::class,
+        JellyfinMediaGenresFts::class,
+        AllowedMediaIdEntity::class,
+        SeasonalItemEntity::class,
+        SeasonalIndexMetaEntity::class
+    ],
+    version = 21,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -18,6 +27,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun tmdbVoteCacheDao(): TmdbVoteCacheDao
     abstract fun homeSectionCacheDao(): HomeSectionCacheDao
     abstract fun allowedMediaDao(): AllowedMediaDao
+    abstract fun seasonalDao(): SeasonalDao
 
     companion object {
         @Volatile
@@ -149,6 +159,79 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * v17 → v18: snapshot persistente de todas las secciones del Home (incluidas las
+         * locales) + índice persistente y paginable de los especiales estacionales.
+         */
+        val MIGRATION_17_18 = object : Migration(17, 18) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE home_section_cache ADD COLUMN sortOrder INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE home_section_cache ADD COLUMN catalogVersion TEXT NOT NULL DEFAULT ''")
+
+                db.execSQL(
+                    """CREATE TABLE IF NOT EXISTS `seasonal_items` (
+                        `eventId` TEXT NOT NULL,
+                        `mediaId` TEXT NOT NULL,
+                        `score` REAL NOT NULL,
+                        `editorial` INTEGER NOT NULL,
+                        `updatedAt` INTEGER NOT NULL,
+                        PRIMARY KEY(`eventId`, `mediaId`)
+                    )"""
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_seasonal_items_eventId_score` ON `seasonal_items` (`eventId`, `score`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_seasonal_items_eventId_editorial` ON `seasonal_items` (`eventId`, `editorial`)")
+
+                db.execSQL(
+                    """CREATE TABLE IF NOT EXISTS `seasonal_index_meta` (
+                        `eventId` TEXT NOT NULL,
+                        `catalogVersion` TEXT NOT NULL,
+                        `itemCount` INTEGER NOT NULL,
+                        `updatedAt` INTEGER NOT NULL,
+                        PRIMARY KEY(`eventId`)
+                    )"""
+                )
+            }
+        }
+
+        /**
+         * v18 → v19: índice FTS4 de géneros. Permite buscar «terror», «navidad», «romance»
+         * sin hacer un `LIKE '%…%'` sobre las 32.000 filas del catálogo al abrir un especial.
+         */
+        val MIGRATION_18_19 = object : Migration(18, 19) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                createGenresFts(db)
+            }
+        }
+
+        private fun createGenresFts(db: SupportSQLiteDatabase) {
+            db.execSQL("CREATE VIRTUAL TABLE IF NOT EXISTS `jellyfin_media_genres_fts` USING FTS4(`genres` TEXT, content=`jellyfin_media`)")
+            db.execSQL("CREATE TRIGGER IF NOT EXISTS room_fts_genres_sync_jellyfin_media_genres_fts_BEFORE_UPDATE BEFORE UPDATE ON `jellyfin_media` BEGIN DELETE FROM `jellyfin_media_genres_fts` WHERE `docid`=OLD.`rowid`; END")
+            db.execSQL("CREATE TRIGGER IF NOT EXISTS room_fts_genres_sync_jellyfin_media_genres_fts_BEFORE_DELETE BEFORE DELETE ON `jellyfin_media` BEGIN DELETE FROM `jellyfin_media_genres_fts` WHERE `docid`=OLD.`rowid`; END")
+            db.execSQL("CREATE TRIGGER IF NOT EXISTS room_fts_genres_sync_jellyfin_media_genres_fts_AFTER_UPDATE AFTER UPDATE ON `jellyfin_media` BEGIN INSERT INTO `jellyfin_media_genres_fts`(`docid`, `genres`) VALUES (NEW.`rowid`, NEW.`genres`); END")
+            db.execSQL("CREATE TRIGGER IF NOT EXISTS room_fts_genres_sync_jellyfin_media_genres_fts_AFTER_INSERT AFTER INSERT ON `jellyfin_media` BEGIN INSERT INTO `jellyfin_media_genres_fts`(`docid`, `genres`) VALUES (NEW.`rowid`, NEW.`genres`); END")
+            db.execSQL("INSERT INTO `jellyfin_media_genres_fts`(`jellyfin_media_genres_fts`) VALUES('rebuild')")
+        }
+
+        /**
+         * v19 → v20: payload JSON de las tarjetas del snapshot del Home. Evita reconstruir 200+
+         * filas desde `jellyfin_media` en el arranque (varias consultas aleatorias lentas en TV).
+         */
+        val MIGRATION_19_20 = object : Migration(19, 20) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE home_section_cache ADD COLUMN payload TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
+        /**
+         * v20 → v21: la tabla FTS de géneros pasa a ser una entidad Room (necesaria para que
+         * MigrationTestHelper valide el esquema). La tabla/triggers ya se crearon en v19.
+         */
+        val MIGRATION_20_21 = object : Migration(20, 21) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                createGenresFts(db)
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -156,11 +239,18 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "medusa_database"
                 )
+                    .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
+                    .addCallback(object : RoomDatabase.Callback() {
+                        override fun onOpen(db: SupportSQLiteDatabase) {
+                            super.onOpen(db)
+                            db.execSQL("PRAGMA synchronous = NORMAL;")
+                        }
+                    })
                     .addMigrations(
                         MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8,
                         MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12,
                         MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16,
-                        MIGRATION_16_17
+                        MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21
                     )
                     .fallbackToDestructiveMigration()
                     .build()

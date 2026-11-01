@@ -1,7 +1,11 @@
 package tv.medusa.app.domain.usecase
 
+import android.content.Context
+import tv.medusa.app.data.local.HomeSnapshotFileStore
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.min
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import tv.medusa.app.data.local.DEFAULT_TMDB_API_KEY
 import tv.medusa.app.data.remote.ApiConfig
 import tv.medusa.app.data.local.DEFAULT_TRAKT_CLIENT_ID
@@ -14,6 +18,7 @@ import tv.medusa.app.data.repository.MediaRepository
 import tv.medusa.app.domain.model.HomeSection
 import tv.medusa.app.domain.model.MediaItem
 import tv.medusa.app.domain.model.MediaSource
+import tv.medusa.app.domain.model.MediaItemSnapshotCodec
 
 import tv.medusa.app.util.toOptimizedMediaItem
 import kotlinx.coroutines.async
@@ -32,18 +37,32 @@ import kotlinx.coroutines.withTimeoutOrNull
 class GetHomeFeedUseCase(
     private val mediaRepository: MediaRepository,
     private val filterToLibraryUseCase: FilterToLibraryUseCase,
-    private val homeSectionCacheDao: HomeSectionCacheDao? = null
+    private val homeSectionCacheDao: HomeSectionCacheDao? = null,
+    appContext: Context? = null
 ) {
+    private val snapshotFileStore = appContext?.let { HomeSnapshotFileStore(it) }
+
+    @Volatile private var memorySnapshot: List<HomeSection>? = null
+    @Volatile private var memorySnapshotAt: Long = 0L
     companion object {
         @Volatile
         private var cachedHomeFeed: List<HomeSection>? = null
         @Volatile
         private var cachedFeedTimestamp: Long = 0L
+        @Volatile
+        private var memorySnapshot: List<HomeSection>? = null
+        @Volatile
+        private var memorySnapshotAt: Long = 0L
         private const val FEED_CACHE_TTL = 15 * 60 * 1000L // 15 minutos
 
         fun invalidateFeedCache() {
             cachedHomeFeed = null
             cachedFeedTimestamp = 0L
+        }
+
+        fun clearMemorySnapshot() {
+            memorySnapshot = null
+            memorySnapshotAt = 0L
         }
 
         fun sectionPriority(title: String): Int = when {
@@ -97,8 +116,9 @@ class GetHomeFeedUseCase(
         }
 
         if (forceRefresh) {
+            // No borrar el snapshot persistente: se sigue mostrando mientras se reconstruye.
+            // El nuevo snapshot sustituye al anterior al terminar el feed.
             invalidateFeedCache()
-            runCatching { homeSectionCacheDao?.clearAll() }
         }
 
         // Caché local de portada en segundo plano. Antes se esperaba aquí (`await`) y la Home no
@@ -166,17 +186,57 @@ class GetHomeFeedUseCase(
         }
 
         // =========================================================================
-        // PASO 0: EMITIR CATÁLOGO LOCAL COMPLETO INMEDIATAMENTE (<50ms)
-        // El usuario ve de inmediato un inicio completo con 5-7 filas sin esperar a la red.
+        // PASO 0: RESTAURAR EL SNAPSHOT PERSISTENTE DEL HOME (< 100 ms)
+        // Es lo primero que se pinta. Si existe, el usuario ve filas reales incluso
+        // tras matar el proceso o reiniciar la TV, sin esperar a Room ni a la red.
         // =========================================================================
-        val localContinueWatching = runCatching { mediaRepository.getContinueWatchingLocal(20) }.getOrDefault(emptyList())
-        val localRecentlyPlayed = runCatching { mediaRepository.getRecentlyPlayedLocal(20) }.getOrDefault(emptyList())
-        val localLatest = runCatching { mediaRepository.getLatestLocal(prefs.jellyfinServerUrl, prefs.jellyfinUserId, 20) }.getOrDefault(emptyList())
-        val localTopMovies = mediaRepository.getTopMoviesLocal(30).filterPersonalizedForHeader(emptyList())
-        val localTopSeries = mediaRepository.getTopSeriesLocal(30).filterPersonalizedForHeader(emptyList())
-        val watchedGenres = runCatching { mediaRepository.getMostWatchedGenres() }.getOrDefault(emptyList())
-        val localRecommendedMovies = runCatching { mediaRepository.getRecommendedMovies(excludeIds = emptySet(), limit = 20, genres = watchedGenres) }.getOrDefault(emptyList())
-        val localNewReleases = runCatching { mediaRepository.getNewReleasesLocal(20) }.getOrDefault(emptyList())
+        if (!forceRefresh) {
+            val cachedSectionsRestored = restoreCachedSections(
+                prefs = prefs,
+                shownMediaIds = shownMediaIds,
+                sections = sections
+            )
+            if (cachedSectionsRestored) emitFeed(sections, true)
+        }
+
+        // =========================================================================
+        // PASO 1: CATÁLOGO LOCAL EN PARALELO
+        // Antes eran 8 consultas en serie (la primera emisión esperaba a la suma de todas).
+        // Ahora cada consulta corre en paralelo y la primera emisión llega antes.
+        // =========================================================================
+        var localContinueWatching: List<JellyfinMediaEntity> = emptyList()
+        var localRecentlyPlayed: List<JellyfinMediaEntity> = emptyList()
+        var localLatest: List<JellyfinMediaEntity> = emptyList()
+        var localTopMovies: List<JellyfinMediaEntity> = emptyList()
+        var localTopSeries: List<JellyfinMediaEntity> = emptyList()
+        var watchedGenres: List<String> = emptyList()
+        var localRecommendedMovies: List<JellyfinMediaEntity> = emptyList()
+        var localNewReleases: List<JellyfinMediaEntity> = emptyList()
+
+        coroutineScope {
+            val continueWatchingJob = async { runCatching { mediaRepository.getContinueWatchingLocal(20) }.getOrDefault(emptyList()) }
+            val recentlyPlayedJob = async { runCatching { mediaRepository.getRecentlyPlayedLocal(20) }.getOrDefault(emptyList()) }
+            val latestJob = async { runCatching { mediaRepository.getLatestLocal(prefs.jellyfinServerUrl, prefs.jellyfinUserId, 20) }.getOrDefault(emptyList()) }
+            val topMoviesJob = async { runCatching { mediaRepository.getTopMoviesLocal(30) }.getOrDefault(emptyList()) }
+            val topSeriesJob = async { runCatching { mediaRepository.getTopSeriesLocal(30) }.getOrDefault(emptyList()) }
+            val genresJob = async { runCatching { mediaRepository.getMostWatchedGenres() }.getOrDefault(emptyList()) }
+            val newReleasesJob = async { runCatching { mediaRepository.getNewReleasesLocal(20) }.getOrDefault(emptyList()) }
+            val recommendedJob = async {
+                val genres = genresJob.await()
+                runCatching {
+                    mediaRepository.getRecommendedMovies(excludeIds = emptySet(), limit = 20, genres = genres)
+                }.getOrDefault(emptyList())
+            }
+
+            localContinueWatching = continueWatchingJob.await()
+            localRecentlyPlayed = recentlyPlayedJob.await()
+            localLatest = latestJob.await()
+            localTopMovies = topMoviesJob.await().filterPersonalizedForHeader(emptyList())
+            localTopSeries = topSeriesJob.await().filterPersonalizedForHeader(emptyList())
+            watchedGenres = genresJob.await()
+            localRecommendedMovies = recommendedJob.await()
+            localNewReleases = newReleasesJob.await()
+        }
 
         if (localContinueWatching.isNotEmpty()) {
             updateOrAddSection(HomeSection(
@@ -232,20 +292,10 @@ class GetHomeFeedUseCase(
             }
         }
 
-        // Emisión inmediata local (<50ms)
-        if (sections.isNotEmpty()) emitFeed(sections, true)
-
-        // =========================================================================
-        // PASO 0.5: RESTAURAR SECCIONES CACHEADAS EN ROOM (< 30ms)
-        // Solo si NO es un refresco forzado (si es forzado se quiere renovar de red)
-        // =========================================================================
-        if (!forceRefresh) {
-            val cachedSectionsRestored = restoreCachedSections(
-                prefs = prefs,
-                shownMediaIds = shownMediaIds,
-                sections = sections
-            )
-            if (cachedSectionsRestored) emitFeed(sections, true)
+        // Emisión inmediata local: ya hay filas reales en pantalla.
+        if (sections.isNotEmpty()) {
+            emitFeed(sections, true)
+            persistSnapshot(prefs, sections)
         }
 
         // =========================================================================
@@ -355,17 +405,16 @@ class GetHomeFeedUseCase(
             // JOB 2: TOP 10 EN ESPAÑA HOY (TMDB TRENDING DAY CON MEDALLAS 1-10)
             // ---------------------------------------------------------------------
             launch {
-                // Top 10 SIEMPRE de "lo que YO tengo": se intenta primero el ranking diario de TMDB
-                // cruzado con la biblioteca y, lo que falte hasta 10, se completa con lo mejor del
-                // catálogo local (películas y series). Antes, si TMDB devolvía pocas coincidencias,
-                // la fila quedaba con 4 ítems o ni se mostraba; ahora el relleno local garantiza los
-                // 10 puestos y también cubre el caso en que TMDB tarde o falle.
+                // Top 10 SIEMPRE representa LO MÁS VISTO / TENDENCIA HOY (TMDB Trending Day):
+                // Se consulta la API de tendencias diarias en España de TMDB (películas y series)
+                // y se filtra únicamente contra los títulos que el usuario TIENE en su biblioteca.
+                // El orden se respeta estrictamente por su puesto de tendencia real (#1, #2, #3...).
                 val trendingMatched = mutableListOf<JellyfinMediaEntity>()
                 if (effectiveTmdbKey.isNotBlank()) {
                     runCatching {
-                        withTimeoutOrNull(8000L) {
+                        withTimeoutOrNull(10000L) {
                             val dailyTrending = mediaRepository
-                                .getTmdbTrendingDay(apiKey = effectiveTmdbKey, maxPages = 5)
+                                .getTmdbTrendingDay(apiKey = effectiveTmdbKey, maxPages = 10)
                                 .getOrDefault(emptyList())
                             if (dailyTrending.isNotEmpty()) {
                                 trendingMatched.addAll(
@@ -382,12 +431,19 @@ class GetHomeFeedUseCase(
                     }
                 }
 
-                val top10Pool = (trendingMatched + localTopMovies + localTopSeries)
+                val currentYear = java.time.Year.now().value
+                val validTrending = trendingMatched
                     .distinctBy { it.id }
-                    .filter { !it.isPlayed && it.playbackPositionTicks <= 0L }
-                    .filter { (it.communityRating ?: 0f) >= 6.5f }
-                if (top10Pool.size >= 10) {
-                    val top10Items = top10Pool.take(10).mapIndexed { idx, it ->
+                    .filter {
+                        val year = it.productionYear ?: 0
+                        !it.tmdbId.isNullOrBlank() &&
+                                year in 1950..currentYear &&
+                                !it.isPlayed &&
+                                it.playbackPositionTicks <= 0L
+                    }
+
+                if (validTrending.isNotEmpty()) {
+                    val top10Items = validTrending.take(10).mapIndexed { idx, it ->
                         it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TMDB_TRENDING).copy(rank = idx + 1)
                     }
                     val top10Section = HomeSection(
@@ -398,7 +454,7 @@ class GetHomeFeedUseCase(
                     )
                     postSection(
                         top10Section,
-                        cacheKey = "tmdb_trending_day",
+                        cacheKey = "tmdb_trending_day_pure",
                         itemIds = top10Items.map { it.id }
                     )
                 }
@@ -647,6 +703,10 @@ class GetHomeFeedUseCase(
         feedMutex.withLock {
             emitFeed(sections, true)
         }
+        // Snapshot final con todas las filas (locales + externas) para el próximo arranque.
+        if (sections.isNotEmpty()) {
+            persistSnapshot(prefs, sections)
+        }
 
         if (sections.isEmpty()) {
             send(emptyList())
@@ -835,56 +895,168 @@ class GetHomeFeedUseCase(
                     title = section.title,
                     itemIds = idsJson,
                     badge = section.badge,
-                    isRanked = section.isRanked
+                    isRanked = section.isRanked,
+                    payload = runCatching { MediaItemSnapshotCodec.encode(section.items) }.getOrDefault("")
                 )
             )
         }
     }
 
     /**
-     * Restaura secciones cacheadas desde Room (< 30ms).
-     * Reconstruye cada sección buscando los IDs en jellyfin_media mediante batch query.
+     * Guarda el snapshot completo (incluidas las filas locales) para pintar la Home al instante
+     * en el siguiente arranque, sin depender de la caché estática del proceso.
+     */
+    private suspend fun persistSnapshot(
+        prefs: UserPreferences,
+        sections: List<HomeSection>
+    ) {
+        val dao = homeSectionCacheDao ?: return
+        if (sections.isEmpty()) return
+        val version = "${prefs.jellyfinLastSync}|${runCatching { mediaRepository.getLocalCount() }.getOrDefault(0)}"
+        // El fichero es la vía rápida de arranque; Room queda como respaldo estructurado.
+        withContext(Dispatchers.IO) { snapshotFileStore?.write(sections) }
+        memorySnapshot = sections.toList()
+        memorySnapshotAt = System.currentTimeMillis()
+        runCatching {
+            dao.clearAll()
+            sections.forEachIndexed { index, section ->
+                val ids = section.items.map { it.id }.distinct()
+                if (ids.isEmpty()) return@forEachIndexed
+                dao.upsert(
+                    HomeSectionCacheEntity(
+                        sectionKey = "snapshot_${index}_${section.title.hashCode()}",
+                        title = section.title,
+                        itemIds = ids.joinToString(","),
+                        badge = section.badge,
+                        isRanked = section.isRanked,
+                        sortOrder = index,
+                        catalogVersion = version,
+                        payload = runCatching { MediaItemSnapshotCodec.encode(section.items) }.getOrDefault("")
+                    )
+                )
+            }
+        }
+    }
+
+    /** Lectura anticipada del snapshot para que el ViewModel pinte antes de arrancar el feed. */
+    suspend fun restoreSnapshot(prefs: UserPreferences): List<HomeSection> {
+        val sections = mutableListOf<HomeSection>()
+        restoreCachedSections(prefs, mutableSetOf(), sections, previewOnly = true)
+        return sections
+    }
+
+    /**
+     * Restaura secciones cacheadas desde Room (< 100ms).
+     * Reconstruye todas las secciones con una sola consulta batch a jellyfin_media.
      * Solo restaura secciones cuyo TTL stale no haya expirado (máx 48 horas).
      */
     private suspend fun restoreCachedSections(
         prefs: UserPreferences,
         shownMediaIds: MutableSet<String>,
-        sections: MutableList<HomeSection>
+        sections: MutableList<HomeSection>,
+        previewOnly: Boolean = false
     ): Boolean {
+        // Vía rápida: un único fichero, sin abrir Room ni consultar IDs aleatorios.
+        val fileSections = withContext(Dispatchers.IO) {
+            snapshotFileStore?.read(if (previewOnly) 4 else Int.MAX_VALUE).orEmpty()
+        }
+        if (fileSections.isNotEmpty()) {
+            fileSections.forEach { section ->
+                if (sections.none { it.title == section.title }) {
+                    sections.add(section)
+                    shownMediaIds.addAll(section.items.map { it.id })
+                }
+            }
+            if (!previewOnly) {
+                memorySnapshot = sections.toList()
+                memorySnapshotAt = System.currentTimeMillis()
+            }
+            return sections.isNotEmpty()
+        }
+
+        val memo = memorySnapshot
+        if (memo != null && System.currentTimeMillis() - memorySnapshotAt < 30_000L) {
+            memo.forEach { section ->
+                if (sections.none { it.title == section.title }) {
+                    sections.add(section)
+                    shownMediaIds.addAll(section.items.map { it.id })
+                }
+            }
+            return sections.isNotEmpty()
+        }
+
         val dao = homeSectionCacheDao ?: return false
         val cached = runCatching { dao.getAllSections() }.getOrDefault(emptyList())
         if (cached.isEmpty()) return false
 
-        var restored = false
+        val rawPayloadEntries = mutableListOf<Pair<HomeSectionCacheEntity, String>>()
+        val idFallbackEntries = mutableListOf<Pair<HomeSectionCacheEntity, List<String>>>()
         for (entry in cached) {
-            // Si supera el límite stale absoluto (48h), purgarlo
+            // Purgar claves antiguas de Top 10 para recalcular con el nuevo algoritmo
+            if (entry.sectionKey.startsWith("tmdb_trending_day")) {
+                runCatching { dao.delete(entry.sectionKey) }
+                continue
+            }
             if (entry.isExpired(HomeSectionCacheEntity.TTL_MAX_STALE)) {
                 runCatching { dao.delete(entry.sectionKey) }
                 continue
             }
-
-            // Verificar que la sección no esté ya presente (evitar duplicados con PASO 0)
             if (sections.any { it.title == entry.title }) continue
 
-            // Reconstruir items desde IDs cacheados (estrictamente deduplicados)
-            val ids: List<String> = entry.itemIds.split(",")
+            val ids = entry.itemIds.split(",")
                 .map { it.trim() }
                 .filter { it.isNotBlank() }
                 .distinct()
-            if (ids.isEmpty()) continue
+            if (entry.payload.isNotBlank()) {
+                rawPayloadEntries.add(entry to entry.payload)
+            } else if (ids.isNotEmpty()) {
+                idFallbackEntries.add(entry to ids)
+            }
+        }
+        // Decodificar todos los payloads en un único bloque (evita 15 saltos de contexto y
+        // aprovecha mejor el JIT en la TV).
+        val payloadEntries = withContext(Dispatchers.Default) {
+            rawPayloadEntries.mapNotNull { (entry, payload) ->
+                runCatching { entry to MediaItemSnapshotCodec.decode(payload) }
+                    .onFailure { android.util.Log.e("HomeVM", "codec fallo ${entry.title}", it) }
+                    .getOrNull()
+            }
+        }
+        if (payloadEntries.isEmpty() && idFallbackEntries.isEmpty()) return false
 
-            // Carga masiva en 1 sola consulta SQL
-            val idMap: Map<String, JellyfinMediaEntity> = runCatching {
-                mediaRepository.getItemsByIds(ids).associateBy { it.id }
+        // Solo las filas antiguas sin payload necesitan reconstruirse desde jellyfin_media.
+        val allIds = idFallbackEntries.flatMap { it.second }.distinct()
+        val idMap: Map<String, JellyfinMediaEntity> = if (allIds.isEmpty()) {
+            emptyMap()
+        } else {
+            runCatching {
+                mediaRepository.getItemsByIds(allIds).associateBy { it.id }
             }.getOrDefault(emptyMap())
+        }
 
-            // Preservar el orden original y garantizar unicidad
-            val entities: List<JellyfinMediaEntity> = ids.mapNotNull { idMap[it] }.distinctBy { it.id }
+        fun restoreSection(entry: HomeSectionCacheEntity, items: List<MediaItem>) {
+            val uniqueItems = items.distinctBy { it.id }
+            if (uniqueItems.isEmpty()) return
+            val isSnapshot = entry.sectionKey.startsWith("snapshot_")
+            if (entry.isRanked && uniqueItems.size < 10) return
+            if (!isSnapshot && !entry.isRanked && uniqueItems.size < 5) return
+            shownMediaIds.addAll(uniqueItems.map { it.id })
+            val restoredSection = HomeSection(
+                title = entry.title,
+                items = uniqueItems,
+                badge = entry.badge,
+                isRanked = entry.isRanked
+            )
+            val newPriority = sectionPriority(restoredSection.title)
+            val insertIdx = sections.indexOfFirst { sectionPriority(it.title) > newPriority }
+            if (insertIdx != -1) sections.add(insertIdx, restoredSection) else sections.add(restoredSection)
+        }
+
+        payloadEntries.forEach { (entry, items) -> restoreSection(entry, items) }
+
+        for ((entry, ids) in idFallbackEntries) {
+            val entities = ids.mapNotNull { idMap[it] }.distinctBy { it.id }
             if (entities.isEmpty()) continue
-            if (entry.isRanked && entities.size < 10) continue
-            if (!entry.isRanked && entities.size < 5) continue
-
-            // Determinar el MediaSource correcto según el tipo de sección
             val source = when {
                 entry.sectionKey.startsWith("platform_") -> MediaSource.TMDB_TRENDING
                 entry.sectionKey.startsWith("tmdb_trending") -> MediaSource.TMDB_TRENDING
@@ -892,10 +1064,15 @@ class GetHomeFeedUseCase(
                 entry.sectionKey == "trakt_recs" -> MediaSource.TRAKT_RECOMMENDATION
                 entry.sectionKey == "trakt_trending" -> MediaSource.TRAKT_RECOMMENDATION
                 entry.sectionKey == "trakt_watchlist" -> MediaSource.TRAKT_WATCHLIST
+                entry.title.startsWith("Populares en ") || entry.title.startsWith("Top 10") -> MediaSource.TMDB_TRENDING
+                entry.title.startsWith("Porque viste") -> MediaSource.TMDB_RECOMMENDATION
+                entry.title.startsWith("Trakt:") ||
+                    entry.title == "Tu Watchlist de Trakt.tv" ||
+                    entry.title == "Recomendado por la comunidad Trakt" ||
+                    entry.title == "Tendencias en Trakt.tv" -> MediaSource.TRAKT_RECOMMENDATION
                 else -> MediaSource.JELLYFIN
             }
-
-            val items: List<MediaItem> = if (entry.isRanked) {
+            val items = if (entry.isRanked) {
                 entities.mapIndexed { idx, entity ->
                     entity.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, source).copy(rank = idx + 1)
                 }
@@ -904,27 +1081,9 @@ class GetHomeFeedUseCase(
                     entity.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, source)
                 }
             }
-
-            val uniqueItems = items.distinctBy { it.id }
-            if (uniqueItems.isNotEmpty()) {
-                shownMediaIds.addAll(entities.map { it.id })
-                val restoredSection = HomeSection(
-                    title = entry.title,
-                    items = uniqueItems,
-                    badge = entry.badge,
-                    isRanked = entry.isRanked
-                )
-                val newPriority = sectionPriority(restoredSection.title)
-                val insertIdx = sections.indexOfFirst { sectionPriority(it.title) > newPriority }
-                if (insertIdx != -1) {
-                    sections.add(insertIdx, restoredSection)
-                } else {
-                    sections.add(restoredSection)
-                }
-                restored = true
-            }
+            restoreSection(entry, items)
         }
-        return restored
+        return sections.isNotEmpty()
     }
 
 

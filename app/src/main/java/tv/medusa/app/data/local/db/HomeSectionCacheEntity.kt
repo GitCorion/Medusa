@@ -26,7 +26,17 @@ data class HomeSectionCacheEntity(
     /** Si la sección muestra ranking numérico (Top 10) */
     val isRanked: Boolean = false,
     /** Timestamp Unix en ms de la última actualización */
-    val updatedAt: Long = System.currentTimeMillis()
+    val updatedAt: Long = System.currentTimeMillis(),
+    /** Orden de la sección dentro del snapshot del Home. */
+    val sortOrder: Int = 0,
+    /** Versión del catálogo con la que se generó el snapshot (lastSync + count). */
+    val catalogVersion: String = "",
+    /**
+     * JSON con los `MediaItem` ya construidos (título, URLs, nota, foco, etc.). Permite pintar
+     * la Home sin hacer una consulta aleatoria por cada ID en televisores con almacenamiento
+     * lento. Las filas antiguas sin payload siguen funcionando con [itemIds].
+     */
+    val payload: String = ""
 ) {
     companion object {
         /** Secciones de plataformas: válidas 24 horas (sobreviven reposo nocturno) */

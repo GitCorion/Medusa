@@ -64,6 +64,13 @@ class MediaAccessPolicy(
         return allowedMediaDao?.hasRestrictionsFlow() ?: flowOf(cachedHasRestrictions ?: (cachedAllowedIds != null))
     }
 
+    /** Invalida las cachés en memoria tras borrar el catálogo local. */
+    fun resetCaches() {
+        cachedAllowedIds = null
+        cachedAllowedUserId = null
+        cachedHasRestrictions = null
+    }
+
     /** Nº de IDs permitidos almacenados (0 si no hay tabla). */
     suspend fun allowedCount(): Int = allowedMediaDao?.count() ?: 0
 

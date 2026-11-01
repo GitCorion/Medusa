@@ -1,7 +1,9 @@
 package tv.medusa.app.domain.model
 
 import androidx.compose.runtime.Immutable
+import kotlinx.serialization.Serializable
 
+@Serializable
 enum class MediaSource {
     JELLYFIN,
     TRAKT_RECOMMENDATION,
@@ -11,6 +13,7 @@ enum class MediaSource {
 }
 
 @Immutable
+@Serializable
 data class MediaItem(
     val id: String, // Jellyfin ID for playback
     val title: String,

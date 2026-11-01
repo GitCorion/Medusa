@@ -32,6 +32,8 @@ class FakeJellyfinDao : JellyfinDao {
 
     override fun getAllItems(): Flow<List<JellyfinMediaEntity>> = flowOf(localDb)
 
+    override suspend fun getItemsMissingOverview(limit: Int): List<JellyfinMediaEntity> = emptyList()
+
     override suspend fun findByTmdbId(tmdbId: String): JellyfinMediaEntity? {
         return localDb.firstOrNull { it.tmdbId == tmdbId }
     }
@@ -177,6 +179,13 @@ class FakeJellyfinDao : JellyfinDao {
     override suspend fun getAllCatalog(): List<JellyfinMediaEntity> {
         return localDb.filter { it.type in listOf("Movie", "Series") }
     }
+
+    override suspend fun getCatalogForMatrixRestricted(): List<JellyfinMediaEntity> =
+        getCatalogForMatrix()
+
+    override suspend fun getSeasonalCandidates(
+        query: androidx.sqlite.db.SupportSQLiteQuery
+    ): List<JellyfinMediaEntity> = getAllCatalog()
 
     override suspend fun getCatalogForMatrix(): List<JellyfinMediaEntity> {
         // El motor de Medusa omite las columnas pesadas (overview, etc.); el fake las replica.

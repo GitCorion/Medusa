@@ -91,6 +91,46 @@ class AppDatabaseMigrationTest {
     }
 
     @Test
+    fun migrate17To20_addsHomeSnapshotAndSeasonalIndexes() {
+        helper.createDatabase(TEST_DB, 17).apply {
+            execSQL(
+                "INSERT INTO home_section_cache (sectionKey, title, itemIds, badge, isRanked, updatedAt) " +
+                    "VALUES ('snapshot_0', 'Continuar Viendo', 'm1,m2', NULL, 0, 1)"
+            )
+            close()
+        }
+
+        val db = helper.runMigrationsAndValidate(
+            TEST_DB,
+            21,
+            true,
+            AppDatabase.MIGRATION_17_18,
+            AppDatabase.MIGRATION_18_19,
+            AppDatabase.MIGRATION_19_20,
+            AppDatabase.MIGRATION_20_21
+        )
+
+        db.query("SELECT payload, sortOrder, catalogVersion FROM home_section_cache WHERE sectionKey = 'snapshot_0'").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals("", cursor.getString(0))
+            assertEquals(0, cursor.getInt(1))
+            assertEquals("", cursor.getString(2))
+        }
+
+        db.query("SELECT COUNT(*) FROM seasonal_items").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(0, cursor.getInt(0))
+        }
+        db.query("SELECT COUNT(*) FROM seasonal_index_meta").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(0, cursor.getInt(0))
+        }
+        db.query("SELECT name FROM sqlite_master WHERE name = 'jellyfin_media_genres_fts'").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+        }
+    }
+
+    @Test
     fun migrate15To16_addsLastPlayedTicksColumn() {
         helper.createDatabase(TEST_DB, 15).apply {
             execSQL(

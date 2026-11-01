@@ -125,10 +125,10 @@ class MediaSyncRepository(
             )
             .build()
 
-        // Unique work con KEEP: si ya hay un enriquecido encolado o en curso, no se duplica.
+        // Unique work con REPLACE: re-lanza el enriquecido con los criterios de parada y lotes optimizados.
         WorkManager.getInstance(context).enqueueUniqueWork(
             OverviewEnrichmentWorker.WORK_NAME,
-            ExistingWorkPolicy.KEEP,
+            ExistingWorkPolicy.REPLACE,
             request
         )
     }
@@ -580,10 +580,12 @@ class MediaSyncRepository(
                         } while (true)
                     }
 
-                    // La lista de IDs permitidos se siembra desde el catálogo local ya sincronizado
-                    // (equivale a la antigua reconciliación del servidor, pero sin descargar todos
-                    // los IDs antes de insertar). Así nunca se filtra por una lista parcial.
-                    accessPolicy.saveAllowedIds(currentUserId, jellyfinDao.getAllIds().toSet())
+                    // La lista de IDs permitidos se siembra desde el catálogo local ya sincronizado.
+                    // Solo hace falta reescribirla si el delta trajo novedades: un delta vacío
+                    // reemplazaba 33k filas y un fichero de 1,1 MB en cada arranque.
+                    if (deltaCount > 0) {
+                        accessPolicy.saveAllowedIds(currentUserId, jellyfinDao.getAllIds().toSet())
+                    }
 
                     val nowTimestamp = Instant.now().truncatedTo(ChronoUnit.SECONDS).toString()
                     userPreferencesRepository?.updateJellyfinLastSync(nowTimestamp)

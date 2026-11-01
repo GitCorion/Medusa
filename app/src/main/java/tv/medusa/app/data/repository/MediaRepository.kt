@@ -1,7 +1,10 @@
 package tv.medusa.app.data.repository
 
 import android.content.Context
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import tv.medusa.app.data.local.UserPreferencesRepository
+import tv.medusa.app.data.local.db.AppDatabase
 import tv.medusa.app.data.local.db.AllowedMediaDao
 import tv.medusa.app.data.local.db.JellyfinDao
 import tv.medusa.app.data.local.db.JellyfinMediaEntity
@@ -45,13 +48,14 @@ class MediaRepository(
     private val jellyfinDao: JellyfinDao,
     userPreferencesRepository: UserPreferencesRepository? = null,
     tmdbVoteCacheDao: TmdbVoteCacheDao? = null,
-    allowedMediaDao: AllowedMediaDao? = null,
-    context: Context? = null
+    private val allowedMediaDao: AllowedMediaDao? = null,
+    private val appContext: Context? = null,
+    private val appDatabase: AppDatabase? = null
 ) {
     private val accessPolicy = MediaAccessPolicy(userPreferencesRepository, allowedMediaDao)
     private val local = LocalMediaRepository(jellyfinDao, accessPolicy)
-    private val jellyfinRemote = JellyfinMediaRemoteRepository(jellyfinDao, accessPolicy, local, context)
-    private val sync = MediaSyncRepository(jellyfinDao, userPreferencesRepository, tmdbVoteCacheDao, accessPolicy, context)
+    private val jellyfinRemote = JellyfinMediaRemoteRepository(jellyfinDao, accessPolicy, local, appContext)
+    private val sync = MediaSyncRepository(jellyfinDao, userPreferencesRepository, tmdbVoteCacheDao, accessPolicy, appContext)
     private val tmdb = TmdbRepository(tmdbVoteCacheDao)
     private val trakt = TraktRepository()
 
@@ -64,6 +68,35 @@ class MediaRepository(
 
         fun checkActiveWorkerSync(context: Context, localCount: Int = 0) =
             MediaSyncRepository.checkActiveWorkerSync(context, localCount)
+    }
+
+    /**
+     * Borra el catálogo local y todas sus cachés cuando el usuario cambia de servidor o de
+     * usuario Jellyfin. Sin esto, los títulos, favoritos, progreso y especiales del servidor
+     * anterior se mezclaban con los del nuevo.
+     */
+    suspend fun clearLocalCatalog() {
+        withContext(Dispatchers.IO) {
+            jellyfinDao.clearAll()
+            allowedMediaDao?.clearAll()
+            appDatabase?.homeSectionCacheDao()?.clearAll()
+            appDatabase?.seasonalDao()?.clearAll()
+            accessPolicy.resetCaches()
+
+            appContext?.filesDir?.listFiles()?.forEach { file ->
+                val name = file.name
+                if (name.startsWith("allowed_ids_") ||
+                    name == "home_snapshot_v1.dat" ||
+                    name == "home_snapshot_v1.dat.tmp"
+                ) {
+                    file.delete()
+                }
+            }
+            // Las imágenes del servidor anterior no deben ocupar espacio ni mostrarse por error.
+            appContext?.cacheDir?.resolve("image_cache")?.deleteRecursively()
+            appContext?.let { coil.Coil.imageLoader(it).memoryCache?.clear() }
+        }
+        MediaCaches.invalidateServerCaches()
     }
 
     // =========================================================================
@@ -288,6 +321,14 @@ class MediaRepository(
     suspend fun getLocalSeries(): List<JellyfinMediaEntity> = local.getLocalSeries()
 
     suspend fun getAllCatalog(): List<JellyfinMediaEntity> = local.getAllCatalog()
+
+    /** Proyección ligera para índices de eventos; no usar para pintar filas completas. */
+    suspend fun getCatalogLight(): List<JellyfinMediaEntity> = local.getCatalogLight()
+
+    suspend fun hasRealRestrictions(): Boolean = local.hasRealRestrictions()
+
+    suspend fun getSeasonalCandidates(query: androidx.sqlite.db.SupportSQLiteQuery): List<JellyfinMediaEntity> =
+        local.getSeasonalCandidates(query)
 
     suspend fun getItemById(id: String): JellyfinMediaEntity? = local.getItemById(id)
 

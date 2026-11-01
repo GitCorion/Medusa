@@ -1,0 +1,650 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 21,
+    "identityHash": "631b423d896f4b1d6c3e136ed30f25f3",
+    "entities": [
+      {
+        "tableName": "jellyfin_media",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `title` TEXT NOT NULL, `originalTitle` TEXT, `type` TEXT NOT NULL, `tmdbId` TEXT, `imdbId` TEXT, `tvdbId` TEXT, `overview` TEXT, `primaryImageTag` TEXT, `backdropImageTag` TEXT, `communityRating` REAL, `productionYear` INTEGER, `genres` TEXT, `officialRating` TEXT, `tags` TEXT, `isPlayed` INTEGER NOT NULL, `playbackPositionTicks` INTEGER NOT NULL, `isFavorite` INTEGER NOT NULL, `seriesId` TEXT, `seriesName` TEXT, `seriesPrimaryImageTag` TEXT, `seasonNumber` INTEGER, `episodeNumber` INTEGER, `totalItemCount` INTEGER, `unplayedItemCount` INTEGER, `lastPlayedTicks` INTEGER NOT NULL, `premiereDateMs` INTEGER, `titleLower` TEXT NOT NULL, `originalTitleLower` TEXT NOT NULL, `seriesNameLower` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "originalTitle",
+            "columnName": "originalTitle",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tmdbId",
+            "columnName": "tmdbId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "imdbId",
+            "columnName": "imdbId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "tvdbId",
+            "columnName": "tvdbId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "overview",
+            "columnName": "overview",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "primaryImageTag",
+            "columnName": "primaryImageTag",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "backdropImageTag",
+            "columnName": "backdropImageTag",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "communityRating",
+            "columnName": "communityRating",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "productionYear",
+            "columnName": "productionYear",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "genres",
+            "columnName": "genres",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "officialRating",
+            "columnName": "officialRating",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "tags",
+            "columnName": "tags",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "isPlayed",
+            "columnName": "isPlayed",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "playbackPositionTicks",
+            "columnName": "playbackPositionTicks",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isFavorite",
+            "columnName": "isFavorite",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "seriesId",
+            "columnName": "seriesId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "seriesName",
+            "columnName": "seriesName",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "seriesPrimaryImageTag",
+            "columnName": "seriesPrimaryImageTag",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "seasonNumber",
+            "columnName": "seasonNumber",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "episodeNumber",
+            "columnName": "episodeNumber",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "totalItemCount",
+            "columnName": "totalItemCount",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "unplayedItemCount",
+            "columnName": "unplayedItemCount",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "lastPlayedTicks",
+            "columnName": "lastPlayedTicks",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "premiereDateMs",
+            "columnName": "premiereDateMs",
+            "affinity": "INTEGER"
+          },
+          {
+            "fieldPath": "titleLower",
+            "columnName": "titleLower",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "originalTitleLower",
+            "columnName": "originalTitleLower",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "seriesNameLower",
+            "columnName": "seriesNameLower",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_jellyfin_media_tmdbId",
+            "unique": false,
+            "columnNames": [
+              "tmdbId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_jellyfin_media_tmdbId` ON `${TABLE_NAME}` (`tmdbId`)"
+          },
+          {
+            "name": "index_jellyfin_media_imdbId",
+            "unique": false,
+            "columnNames": [
+              "imdbId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_jellyfin_media_imdbId` ON `${TABLE_NAME}` (`imdbId`)"
+          },
+          {
+            "name": "index_jellyfin_media_title",
+            "unique": false,
+            "columnNames": [
+              "title"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_jellyfin_media_title` ON `${TABLE_NAME}` (`title`)"
+          },
+          {
+            "name": "index_jellyfin_media_titleLower",
+            "unique": false,
+            "columnNames": [
+              "titleLower"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_jellyfin_media_titleLower` ON `${TABLE_NAME}` (`titleLower`)"
+          },
+          {
+            "name": "index_jellyfin_media_originalTitleLower",
+            "unique": false,
+            "columnNames": [
+              "originalTitleLower"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_jellyfin_media_originalTitleLower` ON `${TABLE_NAME}` (`originalTitleLower`)"
+          },
+          {
+            "name": "index_jellyfin_media_seriesNameLower",
+            "unique": false,
+            "columnNames": [
+              "seriesNameLower"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_jellyfin_media_seriesNameLower` ON `${TABLE_NAME}` (`seriesNameLower`)"
+          },
+          {
+            "name": "index_jellyfin_media_type",
+            "unique": false,
+            "columnNames": [
+              "type"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_jellyfin_media_type` ON `${TABLE_NAME}` (`type`)"
+          },
+          {
+            "name": "index_jellyfin_media_isFavorite",
+            "unique": false,
+            "columnNames": [
+              "isFavorite"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_jellyfin_media_isFavorite` ON `${TABLE_NAME}` (`isFavorite`)"
+          },
+          {
+            "name": "index_jellyfin_media_type_communityRating",
+            "unique": false,
+            "columnNames": [
+              "type",
+              "communityRating"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_jellyfin_media_type_communityRating` ON `${TABLE_NAME}` (`type`, `communityRating`)"
+          },
+          {
+            "name": "index_jellyfin_media_type_isPlayed_communityRating",
+            "unique": false,
+            "columnNames": [
+              "type",
+              "isPlayed",
+              "communityRating"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_jellyfin_media_type_isPlayed_communityRating` ON `${TABLE_NAME}` (`type`, `isPlayed`, `communityRating`)"
+          },
+          {
+            "name": "index_jellyfin_media_isPlayed_playbackPositionTicks",
+            "unique": false,
+            "columnNames": [
+              "isPlayed",
+              "playbackPositionTicks"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_jellyfin_media_isPlayed_playbackPositionTicks` ON `${TABLE_NAME}` (`isPlayed`, `playbackPositionTicks`)"
+          },
+          {
+            "name": "index_jellyfin_media_seriesId_type",
+            "unique": false,
+            "columnNames": [
+              "seriesId",
+              "type"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_jellyfin_media_seriesId_type` ON `${TABLE_NAME}` (`seriesId`, `type`)"
+          },
+          {
+            "name": "index_jellyfin_media_playbackPositionTicks",
+            "unique": false,
+            "columnNames": [
+              "playbackPositionTicks"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_jellyfin_media_playbackPositionTicks` ON `${TABLE_NAME}` (`playbackPositionTicks`)"
+          },
+          {
+            "name": "index_jellyfin_media_lastPlayedTicks",
+            "unique": false,
+            "columnNames": [
+              "lastPlayedTicks"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_jellyfin_media_lastPlayedTicks` ON `${TABLE_NAME}` (`lastPlayedTicks`)"
+          },
+          {
+            "name": "index_jellyfin_media_productionYear",
+            "unique": false,
+            "columnNames": [
+              "productionYear"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_jellyfin_media_productionYear` ON `${TABLE_NAME}` (`productionYear`)"
+          },
+          {
+            "name": "index_jellyfin_media_premiereDateMs",
+            "unique": false,
+            "columnNames": [
+              "premiereDateMs"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_jellyfin_media_premiereDateMs` ON `${TABLE_NAME}` (`premiereDateMs`)"
+          }
+        ]
+      },
+      {
+        "tableName": "tmdb_vote_cache",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `tmdbId` INTEGER NOT NULL, `isTv` INTEGER NOT NULL, `voteAverage` REAL NOT NULL, `voteCount` INTEGER NOT NULL, `cachedAt` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tmdbId",
+            "columnName": "tmdbId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isTv",
+            "columnName": "isTv",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "voteAverage",
+            "columnName": "voteAverage",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "voteCount",
+            "columnName": "voteCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cachedAt",
+            "columnName": "cachedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_tmdb_vote_cache_tmdbId_isTv",
+            "unique": true,
+            "columnNames": [
+              "tmdbId",
+              "isTv"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_tmdb_vote_cache_tmdbId_isTv` ON `${TABLE_NAME}` (`tmdbId`, `isTv`)"
+          }
+        ]
+      },
+      {
+        "tableName": "home_section_cache",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`sectionKey` TEXT NOT NULL, `title` TEXT NOT NULL, `itemIds` TEXT NOT NULL, `badge` TEXT, `isRanked` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `sortOrder` INTEGER NOT NULL, `catalogVersion` TEXT NOT NULL, `payload` TEXT NOT NULL, PRIMARY KEY(`sectionKey`))",
+        "fields": [
+          {
+            "fieldPath": "sectionKey",
+            "columnName": "sectionKey",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "itemIds",
+            "columnName": "itemIds",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "badge",
+            "columnName": "badge",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "isRanked",
+            "columnName": "isRanked",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sortOrder",
+            "columnName": "sortOrder",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "catalogVersion",
+            "columnName": "catalogVersion",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "payload",
+            "columnName": "payload",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "sectionKey"
+          ]
+        }
+      },
+      {
+        "tableName": "jellyfin_media_fts",
+        "createSql": "CREATE VIRTUAL TABLE IF NOT EXISTS `${TABLE_NAME}` USING FTS4(`title` TEXT NOT NULL, `originalTitle` TEXT, content=`jellyfin_media`)",
+        "fields": [
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "originalTitle",
+            "columnName": "originalTitle",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": []
+        },
+        "ftsVersion": "FTS4",
+        "ftsOptions": {
+          "tokenizer": "simple",
+          "tokenizerArgs": [],
+          "contentTable": "jellyfin_media",
+          "languageIdColumnName": "",
+          "matchInfo": "FTS4",
+          "notIndexedColumns": [],
+          "prefixSizes": [],
+          "preferredOrder": "ASC"
+        },
+        "contentSyncTriggers": [
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_jellyfin_media_fts_BEFORE_UPDATE BEFORE UPDATE ON `jellyfin_media` BEGIN DELETE FROM `jellyfin_media_fts` WHERE `docid`=OLD.`rowid`; END",
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_jellyfin_media_fts_BEFORE_DELETE BEFORE DELETE ON `jellyfin_media` BEGIN DELETE FROM `jellyfin_media_fts` WHERE `docid`=OLD.`rowid`; END",
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_jellyfin_media_fts_AFTER_UPDATE AFTER UPDATE ON `jellyfin_media` BEGIN INSERT INTO `jellyfin_media_fts`(`docid`, `title`, `originalTitle`) VALUES (NEW.`rowid`, NEW.`title`, NEW.`originalTitle`); END",
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_jellyfin_media_fts_AFTER_INSERT AFTER INSERT ON `jellyfin_media` BEGIN INSERT INTO `jellyfin_media_fts`(`docid`, `title`, `originalTitle`) VALUES (NEW.`rowid`, NEW.`title`, NEW.`originalTitle`); END"
+        ]
+      },
+      {
+        "tableName": "jellyfin_media_genres_fts",
+        "createSql": "CREATE VIRTUAL TABLE IF NOT EXISTS `${TABLE_NAME}` USING FTS4(`genres` TEXT, content=`jellyfin_media`)",
+        "fields": [
+          {
+            "fieldPath": "genres",
+            "columnName": "genres",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": []
+        },
+        "ftsVersion": "FTS4",
+        "ftsOptions": {
+          "tokenizer": "simple",
+          "tokenizerArgs": [],
+          "contentTable": "jellyfin_media",
+          "languageIdColumnName": "",
+          "matchInfo": "FTS4",
+          "notIndexedColumns": [],
+          "prefixSizes": [],
+          "preferredOrder": "ASC"
+        },
+        "contentSyncTriggers": [
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_jellyfin_media_genres_fts_BEFORE_UPDATE BEFORE UPDATE ON `jellyfin_media` BEGIN DELETE FROM `jellyfin_media_genres_fts` WHERE `docid`=OLD.`rowid`; END",
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_jellyfin_media_genres_fts_BEFORE_DELETE BEFORE DELETE ON `jellyfin_media` BEGIN DELETE FROM `jellyfin_media_genres_fts` WHERE `docid`=OLD.`rowid`; END",
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_jellyfin_media_genres_fts_AFTER_UPDATE AFTER UPDATE ON `jellyfin_media` BEGIN INSERT INTO `jellyfin_media_genres_fts`(`docid`, `genres`) VALUES (NEW.`rowid`, NEW.`genres`); END",
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_jellyfin_media_genres_fts_AFTER_INSERT AFTER INSERT ON `jellyfin_media` BEGIN INSERT INTO `jellyfin_media_genres_fts`(`docid`, `genres`) VALUES (NEW.`rowid`, NEW.`genres`); END"
+        ]
+      },
+      {
+        "tableName": "allowed_media_ids",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`mediaId` TEXT NOT NULL, PRIMARY KEY(`mediaId`))",
+        "fields": [
+          {
+            "fieldPath": "mediaId",
+            "columnName": "mediaId",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "mediaId"
+          ]
+        }
+      },
+      {
+        "tableName": "seasonal_items",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`eventId` TEXT NOT NULL, `mediaId` TEXT NOT NULL, `score` REAL NOT NULL, `editorial` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`eventId`, `mediaId`))",
+        "fields": [
+          {
+            "fieldPath": "eventId",
+            "columnName": "eventId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "mediaId",
+            "columnName": "mediaId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "score",
+            "columnName": "score",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "editorial",
+            "columnName": "editorial",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "eventId",
+            "mediaId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_seasonal_items_eventId_score",
+            "unique": false,
+            "columnNames": [
+              "eventId",
+              "score"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_seasonal_items_eventId_score` ON `${TABLE_NAME}` (`eventId`, `score`)"
+          },
+          {
+            "name": "index_seasonal_items_eventId_editorial",
+            "unique": false,
+            "columnNames": [
+              "eventId",
+              "editorial"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_seasonal_items_eventId_editorial` ON `${TABLE_NAME}` (`eventId`, `editorial`)"
+          }
+        ]
+      },
+      {
+        "tableName": "seasonal_index_meta",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`eventId` TEXT NOT NULL, `catalogVersion` TEXT NOT NULL, `itemCount` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, PRIMARY KEY(`eventId`))",
+        "fields": [
+          {
+            "fieldPath": "eventId",
+            "columnName": "eventId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "catalogVersion",
+            "columnName": "catalogVersion",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "itemCount",
+            "columnName": "itemCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "eventId"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '631b423d896f4b1d6c3e136ed30f25f3')"
+    ]
+  }
+}

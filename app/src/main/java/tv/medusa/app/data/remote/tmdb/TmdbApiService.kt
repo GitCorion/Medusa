@@ -21,6 +21,20 @@ interface TmdbApiService {
         @Query("language") language: String = ApiConfig.TMDB_LANGUAGE
     ): TmdbTrendingResponse
 
+    @GET("trending/movie/day")
+    suspend fun getTrendingMoviesDay(
+        @Query("api_key") apiKey: String,
+        @Query("page") page: Int = 1,
+        @Query("language") language: String = "es-ES"
+    ): TmdbTrendingResponse
+
+    @GET("trending/tv/day")
+    suspend fun getTrendingTvDay(
+        @Query("api_key") apiKey: String,
+        @Query("page") page: Int = 1,
+        @Query("language") language: String = "es-ES"
+    ): TmdbTrendingResponse
+
     @GET("movie/{movie_id}/recommendations")
     suspend fun getMovieRecommendations(
         @Path("movie_id") movieId: Long,

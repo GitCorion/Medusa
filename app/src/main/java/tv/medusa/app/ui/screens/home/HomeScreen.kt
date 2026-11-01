@@ -130,6 +130,7 @@ fun HomeScreen(
     val context = LocalContext.current
     var backPressedOnce by remember { mutableStateOf(false) }
 
+    val exitHintStr = stringResource(R.string.home_exit_hint)
     BackHandler(enabled = true) {
         if (listState.firstVisibleItemIndex > 0) {
             coroutineScope.launch {
@@ -137,7 +138,7 @@ fun HomeScreen(
             }
         } else if (!backPressedOnce) {
             backPressedOnce = true
-            Toast.makeText(context, context.getString(R.string.home_exit_hint), Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, exitHintStr, Toast.LENGTH_SHORT).show()
             coroutineScope.launch {
                 delay(2000L)
                 backPressedOnce = false
@@ -177,13 +178,27 @@ fun HomeScreen(
         featuredBillboardItems.firstOrNull()?.backdropUrl
     }
 
+    val focusedItem by viewModel.focusedItem.collectAsStateWithLifecycle()
+    val isBackdropEnabled by viewModel.isBackdropEnabled.collectAsStateWithLifecycle()
+
     Box(modifier = Modifier.fillMaxSize()) {
         // Global ambient backdrop crossfade (aislado en su propio composable)
         HomeGlobalBackdrop(
-            focusedItemBackdrop = currentSuccess?.focusedItem?.backdropUrl,
+            focusedItemBackdrop = focusedItem?.backdropUrl,
             defaultBackdrop = defaultHeroBackdrop,
-            backdropState = backdropState
+            backdropState = backdropState,
+            isBackdropEnabled = isBackdropEnabled
         )
+
+        val topBarGradient = remember {
+            Brush.verticalGradient(
+                colors = listOf(
+                    Color(0xEE07070B),
+                    Color(0xAA07070B),
+                    Color(0x0007070B)
+                )
+            )
+        }
 
         Column(
             modifier = Modifier
@@ -193,15 +208,7 @@ fun HomeScreen(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color(0xEE07070B),
-                            Color(0xAA07070B),
-                            Color(0x0007070B)
-                        )
-                    )
-                )
+                .background(topBarGradient)
         ) {
             TvTopBar(
                 selectedTab = TvNavTab.HOME,
@@ -439,7 +446,7 @@ fun HomeScreen(
                                 }
                         ) {
                             HeroBanner(
-                                item = state.focusedItem,
+                                item = focusedItem ?: state.focusedItem,
                                 featuredItems = featuredBillboardItems,
                                 onPlayClick = { item -> onPlayMedia(item.id) },
                                 onDetailClick = { item -> onDetailMedia(item.id) },
@@ -543,43 +550,42 @@ private class HomeBackdropState {
 private fun HomeGlobalBackdrop(
     focusedItemBackdrop: String?,
     defaultBackdrop: String?,
-    backdropState: HomeBackdropState
+    backdropState: HomeBackdropState,
+    isBackdropEnabled: Boolean = true
 ) {
+    if (!isBackdropEnabled) return
+
     // La lectura del estado ocurre aquí dentro, así solo este composable se recompone.
     val focusedBackdrop = focusedItemBackdrop
         ?: backdropState.carouselBackdrop
         ?: defaultBackdrop
 
-    Crossfade(
-        targetState = focusedBackdrop,
-        animationSpec = tween(durationMillis = 400),
-        label = "homeGlobalBackdrop"
-    ) { backdropUrl ->
-        if (!backdropUrl.isNullOrBlank()) {
-            Box(modifier = Modifier.fillMaxSize()) {
-                AsyncImage(
-                    model = backdropUrl,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    alignment = Alignment.TopCenter,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .alpha(0.32f)
-                )
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(
-                                    Color(0xD007070B),
-                                    Color(0xE007070B),
-                                    Color(0xFF07070B)
-                                )
-                            )
-                        )
-                )
-            }
+    val backdropBrush = remember {
+        Brush.verticalGradient(
+            listOf(
+                Color(0xD007070B),
+                Color(0xE007070B),
+                Color(0xFF07070B)
+            )
+        )
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        if (!focusedBackdrop.isNullOrBlank()) {
+            AsyncImage(
+                model = focusedBackdrop,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                alignment = Alignment.TopCenter,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .alpha(0.32f)
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(backdropBrush)
+            )
         }
     }
 }

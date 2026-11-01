@@ -88,7 +88,13 @@ fun TvIntegratedKeyboard(
 
     val activeChars = remember(validNextChars, hasNarrowing) {
         if (hasNarrowing) {
-            validNextChars.filter { it in allChars }.toSet()
+            buildSet {
+                for (char in validNextChars) {
+                    if (char in allChars) add(char)
+                    // La Ñ se normaliza a N para la búsqueda, pero debe seguir siendo pulsable.
+                    if (char == 'N') add('Ñ')
+                }
+            }
         } else {
             allChars.toSet()
         }
@@ -159,10 +165,11 @@ fun TvIntegratedKeyboard(
         for (row in keyboardRows) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(5.dp, Alignment.CenterHorizontally)
+                horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally)
             ) {
                 for (char in row) {
-                    val isEnabled = !hasNarrowing || (char in validNextChars)
+                    val predictiveChar = if (char == 'Ñ') 'N' else char
+                    val isEnabled = !hasNarrowing || (predictiveChar in validNextChars)
                     val isInitialTarget = char == 'A' && initialFocusRequester != null
                     val requester = keyFocusRequesters[char]
 
@@ -208,7 +215,7 @@ fun TvIntegratedKeyboard(
                         onClick = { onKeyClick(char) },
                         onFocused = { currentFocusedChar = char },
                         modifier = Modifier
-                            .size(width = 46.dp, height = 36.dp)
+                            .size(width = 40.dp, height = 36.dp)
                             .then(if (requester != null) Modifier.focusRequester(requester) else Modifier)
                             .then(if (isInitialTarget) Modifier.focusRequester(initialFocusRequester) else Modifier)
                     )
@@ -440,7 +447,7 @@ private fun TvKeyButton(
             .alpha(if (isEnabled) 1f else 0.12f)
     ) {
         Box(
-            modifier = Modifier.size(width = 46.dp, height = 36.dp),
+            modifier = Modifier.size(width = 40.dp, height = 36.dp),
             contentAlignment = Alignment.Center
         ) {
             Text(

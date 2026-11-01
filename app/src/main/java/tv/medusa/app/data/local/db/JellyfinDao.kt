@@ -4,6 +4,8 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.RawQuery
+import androidx.sqlite.db.SupportSQLiteQuery
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -166,6 +168,34 @@ interface JellyfinDao {
         """
     )
     suspend fun getCatalogForMatrix(): List<JellyfinMediaEntity>
+
+    /**
+     * Misma proyección ligera que [getCatalogForMatrix], pero limitada a los IDs permitidos.
+     */
+    @Query(
+        """
+        SELECT id, title, NULL AS originalTitle, type,
+               NULL AS tmdbId, NULL AS imdbId, NULL AS tvdbId,
+               NULL AS overview, primaryImageTag, backdropImageTag,
+               communityRating, productionYear, genres,
+               NULL AS officialRating, tags, isPlayed, playbackPositionTicks,
+               isFavorite, seriesId, seriesName, seriesPrimaryImageTag,
+               seasonNumber, episodeNumber, totalItemCount, unplayedItemCount,
+               0 AS lastPlayedTicks,
+               '' AS titleLower, '' AS originalTitleLower, '' AS seriesNameLower
+        FROM jellyfin_media
+        WHERE type IN ('Movie', 'Series')
+          AND id IN (SELECT mediaId FROM allowed_media_ids)
+        """
+    )
+    suspend fun getCatalogForMatrixRestricted(): List<JellyfinMediaEntity>
+
+    /**
+     * Candidatos de un evento estacional, filtrados **en SQLite** por género/título. Devuelve
+     * solo la proyección ligera (unas 3.500 filas para Halloween), no las 32.000 del catálogo.
+     */
+    @RawQuery
+    suspend fun getSeasonalCandidates(query: SupportSQLiteQuery): List<JellyfinMediaEntity>
 
     /**
      * "Continuar viendo" local: lo que está a medias (`playbackPositionTicks > 0`) **más** los
@@ -375,13 +405,16 @@ interface JellyfinDao {
     @Query("SELECT id FROM jellyfin_media WHERE overview IS NULL OR overview = '' LIMIT :limit")
     suspend fun getIdsMissingOverview(limit: Int = 50): List<String>
 
-    @Query("UPDATE jellyfin_media SET overview = :overview WHERE id = :id AND (overview IS NULL OR overview = '')")
+    @Query("SELECT * FROM jellyfin_media WHERE (overview IS NULL OR overview = '') LIMIT :limit")
+    suspend fun getItemsMissingOverview(limit: Int = 50): List<JellyfinMediaEntity>
+
+    @Query("UPDATE jellyfin_media SET overview = :overview WHERE id = :id")
     suspend fun updateOverview(id: String, overview: String)
 
-    @Query("SELECT * FROM jellyfin_media WHERE (primaryImageTag IS NULL OR primaryImageTag = '') AND tmdbId IS NOT NULL AND tmdbId != '' LIMIT :limit")
+    @Query("SELECT * FROM jellyfin_media WHERE (primaryImageTag IS NULL OR primaryImageTag = '') LIMIT :limit")
     suspend fun getItemsMissingPoster(limit: Int = 50): List<JellyfinMediaEntity>
 
-    @Query("UPDATE jellyfin_media SET primaryImageTag = :posterTag WHERE id = :id AND (primaryImageTag IS NULL OR primaryImageTag = '')")
+    @Query("UPDATE jellyfin_media SET primaryImageTag = :posterTag WHERE id = :id")
     suspend fun updatePrimaryImageTag(id: String, posterTag: String)
 }
 

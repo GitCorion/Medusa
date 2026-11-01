@@ -69,36 +69,103 @@ class OverviewEnrichmentWorker @AssistedInject constructor(
             return Result.success()
         }
 
+        Log.i("OverviewEnrichmentWorker", "OverviewEnrichmentWorker STARTING for serverUrl=$serverUrl userId=$userId")
+
         return try {
             enrich(serverUrl = serverUrl, userId = userId, token = token, tmdbApiKey = prefs.tmdbApiKey)
+            Log.i("OverviewEnrichmentWorker", "OverviewEnrichmentWorker FINISHED successfully.")
             Result.success()
         } catch (e: Exception) {
-            // Best-effort: no se reintenta (equivalente al comportamiento previo en memoria).
-            Log.w("OverviewEnrichmentWorker", "Enriquecido interrumpido: ${e.message}")
+            Log.w("OverviewEnrichmentWorker", "Enriquecido interrumpido: ${e.message}", e)
             Result.success()
         }
     }
 
     private suspend fun enrich(serverUrl: String, userId: String, token: String, tmdbApiKey: String) {
-        val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
-        val authHeader = buildJellyfinAuthHeader(token = token)
+        val tmdbApi = NetworkClientFactory.createService(ApiConfig.TMDB_BASE_URL, TmdbApiService::class.java)
+        val tmdbKey = tmdbApiKey.takeIf { it.isNotBlank() } ?: DEFAULT_TMDB_API_KEY
 
-        // Overviews: Jellyfin (LAN). Se piden olas de batchSize*concurrency ids y se lanzan varios
-        // lotes en paralelo (antes: secuencial con delay(1200ms) fijo entre lotes).
-        //
-        // Con la app abierta se va más despacio (menos peticiones en paralelo y más pausa entre olas):
-        // el enriquecido compite con las consultas que el usuario está esperando y el servidor doméstico
-        // suele ir justo. En segundo plano recupera el ritmo alto.
-        val overviewBatchSize = 40
-        val processed = AtomicInteger(0)
-        var processedCount = 0
-        while (processedCount < 10000) {
+        // FASE 1: Completar pósteres faltantes vía TMDB (Ultra-rápido)
+        var totalPostersEnriched = 0
+        while (totalPostersEnriched < 5000) {
             if (AppForeground.isPlaybackActive) break
             val yielding = AppForeground.isVisible
-            val concurrency = if (yielding) CONCURRENCY_FOREGROUND else CONCURRENCY_BACKGROUND
-            val missingIds = jellyfinDao.getIdsMissingOverview(limit = overviewBatchSize * concurrency)
-            if (missingIds.isEmpty()) break
+            val tmdbConcurrency = if (yielding) 4 else 8
+            val missingPosters = jellyfinDao.getItemsMissingPoster(limit = 40)
+            if (missingPosters.isEmpty()) break
 
+            Log.i("OverviewEnrichmentWorker", "FASE 1 (Pósteres TMDB): Procesando lote de ${missingPosters.size} ítems sin póster (Total: $totalPostersEnriched)")
+
+            var batchUpdated = 0
+            missingPosters.forEachBounded(tmdbConcurrency) { media ->
+                val tmdbLong = media.tmdbId?.toLongOrNull()
+                val posterPath: String? = if (tmdbLong != null && tmdbLong > 0) {
+                    val isTv = media.type.equals("Series", ignoreCase = true)
+                    runCatching {
+                        if (isTv) {
+                            tmdbApi.getTvDetails(seriesId = tmdbLong, apiKey = tmdbKey).posterPath
+                        } else {
+                            tmdbApi.getMovieDetails(movieId = tmdbLong, apiKey = tmdbKey).posterPath
+                        }
+                    }.getOrNull()
+                } else null
+
+                if (!posterPath.isNullOrBlank()) {
+                    jellyfinDao.updatePrimaryImageTag(media.id, "tmdb:$posterPath")
+                } else {
+                    jellyfinDao.updatePrimaryImageTag(media.id, "tmdb:none")
+                }
+                batchUpdated++
+            }
+            totalPostersEnriched += batchUpdated
+            if (batchUpdated == 0) break
+            delay(if (yielding) 200L else 50L)
+        }
+
+        // FASE 2: Completar descripciones faltantes en español vía TMDB
+        var totalOverviewsEnriched = 0
+        while (totalOverviewsEnriched < 5000) {
+            if (AppForeground.isPlaybackActive) break
+            val yielding = AppForeground.isVisible
+            val tmdbConcurrency = if (yielding) 4 else 8
+            val missingOverviews = jellyfinDao.getItemsMissingOverview(limit = 40)
+            if (missingOverviews.isEmpty()) break
+
+            Log.i("OverviewEnrichmentWorker", "FASE 2 (Descripciones TMDB): Procesando lote de ${missingOverviews.size} ítems sin sinopsis (Total: $totalOverviewsEnriched)")
+
+            var batchUpdated = 0
+            missingOverviews.forEachBounded(tmdbConcurrency) { media ->
+                val tmdbLong = media.tmdbId?.toLongOrNull()
+                val tmdbOverview: String? = if (tmdbLong != null && tmdbLong > 0) {
+                    val isTv = media.type.equals("Series", ignoreCase = true)
+                    runCatching {
+                        if (isTv) {
+                            tmdbApi.getTvDetails(seriesId = tmdbLong, apiKey = tmdbKey, language = "es-ES").overview
+                        } else {
+                            tmdbApi.getMovieDetails(movieId = tmdbLong, apiKey = tmdbKey, language = "es-ES").overview
+                        }
+                    }.getOrNull()
+                } else null
+
+                if (!tmdbOverview.isNullOrBlank()) {
+                    jellyfinDao.updateOverview(media.id, tmdbOverview)
+                } else {
+                    jellyfinDao.updateOverview(media.id, "Sin descripción disponible.")
+                }
+                batchUpdated++
+            }
+            totalOverviewsEnriched += batchUpdated
+            if (batchUpdated == 0) break
+            delay(if (yielding) 200L else 50L)
+        }
+
+        // FASE 3: Obtener descripciones y portadas primarias de Jellyfin (LAN)
+        val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
+        val authHeader = buildJellyfinAuthHeader(token = token)
+        val overviewBatchSize = 40
+        val missingIds = jellyfinDao.getIdsMissingOverview(limit = 120)
+        if (missingIds.isNotEmpty()) {
+            val concurrency = if (AppForeground.isVisible) CONCURRENCY_FOREGROUND else CONCURRENCY_BACKGROUND
             missingIds.chunked(overviewBatchSize).forEachBounded(concurrency) { batch ->
                 val idsParam = batch.joinToString(",")
                 val response = runCatching {
@@ -122,37 +189,7 @@ class OverviewEnrichmentWorker @AssistedInject constructor(
                             jellyfinDao.updatePrimaryImageTag(item.id, posterTag)
                         }
                     }
-                    processed.addAndGet(batch.size)
                 }
-            }
-
-            val advanced = processed.get()
-            // Sin progreso (servidor sin respuesta) se corta; evita esperas inútiles.
-            if (advanced == processedCount) break
-            processedCount = advanced
-            if (processedCount < 10000) delay(if (yielding) WAVE_PAUSE_FOREGROUND_MS else WAVE_PAUSE_BACKGROUND_MS)
-        }
-
-        // Pósteres faltantes vía TMDB: peticiones independientes → varias en paralelo (mismo criterio
-        // que arriba: con la app delante, menos).
-        val tmdbApi = NetworkClientFactory.createService(ApiConfig.TMDB_BASE_URL, TmdbApiService::class.java)
-        val tmdbKey = tmdbApiKey.takeIf { it.isNotBlank() } ?: DEFAULT_TMDB_API_KEY
-
-        val tmdbConcurrency = if (AppForeground.isVisible) CONCURRENCY_FOREGROUND else CONCURRENCY_BACKGROUND
-        val missingPosters = jellyfinDao.getItemsMissingPoster(limit = 40)
-        missingPosters.forEachBounded(tmdbConcurrency) { media ->
-            val tmdbLong = media.tmdbId?.toLongOrNull() ?: return@forEachBounded
-            val isTv = media.type.equals("Series", ignoreCase = true)
-            val posterPath: String? = runCatching {
-                if (isTv) {
-                    tmdbApi.getTvDetails(seriesId = tmdbLong, apiKey = tmdbKey).posterPath
-                } else {
-                    tmdbApi.getMovieDetails(movieId = tmdbLong, apiKey = tmdbKey).posterPath
-                }
-            }.getOrNull()
-
-            if (!posterPath.isNullOrBlank()) {
-                jellyfinDao.updatePrimaryImageTag(media.id, "tmdb:$posterPath")
             }
         }
     }

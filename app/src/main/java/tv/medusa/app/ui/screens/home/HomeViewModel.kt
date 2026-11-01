@@ -16,6 +16,8 @@ import tv.medusa.app.domain.model.HomeSection
 import tv.medusa.app.domain.model.MediaItem
 import tv.medusa.app.domain.model.MediaSource
 import tv.medusa.app.domain.usecase.GetHomeFeedUseCase
+import tv.medusa.app.domain.usecase.GetSeasonalFeedUseCase
+import tv.medusa.app.domain.model.SeasonalEventsManager
 import tv.medusa.app.util.toOptimizedMediaItem
 import tv.medusa.app.util.AppForeground
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -52,6 +54,7 @@ class HomeViewModel @Inject constructor(
     private val userPreferencesRepository: UserPreferencesRepository,
     private val mediaRepository: MediaRepository,
     private val getHomeFeedUseCase: GetHomeFeedUseCase,
+    private val getSeasonalFeedUseCase: GetSeasonalFeedUseCase,
     private val database: AppDatabase
 ) : ViewModel() {
 
@@ -60,6 +63,11 @@ class HomeViewModel @Inject constructor(
         private var lastStaticSections: List<HomeSection>? = null
         @Volatile
         private var lastStaticGenres: List<String> = emptyList()
+
+        fun invalidateStaticCaches() {
+            lastStaticSections = null
+            lastStaticGenres = emptyList()
+        }
     }
 
     val accentColor: StateFlow<String> = userPreferencesRepository.accentColor
@@ -71,6 +79,9 @@ class HomeViewModel @Inject constructor(
     val particleScale: StateFlow<Float> = userPreferencesRepository.userPreferencesFlow
         .map { it.getEffectiveParticleScale(context) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 1.0f)
+    val isBackdropEnabled: StateFlow<Boolean> = userPreferencesRepository.userPreferencesFlow
+        .map { it.isBackdropEnabled(context) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
     val watchRegion: StateFlow<String> = userPreferencesRepository.userPreferencesFlow
         .map { it.watchRegion }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), tv.medusa.app.data.remote.ApiConfig.TMDB_WATCH_REGION)
@@ -82,6 +93,16 @@ class HomeViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Loading)
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
+
+    private val _focusedItem = MutableStateFlow<MediaItem?>(null)
+    val focusedItem: StateFlow<MediaItem?> = _focusedItem.asStateFlow()
+
+    // Debe inicializarse ANTES de los bloques init: el colector de preferencias puede llamar a
+    // loadFeedForPrefs durante la construcción del ViewModel.
+    private val _selectedFormat = MutableStateFlow(MediaFormatFilter.ALL)
+    val selectedFormat: StateFlow<MediaFormatFilter> = _selectedFormat.asStateFlow()
+
+    private var focusDebounceJob: kotlinx.coroutines.Job? = null
 
     // Estado mutado tanto desde el feed (Main) como desde el refresco de "Continuar Viendo"
     // (Dispatchers.IO) → @Volatile para garantizar visibilidad entre hilos.
@@ -97,11 +118,21 @@ class HomeViewModel @Inject constructor(
     private var pendingReload: PendingReload? = null
     private var hasObservedPrefs = false
     private var lastObservedLastSync = ""
+    private var lastServerIdentity: String? = null
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
             val count = mediaRepository.getLocalCount()
             MediaRepository.checkActiveWorkerSync(context, count)
+        }
+        // Precalienta el índice del especial activo (Halloween/Navidad) mientras el usuario
+        // está en la Home. Si ya está fresco, ensureIndex no hace ninguna consulta pesada.
+        viewModelScope.launch(Dispatchers.IO) {
+            delay(6000L)
+            if (tv.medusa.app.util.AppForeground.isPlaybackActive) return@launch
+            SeasonalEventsManager.getActiveEvent()?.let { event ->
+                getSeasonalFeedUseCase.ensureIndex(event.id)
+            }
         }
         viewModelScope.launch {
             var isFirstForeground = true
@@ -173,6 +204,19 @@ class HomeViewModel @Inject constructor(
 
         viewModelScope.launch {
             userPreferencesRepository.userPreferencesFlow.collect { prefs ->
+                // Cambio de servidor/usuario: el catálogo anterior ya se borró en Ajustes.
+                val identity = "${prefs.jellyfinServerUrl}|${prefs.jellyfinUserId}"
+                val identityChanged = lastServerIdentity != null && lastServerIdentity != identity
+                lastServerIdentity = identity
+                if (identityChanged) {
+                    GetHomeFeedUseCase.invalidateFeedCache()
+                    MediaRepository.invalidateServerCaches()
+                    invalidateStaticCaches()
+                    lastSections = null
+                    lastGenres = emptyList()
+                    _uiState.value = HomeUiState.Loading
+                }
+
                 if (prefs.jellyfinServerUrl.isBlank() || prefs.jellyfinAccessToken.isBlank()) {
                     hasObservedPrefs = true
                     lastObservedLastSync = prefs.jellyfinLastSync
@@ -315,42 +359,65 @@ class HomeViewModel @Inject constructor(
             )
         } else {
             _uiState.value = HomeUiState.Loading
+            // Pintar el snapshot persistente antes de que el feed termine sus consultas.
+            viewModelScope.launch(Dispatchers.IO) {
+                val snapshot = runCatching { getHomeFeedUseCase.restoreSnapshot(prefs) }.getOrNull()
+                if (!snapshot.isNullOrEmpty() && _uiState.value is HomeUiState.Loading) {
+                    lastSections = snapshot
+                    lastStaticSections = snapshot
+                    _uiState.value = HomeUiState.Success(
+                        sections = filterSections(snapshot, _selectedFormat.value),
+                        genres = lastGenres,
+                        focusedItem = null
+                    )
+                }
+            }
+        }
+
+        // Lanza enriquecimiento en segundo plano (vía WorkManager) para completar pósteres y descripciones
+        // faltantes de forma continua sin bloquear la UI ni el inicio de la app.
+        viewModelScope.launch(Dispatchers.IO) {
+            // Dar margen al primer frame y a las consultas locales: el sync y el enriquecido
+            // compiten por CPU/SQLite con la pantalla que el usuario está esperando.
+            delay(2500L)
+            if (tv.medusa.app.util.AppForeground.isPlaybackActive) return@launch
+            if (prefs.jellyfinServerUrl.isNotBlank() && mediaRepository.getLocalCount() >= 10) {
+                mediaRepository.startBackgroundOverviewEnrichment(
+                    serverUrl = prefs.jellyfinServerUrl,
+                    userId = prefs.jellyfinUserId,
+                    token = prefs.jellyfinAccessToken
+                )
+            }
         }
 
         // Launch background sync (delta sync if already populated, or full sync if empty).
-        // Tras terminar un sync no se relanza otro desde aquí (el cambio de `jellyfinLastSync`
-        // volvería a disparar el collector y encadenaría syncs en bucle); solo se refresca la UI.
         if (startSync) {
             viewModelScope.launch(Dispatchers.IO) {
+                delay(2500L)
+                if (tv.medusa.app.util.AppForeground.isPlaybackActive) return@launch
                 mediaRepository.startBackgroundSync(
                     serverUrl = prefs.jellyfinServerUrl,
                     userId = prefs.jellyfinUserId,
                     token = prefs.jellyfinAccessToken,
                     lastSyncTimestamp = prefs.jellyfinLastSync
                 )
-                // Solo enriquecer en paralelo si la biblioteca ya tiene contenido sincronizado;
-                // en la sincronización inicial, JellyfinSyncWorker la encolará al terminar
-                // para no saturar el servidor ni competir por el ancho de banda.
-                if (!prefs.jellyfinLastSync.isNullOrBlank() || mediaRepository.getLocalCount() >= 500) {
-                    mediaRepository.startBackgroundOverviewEnrichment(
-                        serverUrl = prefs.jellyfinServerUrl,
-                        userId = prefs.jellyfinUserId,
-                        token = prefs.jellyfinAccessToken
-                    )
-                }
             }
         }
         viewModelScope.launch {
             try {
                 var hasEmitted = false
+                var cachedGenresList: List<String>? = null
 
                 getHomeFeedUseCase(prefs, forceRefresh = forceRefresh).conflate().collect { sections ->
                     if (sections.isNotEmpty()) {
                         hasEmitted = true
                         lastSections = sections
                         lastStaticSections = sections
-                        // La agregación de géneros es CPU-bound: fuera del hilo principal.
-                        lastGenres = withContext(Dispatchers.Default) { mediaRepository.getMostWatchedGenres() }
+                        // La agregación de géneros se calcula una sola vez para evitar escaneos pesados de SQLite a mitad de scroll.
+                        if (cachedGenresList == null || forceRefresh) {
+                            cachedGenresList = withContext(Dispatchers.Default) { mediaRepository.getMostWatchedGenres() }
+                        }
+                        lastGenres = cachedGenresList ?: emptyList()
                         lastStaticGenres = lastGenres
                         val filtered = filterSections(sections, _selectedFormat.value)
                         val currentFocused = (_uiState.value as? HomeUiState.Success)?.focusedItem
@@ -392,9 +459,6 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    private val _selectedFormat = MutableStateFlow(MediaFormatFilter.ALL)
-    val selectedFormat: StateFlow<MediaFormatFilter> = _selectedFormat.asStateFlow()
-
     fun setFormat(format: MediaFormatFilter) {
         _selectedFormat.value = format
         val sections = lastSections ?: return
@@ -431,9 +495,14 @@ class HomeViewModel @Inject constructor(
     }
 
     fun setFocusedItem(item: MediaItem?) {
-        val currentState = _uiState.value
-        if (currentState is HomeUiState.Success) {
-            _uiState.value = currentState.copy(focusedItem = item)
+        focusDebounceJob?.cancel()
+        if (item == null) {
+            _focusedItem.value = null
+            return
+        }
+        focusDebounceJob = viewModelScope.launch {
+            delay(150L) // Debounce 150ms para navegación fluida
+            _focusedItem.value = item
         }
     }
 

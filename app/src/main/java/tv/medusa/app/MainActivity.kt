@@ -91,7 +91,6 @@ import tv.medusa.app.ui.screens.favorites.FavoritesScreen
 import tv.medusa.app.ui.screens.genre.GenreScreen
 import tv.medusa.app.ui.screens.home.HomeScreen
 import tv.medusa.app.ui.screens.seasonal.SeasonalScreen
-import tv.medusa.app.ui.screens.onboarding.PlatformSelectionScreen
 import tv.medusa.app.ui.screens.player.PlayerScreen
 import tv.medusa.app.ui.screens.search.SearchScreen
 import tv.medusa.app.ui.screens.settings.SettingsScreen
@@ -135,18 +134,19 @@ class MainActivity : ComponentActivity() {
             .okHttpClient { NetworkClientFactory.okHttpClient }
             .memoryCache {
                 coil.memory.MemoryCache.Builder(applicationContext)
-                    .maxSizePercent(0.25)
+                    .maxSizePercent(0.10)
                     .build()
             }
             .diskCache {
+                // Catálogos grandes: 1 GB permite conservar miles de pósters/backdrops y evita
+                // re-descargar carátulas cada vez que se abre el especial o se reinicia la TV.
                 coil.disk.DiskCache.Builder()
                     .directory(cacheDir.resolve("image_cache"))
-                    .maxSizeBytes(250L * 1024 * 1024)
+                    .maxSizeBytes(1024L * 1024 * 1024)
                     .build()
             }
             .respectCacheHeaders(false)
-            // Sin crossfade global: animar cada imagen de cada tarjeta penaliza el scroll.
-            // Hero/backdrop ya animan con su propio Crossfade composable.
+            .allowHardware(true)
             .crossfade(false)
             .build()
         coil.Coil.setImageLoader(imageLoader)
@@ -188,7 +188,6 @@ class MainActivity : ComponentActivity() {
                         LocalBillingManager provides billingManager
                     ) {
                         MedusaApp(
-                            startOnboarding = !prefs.hasCompletedOnboarding,
                             pendingPlayItemId = pendingPlayItemId,
                             onPlayItemConsumed = { pendingPlayItemId = null },
                             mediaActionHandler = mediaActionHandler
@@ -290,13 +289,12 @@ private fun openPlayStoreListing(context: Context) {
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 fun MedusaApp(
-    startOnboarding: Boolean = false,
     pendingPlayItemId: String? = null,
     onPlayItemConsumed: () -> Unit = {},
     mediaActionHandler: MediaActionHandler
 ) {
     val navController = rememberNavController()
-    val startDestination = if (startOnboarding) "onboarding" else "home"
+    val startDestination = "home"
     val contextMenuController = remember { ContextMenuController() }
     val isMonochrome = tv.medusa.app.ui.theme.LocalIsMonochromeTheme.current
     val accentColor = tv.medusa.app.ui.theme.LocalAccentColor.current
@@ -398,16 +396,6 @@ fun MedusaApp(
                 navController = navController,
                 startDestination = startDestination
             ) {
-        composable("onboarding") {
-            PlatformSelectionScreen(
-                onDone = {
-                    navController.navigate("home") {
-                        popUpTo("onboarding") { inclusive = true }
-                    }
-                }
-            )
-        }
-
         composable("home") {
             HomeScreen(
                 onPlayMedia = { itemId ->

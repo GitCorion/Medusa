@@ -53,6 +53,8 @@ class GenreViewModel @Inject constructor(
 
     companion object {
         private val genreCache = ConcurrentHashMap<String, Pair<GenreUiState.Success, List<Pair<GenreFormat, HomeSection>>>>()
+
+        fun clearAllCaches() = genreCache.clear()
     }
 
     private val _uiState = MutableStateFlow<GenreUiState>(GenreUiState.Loading)

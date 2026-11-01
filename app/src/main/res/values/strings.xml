@@ -64,7 +64,7 @@
     <string name="genre_favorites_title">Tus Géneros Favoritos</string>
 
     <!-- Inicio (Home) -->
-    <string name="home_loading">Cargando descubridor de plataformas...</string>
+    <string name="home_loading">Cargando catálogo...</string>
     <string name="home_welcome">Bienvenido a Medusa</string>
     <string name="home_setup_desc">Configura tu servidor Jellyfin para disfrutar de tus películas, series y recomendaciones.</string>
     <string name="home_config_button">Configurar Servidor Jellyfin</string>

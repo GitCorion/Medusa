@@ -83,7 +83,7 @@ data class UserPreferences(
     val jellyfinLastSync: String = "",
     val selectedPlatforms: Set<String> = emptySet(),
     val hiddenTraktLists: Set<String> = emptySet(),
-    val hasCompletedOnboarding: Boolean = false,
+    val hasCompletedOnboarding: Boolean = true,
     val isProUser: Boolean = false,
     val hasPurchasedPro: Boolean = false,
     val isFamilyVipUser: Boolean = false,
@@ -107,6 +107,14 @@ data class UserPreferences(
             PERFORMANCE_MODE_HIGH -> 1.0f
             PERFORMANCE_MODE_LOW -> 0.0f
             else -> DeviceUtils.getRecommendedParticleScale(context)
+        }
+    }
+
+    fun isBackdropEnabled(context: Context): Boolean {
+        return when (performanceMode) {
+            PERFORMANCE_MODE_HIGH -> true
+            PERFORMANCE_MODE_LOW -> false
+            else -> !DeviceUtils.isLowResourceDevice(context)
         }
     }
 }
@@ -436,6 +444,17 @@ class UserPreferencesRepository(context: Context) {
         }
     }
 
+    /** Borra marcas de sync/checkpoint al cambiar de servidor o usuario. */
+    suspend fun clearJellyfinSyncMetadata() {
+        appContext.dataStore.edit { prefs ->
+            prefs.remove(Keys.JELLYFIN_LAST_SYNC)
+            prefs.remove(Keys.JELLYFIN_SYNC_CHECKPOINT_VIEW_INDEX)
+            prefs.remove(Keys.JELLYFIN_SYNC_CHECKPOINT_OFFSET)
+            prefs.remove(Keys.JELLYFIN_SYNC_CHECKPOINT_TOTAL)
+            prefs.remove(Keys.SYNC_ALGORITHM_VERSION)
+        }
+    }
+
     suspend fun updateSelectedPlatforms(platforms: Set<String>) {
         appContext.dataStore.edit { prefs ->
             prefs[Keys.SELECTED_PLATFORMS] = platforms.sorted().joinToString(",")
@@ -634,7 +653,7 @@ class UserPreferencesRepository(context: Context) {
                     .map { it.trim().lowercase(Locale.ROOT) }
                     .filter { it.isNotBlank() }
                     .toSet(),
-                hasCompletedOnboarding = this[Keys.HAS_COMPLETED_ONBOARDING] == true.toString(),
+                hasCompletedOnboarding = (this[Keys.HAS_COMPLETED_ONBOARDING] ?: "true") == true.toString(),
                 isProUser = isPro,
                 hasPurchasedPro = hasPurchased,
                 isFamilyVipUser = isFamilyVip,

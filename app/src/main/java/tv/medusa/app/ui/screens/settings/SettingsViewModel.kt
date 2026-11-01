@@ -15,9 +15,13 @@ import tv.medusa.app.data.local.PLATFORM_LOGO_MONOCHROME
 import tv.medusa.app.data.remote.update.UpdateInfo
 import tv.medusa.app.data.remote.trakt.TraktUserListDto
 import tv.medusa.app.ui.screens.brand.BrandViewModel
+import tv.medusa.app.ui.screens.home.HomeViewModel
+import tv.medusa.app.ui.screens.genre.GenreViewModel
+import tv.medusa.app.domain.usecase.GetHomeFeedUseCase
 import android.content.Context
 import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
+import androidx.work.WorkManager
 import androidx.lifecycle.viewModelScope
 import tv.medusa.app.R
 import tv.medusa.app.data.local.db.AppDatabase
@@ -30,6 +34,8 @@ import tv.medusa.app.data.remote.NetworkClientFactory
 import tv.medusa.app.data.remote.update.AppUpdateManager
 import tv.medusa.app.data.remote.jellyfin.JellyfinApiService
 import tv.medusa.app.data.remote.jellyfin.JellyfinAuthRequest
+import tv.medusa.app.data.worker.JellyfinSyncWorker
+import tv.medusa.app.data.worker.OverviewEnrichmentWorker
 import tv.medusa.app.data.remote.trakt.TraktApiService
 import tv.medusa.app.data.remote.trakt.TraktDeviceCodeRequest
 import tv.medusa.app.data.remote.trakt.TraktDeviceTokenRequest
@@ -159,7 +165,6 @@ class SettingsViewModel @Inject constructor(
 
     private var traktPollJob: Job? = null
     private var jellyfinQuickConnectJob: Job? = null
-    private var serverUrlWriteJob: Job? = null
 
     init {
         loadCurrentPreferences()
@@ -419,15 +424,9 @@ class SettingsViewModel @Inject constructor(
                 if (cleanUrl.isNotBlank() && !cleanUrl.startsWith("http://", ignoreCase = true) && !cleanUrl.startsWith("https://", ignoreCase = true)) {
                     cleanUrl = "http://$cleanUrl"
                 }
-                val urlChanged = _uiState.value.serverUrl != cleanUrl
+                // Se persiste y se valida al pulsar "Guardar y conectar"; así no se mezcla
+                // el catálogo del servidor anterior con una URL nueva a medio escribir.
                 _uiState.value = _uiState.value.copy(serverUrl = cleanUrl)
-                viewModelScope.launch {
-                    userPreferencesRepository.updateJellyfinServerUrl(cleanUrl)
-                    userPreferencesRepository.updateJellyfinLanServerUrl("")
-                    if (urlChanged && _uiState.value.isJellyfinConnected) {
-                        disconnectJellyfin()
-                    }
-                }
             }
             SettingField.USERNAME -> {
                 _uiState.value = _uiState.value.copy(username = value)
@@ -510,18 +509,60 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun onServerUrlChange(url: String) {
+        // Solo estado local. La URL se persiste al conectar: si se guardara en cada pulsación,
+        // un cambio de servidor podría dejar el catálogo viejo asociado al servidor nuevo.
         _uiState.value = _uiState.value.copy(serverUrl = url)
-        // Debounce: no persistir en cada pulsación de tecla (evita decenas de .edit{}).
-        serverUrlWriteJob?.cancel()
-        serverUrlWriteJob = viewModelScope.launch {
-            delay(500)
-            userPreferencesRepository.updateJellyfinServerUrl(url)
+    }
+
+    /**
+     * Si el servidor o el usuario Jellyfin cambian, borra el catálogo local y todas las cachés
+     * antes de guardar las credenciales nuevas. Así no se mezclan títulos, favoritos, progreso
+     * ni especiales del servidor anterior.
+     */
+    private suspend fun clearCatalogIfIdentityChanged(
+        newServerUrl: String? = null,
+        newUserId: String? = null
+    ): Boolean {
+        val prefs = userPreferencesRepository.userPreferencesFlow.first()
+        val serverChanged = newServerUrl != null &&
+            NetworkClientFactory.normalizeUrl(prefs.jellyfinServerUrl) != NetworkClientFactory.normalizeUrl(newServerUrl)
+        val userChanged = newUserId != null &&
+            prefs.jellyfinUserId.isNotBlank() && prefs.jellyfinUserId != newUserId
+        if (!serverChanged && !userChanged) return false
+
+        cancelLibraryWorkers()
+        mediaRepository.clearLocalCatalog()
+        userPreferencesRepository.clearJellyfinSyncMetadata()
+        GetHomeFeedUseCase.invalidateFeedCache()
+        HomeViewModel.invalidateStaticCaches()
+        GenreViewModel.clearAllCaches()
+        BrandViewModel.clearCache()
+        GetHomeFeedUseCase.clearMemorySnapshot()
+        return true
+    }
+
+    private fun cancelLibraryWorkers() {
+        runCatching {
+            WorkManager.getInstance(context).cancelUniqueWork(JellyfinSyncWorker.WORK_NAME)
+            WorkManager.getInstance(context).cancelUniqueWork(OverviewEnrichmentWorker.WORK_NAME)
         }
+    }
+
+    private suspend fun clearAllLocalCatalog() {
+        cancelLibraryWorkers()
+        mediaRepository.clearLocalCatalog()
+        userPreferencesRepository.clearJellyfinSyncMetadata()
+        GetHomeFeedUseCase.invalidateFeedCache()
+        HomeViewModel.invalidateStaticCaches()
+        GenreViewModel.clearAllCaches()
+        BrandViewModel.clearCache()
+        GetHomeFeedUseCase.clearMemorySnapshot()
     }
 
     fun disconnectJellyfin() {
         jellyfinQuickConnectJob?.cancel()
         viewModelScope.launch {
+            clearAllLocalCatalog()
             if (tv.medusa.app.data.demo.DemoCatalogManager.isDemoServer(_uiState.value.serverUrl)) {
                 tv.medusa.app.data.demo.DemoCatalogManager.clearDemoCatalog(database)
             }
@@ -551,6 +592,10 @@ class SettingsViewModel @Inject constructor(
                 isLoading = true,
                 statusMessage = context.getString(R.string.demo_activating)
             )
+            val previous = userPreferencesRepository.userPreferencesFlow.first()
+            if (!tv.medusa.app.data.demo.DemoCatalogManager.isDemoServer(previous.jellyfinServerUrl)) {
+                clearAllLocalCatalog()
+            }
             tv.medusa.app.data.demo.DemoCatalogManager.populateDemoCatalog(
                 database = database,
                 prefsRepo = userPreferencesRepository
@@ -801,7 +846,9 @@ class SettingsViewModel @Inject constructor(
                             val authedHeader = "$authHeader, Token=\"$token\""
                             val me = api.getCurrentUser(authedHeader)
 
-                            // 1. Guardar credenciales inmediatamente en DataStore
+                            // 1. Si es otro servidor/usuario, borrar catálogo y cachés antes
+                            // de guardar las credenciales nuevas.
+                            clearCatalogIfIdentityChanged(cleanUrl, me.effectiveId)
                             userPreferencesRepository.updateJellyfinConfig(
                                 serverUrl = cleanUrl,
                                 userId = me.effectiveId,
@@ -890,7 +937,10 @@ class SettingsViewModel @Inject constructor(
                 val token = response.effectiveToken
                 val authedUser = response.effectiveUser.effectiveName.ifBlank { effectiveUsername }
 
-                // 1. Guardar credenciales inmediatamente en DataStore (una sola escritura)
+                // 1. Si es otro servidor/usuario, borrar catálogo y cachés antes de guardar.
+                clearCatalogIfIdentityChanged(cleanUrl, userId)
+
+                // 2. Guardar credenciales inmediatamente en DataStore (una sola escritura)
                 userPreferencesRepository.saveConnectionConfig(
                     serverUrl = cleanUrl,
                     userId = userId,
@@ -906,7 +956,7 @@ class SettingsViewModel @Inject constructor(
 
                 val repository = mediaRepository
 
-                // 2. Sincronizar catálogo en segundo plano en syncScope (no se cancela al salir de Ajustes)
+                // 3. Sincronizar catálogo en segundo plano en syncScope (no se cancela al salir de Ajustes)
                 repository.startBackgroundSync(
                     serverUrl = cleanUrl,
                     userId = userId,
