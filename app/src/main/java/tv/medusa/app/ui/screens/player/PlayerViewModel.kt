@@ -18,6 +18,8 @@ import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import tv.medusa.app.R
 import tv.medusa.app.data.local.UserPreferencesRepository
 import tv.medusa.app.data.remote.NetworkClientFactory
@@ -72,6 +74,7 @@ data class PlayerStreamInfo(
     val audioTracks: List<AudioTrackInfo> = emptyList(),
     val title: String = "",
     val startPositionMs: Long = 0L,
+    val durationMs: Long = 0L,
     val token: String = "",
     val authHeader: String = "",
     val availableVersions: List<JellyfinMediaSourceDto> = emptyList(),
@@ -502,8 +505,13 @@ class PlayerViewModel @Inject constructor(
                 deviceProfile = androidTvProfile
             )
 
-            var itemDetailResult = runCatching { api.getItemDetail(authHeader = effectiveAuthHeader, userId = effectiveUserId, itemId = playableId) }
-            var playbackInfoResult = runCatching { api.getPlaybackInfo(authHeader = effectiveAuthHeader, itemId = playableId, userId = effectiveUserId, request = pbRequest) }
+            val (initDetailRes, initPbRes) = coroutineScope {
+                val detailDeferred = async { runCatching { api.getItemDetail(authHeader = effectiveAuthHeader, userId = effectiveUserId, itemId = playableId) } }
+                val pbDeferred = async { runCatching { api.getPlaybackInfo(authHeader = effectiveAuthHeader, itemId = playableId, userId = effectiveUserId, request = pbRequest) } }
+                Pair(detailDeferred.await(), pbDeferred.await())
+            }
+            var itemDetailResult = initDetailRes
+            var playbackInfoResult = initPbRes
 
             val is401 = (itemDetailResult.exceptionOrNull() as? retrofit2.HttpException)?.code() == 401 ||
                     (playbackInfoResult.exceptionOrNull() as? retrofit2.HttpException)?.code() == 401 ||
@@ -531,8 +539,13 @@ class PlayerViewModel @Inject constructor(
                         password = prefs.jellyfinPassword
                     )
                     val updatedPbRequest = pbRequest.copy(userId = effectiveUserId)
-                    itemDetailResult = runCatching { api.getItemDetail(authHeader = effectiveAuthHeader, userId = effectiveUserId, itemId = playableId) }
-                    playbackInfoResult = runCatching { api.getPlaybackInfo(authHeader = effectiveAuthHeader, itemId = playableId, userId = effectiveUserId, request = updatedPbRequest) }
+                    val (reAuthDetailRes, reAuthPbRes) = coroutineScope {
+                        val d = async { runCatching { api.getItemDetail(authHeader = effectiveAuthHeader, userId = effectiveUserId, itemId = playableId) } }
+                        val p = async { runCatching { api.getPlaybackInfo(authHeader = effectiveAuthHeader, itemId = playableId, userId = effectiveUserId, request = updatedPbRequest) } }
+                        Pair(d.await(), p.await())
+                    }
+                    itemDetailResult = reAuthDetailRes
+                    playbackInfoResult = reAuthPbRes
                     Log.i("PlayerViewModel", "Re-authentication succeeded! New token saved: ${effectiveToken.take(6)}...")
                 } catch (e: Exception) {
                     Log.w("PlayerViewModel", "Re-authentication attempt failed: ${e.message}")
@@ -599,15 +612,18 @@ class PlayerViewModel @Inject constructor(
 
                 // Remote descriptor / stream resolution for .strm and rclone files:
                 if (isStrm) {
-                    // 1. Direct remux stream from Jellyfin (without static=true, allowing Jellyfin to remux/transcode .strm files cleanly)
+                    // 1. Direct static stream first: Jellyfin/Cloudflare responds with HTTP 206,
+                    // Accept-Ranges: bytes and Content-Length, so ExoPlayer can seek natively.
+                    // The remux endpoint (without static=true) returns 200 + Accept-Ranges: none
+                    // and ignores StartTimeTicks, which made every seek restart from the beginning.
                     if (mediaSourceId.isNotBlank()) {
-                        val remuxStream = "$baseUrl/Videos/$playableId/stream?MediaSourceId=$mediaSourceId&api_key=$effectiveToken"
-                        if (!candidateUrls.contains(remuxStream)) {
-                            candidateUrls.add(remuxStream)
-                        }
                         val staticStream = "$baseUrl/Videos/$playableId/stream?static=true&MediaSourceId=$mediaSourceId&api_key=$effectiveToken"
                         if (!candidateUrls.contains(staticStream)) {
                             candidateUrls.add(staticStream)
+                        }
+                        val remuxStream = "$baseUrl/Videos/$playableId/stream?MediaSourceId=$mediaSourceId&api_key=$effectiveToken"
+                        if (!candidateUrls.contains(remuxStream)) {
+                            candidateUrls.add(remuxStream)
                         }
                     }
 
@@ -780,7 +796,13 @@ class PlayerViewModel @Inject constructor(
             val rawTicks = itemDto?.userData?.playbackPositionTicks ?: entity?.playbackPositionTicks ?: 0L
             val startPositionMs = (rawTicks / 10_000L).coerceAtLeast(0L)
 
-            Log.i("PlayerViewModel", "Resolved ${finalCandidates.size} candidate URLs for $playableId. Primary: $primaryStreamUrl")
+            val durationTicks = itemDto?.runTimeTicks
+                ?: chosenMediaSource?.runTimeTicks
+                ?: mediaSources?.firstNotNullOfOrNull { it.runTimeTicks }
+                ?: 0L
+            val durationMs = (durationTicks / 10_000L).coerceAtLeast(0L)
+
+            Log.i("PlayerViewModel", "Resolved ${finalCandidates.size} candidate URLs for $playableId. Primary: $primaryStreamUrl, durationMs=$durationMs")
 
             if (primaryStreamUrl.isNotBlank()) {
                 prewarmStream(primaryStreamUrl, effectiveToken, effectiveAuthHeader)
@@ -796,6 +818,7 @@ class PlayerViewModel @Inject constructor(
                 audioTracks = audioTracks,
                 title = itemDto?.name ?: entity?.title ?: "",
                 startPositionMs = startPositionMs,
+                durationMs = durationMs,
                 token = effectiveToken,
                 authHeader = effectiveAuthHeader,
                 availableVersions = mediaSources ?: emptyList(),

@@ -480,7 +480,7 @@ private fun PlayerContent(
 
     var isPlaying by remember { mutableStateOf(true) }
     var currentPosition by remember { mutableLongStateOf(0L) }
-    var duration by remember { mutableLongStateOf(0L) }
+    var duration by remember(info.durationMs) { mutableLongStateOf(info.durationMs.coerceAtLeast(0L)) }
     var bufferedPosition by remember { mutableLongStateOf(0L) }
 
     // Prevent Android TV from going to sleep / ambient mode while playing or viewing controls
@@ -721,7 +721,7 @@ private fun PlayerContent(
                         if (isAudioError) {
                             if (audioPassthroughMode != AUDIO_PASSTHROUGH_OFF) {
                                 Log.w("PlayerScreen", "Error de audio en HDMI passthrough. Conmutando automáticamente a decodificación local PCM.")
-                                playerErrorMessage = context.getString(R.string.player_audio_fallback_toast)
+                                playerErrorMessage = context.applicationContext.getString(R.string.player_audio_fallback_toast)
                                 chosenStartPositionMs = currentPosition.coerceAtLeast(0L)
                                 viewModel.setAudioPassthroughMode(AUDIO_PASSTHROUGH_OFF)
                                 return
@@ -732,10 +732,10 @@ private fun PlayerContent(
                             val fallbackTrack = availableAudios.firstOrNull { !it.isSelected }
                             if (fallbackTrack != null) {
                                 Log.w("PlayerScreen", "Error en pista de audio (${currentTrack?.label}). Conmutando automáticamente a: ${fallbackTrack.label}")
-                                playerErrorMessage = context.getString(R.string.player_audio_track_switched_toast, fallbackTrack.label)
+                                playerErrorMessage = context.applicationContext.getString(R.string.player_audio_track_switched_toast, fallbackTrack.label)
                                 selectAudioTrackInExoPlayer(this@apply, fallbackTrack)
                                 val pos = currentPosition.coerceAtLeast(0L)
-                                if (pos > 0 && isCurrentMediaItemSeekable) seekTo(pos)
+                                if (pos > 0) seekTo(pos)
                                 prepare()
                                 playWhenReady = true
                                 return
@@ -758,21 +758,22 @@ private fun PlayerContent(
                                 )
                                 .build()
                             setMediaItem(fallbackItem)
-                            if (pos > 0 && isCurrentMediaItemSeekable) seekTo(pos)
+                            if (pos > 0) seekTo(pos)
                             prepare()
                             playWhenReady = true
                         } else {
                             Log.e("PlayerScreen", "All ${candidates.size} playback candidates failed!")
                             val httpCode = (error.cause as? HttpDataSource.InvalidResponseCodeException)?.responseCode ?: 0
+                            val appContext = context.applicationContext
                             val humanMsg = when {
-                                httpCode in 500..599 -> context.getString(R.string.player_error_http_5xx, httpCode)
-                                httpCode == 401 -> context.getString(R.string.player_error_http_401)
-                                error.errorCode == PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS -> context.getString(R.string.player_error_bad_http)
+                                httpCode in 500..599 -> appContext.getString(R.string.player_error_http_5xx, httpCode)
+                                httpCode == 401 -> appContext.getString(R.string.player_error_http_401)
+                                error.errorCode == PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS -> appContext.getString(R.string.player_error_bad_http)
                                 error.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED ||
-                                error.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT -> context.getString(R.string.player_error_network)
+                                error.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT -> appContext.getString(R.string.player_error_network)
                                 error.errorCode == PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED ||
-                                error.errorCode == PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED -> context.getString(R.string.player_error_container)
-                                error.errorCode == PlaybackException.ERROR_CODE_DECODER_INIT_FAILED -> context.getString(R.string.player_decoder_unsupported)
+                                error.errorCode == PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED -> appContext.getString(R.string.player_error_container)
+                                error.errorCode == PlaybackException.ERROR_CODE_DECODER_INIT_FAILED -> appContext.getString(R.string.player_decoder_unsupported)
                                 else -> error.message ?: error.errorCodeName
                             }
                             playerErrorMessage = humanMsg
@@ -851,7 +852,7 @@ private fun PlayerContent(
                     exoPlayer.pause()
                     isPlaying = false
                     val pos = exoPlayer.currentPosition.coerceAtLeast(0L)
-                    val dur = exoPlayer.duration.coerceAtLeast(0L)
+                    val dur = exoPlayer.duration.takeIf { it > 0 } ?: info.durationMs.coerceAtLeast(0L)
                     viewModel.reportProgress(pos, isPaused = true, dur)
                 }
             }
@@ -889,35 +890,39 @@ private fun PlayerContent(
         }
     }
 
-    fun commitScrub() {
+    fun performSeek(targetMs: Long) {
         notifyInteraction()
-        if (isScrubbing) {
-            val dur = exoPlayer.duration.takeIf { it > 0 } ?: duration.takeIf { it > 0 } ?: 0L
-            val target = scrubTargetPosition.coerceIn(0L, dur)
-            exoPlayer.seekTo(target)
-            currentPosition = target
-            isScrubbing = false
-            scrubDeltaMs = 0L
-            scrubRepeatCount = 0
-        }
-    }
+        val dur = exoPlayer.duration.takeIf { it > 0 } ?: duration.takeIf { it > 0 } ?: info.durationMs.coerceAtLeast(0L)
+        val target = if (dur > 0) targetMs.coerceIn(0L, dur) else targetMs.coerceAtLeast(0L)
 
-    fun seekToExactPosition(targetMs: Long) {
-        notifyInteraction()
-        val dur = exoPlayer.duration.takeIf { it > 0 } ?: duration.takeIf { it > 0 } ?: 0L
-        val target = targetMs.coerceIn(0L, dur)
+        // Seek nativo. Con el candidato static=true el servidor responde 206 + Accept-Ranges
+        // y ExoPlayer puede reposicionarse sin reiniciar la descarga desde el byte 0.
+        if (exoPlayer.playbackState != Player.STATE_IDLE && !exoPlayer.isCurrentMediaItemSeekable) {
+            Log.w("PlayerScreen", "Seek requested on non-seekable media at ${target}ms; the current candidate does not support HTTP Range")
+        }
         exoPlayer.seekTo(target)
         currentPosition = target
+
         scrubTargetPosition = target
         isScrubbing = false
         scrubDeltaMs = 0L
         scrubRepeatCount = 0
     }
 
+    fun commitScrub() {
+        if (isScrubbing) {
+            performSeek(scrubTargetPosition)
+        }
+    }
+
+    fun seekToExactPosition(targetMs: Long) {
+        performSeek(targetMs)
+    }
+
     fun updateScrubPosition(targetMs: Long) {
         notifyInteraction()
-        val dur = exoPlayer.duration.takeIf { it > 0 } ?: duration.takeIf { it > 0 } ?: 0L
-        val target = targetMs.coerceIn(0L, dur)
+        val dur = exoPlayer.duration.takeIf { it > 0 } ?: duration.takeIf { it > 0 } ?: info.durationMs.coerceAtLeast(0L)
+        val target = if (dur > 0) targetMs.coerceIn(0L, dur) else targetMs.coerceAtLeast(0L)
         val cur = exoPlayer.currentPosition.coerceAtLeast(0L)
         scrubTargetPosition = target
         scrubDeltaMs = target - cur
@@ -929,7 +934,7 @@ private fun PlayerContent(
         notifyInteraction()
         val now = System.currentTimeMillis()
         val cur = if (isScrubbing) scrubTargetPosition else exoPlayer.currentPosition.coerceAtLeast(0L)
-        val dur = exoPlayer.duration.takeIf { it > 0 } ?: duration.takeIf { it > 0 } ?: Long.MAX_VALUE
+        val dur = exoPlayer.duration.takeIf { it > 0 } ?: duration.takeIf { it > 0 } ?: info.durationMs.takeIf { it > 0 } ?: Long.MAX_VALUE
 
         val timeSinceLast = now - lastScrubKeystrokeTime
         if (!isScrubbing || timeSinceLast > 350L || (scrubDeltaMs > 0 && deltaSign < 0) || (scrubDeltaMs < 0 && deltaSign > 0)) {
@@ -939,11 +944,6 @@ private fun PlayerContent(
         }
         lastScrubKeystrokeTime = now
 
-        // Aceleración escalonada:
-        // 0-3 pulsaciones: 5 segundos (máxima precisión para clics sueltos y seleccionar punto exacto)
-        // 4-10 pulsaciones: 15 segundos (desplazamiento moderado)
-        // 11-20 pulsaciones: 30 segundos (búsqueda rápida)
-        // 21+ pulsaciones: 60 segundos (avance rápido por películas de 2 horas)
         val baseStep = when {
             scrubRepeatCount < 4 -> 5_000L
             scrubRepeatCount < 11 -> 15_000L
@@ -966,10 +966,9 @@ private fun PlayerContent(
         notifyInteraction()
         val now = System.currentTimeMillis()
         val cur = if (isScrubbing) scrubTargetPosition else exoPlayer.currentPosition.coerceAtLeast(0L)
-        val dur = exoPlayer.duration.takeIf { it > 0 } ?: duration.takeIf { it > 0 } ?: Long.MAX_VALUE
+        val dur = exoPlayer.duration.takeIf { it > 0 } ?: duration.takeIf { it > 0 } ?: info.durationMs.takeIf { it > 0 } ?: Long.MAX_VALUE
 
         val timeSinceLast = now - lastScrubKeystrokeTime
-        // Aceleración progresiva natural: si se pulsa repetidamente en menos de 280ms, acelera el salto
         val effectiveDelta = if (timeSinceLast < 280L && ((scrubDeltaMs > 0 && deltaMs > 0) || (scrubDeltaMs < 0 && deltaMs < 0))) {
             deltaMs * 2
         } else {
@@ -992,11 +991,7 @@ private fun PlayerContent(
         if (isScrubbing) {
             delay(650L)
             if (isScrubbing) {
-                exoPlayer.seekTo(scrubTargetPosition)
-                currentPosition = scrubTargetPosition
-                isScrubbing = false
-                scrubDeltaMs = 0L
-                scrubRepeatCount = 0
+                performSeek(scrubTargetPosition)
             }
         }
     }
@@ -1083,7 +1078,7 @@ private fun PlayerContent(
     LaunchedEffect(info, retryTrigger) {
         delay(75_000L)
         if (exoPlayer.playbackState == Player.STATE_BUFFERING && currentPosition == 0L) {
-            playerErrorMessage = context.getString(R.string.player_resolve_timeout)
+            playerErrorMessage = context.applicationContext.getString(R.string.player_resolve_timeout)
             isBuffering = false
         }
     }
@@ -1097,7 +1092,8 @@ private fun PlayerContent(
         if (!needsLivePosition) return@LaunchedEffect
         while (isActive) {
             currentPosition = exoPlayer.currentPosition.coerceAtLeast(0L)
-            duration = exoPlayer.duration.coerceAtLeast(0L)
+            val exoDur = exoPlayer.duration
+            duration = if (exoDur > 0) exoDur else info.durationMs.coerceAtLeast(0L)
             bufferedPosition = exoPlayer.bufferedPosition.coerceAtLeast(0L)
             delay(500L)
         }
@@ -1118,7 +1114,8 @@ private fun PlayerContent(
                 val now = System.currentTimeMillis()
                 val stateChanged = playing != lastWasPlaying
                 if (stateChanged || (now - lastReportedMs) >= 5000L) {
-                    viewModel.reportProgress(pos, isPaused = false, durationMs = exoPlayer.duration.coerceAtLeast(0L))
+                    val durReport = exoPlayer.duration.takeIf { it > 0 } ?: info.durationMs.coerceAtLeast(0L)
+                    viewModel.reportProgress(pos, isPaused = false, durationMs = durReport)
                     lastReportedMs = now
                     lastWasPlaying = playing
                 }
@@ -1152,17 +1149,20 @@ private fun PlayerContent(
                 reason: Int
             ) {
                 currentPosition = newPosition.positionMs.coerceAtLeast(0L)
-                duration = exoPlayer.duration.coerceAtLeast(0L)
+                val exoDur = exoPlayer.duration
+                duration = if (exoDur > 0) exoDur else info.durationMs.coerceAtLeast(0L)
             }
 
             override fun onEvents(player: Player, events: Player.Events) {
-                duration = player.duration.coerceAtLeast(0L)
+                currentPosition = player.currentPosition.coerceAtLeast(0L)
+                val exoDur = player.duration
+                duration = if (exoDur > 0) exoDur else info.durationMs.coerceAtLeast(0L)
                 bufferedPosition = player.bufferedPosition.coerceAtLeast(0L)
             }
 
             override fun onPlaybackStateChanged(playbackState: Int) {
                 if (playbackState == Player.STATE_ENDED) {
-                    val dur = exoPlayer.duration.coerceAtLeast(1L)
+                    val dur = exoPlayer.duration.takeIf { it > 0 } ?: info.durationMs.coerceAtLeast(1L)
                     viewModel.reportStopped(dur, dur)
                     currentPosition = dur
                     duration = dur
@@ -1174,8 +1174,8 @@ private fun PlayerContent(
         onDispose {
             runCatching { mediaSession?.release() }
             exoPlayer.removeListener(listener)
-            val finalPos = exoPlayer.currentPosition
-            val totalDur = exoPlayer.duration
+            val finalPos = exoPlayer.currentPosition.coerceAtLeast(0L)
+            val totalDur = exoPlayer.duration.takeIf { it > 0 } ?: info.durationMs.coerceAtLeast(0L)
             if (finalPos > 0 && exoPlayer.playerError == null) {
                 viewModel.reportStopped(finalPos, totalDur)
             }
@@ -1326,10 +1326,7 @@ private fun PlayerContent(
                     }
                     Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> {
                         if (isScrubbing) {
-                            exoPlayer.seekTo(scrubTargetPosition)
-                            currentPosition = scrubTargetPosition
-                            isScrubbing = false
-                            scrubDeltaMs = 0L
+                            performSeek(scrubTargetPosition)
                             notifyInteraction()
                             true
                         } else if (!showOverlayControls) {
@@ -1411,8 +1408,8 @@ private fun PlayerContent(
                 }
             },
             update = { playerView ->
-                // Reasignar siempre: el player se recrea con remember(info, retryTrigger) y,
-                // sin esto, tras un "Reintentar" el PlayerView seguía enlazado al player liberado.
+                // Reasignar siempre: el player se recrea con remember(info, retryTrigger, audioPassthroughMode)
+                // y, sin esto, tras un "Reintentar" el PlayerView seguía enlazado al player liberado.
                 if (playerView.player !== exoPlayer) {
                     playerView.player = exoPlayer
                 }
@@ -1462,18 +1459,16 @@ private fun PlayerContent(
                     showResumeDialog = false
                     resumeDecisionMade = true
                     chosenStartPositionMs = info.startPositionMs
-                    exoPlayer.seekTo(info.startPositionMs)
+                    performSeek(info.startPositionMs)
                     exoPlayer.prepare()
-                    exoPlayer.playWhenReady = true
                     exoPlayer.play()
                 },
                 onStartOver = {
                     showResumeDialog = false
                     resumeDecisionMade = true
                     chosenStartPositionMs = 0L
-                    exoPlayer.seekTo(0L)
+                    performSeek(0L)
                     exoPlayer.prepare()
-                    exoPlayer.playWhenReady = true
                     exoPlayer.play()
                 }
             )
@@ -2059,7 +2054,7 @@ private fun PlayerContent(
                 onSkip = {
                     // skipToMs = IntroEnd del plugin, el campo exacto para saltar
                     val skipTo = introMarker?.skipToMs ?: return@SkipIntroBanner
-                    exoPlayer.seekTo(skipTo)
+                    performSeek(skipTo)
                     showSkipIntroBanner = false
                     notifyInteraction()
                 }
@@ -2083,7 +2078,7 @@ private fun PlayerContent(
                 onSkip = {
                     // skipToMs = EndPositionTicks del segmento Outro
                     val skipTo = creditsMarker?.skipToMs ?: return@SkipIntroBanner
-                    exoPlayer.seekTo(skipTo)
+                    performSeek(skipTo)
                     showSkipCreditsBanner = false
                     notifyInteraction()
                 }
