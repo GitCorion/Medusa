@@ -1,12 +1,12 @@
 {
-  "versionCode": 1000119,
-  "versionName": "2.2.72-beta",
+  "versionCode": 1000120,
+  "versionName": "2.2.73-beta",
   "minSupportedVersionCode": 1000105,
   "forceUpdate": true,
   "killSwitch": false,
-  "releaseNotes": "Corrección en reproductor: restauración inmediata de controles en pantalla (OSD) y navegación por D-Pad/mando al reproducir vídeo manteniendo soporte gestual.",
+  "releaseNotes": "Reproductor: seek nativo en .strm sin volver al principio, fin de capítulo con reintento de Next Up y controles visibles si no hay siguiente. Catálogo: especiales paginados, caché persistente y cambio de servidor seguro.",
   "apkUrl": "https://medusa-fd388.web.app/Medusa.apk",
-  "apkSha256": "8cb4abbd3699ece1a32ee35f638ec4812477974ca9d53d70d221c6c6594aa136",
+  "apkSha256": "cbad28ce4d9ec16ae56eb4daf18e5d6ea5644c29d5cd6ec8abbcc9045dd8cc33",
   "signatures": [
     "26bccb39ed122a69ecf7a8d0b50deeabeb15bc1a4b2a8b77941b47a96fdd3fea",
     "78a588afcc90d8ea59e008c9cbd1e8bbed3b2831518184d5a9935948b9d245ac"
