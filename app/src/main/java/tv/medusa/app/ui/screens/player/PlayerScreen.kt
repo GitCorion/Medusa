@@ -1044,10 +1044,10 @@ private fun PlayerContent(
 
     // Auto-hide controls overlay after 5s (or 9s if timeline is focused) if activeModalTab is NONE (resets on user interaction)
     LaunchedEffect(showOverlayControls, activeModalTab, lastInteractionTrigger, isProgressBarFocused, isScrubbing) {
-        if (showOverlayControls && activeModalTab == PlayerModalTab.NONE && !isScrubbing) {
+        if (showOverlayControls && activeModalTab == PlayerModalTab.NONE && !isScrubbing && !playbackEnded) {
             val timeout = if (isProgressBarFocused) 9000L else 5000L
             delay(timeout)
-            if (!isScrubbing) {
+            if (!isScrubbing && !playbackEnded) {
                 showOverlayControls = false
             }
         }
@@ -1190,8 +1190,20 @@ private fun PlayerContent(
     LaunchedEffect(playbackEnded) {
         if (!playbackEnded) return@LaunchedEffect
 
-        val next = latestNextEpisode
+        var next = latestNextEpisode
+        if (next == null) {
+            // La carga inicial de NextUp pudo fallar o seguir en curso: reintentar al terminar.
+            Log.i("PlayerScreen", "Playback ended without next episode cached; refreshing NextUp…")
+            isBuffering = true
+            next = runCatching {
+                viewModel.refreshNextEpisode(info.playableId, info.seriesId)
+            }.getOrNull() ?: latestNextEpisode
+            isBuffering = false
+        }
+
+        Log.i("PlayerScreen", "Playback ended. nextEpisode=${next?.itemId ?: "none"}")
         if (next != null) {
+            showOverlayControls = false
             showNextEpisodeOverlay = true
             for (sec in 5 downTo 1) {
                 if (!isActive || !showNextEpisodeOverlay || nextEpisodeTriggered) break
@@ -1203,6 +1215,8 @@ private fun PlayerContent(
                 playNext(next)
             }
         } else {
+            // Último episodio o sin siguiente: dejar los controles visibles para que el usuario decida.
+            nextEpisodeCountdown = -1
             showOverlayControls = true
         }
     }

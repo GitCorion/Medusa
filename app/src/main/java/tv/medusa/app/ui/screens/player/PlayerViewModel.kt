@@ -7,6 +7,7 @@ import tv.medusa.app.data.remote.jellyfin.JellyfinCodecProfile
 import tv.medusa.app.data.remote.jellyfin.JellyfinDeviceProfile
 import tv.medusa.app.data.remote.jellyfin.JellyfinDirectPlayProfile
 import tv.medusa.app.data.remote.jellyfin.JellyfinIntroTimestamps
+import tv.medusa.app.data.remote.jellyfin.JellyfinItemDto
 import tv.medusa.app.data.remote.jellyfin.JellyfinMediaSourceDto
 import tv.medusa.app.data.remote.jellyfin.JellyfinPlaybackInfoRequest
 import tv.medusa.app.data.remote.jellyfin.JellyfinProfileCondition
@@ -1073,35 +1074,78 @@ class PlayerViewModel @Inject constructor(
 
             // 3️⃣ Next episode via NextUp (only for series episodes)
             if (!seriesId.isNullOrBlank()) {
-                runCatching {
-                    val nextUp = api.getNextUpItems(
-                        authHeader = jellyfinAuthHeader,
-                        userId = userId,
-                        seriesId = seriesId
-                    )
-                    val nextDto = nextUp.items.firstOrNull()
-                    if (nextDto != null && nextDto.id != itemId) {
-                        val season = nextDto.parentIndexNumber ?: 0
-                        val episode = nextDto.indexNumber ?: 0
-                        val thumbUrl = if (nextDto.imageTags?.containsKey("Primary") == true) {
-                            "$jellyfinBaseUrl/Items/${nextDto.id}/Images/Primary?fillWidth=300"
-                        } else if (!nextDto.seriesId.isNullOrBlank() && !nextDto.seriesPrimaryImageTag.isNullOrBlank()) {
-                            "$jellyfinBaseUrl/Items/${nextDto.seriesId}/Images/Primary?fillWidth=300"
-                        } else null
-
-                        _nextEpisode.value = NextEpisodeInfo(
-                            itemId = nextDto.id,
-                            title = nextDto.name ?: appContext.getString(R.string.player_next_episode),
-                            episodeCode = "T$season E$episode",
-                            thumbUrl = thumbUrl
-                        )
-                        Log.i("PlayerViewModel", "NextEpisode loaded: ${nextDto.id} ${nextDto.name}")
-                    }
-                }.onFailure { e ->
-                    Log.d("PlayerViewModel", "NextUp fetch failed: ${e.message}")
-                }
+                fetchNextEpisode(
+                    api = api,
+                    authHeader = jellyfinAuthHeader,
+                    userId = userId,
+                    seriesId = seriesId,
+                    currentItemId = itemId,
+                    logLabel = "NextEpisode loaded"
+                )
             }
         }
+    }
+
+    private fun buildNextEpisodeInfo(nextDto: JellyfinItemDto): NextEpisodeInfo {
+        val season = nextDto.parentIndexNumber ?: 0
+        val episode = nextDto.indexNumber ?: 0
+        val thumbUrl = if (nextDto.imageTags?.containsKey("Primary") == true) {
+            "$jellyfinBaseUrl/Items/${nextDto.id}/Images/Primary?fillWidth=300"
+        } else if (!nextDto.seriesId.isNullOrBlank() && !nextDto.seriesPrimaryImageTag.isNullOrBlank()) {
+            "$jellyfinBaseUrl/Items/${nextDto.seriesId}/Images/Primary?fillWidth=300"
+        } else null
+
+        return NextEpisodeInfo(
+            itemId = nextDto.id,
+            title = nextDto.name ?: appContext.getString(R.string.player_next_episode),
+            episodeCode = "T$season E$episode",
+            thumbUrl = thumbUrl
+        )
+    }
+
+    private suspend fun fetchNextEpisode(
+        api: JellyfinApiService,
+        authHeader: String,
+        userId: String,
+        seriesId: String?,
+        currentItemId: String,
+        logLabel: String
+    ): NextEpisodeInfo? {
+        if (seriesId.isNullOrBlank()) return null
+        return runCatching {
+            val nextUp = api.getNextUpItems(
+                authHeader = authHeader,
+                userId = userId,
+                seriesId = seriesId
+            )
+            // NextUp puede devolver el episodio actual si sigue en curso; se ignora.
+            val nextDto = nextUp.items.firstOrNull { it.id != currentItemId }
+            nextDto?.let { buildNextEpisodeInfo(it) }?.also { info ->
+                _nextEpisode.value = info
+                Log.i("PlayerViewModel", "$logLabel: ${nextDto.id} ${nextDto.name}")
+            }
+        }.onFailure { e ->
+            Log.d("PlayerViewModel", "$logLabel failed: ${e.message}")
+        }.getOrNull()
+    }
+
+    /**
+     * Reintenta resolver el siguiente episodio al terminar la reproducción.
+     * Cubre el caso en que la carga inicial de NextUp falló, seguía en curso
+     * o devolvió el episodio actual en lugar del siguiente.
+     */
+    suspend fun refreshNextEpisode(itemId: String, seriesId: String?): NextEpisodeInfo? {
+        if (jellyfinBaseUrl.isBlank() || jellyfinAuthHeader.isBlank() || seriesId.isNullOrBlank()) return null
+        val prefs = userPreferencesRepository.userPreferencesFlow.first()
+        val api = NetworkClientFactory.createService(jellyfinBaseUrl, JellyfinApiService::class.java)
+        return fetchNextEpisode(
+            api = api,
+            authHeader = jellyfinAuthHeader,
+            userId = prefs.jellyfinUserId,
+            seriesId = seriesId,
+            currentItemId = itemId,
+            logLabel = "NextEpisode refreshed"
+        )
     }
 
     /** Seek the current player to [positionMs]. Used for Skip Intro / Skip Credits. */
