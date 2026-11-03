@@ -1574,21 +1574,25 @@ private fun PlayerContent(
                                 }
                                 .focusRequester(retryFocusRequester),
                             colors = ButtonDefaults.colors(
-                                containerColor = Color(0xFF3F51B5),
-                                focusedContainerColor = Color(0xFF5C6BC0)
+                                containerColor = Color(0x22FFFFFF),
+                                contentColor = Color.White,
+                                focusedContainerColor = focusColor,
+                                focusedContentColor = focusContent
                             )
                         ) {
-                            Text(stringResource(R.string.common_retry), color = Color.White, fontWeight = FontWeight.SemiBold)
+                            Text(stringResource(R.string.common_retry), fontWeight = FontWeight.SemiBold)
                         }
                         Button(
                             onClick = onBack,
                             modifier = Modifier.handleTouchClick { onBack() },
                             colors = ButtonDefaults.colors(
-                                containerColor = Color(0xFF2C2D3C),
-                                focusedContainerColor = Color(0xFF424458)
+                                containerColor = Color(0x14FFFFFF),
+                                contentColor = Color.White,
+                                focusedContainerColor = focusColor,
+                                focusedContentColor = focusContent
                             )
                         ) {
-                            Text(stringResource(R.string.common_back), color = Color.White)
+                            Text(stringResource(R.string.common_back))
                         }
                     }
                 }

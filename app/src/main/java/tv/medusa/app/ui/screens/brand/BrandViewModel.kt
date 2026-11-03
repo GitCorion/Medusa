@@ -408,7 +408,7 @@ class BrandViewModel @Inject constructor(
 
                 val api = NetworkClientFactory.createService(ApiConfig.TMDB_BASE_URL, TmdbApiService::class.java)
 
-                val tmdbSectionOrder = listOf("En Tendencia", "Series Destacadas", "Cine Aclamado")
+                val tmdbSectionOrder = listOf("En Tendencia", "Novedades y Estrenos", "Series Destacadas", "Cine Aclamado")
 
                 val updateUiAndCache = {
                     val currentSnapshot = synchronized(sections) {
@@ -611,20 +611,56 @@ class BrandViewModel @Inject constructor(
             toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TMDB_TRENDING)
 
         val sections = buildList {
-            val trending = collectionIndexUseCase.top(key, LANDING_ROW_SIZE, type, hide)
+            val seenIds = mutableSetOf<String>()
+            val seenTitles = mutableSetOf<String>()
+
+            fun List<JellyfinMediaEntity>.distinctNew(): List<JellyfinMediaEntity> =
+                filter { item ->
+                    seenIds.add(item.id) && seenTitles.add(normalizeTitle(item.title))
+                }
+
+            // 1. En Tendencia: los títulos con mayor tracción y tendencia de la plataforma
+            val trending = collectionIndexUseCase.top(key, LANDING_ROW_SIZE, type, hide).distinctNew()
             if (trending.isNotEmpty()) {
-                add(HomeSection("En Tendencia", trending.map { it.toItem() }))
+                val title = when (format) {
+                    MediaFormatFilter.MOVIES -> "Películas en Tendencia"
+                    MediaFormatFilter.SERIES -> "Series en Tendencia"
+                    MediaFormatFilter.ALL -> "En Tendencia"
+                }
+                add(HomeSection(title, trending.map { it.toItem() }))
             }
+
+            // 2. Novedades y Estrenos: orden cronológico estricto por fecha de estreno (sin repetir)
+            val recent = collectionIndexUseCase.recent(key, LANDING_ROW_SIZE * 2, type, hide)
+                .distinctNew()
+                .take(LANDING_ROW_SIZE)
+            if (recent.isNotEmpty()) {
+                val title = when (format) {
+                    MediaFormatFilter.MOVIES -> "Novedades en Cine"
+                    MediaFormatFilter.SERIES -> "Novedades en Series"
+                    MediaFormatFilter.ALL -> "Novedades y Estrenos"
+                }
+                add(HomeSection(title, recent.map { it.toItem() }))
+            }
+
+            // 3. Series Destacadas (si la vista incluye series, sin repetir lo que ya está en Tendencia o Novedades)
             if (type == null || type == "Series") {
-                val series = collectionIndexUseCase.top(key, LANDING_ROW_SIZE, "Series", hide)
+                val series = collectionIndexUseCase.top(key, LANDING_ROW_SIZE * 2, "Series", hide)
+                    .distinctNew()
+                    .take(LANDING_ROW_SIZE)
                 if (series.isNotEmpty()) {
                     add(HomeSection("Series Destacadas", series.map { it.toItem() }))
                 }
             }
+
+            // 4. Cine Aclamado: obras con alta puntuación crítica (communityRating DESC >= 6.8f, sin repetir)
             if (type == null || type == "Movie") {
-                val movies = collectionIndexUseCase.top(key, LANDING_ROW_SIZE, "Movie", hide)
-                if (movies.isNotEmpty()) {
-                    add(HomeSection("Cine Aclamado", movies.map { it.toItem() }))
+                val acclaimed = collectionIndexUseCase.topRated(key, LANDING_ROW_SIZE * 2, "Movie", hide)
+                    .filter { (it.communityRating ?: 0f) >= 6.8f }
+                    .distinctNew()
+                    .take(LANDING_ROW_SIZE)
+                if (acclaimed.isNotEmpty()) {
+                    add(HomeSection("Cine Aclamado", acclaimed.map { it.toItem() }))
                 }
             }
         }

@@ -6,6 +6,8 @@ import tv.medusa.app.data.local.PLATFORM_LOGO_MONOCHROME
 import tv.medusa.app.ui.theme.LocalIndicatorTheme
 import tv.medusa.app.ui.theme.LocalIsMonochromeTheme
 import tv.medusa.app.ui.theme.LocalPlatformLogoStyle
+import tv.medusa.app.ui.theme.currentFocusColor
+import tv.medusa.app.ui.theme.currentFocusContentColor
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -81,6 +83,9 @@ fun PlatformSelectionScreen(
     viewModel: PlatformSelectionViewModel = hiltViewModel()
 ) {
     val selected by viewModel.selected.collectAsStateWithLifecycle()
+    val isMonochrome = LocalIsMonochromeTheme.current
+    val focusColor = currentFocusColor()
+    val focusContent = currentFocusContentColor()
 
     Box(
         modifier = Modifier
@@ -120,8 +125,8 @@ fun PlatformSelectionScreen(
                         colors = ButtonDefaults.colors(
                             containerColor = Color(0x1AFFFFFF),
                             contentColor = Color.White,
-                            focusedContainerColor = Color(0x33FFFFFF),
-                            focusedContentColor = Color.White
+                            focusedContainerColor = focusColor,
+                            focusedContentColor = focusContent
                         ),
                         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
                     ) {
@@ -136,8 +141,8 @@ fun PlatformSelectionScreen(
                         colors = ButtonDefaults.colors(
                             containerColor = Color(0x1AFFFFFF),
                             contentColor = Color(0xFF94A3B8),
-                            focusedContainerColor = Color(0x33FFFFFF),
-                            focusedContentColor = Color.White
+                            focusedContainerColor = focusColor,
+                            focusedContentColor = focusContent
                         ),
                         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
                     ) {
@@ -219,10 +224,10 @@ fun PlatformSelectionScreen(
                     shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
                     modifier = Modifier.handleTouchClick { viewModel.onContinue(onDone) },
                     colors = ButtonDefaults.colors(
-                        containerColor = Color(0xFF4F46E5),
-                        contentColor = Color.White,
-                        focusedContainerColor = Color(0xFF6366F1),
-                        focusedContentColor = Color.White
+                        containerColor = if (isMonochrome) Color.White else focusColor,
+                        contentColor = focusContent,
+                        focusedContainerColor = focusColor,
+                        focusedContentColor = focusContent
                     ),
                     contentPadding = PaddingValues(horizontal = 28.dp, vertical = 10.dp)
                 ) {

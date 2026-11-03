@@ -108,15 +108,25 @@ function dedupe(items) {
   });
 }
 
-async function providerCatalog(providerId, region) {
+async function providerCatalog(providerId, region, trendingRanks = null) {
   const [movies, tv] = await Promise.all([
     fetchDiscoverPages('movie', { providerId, region }),
     fetchDiscoverPages('tv', { providerId, region }),
   ]);
-  return dedupe(
-    [...movies.map((x) => compact(x, false)), ...tv.map((x) => compact(x, true))]
-      .sort((a, b) => b[2] - a[2])
-  );
+  const all = dedupe([...movies.map((x) => compact(x, false)), ...tv.map((x) => compact(x, true))]);
+  if (!trendingRanks || trendingRanks.size === 0) {
+    return all.sort((a, b) => b[2] - a[2]);
+  }
+  return all.sort((a, b) => {
+    const keyA = `${a[0]}:${a[1]}`;
+    const keyB = `${b[0]}:${b[1]}`;
+    const rankA = trendingRanks.get(keyA);
+    const rankB = trendingRanks.get(keyB);
+    if (rankA !== undefined && rankB !== undefined) return rankA - rankB;
+    if (rankA !== undefined) return -1;
+    if (rankB !== undefined) return 1;
+    return b[2] - a[2];
+  });
 }
 
 async function trendingCatalog() {
@@ -155,10 +165,23 @@ async function main() {
     const dir = path.join(OUT_ROOT, region);
     const platformFiles = {};
 
+    process.stdout.write(`[${region}] trending... `);
+    let trendingItems = [];
+    try {
+      trendingItems = await trendingCatalog();
+      writeJson(path.join(dir, 'trending_day.json'), { v: FORMAT_VERSION, items: trendingItems });
+      console.log(trendingItems.length);
+    } catch (e) {
+      console.log(`ERROR ${e.message}`);
+    }
+
+    const trendingRanks = new Map();
+    trendingItems.forEach((x, i) => trendingRanks.set(`${x[0]}:${x[1]}`, i + 1));
+
     for (const platform of config.platforms) {
       process.stdout.write(`[${region}] ${platform.id}... `);
       try {
-        const items = await providerCatalog(platform.providerId, region);
+        const items = await providerCatalog(platform.providerId, region, trendingRanks);
         const rel = `platforms/${platform.id}.json`;
         writeJson(path.join(dir, rel), { v: FORMAT_VERSION, items });
         platformFiles[platform.id] = rel;
@@ -166,15 +189,6 @@ async function main() {
       } catch (e) {
         console.log(`ERROR ${e.message}`);
       }
-    }
-
-    process.stdout.write(`[${region}] trending... `);
-    try {
-      const items = await trendingCatalog();
-      writeJson(path.join(dir, 'trending_day.json'), { v: FORMAT_VERSION, items });
-      console.log(items.length);
-    } catch (e) {
-      console.log(`ERROR ${e.message}`);
     }
 
     process.stdout.write(`[${region}] popular... `);

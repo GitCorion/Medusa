@@ -439,12 +439,22 @@ class LocalMediaRepository(
 
     suspend fun getMostWatchedGenres(): List<String> {
         val watchedRaw = runCatching { jellyfinDao.getWatchedGenres() }.getOrDefault(emptyList())
-        val allRaw = if (watchedRaw.size < 5) runCatching { jellyfinDao.getAllGenresRaw() }.getOrDefault(emptyList()) else emptyList()
+        val allRaw = runCatching { jellyfinDao.getAllGenresRaw() }.getOrDefault(emptyList())
 
-        val rawList = watchedRaw.ifEmpty { allRaw }
         val counts = mutableMapOf<String, Int>()
 
-        for (raw in rawList) {
+        // 1. Géneros reproducidos: ponderación alta (+10) para priorizar los favoritos reales del usuario al inicio
+        for (raw in watchedRaw) {
+            if (raw.isNullOrBlank()) continue
+            val parts = raw.split(",", ";").map { it.trim() }.filter { it.isNotBlank() }
+            for (part in parts) {
+                val clean = part.replaceFirstChar { it.uppercase() }
+                counts[clean] = (counts[clean] ?: 0) + 10
+            }
+        }
+
+        // 2. Géneros de toda la biblioteca: completan la lista (+1) para rellenar la pantalla y permitir desplazamiento
+        for (raw in allRaw) {
             if (raw.isNullOrBlank()) continue
             val parts = raw.split(",", ";").map { it.trim() }.filter { it.isNotBlank() }
             for (part in parts) {
@@ -453,20 +463,22 @@ class LocalMediaRepository(
             }
         }
 
-        val defaultGenres = listOf("Acción", "Comedia", "Drama", "Ciencia ficción", "Terror", "Aventura", "Animación", "Thriller", "Romance", "Fantasía", "Documental")
-        // Solo rellenar cuando no existe ninguna señal real de consumo. Antes se añadían 11
-        // géneros por defecto siempre, así que la fila de chips mostraba ruido irrelevante
-        // incluso para usuarios con historial.
-        if (counts.isEmpty()) {
-            for (g in defaultGenres) {
-                counts[g] = 1
+        // 3. Fallback estándar si la biblioteca tiene pocos géneros
+        val defaultGenres = listOf(
+            "Acción", "Comedia", "Drama", "Ciencia ficción", "Terror", "Aventura",
+            "Animación", "Suspense", "Thriller", "Romance", "Fantasía", "Familia",
+            "Documental", "Misterio", "Crimen", "Historia", "Bélica", "Música", "Western"
+        )
+        for (g in defaultGenres) {
+            if (!counts.containsKey(g)) {
+                counts[g] = 0
             }
         }
 
         return counts.entries
             .sortedByDescending { it.value }
             .map { it.key }
-            .take(8)
+            .take(20)
     }
 
     private fun getGenreSynonyms(genre: String): List<String> {

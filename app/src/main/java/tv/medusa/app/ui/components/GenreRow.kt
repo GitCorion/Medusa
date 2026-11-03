@@ -109,13 +109,18 @@ private fun GenreChip(
             .handleTouchClick { onClick() },
         shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(10.dp)),
         colors = ClickableSurfaceDefaults.colors(
-            containerColor = Color(0x10FFFFFF),
+            containerColor = if (isMonochrome) Color(0x10FFFFFF) else focusColor.copy(alpha = 0.12f),
             focusedContainerColor = focusColor,
-            contentColor = Color(0xFFF1F5F9),
+            contentColor = if (isMonochrome) Color(0xFFF1F5F9) else Color(0xFFE0F2FE),
             focusedContentColor = focusContent
         ),
         border = ClickableSurfaceDefaults.border(
-            border = Border(border = BorderStroke(0.75.dp, Color(0x18FFFFFF))),
+            border = Border(
+                border = BorderStroke(
+                    0.75.dp,
+                    if (isMonochrome) Color(0x18FFFFFF) else focusColor.copy(alpha = 0.28f)
+                )
+            ),
             focusedBorder = Border.None
         ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1.05f)
@@ -126,7 +131,7 @@ private fun GenreChip(
         ) {
             Text(
                 text = genreName,
-                color = if (isFocused) focusContent else Color(0xFFF1F5F9),
+                color = if (isFocused) focusContent else (if (isMonochrome) Color(0xFFF1F5F9) else Color(0xFFE0F2FE)),
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 13.sp,
                 letterSpacing = 0.5.sp

@@ -168,8 +168,8 @@ fun CompactFocusedHeader(
                 Button(
                     onClick = { onPlayClick(item) },
                     colors = ButtonDefaults.colors(
-                        containerColor = Color(0x28FFFFFF),
-                        contentColor = Color.White,
+                        containerColor = if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.20f),
+                        contentColor = if (isMonochrome) Color.White else Color(0xFFE0F2FE),
                         focusedContainerColor = focusColor,
                         focusedContentColor = focusContent
                     )
@@ -203,8 +203,8 @@ fun CompactFocusedHeader(
                 Button(
                     onClick = { onDetailClick(item) },
                     colors = ButtonDefaults.colors(
-                        containerColor = Color(0x14FFFFFF),
-                        contentColor = Color(0xFFE2E8F0),
+                        containerColor = if (isMonochrome) Color(0x14FFFFFF) else focusColor.copy(alpha = 0.10f),
+                        contentColor = if (isMonochrome) Color(0xFFE2E8F0) else Color(0xFFBAE6FD),
                         focusedContainerColor = focusColor,
                         focusedContentColor = focusContent
                     )

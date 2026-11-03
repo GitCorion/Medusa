@@ -332,7 +332,7 @@ private fun SeasonalLanding(
                         containerColor = if (isMonochrome) Color(0x22FFFFFF) else eventAccent.copy(alpha = 0.18f),
                         contentColor = Color.White,
                         focusedContainerColor = if (isMonochrome) Color.White else eventAccent,
-                        focusedContentColor = if (isMonochrome) Color(0xFF0F172A) else Color.White
+                        focusedContentColor = Color(0xFF0F172A)
                     ),
                     shape = ButtonDefaults.shape(RoundedCornerShape(10.dp)),
                     border = ButtonDefaults.border(
@@ -417,8 +417,8 @@ private fun SeasonalAllGrid(
                     colors = ButtonDefaults.colors(
                         containerColor = Color(0x22FFFFFF),
                         contentColor = Color.White,
-                        focusedContainerColor = eventAccent,
-                        focusedContentColor = Color.White
+                        focusedContainerColor = if (isMonochrome) Color.White else eventAccent,
+                        focusedContentColor = Color(0xFF0F172A)
                     ),
                     shape = ButtonDefaults.shape(RoundedCornerShape(10.dp)),
                     border = ButtonDefaults.border(

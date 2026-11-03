@@ -171,4 +171,46 @@ val LocalAccentColor = compositionLocalOf {
     ACCENT_CYAN
 }
 
+@Composable
+fun currentFocusColor(
+    isMonochrome: Boolean = LocalIsMonochromeTheme.current,
+    accentKey: String = LocalAccentColor.current
+): Color = if (isMonochrome) Color.White else TvAccent.getColor(accentKey)
+
+@Composable
+fun currentFocusContentColor(
+    isMonochrome: Boolean = LocalIsMonochromeTheme.current,
+    accentKey: String = LocalAccentColor.current
+): Color = if (isMonochrome) Color(0xFF0F172A) else TvAccent.getFocusedContentColor(accentKey)
+
+object TvButtonDefaults {
+    @OptIn(ExperimentalTvMaterial3Api::class)
+    @Composable
+    fun primaryColors(
+        focusColor: Color = currentFocusColor(),
+        focusContent: Color = currentFocusContentColor(),
+        containerColor: Color = Color(0x22FFFFFF),
+        contentColor: Color = Color.White
+    ) = androidx.tv.material3.ButtonDefaults.colors(
+        containerColor = containerColor,
+        contentColor = contentColor,
+        focusedContainerColor = focusColor,
+        focusedContentColor = focusContent
+    )
+
+    @OptIn(ExperimentalTvMaterial3Api::class)
+    @Composable
+    fun subtleColors(
+        focusColor: Color = currentFocusColor(),
+        focusContent: Color = currentFocusContentColor(),
+        containerColor: Color = Color(0x14FFFFFF),
+        contentColor: Color = Color.White
+    ) = androidx.tv.material3.ButtonDefaults.colors(
+        containerColor = containerColor,
+        contentColor = contentColor,
+        focusedContainerColor = focusColor,
+        focusedContentColor = focusContent
+    )
+}
+
 

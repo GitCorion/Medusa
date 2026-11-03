@@ -565,11 +565,11 @@ fun HeroBanner(
                 val showText = buttonStyle != BUTTON_STYLE_ICONS_ONLY
                 val isSeasonalActive = currentSlideState is HeroSlideState.Seasonal
 
-                val buttonContainerColor = Color(0x28FFFFFF)
+                val buttonContainerColor = if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.20f)
                 val buttonFocusedContainerColor = if (isMonochrome) Color.White else focusColor
-                val buttonContentColor = Color.White
+                val buttonContentColor = if (isMonochrome) Color.White else Color(0xFFE0F2FE)
                 val buttonFocusedContentColor = if (isMonochrome) Color(0xFF0F172A) else focusContent
-                val buttonBorderColor = Color(0x28FFFFFF)
+                val buttonBorderColor = if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.45f)
 
                 val buttonPadding = if (!showText) {
                     PaddingValues(horizontal = 14.dp, vertical = 10.dp)

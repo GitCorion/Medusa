@@ -345,8 +345,8 @@ private fun BrandLanding(
                             colors = ButtonDefaults.colors(
                                 containerColor = if (isMonochrome) Color(0x22FFFFFF) else brand.accentColor.copy(alpha = 0.18f),
                                 contentColor = Color.White,
-                                focusedContainerColor = if (isMonochrome) Color.White else focusColor,
-                                focusedContentColor = if (isMonochrome) Color(0xFF0F172A) else focusContent
+                                focusedContainerColor = focusColor,
+                                focusedContentColor = focusContent
                             ),
                             shape = ButtonDefaults.shape(RoundedCornerShape(10.dp)),
                             border = ButtonDefaults.border(
@@ -393,6 +393,7 @@ private fun BrandAllGrid(
     onLoadMore: () -> Unit
 ) {
     val focusColor = if (isMonochrome) Color.White else TvAccent.getColor(accentColorKey)
+    val focusContent = if (isMonochrome) Color(0xFF0F172A) else TvAccent.getFocusedContentColor(accentColorKey)
     val gridState = rememberLazyGridState()
 
     LaunchedEffect(state.allItems.size, state.hasMoreAll, state.isLoadingAll) {
@@ -457,7 +458,7 @@ private fun BrandAllGrid(
                         containerColor = Color(0x22FFFFFF),
                         contentColor = Color.White,
                         focusedContainerColor = focusColor,
-                        focusedContentColor = if (isMonochrome) Color(0xFF0F172A) else Color.White
+                        focusedContentColor = focusContent
                     ),
                     shape = ButtonDefaults.shape(RoundedCornerShape(10.dp)),
                     border = ButtonDefaults.border(

@@ -536,21 +536,21 @@ private fun SelectedTagBadge(
     )
 
     val containerColor = if (isFocused) {
-        Color.White
+        accentColor
     } else {
-        Color(0x28FFFFFF)
+        if (isMonochrome) Color(0x28FFFFFF) else accentColor.copy(alpha = 0.22f)
     }
 
     val contentColor = if (isFocused) {
         Color(0xFF0F172A)
     } else {
-        Color.White
+        if (isMonochrome) Color.White else accentColor
     }
 
     val borderColor = if (isFocused) {
         Color.Transparent
     } else {
-        Color(0x33FFFFFF)
+        if (isMonochrome) Color(0x33FFFFFF) else accentColor.copy(alpha = 0.45f)
     }
 
     Box(

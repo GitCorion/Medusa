@@ -26,6 +26,7 @@ import tv.medusa.app.ui.theme.LocalAccentColor
 import tv.medusa.app.ui.theme.LocalBillingManager
 import tv.medusa.app.ui.theme.LocalIndicatorTheme
 import tv.medusa.app.ui.theme.LocalIsMonochromeTheme
+import tv.medusa.app.ui.theme.TvAccent
 import tv.medusa.app.ui.theme.LocalPlatformLogoStyle
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -172,7 +173,7 @@ class MainActivity : ComponentActivity() {
 
             val accentColor = if (isMonochrome) ACCENT_WHITE else prefs.accentColor
 
-            MedusaTheme {
+            MedusaTheme(accentColorKey = accentColor, isMonochrome = isMonochrome) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     shape = RectangleShape,
@@ -729,6 +730,9 @@ fun MedusaApp(
                                 // En Play no hay APK propio: siempre se ofrece la ficha de la tienda.
                                 true
                             }
+                            val themeFocusColor = if (isMonochrome) Color.White else TvAccent.getColor(accentColor)
+                            val themeFocusContent = if (isMonochrome) Color(0xFF0F172A) else TvAccent.getFocusedContentColor(accentColor)
+
                             if (canUpdate) {
                                 Button(
                                     onClick = {
@@ -747,10 +751,10 @@ fun MedusaApp(
                                     enabled = !isDownloading,
                                     modifier = Modifier.focusRequester(updateButtonFocusRequester),
                                     colors = ButtonDefaults.colors(
-                                        containerColor = if (isForce) Color(0xFFEF4444) else Color(0xFF00E5FF),
-                                        contentColor = if (isForce) Color.White else Color(0xFF05070B),
-                                        focusedContainerColor = Color.White,
-                                        focusedContentColor = Color.Black
+                                        containerColor = if (isForce) Color(0xFFEF4444) else (if (isMonochrome) Color.White else themeFocusColor),
+                                        contentColor = if (isForce) Color.White else themeFocusContent,
+                                        focusedContainerColor = themeFocusColor,
+                                        focusedContentColor = themeFocusContent
                                     ),
                                     shape = ButtonDefaults.shape(RoundedCornerShape(12.dp))
                                 ) {
@@ -772,8 +776,8 @@ fun MedusaApp(
                                     colors = ButtonDefaults.colors(
                                         containerColor = Color(0x18FFFFFF),
                                         contentColor = Color(0xFFCBD5E1),
-                                        focusedContainerColor = Color(0x40FFFFFF),
-                                        focusedContentColor = Color.White
+                                        focusedContainerColor = themeFocusColor,
+                                        focusedContentColor = themeFocusContent
                                     ),
                                     shape = ButtonDefaults.shape(RoundedCornerShape(12.dp))
                                 ) {

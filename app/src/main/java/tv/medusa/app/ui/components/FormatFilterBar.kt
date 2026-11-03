@@ -82,8 +82,8 @@ fun FormatFilterBar(
                 contentPadding = buttonPadding,
                 scale = ButtonDefaults.scale(focusedScale = 1.05f),
                 colors = ButtonDefaults.colors(
-                    containerColor = if (hideWatched) (if (isMonochrome) Color(0x30FFFFFF) else focusColor.copy(alpha = 0.22f)) else Color(0x10FFFFFF),
-                    contentColor = if (hideWatched) (if (isMonochrome) Color.White else focusColor) else Color(0xFF94A3B8),
+                    containerColor = if (hideWatched) (if (isMonochrome) Color(0x30FFFFFF) else focusColor.copy(alpha = 0.22f)) else (if (isMonochrome) Color(0x10FFFFFF) else focusColor.copy(alpha = 0.08f)),
+                    contentColor = if (hideWatched) (if (isMonochrome) Color.White else focusColor) else (if (isMonochrome) Color(0xFF94A3B8) else Color(0xFFBAE6FD)),
                     focusedContainerColor = focusColor,
                     focusedContentColor = focusContent
                 ),
@@ -92,7 +92,7 @@ fun FormatFilterBar(
                     border = Border(
                         border = BorderStroke(
                             width = if (hideWatched) 1.dp else 0.5.dp,
-                            color = if (hideWatched) (if (isMonochrome) Color(0x40FFFFFF) else focusColor.copy(alpha = 0.45f)) else Color(0x18FFFFFF)
+                            color = if (hideWatched) (if (isMonochrome) Color(0x40FFFFFF) else focusColor.copy(alpha = 0.45f)) else (if (isMonochrome) Color(0x18FFFFFF) else focusColor.copy(alpha = 0.22f))
                         ),
                         shape = chipShape
                     ),
@@ -140,8 +140,8 @@ fun FormatFilterBar(
                 contentPadding = buttonPadding,
                 scale = ButtonDefaults.scale(focusedScale = 1.05f),
                 colors = ButtonDefaults.colors(
-                    containerColor = if (isSelected) (if (isMonochrome) Color(0x30FFFFFF) else focusColor.copy(alpha = 0.22f)) else Color(0x10FFFFFF),
-                    contentColor = if (isSelected) (if (isMonochrome) Color.White else focusColor) else Color(0xFF94A3B8),
+                    containerColor = if (isSelected) (if (isMonochrome) Color(0x30FFFFFF) else focusColor.copy(alpha = 0.22f)) else (if (isMonochrome) Color(0x10FFFFFF) else focusColor.copy(alpha = 0.08f)),
+                    contentColor = if (isSelected) (if (isMonochrome) Color.White else focusColor) else (if (isMonochrome) Color(0xFF94A3B8) else Color(0xFFBAE6FD)),
                     focusedContainerColor = focusColor,
                     focusedContentColor = focusContent
                 ),
@@ -150,7 +150,7 @@ fun FormatFilterBar(
                     border = Border(
                         border = BorderStroke(
                             width = if (isSelected) 1.dp else 0.5.dp,
-                            color = if (isSelected) (if (isMonochrome) Color(0x40FFFFFF) else focusColor.copy(alpha = 0.45f)) else Color(0x18FFFFFF)
+                            color = if (isSelected) (if (isMonochrome) Color(0x40FFFFFF) else focusColor.copy(alpha = 0.45f)) else (if (isMonochrome) Color(0x18FFFFFF) else focusColor.copy(alpha = 0.22f))
                         ),
                         shape = chipShape
                     ),

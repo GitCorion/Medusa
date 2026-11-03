@@ -25,3 +25,4 @@ MEMORIA_INSTRUCCIONES.md
 .codex/
 # Catálogos de descubrimiento generados (se publican en Firebase Hosting, no se versionan)
 docs/catalogs/
+.agents/

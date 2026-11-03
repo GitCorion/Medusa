@@ -183,6 +183,22 @@ class CollectionIndexUseCase @Inject constructor(
     ): List<JellyfinMediaEntity> =
         collectionDao.getPage(key, type, limit, offset = 0, hideWatched = hideWatched)
 
+    suspend fun topRated(
+        key: String,
+        limit: Int,
+        type: String? = null,
+        hideWatched: Boolean = false
+    ): List<JellyfinMediaEntity> =
+        collectionDao.getTopRated(key, type, limit, offset = 0, hideWatched = hideWatched)
+
+    suspend fun recent(
+        key: String,
+        limit: Int,
+        type: String? = null,
+        hideWatched: Boolean = false
+    ): List<JellyfinMediaEntity> =
+        collectionDao.getRecent(key, type, limit, offset = 0, hideWatched = hideWatched)
+
     suspend fun page(
         key: String,
         offset: Int,

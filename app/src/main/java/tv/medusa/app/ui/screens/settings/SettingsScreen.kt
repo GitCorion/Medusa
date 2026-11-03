@@ -1258,7 +1258,7 @@ private fun TvSettingsNavRailItem(
         colors = ClickableSurfaceDefaults.colors(
             containerColor = if (isSelected) Color(0x18FFFFFF) else Color.Transparent,
             focusedContainerColor = focusColor,
-            contentColor = if (isSelected) Color.White else Color(0xFFCBD5E1),
+            contentColor = if (isSelected) focusColor else Color(0xFFCBD5E1),
             focusedContentColor = focusContent
         ),
         border = ClickableSurfaceDefaults.border(
@@ -1289,7 +1289,7 @@ private fun TvSettingsNavRailItem(
 
             Text(
                 text = title,
-                color = if (isFocused) focusContent else (if (isSelected) Color.White else Color(0xFFCBD5E1)),
+                color = if (isFocused) focusContent else (if (isSelected) focusColor else Color(0xFFCBD5E1)),
                 fontWeight = if (isSelected || isFocused) FontWeight.SemiBold else FontWeight.Normal,
                 fontSize = 14.sp,
                 maxLines = 1,
@@ -1467,7 +1467,7 @@ private fun <T> TvSegmentedSelector(
                         text = label,
                         fontSize = 13.sp,
                         fontWeight = if (isSelected || isFocused) FontWeight.SemiBold else FontWeight.Normal,
-                        color = if (isFocused) focusContent else (if (isSelected) Color.White else Color(0xFFCBD5E1)),
+                        color = if (isFocused) focusContent else (if (isSelected) (if (isMonochrome) Color.White else focusColor) else Color(0xFFCBD5E1)),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )

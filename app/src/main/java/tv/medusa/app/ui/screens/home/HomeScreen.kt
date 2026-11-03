@@ -297,8 +297,8 @@ fun HomeScreen(
                                 colors = ButtonDefaults.colors(
                                     containerColor = Color(0x22FFFFFF),
                                     contentColor = Color.White,
-                                    focusedContainerColor = if (isMonochrome) Color.White else focusColor,
-                                    focusedContentColor = if (isMonochrome) Color(0xFF0F172A) else focusContent
+                                    focusedContainerColor = focusColor,
+                                    focusedContentColor = focusContent
                                 )
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -345,8 +345,8 @@ fun HomeScreen(
                                 onClick = { viewModel.loadHomeFeed() },
                                 modifier = Modifier.handleTouchClick { viewModel.loadHomeFeed() },
                                 colors = ButtonDefaults.colors(
-                                    containerColor = Color.White,
-                                    contentColor = Color(0xFF0F172A),
+                                    containerColor = Color(0x22FFFFFF),
+                                    contentColor = Color.White,
                                     focusedContainerColor = focusColor,
                                     focusedContentColor = focusContent
                                 )

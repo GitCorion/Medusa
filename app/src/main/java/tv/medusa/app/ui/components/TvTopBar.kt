@@ -140,12 +140,12 @@ fun TvTopBar(
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
-                        .background(if (isMonochrome) Color(0x22FFFFFF) else Color(0x2238BDF8), RoundedCornerShape(16.dp))
-                        .border(0.75.dp, if (isMonochrome) Color(0x55FFFFFF) else Color(0x5538BDF8), RoundedCornerShape(16.dp))
+                        .background(if (isMonochrome) Color(0x22FFFFFF) else focusColor.copy(alpha = 0.20f), RoundedCornerShape(16.dp))
+                        .border(0.75.dp, if (isMonochrome) Color(0x55FFFFFF) else focusColor.copy(alpha = 0.45f), RoundedCornerShape(16.dp))
                         .padding(horizontal = 8.dp, vertical = 6.dp)
                 ) {
                     CircularProgressIndicator(
-                        color = if (isMonochrome) Color.White else Color(0xFF38BDF8),
+                        color = if (isMonochrome) Color.White else focusColor,
                         strokeWidth = 2.dp,
                         modifier = Modifier.size(13.dp)
                     )
@@ -191,25 +191,9 @@ fun TvTopBar(
             Button(
                 onClick = onNavigateHome,
                 modifier = Modifier.handleTouchClick { onNavigateHome() },
-                colors = ButtonDefaults.colors(
-                    containerColor = if (isHomeActive) (if (isMonochrome) Color(0x24FFFFFF) else focusColor.copy(alpha = 0.20f)) else Color(0x0AFFFFFF),
-                    contentColor = if (isHomeActive) (if (isMonochrome) Color.White else focusColor) else (if (isMonochrome) Color(0xFFCBD5E1) else Color(0xFF94A3B8)),
-                    focusedContainerColor = focusColor,
-                    focusedContentColor = focusContent
-                ),
+                colors = topBarButtonColors(isHomeActive, isMonochrome, focusColor, focusContent),
                 shape = ButtonDefaults.shape(shape = CircleShape),
-                border = if (isHomeActive) {
-                    ButtonDefaults.border(
-                        border = Border(
-                            border = BorderStroke(1.dp, if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.40f)),
-                            shape = CircleShape
-                        ),
-                        focusedBorder = Border.None
-                    )
-                } else ButtonDefaults.border(
-                    border = Border.None,
-                    focusedBorder = Border.None
-                )
+                border = topBarButtonBorder(isHomeActive, isMonochrome, focusColor)
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -252,25 +236,9 @@ fun TvTopBar(
                             } else false
                         } else false
                     },
-                colors = ButtonDefaults.colors(
-                    containerColor = if (isDiscoverActive) (if (isMonochrome) Color(0x24FFFFFF) else focusColor.copy(alpha = 0.20f)) else Color(0x0AFFFFFF),
-                    contentColor = if (isDiscoverActive) (if (isMonochrome) Color.White else focusColor) else (if (isMonochrome) Color(0xFFCBD5E1) else Color(0xFF94A3B8)),
-                    focusedContainerColor = focusColor,
-                    focusedContentColor = focusContent
-                ),
+                colors = topBarButtonColors(isDiscoverActive, isMonochrome, focusColor, focusContent),
                 shape = ButtonDefaults.shape(shape = CircleShape),
-                border = if (isDiscoverActive) {
-                    ButtonDefaults.border(
-                        border = Border(
-                            border = BorderStroke(1.dp, if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.40f)),
-                            shape = CircleShape
-                        ),
-                        focusedBorder = Border.None
-                    )
-                } else ButtonDefaults.border(
-                    border = Border.None,
-                    focusedBorder = Border.None
-                )
+                border = topBarButtonBorder(isDiscoverActive, isMonochrome, focusColor)
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -301,25 +269,9 @@ fun TvTopBar(
             Button(
                 onClick = onOpenFavorites,
                 modifier = Modifier.handleTouchClick { onOpenFavorites() },
-                colors = ButtonDefaults.colors(
-                    containerColor = if (isFavoritesActive) (if (isMonochrome) Color(0x24FFFFFF) else focusColor.copy(alpha = 0.20f)) else Color(0x0AFFFFFF),
-                    contentColor = if (isFavoritesActive) (if (isMonochrome) Color.White else focusColor) else (if (isMonochrome) Color(0xFFCBD5E1) else Color(0xFF94A3B8)),
-                    focusedContainerColor = focusColor,
-                    focusedContentColor = focusContent
-                ),
+                colors = topBarButtonColors(isFavoritesActive, isMonochrome, focusColor, focusContent),
                 shape = ButtonDefaults.shape(shape = CircleShape),
-                border = if (isFavoritesActive) {
-                    ButtonDefaults.border(
-                        border = Border(
-                            border = BorderStroke(1.dp, if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.40f)),
-                            shape = CircleShape
-                        ),
-                        focusedBorder = Border.None
-                    )
-                } else ButtonDefaults.border(
-                    border = Border.None,
-                    focusedBorder = Border.None
-                )
+                border = topBarButtonBorder(isFavoritesActive, isMonochrome, focusColor)
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -350,25 +302,9 @@ fun TvTopBar(
             Button(
                 onClick = onOpenSearch,
                 modifier = Modifier.handleTouchClick { onOpenSearch() },
-                colors = ButtonDefaults.colors(
-                    containerColor = if (isSearchActive) (if (isMonochrome) Color(0x24FFFFFF) else focusColor.copy(alpha = 0.20f)) else Color(0x0AFFFFFF),
-                    contentColor = if (isSearchActive) (if (isMonochrome) Color.White else focusColor) else (if (isMonochrome) Color(0xFFCBD5E1) else Color(0xFF94A3B8)),
-                    focusedContainerColor = focusColor,
-                    focusedContentColor = focusContent
-                ),
+                colors = topBarButtonColors(isSearchActive, isMonochrome, focusColor, focusContent),
                 shape = ButtonDefaults.shape(shape = CircleShape),
-                border = if (isSearchActive) {
-                    ButtonDefaults.border(
-                        border = Border(
-                            border = BorderStroke(1.dp, if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.40f)),
-                            shape = CircleShape
-                        ),
-                        focusedBorder = Border.None
-                    )
-                } else ButtonDefaults.border(
-                    border = Border.None,
-                    focusedBorder = Border.None
-                )
+                border = topBarButtonBorder(isSearchActive, isMonochrome, focusColor)
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -399,25 +335,9 @@ fun TvTopBar(
             Button(
                 onClick = onOpenSettings,
                 modifier = Modifier.handleTouchClick { onOpenSettings() },
-                colors = ButtonDefaults.colors(
-                    containerColor = if (isSettingsActive) (if (isMonochrome) Color(0x24FFFFFF) else focusColor.copy(alpha = 0.20f)) else Color(0x0AFFFFFF),
-                    contentColor = if (isSettingsActive) (if (isMonochrome) Color.White else focusColor) else (if (isMonochrome) Color(0xFFCBD5E1) else Color(0xFF94A3B8)),
-                    focusedContainerColor = focusColor,
-                    focusedContentColor = focusContent
-                ),
+                colors = topBarButtonColors(isSettingsActive, isMonochrome, focusColor, focusContent),
                 shape = ButtonDefaults.shape(shape = CircleShape),
-                border = if (isSettingsActive) {
-                    ButtonDefaults.border(
-                        border = Border(
-                            border = BorderStroke(1.dp, if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.40f)),
-                            shape = CircleShape
-                        ),
-                        focusedBorder = Border.None
-                    )
-                } else ButtonDefaults.border(
-                    border = Border.None,
-                    focusedBorder = Border.None
-                )
+                border = topBarButtonBorder(isSettingsActive, isMonochrome, focusColor)
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -459,4 +379,39 @@ fun TvTopBar(
             }
         }
     }
+}
+
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun topBarButtonColors(
+    isActive: Boolean,
+    isMonochrome: Boolean,
+    focusColor: Color,
+    focusContent: Color
+) = ButtonDefaults.colors(
+    containerColor = if (isActive) (if (isMonochrome) Color(0x24FFFFFF) else focusColor.copy(alpha = 0.20f)) else (if (isMonochrome) Color(0x0AFFFFFF) else focusColor.copy(alpha = 0.08f)),
+    contentColor = if (isActive) (if (isMonochrome) Color.White else focusColor) else (if (isMonochrome) Color(0xFFCBD5E1) else Color(0xFF7DD3FC).copy(alpha = 0.85f)),
+    focusedContainerColor = focusColor,
+    focusedContentColor = focusContent
+)
+
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun topBarButtonBorder(
+    isActive: Boolean,
+    isMonochrome: Boolean,
+    focusColor: Color
+) = if (isActive) {
+    ButtonDefaults.border(
+        border = Border(
+            border = BorderStroke(1.dp, if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.40f)),
+            shape = CircleShape
+        ),
+        focusedBorder = Border.None
+    )
+} else {
+    ButtonDefaults.border(
+        border = if (isMonochrome) Border.None else Border(BorderStroke(0.5.dp, focusColor.copy(alpha = 0.20f)), shape = CircleShape),
+        focusedBorder = Border.None
+    )
 }

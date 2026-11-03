@@ -71,6 +71,58 @@ interface CollectionDao {
         hideWatched: Boolean = false
     ): List<JellyfinMediaEntity>
 
+    /**
+     * Títulos aclamados de una colección (ordenados por valoración de la comunidad / crítica).
+     */
+    @Query(
+        """
+        SELECT jm.* FROM jellyfin_media jm
+        INNER JOIN collection_items ci ON ci.mediaId = jm.id
+        WHERE ci.collectionKey = :key
+          AND (:type IS NULL OR jm.type = :type)
+          AND (:hideWatched = 0 OR (jm.isPlayed = 0 AND jm.playbackPositionTicks = 0))
+          AND jm.communityRating IS NOT NULL AND jm.communityRating > 0
+        ORDER BY
+          jm.communityRating DESC,
+          ci.score DESC,
+          jm.id ASC
+        LIMIT :limit OFFSET :offset
+        """
+    )
+    suspend fun getTopRated(
+        key: String,
+        type: String?,
+        limit: Int,
+        offset: Int = 0,
+        hideWatched: Boolean = false
+    ): List<JellyfinMediaEntity>
+
+    /**
+     * Títulos recientes de una colección (ordenados por fecha exacta de estreno o año de producción).
+     */
+    @Query(
+        """
+        SELECT jm.* FROM jellyfin_media jm
+        INNER JOIN collection_items ci ON ci.mediaId = jm.id
+        WHERE ci.collectionKey = :key
+          AND (:type IS NULL OR jm.type = :type)
+          AND (:hideWatched = 0 OR (jm.isPlayed = 0 AND jm.playbackPositionTicks = 0))
+          AND (jm.premiereDateMs IS NOT NULL OR jm.productionYear IS NOT NULL)
+        ORDER BY
+          COALESCE(jm.premiereDateMs, CAST(jm.productionYear AS INTEGER) * 31536000000) DESC,
+          ci.score DESC,
+          jm.id ASC
+        LIMIT :limit OFFSET :offset
+        """
+    )
+    suspend fun getRecent(
+        key: String,
+        type: String?,
+        limit: Int,
+        offset: Int = 0,
+        hideWatched: Boolean = false
+    ): List<JellyfinMediaEntity>
+
     @Query("SELECT collectionKey FROM collection_items WHERE mediaId = :mediaId")
     suspend fun collectionsForMedia(mediaId: String): List<String>
 

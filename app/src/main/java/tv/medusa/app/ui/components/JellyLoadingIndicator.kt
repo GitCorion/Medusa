@@ -33,12 +33,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import tv.medusa.app.R
 
+import tv.medusa.app.ui.theme.LocalIsMonochromeTheme
+
 @Composable
 fun JellyLoadingIndicator(
     modifier: Modifier = Modifier,
     size: Dp = 72.dp,
     message: String? = null,
-    isMonochrome: Boolean = false
+    isMonochrome: Boolean = LocalIsMonochromeTheme.current
 ) {
     val symbolRes = if (isMonochrome) R.drawable.ic_jelly_symbol_mono else R.drawable.ic_jelly_symbol
     val infiniteTransition = rememberInfiniteTransition(label = "JellySwim")

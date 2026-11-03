@@ -304,6 +304,7 @@ private fun GenreAllGrid(
     onDetailMedia: (String) -> Unit
 ) {
     val accentColor = if (isMonochrome) Color.White else TvAccent.getColor(accentColorKey)
+    val focusedContent = if (isMonochrome) Color(0xFF0F172A) else TvAccent.getFocusedContentColor(accentColorKey)
 
     LazyVerticalGrid(
         columns = GridCells.Adaptive(minSize = 145.dp),
@@ -353,7 +354,7 @@ private fun GenreAllGrid(
                         containerColor = Color(0x22FFFFFF),
                         contentColor = Color.White,
                         focusedContainerColor = accentColor,
-                        focusedContentColor = if (isMonochrome) Color(0xFF0F172A) else Color.White
+                        focusedContentColor = focusedContent
                     ),
                     shape = ButtonDefaults.shape(RoundedCornerShape(10.dp)),
                     border = ButtonDefaults.border(

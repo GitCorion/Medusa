@@ -23,13 +23,13 @@ Para añadir una región: añádela a `regions` en `platforms.json` y ejecuta el
 
 ## Secretos
 
-| Secreto | Dónde | Para qué |
+| Secreto / Autenticación | Dónde | Para qué |
 |---|---|---|
 | `TMDB_API_KEY` | GitHub Secrets + Firebase Secret Manager | Generar catálogos y proxy |
-| `FIREBASE_SERVICE_ACCOUNT` | GitHub Secrets | Publicar Hosting/Functions desde CI (JSON de service account) |
+| Workload Identity Federation (WIF) | Google Cloud IAM (`github-pool`) | Autenticación sin claves JSON en CI (Hosting y Functions) |
 | `GITHUB_TOKEN` | Firebase Secret Manager | **Opcional**: disparar el Action on-demand (PAT con `actions:write`) |
 
-El CI se autentica con `google-github-actions/auth@v2` usando `FIREBASE_SERVICE_ACCOUNT`; **no depende de la sesión personal de nadie** ni de `FIREBASE_TOKEN`. Sin `GITHUB_TOKEN`, el endpoint `/api/catalog/request` responde `disabled` y la región usa el proxy; con él, la primera petición lanza la generación.
+El CI se autentica con `google-github-actions/auth@v2` usando **Workload Identity Federation (WIF)** con tokens OIDC efímeros; **no depende de claves JSON ni de la sesión personal de nadie**. Sin `GITHUB_TOKEN`, el endpoint `/api/catalog/request` responde `disabled` y la región usa el proxy; con él, la primera petición lanza la generación.
 
 ## Comandos
 

@@ -3,6 +3,8 @@ package tv.medusa.app.ui.screens.detail
 import androidx.compose.foundation.layout.FlowRow
 import tv.medusa.app.ui.components.JellyLoadingIndicator
 import tv.medusa.app.ui.theme.LocalIsMonochromeTheme
+import tv.medusa.app.ui.theme.currentFocusColor
+import tv.medusa.app.ui.theme.currentFocusContentColor
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
@@ -157,13 +159,15 @@ fun DetailScreen(
                             style = MaterialTheme.typography.titleMedium
                         )
                         Spacer(modifier = Modifier.height(16.dp))
+                        val errFocusColor = currentFocusColor(isMonochrome)
+                        val errFocusContent = currentFocusContentColor(isMonochrome)
                         Button(
                             onClick = onBack,
                             colors = ButtonDefaults.colors(
                                 containerColor = Color(0x22FFFFFF),
                                 contentColor = Color.White,
-                                focusedContainerColor = Color.White,
-                                focusedContentColor = Color(0xFF0F172A)
+                                focusedContainerColor = errFocusColor,
+                                focusedContentColor = errFocusContent
                             )
                         ) {
                             Text(stringResource(R.string.common_back), fontWeight = FontWeight.Bold)
@@ -459,14 +463,14 @@ fun DetailScreen(
                                 contentPadding = actionButtonPadding,
                                 scale = ButtonDefaults.scale(focusedScale = 1.05f),
                                 colors = ButtonDefaults.colors(
-                                    containerColor = Color(0x28FFFFFF),
-                                    contentColor = Color.White,
+                                    containerColor = if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.20f),
+                                    contentColor = if (isMonochrome) Color.White else Color(0xFFE0F2FE),
                                     focusedContainerColor = focusColor,
                                     focusedContentColor = focusContent
                                 ),
                                 border = ButtonDefaults.border(
                                     border = Border(
-                                        border = BorderStroke(0.5.dp, Color(0x28FFFFFF)),
+                                        border = BorderStroke(0.5.dp, if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.45f)),
                                         shape = RoundedCornerShape(10.dp)
                                     ),
                                     focusedBorder = Border.None
@@ -505,15 +509,15 @@ fun DetailScreen(
                                     shape = ButtonDefaults.shape(shape = RoundedCornerShape(10.dp)),
                                     border = ButtonDefaults.border(
                                         border = Border(
-                                            border = BorderStroke(0.5.dp, Color(0x28FFFFFF)),
+                                            border = BorderStroke(0.5.dp, if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.30f)),
                                             shape = RoundedCornerShape(10.dp)
                                         ),
                                         focusedBorder = Border.None
                                     ),
                                     modifier = Modifier.handleTouchClick { onNavigateToDetail(entity.seriesId) },
                                     colors = ButtonDefaults.colors(
-                                        containerColor = Color(0x14FFFFFF),
-                                        contentColor = Color.White,
+                                        containerColor = if (isMonochrome) Color(0x14FFFFFF) else focusColor.copy(alpha = 0.10f),
+                                        contentColor = if (isMonochrome) Color.White else Color(0xFFBAE6FD),
                                         focusedContainerColor = focusColor,
                                         focusedContentColor = focusContent
                                     )
@@ -547,7 +551,7 @@ fun DetailScreen(
                                 shape = ButtonDefaults.shape(shape = RoundedCornerShape(10.dp)),
                                 border = ButtonDefaults.border(
                                     border = Border(
-                                        border = BorderStroke(0.5.dp, Color(0x28FFFFFF)),
+                                        border = BorderStroke(0.5.dp, if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.30f)),
                                         shape = RoundedCornerShape(10.dp)
                                     ),
                                     focusedBorder = Border.None
@@ -556,8 +560,12 @@ fun DetailScreen(
                                     .onFocusChanged { isFavFocused = it.isFocused }
                                     .handleTouchClick { viewModel.toggleFavorite() },
                                 colors = ButtonDefaults.colors(
-                                    containerColor = if (state.isFavorite) Color(0x28FFFFFF) else Color(0x14FFFFFF),
-                                    contentColor = Color.White,
+                                    containerColor = if (state.isFavorite) {
+                                        (if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.22f))
+                                    } else {
+                                        (if (isMonochrome) Color(0x14FFFFFF) else focusColor.copy(alpha = 0.10f))
+                                    },
+                                    contentColor = if (isMonochrome) Color.White else Color(0xFFBAE6FD),
                                     focusedContainerColor = focusColor,
                                     focusedContentColor = focusContent
                                 )
@@ -592,15 +600,15 @@ fun DetailScreen(
                                     shape = ButtonDefaults.shape(shape = RoundedCornerShape(10.dp)),
                                     border = ButtonDefaults.border(
                                         border = Border(
-                                            border = BorderStroke(0.5.dp, Color(0x28FFFFFF)),
+                                            border = BorderStroke(0.5.dp, if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.30f)),
                                             shape = RoundedCornerShape(10.dp)
                                         ),
                                         focusedBorder = Border.None
                                     ),
                                     modifier = Modifier.handleTouchClick { isShowingTrailer = true },
                                     colors = ButtonDefaults.colors(
-                                        containerColor = Color(0x14FFFFFF),
-                                        contentColor = Color.White,
+                                        containerColor = if (isMonochrome) Color(0x14FFFFFF) else focusColor.copy(alpha = 0.10f),
+                                        contentColor = if (isMonochrome) Color.White else Color(0xFFBAE6FD),
                                         focusedContainerColor = focusColor,
                                         focusedContentColor = focusContent
                                     )
@@ -630,7 +638,7 @@ fun DetailScreen(
                                 shape = ButtonDefaults.shape(shape = RoundedCornerShape(10.dp)),
                                 border = ButtonDefaults.border(
                                     border = Border(
-                                        border = BorderStroke(0.5.dp, Color(0x28FFFFFF)),
+                                        border = BorderStroke(0.5.dp, if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.30f)),
                                         shape = RoundedCornerShape(10.dp)
                                     ),
                                     focusedBorder = Border.None
@@ -639,8 +647,12 @@ fun DetailScreen(
                                     .onFocusChanged { isWatchedFocused = it.isFocused }
                                     .handleTouchClick { viewModel.togglePlayed() },
                                 colors = ButtonDefaults.colors(
-                                    containerColor = if (state.isPlayed) Color(0x28FFFFFF) else Color(0x14FFFFFF),
-                                    contentColor = Color.White,
+                                    containerColor = if (state.isPlayed) {
+                                        (if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.22f))
+                                    } else {
+                                        (if (isMonochrome) Color(0x14FFFFFF) else focusColor.copy(alpha = 0.10f))
+                                    },
+                                    contentColor = if (isMonochrome) Color.White else Color(0xFFBAE6FD),
                                     focusedContainerColor = focusColor,
                                     focusedContentColor = focusContent
                                 )

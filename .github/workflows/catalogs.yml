@@ -20,6 +20,7 @@ concurrency:
 
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   refresh:
@@ -38,24 +39,24 @@ jobs:
         id: secrets
         run: |
           echo "tmdb=${{ secrets.TMDB_API_KEY != '' }}" >> "$GITHUB_OUTPUT"
-          echo "deploy=${{ secrets.FIREBASE_SERVICE_ACCOUNT != '' }}" >> "$GITHUB_OUTPUT"
 
       - name: Generate catalogs
-        if: steps.secrets.outputs.tmdb == 'true' && steps.secrets.outputs.deploy == 'true'
+        if: steps.secrets.outputs.tmdb == 'true'
         env:
           TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
         run: node scripts/catalog/generate-catalogs.mjs
 
       - name: Install Firebase CLI
-        if: steps.secrets.outputs.tmdb == 'true' && steps.secrets.outputs.deploy == 'true'
+        if: steps.secrets.outputs.tmdb == 'true'
         run: npm install -g firebase-tools
 
-      - name: Authenticate to Google Cloud
-        if: steps.secrets.outputs.tmdb == 'true' && steps.secrets.outputs.deploy == 'true'
+      - name: Authenticate to Google Cloud (Workload Identity Federation)
+        if: steps.secrets.outputs.tmdb == 'true'
         uses: google-github-actions/auth@v2
         with:
-          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          workload_identity_provider: 'projects/497957809148/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
+          service_account: 'medusa-fd388@appspot.gserviceaccount.com'
 
       - name: Deploy to Firebase Hosting
-        if: steps.secrets.outputs.tmdb == 'true' && steps.secrets.outputs.deploy == 'true'
+        if: steps.secrets.outputs.tmdb == 'true'
         run: firebase deploy --only hosting:catalogs --project medusa-fd388 --non-interactive

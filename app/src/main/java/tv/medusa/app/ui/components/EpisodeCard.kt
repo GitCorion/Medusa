@@ -80,7 +80,7 @@ fun EpisodeCard(
             .clip(RoundedCornerShape(10.dp))
             .border(
                 width = if (isFocused) 1.5.dp else 0.5.dp,
-                color = if (isFocused) focusColor else Color(0x18FFFFFF),
+                color = if (isFocused) focusColor else (if (isMonochrome) Color(0x18FFFFFF) else focusColor.copy(alpha = 0.16f)),
                 shape = RoundedCornerShape(10.dp)
             )
     ) {
