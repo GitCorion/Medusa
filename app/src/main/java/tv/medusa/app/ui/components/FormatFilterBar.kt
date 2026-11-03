@@ -1,9 +1,7 @@
 package tv.medusa.app.ui.components
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -33,17 +31,16 @@ import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Icon
 import androidx.tv.material3.Text
-import tv.medusa.app.ui.util.handleTouchClick
 import tv.medusa.app.R
 import tv.medusa.app.data.local.BUTTON_STYLE_ICONS_ONLY
 import tv.medusa.app.data.local.BUTTON_STYLE_TEXT_ONLY
 import tv.medusa.app.domain.model.MediaFormatFilter
 import tv.medusa.app.ui.theme.TvAccent
+import tv.medusa.app.ui.util.handleTouchClick
 
 /**
- * Barra de filtros de formato universal (Todos / Películas / Series) con opción de filtro de vistos.
- * Proporciona homogeneidad visual absoluta en todas las pantallas principales (Inicio, Marcas, Géneros, Favoritos).
- * Diseño fino, elegante, centrado y más compacto que el menú superior para TV.
+ * Universal format filter bar (All / Movies / Series) with watched filter toggle.
+ * Follows 10-foot Android TV guidelines with standard 8dp corner radius and focus scaling.
  */
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
@@ -64,129 +61,130 @@ fun FormatFilterBar(
     val showText = buttonStyleKey != BUTTON_STYLE_ICONS_ONLY
 
     val buttonPadding = if (!showText) {
-        PaddingValues(horizontal = 9.dp, vertical = 2.dp)
+        PaddingValues(0.dp)
     } else {
-        PaddingValues(horizontal = 12.dp, vertical = 2.dp)
+        PaddingValues(horizontal = 14.dp, vertical = 6.dp)
     }
+
+    val chipShape = RoundedCornerShape(8.dp)
 
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 48.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.Center,
+            .padding(horizontal = 48.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.Start),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (onToggleHideWatched != null) {
-                Button(
-                    onClick = { onToggleHideWatched() },
-                    contentPadding = buttonPadding,
-                    colors = ButtonDefaults.colors(
-                        containerColor = if (hideWatched) (if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.22f)) else Color(0x0CFFFFFF),
-                        contentColor = if (hideWatched) (if (isMonochrome) Color.White else focusColor) else Color(0xFF94A3B8),
-                        focusedContainerColor = focusColor,
-                        focusedContentColor = focusContent
-                    ),
-                    shape = ButtonDefaults.shape(shape = RoundedCornerShape(14.dp)),
-                    border = ButtonDefaults.border(
-                        border = Border(
-                            border = BorderStroke(
-                                width = if (hideWatched) 1.dp else 0.5.dp,
-                                color = if (hideWatched) (if (isMonochrome) Color(0x33FFFFFF) else focusColor.copy(alpha = 0.45f)) else Color(0x14FFFFFF)
-                            ),
-                            shape = RoundedCornerShape(14.dp)
+        if (onToggleHideWatched != null) {
+            val hideWatchedLabel = stringResource(R.string.filter_hide_watched)
+            Button(
+                onClick = { onToggleHideWatched() },
+                contentPadding = buttonPadding,
+                scale = ButtonDefaults.scale(focusedScale = 1.05f),
+                colors = ButtonDefaults.colors(
+                    containerColor = if (hideWatched) (if (isMonochrome) Color(0x30FFFFFF) else focusColor.copy(alpha = 0.22f)) else Color(0x10FFFFFF),
+                    contentColor = if (hideWatched) (if (isMonochrome) Color.White else focusColor) else Color(0xFF94A3B8),
+                    focusedContainerColor = focusColor,
+                    focusedContentColor = focusContent
+                ),
+                shape = ButtonDefaults.shape(shape = chipShape),
+                border = ButtonDefaults.border(
+                    border = Border(
+                        border = BorderStroke(
+                            width = if (hideWatched) 1.dp else 0.5.dp,
+                            color = if (hideWatched) (if (isMonochrome) Color(0x40FFFFFF) else focusColor.copy(alpha = 0.45f)) else Color(0x18FFFFFF)
                         ),
-                        focusedBorder = Border.None
+                        shape = chipShape
                     ),
-                    modifier = Modifier
-                        .handleTouchClick { onToggleHideWatched() }
-                        .height(28.dp)
+                    focusedBorder = Border.None
+                ),
+                modifier = Modifier
+                    .handleTouchClick { onToggleHideWatched() }
+                    .height(34.dp)
+                    .then(if (!showText) Modifier.width(38.dp) else Modifier)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
                 ) {
-                    val hideWatchedLabel = stringResource(R.string.filter_hide_watched)
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        if (showIcons) {
-                            val icon = if (hideWatched) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility
-                            Icon(
-                                imageVector = icon,
-                                contentDescription = hideWatchedLabel,
-                                modifier = Modifier.size(13.dp)
-                            )
-                        }
+                    if (showIcons) {
+                        val icon = if (hideWatched) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = hideWatchedLabel,
+                            modifier = Modifier.size(if (!showText) 16.dp else 14.dp)
+                        )
+                    }
 
-                        if (showText) {
-                            if (showIcons) Spacer(modifier = Modifier.width(5.dp))
-                            Text(
-                                text = hideWatchedLabel,
-                                fontSize = 11.5.sp,
-                                fontWeight = if (hideWatched) FontWeight.Bold else FontWeight.Medium
-                            )
-                        }
+                    if (showText) {
+                        if (showIcons) Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = hideWatchedLabel,
+                            fontSize = 12.5.sp,
+                            fontWeight = if (hideWatched) FontWeight.Bold else FontWeight.Medium
+                        )
                     }
                 }
             }
+        }
 
-            MediaFormatFilter.entries.forEach { format ->
-                val isSelected = selected == format
-                Button(
-                    onClick = { onSelect(format) },
-                    contentPadding = buttonPadding,
-                    colors = ButtonDefaults.colors(
-                        containerColor = if (isSelected) (if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.22f)) else Color(0x0CFFFFFF),
-                        contentColor = if (isSelected) (if (isMonochrome) Color.White else focusColor) else Color(0xFF94A3B8),
-                        focusedContainerColor = focusColor,
-                        focusedContentColor = focusContent
-                    ),
-                    shape = ButtonDefaults.shape(shape = RoundedCornerShape(14.dp)),
-                    border = ButtonDefaults.border(
-                        border = Border(
-                            border = BorderStroke(
-                                width = if (isSelected) 1.dp else 0.5.dp,
-                                color = if (isSelected) (if (isMonochrome) Color(0x33FFFFFF) else focusColor.copy(alpha = 0.45f)) else Color(0x14FFFFFF)
-                            ),
-                            shape = RoundedCornerShape(14.dp)
+        MediaFormatFilter.entries.forEach { format ->
+            val isSelected = selected == format
+            val formatLabel = when (format) {
+                MediaFormatFilter.ALL -> stringResource(R.string.format_all)
+                MediaFormatFilter.MOVIES -> stringResource(R.string.format_movies)
+                MediaFormatFilter.SERIES -> stringResource(R.string.format_series)
+            }
+            Button(
+                onClick = { onSelect(format) },
+                contentPadding = buttonPadding,
+                scale = ButtonDefaults.scale(focusedScale = 1.05f),
+                colors = ButtonDefaults.colors(
+                    containerColor = if (isSelected) (if (isMonochrome) Color(0x30FFFFFF) else focusColor.copy(alpha = 0.22f)) else Color(0x10FFFFFF),
+                    contentColor = if (isSelected) (if (isMonochrome) Color.White else focusColor) else Color(0xFF94A3B8),
+                    focusedContainerColor = focusColor,
+                    focusedContentColor = focusContent
+                ),
+                shape = ButtonDefaults.shape(shape = chipShape),
+                border = ButtonDefaults.border(
+                    border = Border(
+                        border = BorderStroke(
+                            width = if (isSelected) 1.dp else 0.5.dp,
+                            color = if (isSelected) (if (isMonochrome) Color(0x40FFFFFF) else focusColor.copy(alpha = 0.45f)) else Color(0x18FFFFFF)
                         ),
-                        focusedBorder = Border.None
+                        shape = chipShape
                     ),
-                    modifier = Modifier
-                        .handleTouchClick { onSelect(format) }
-                        .height(28.dp)
+                    focusedBorder = Border.None
+                ),
+                modifier = Modifier
+                    .handleTouchClick { onSelect(format) }
+                    .height(34.dp)
+                    .then(if (!showText) Modifier.width(38.dp) else Modifier)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
                 ) {
-                    val formatLabel = when (format) {
-                        MediaFormatFilter.ALL -> stringResource(R.string.format_all)
-                        MediaFormatFilter.MOVIES -> stringResource(R.string.format_movies)
-                        MediaFormatFilter.SERIES -> stringResource(R.string.format_series)
+                    if (showIcons) {
+                        val icon = when (format) {
+                            MediaFormatFilter.ALL -> Icons.Rounded.Apps
+                            MediaFormatFilter.MOVIES -> Icons.Rounded.Movie
+                            MediaFormatFilter.SERIES -> Icons.Rounded.Tv
+                        }
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = formatLabel,
+                            modifier = Modifier.size(if (!showText) 16.dp else 14.dp)
+                        )
                     }
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        if (showIcons) {
-                            val icon = when (format) {
-                                MediaFormatFilter.ALL -> Icons.Rounded.Apps
-                                MediaFormatFilter.MOVIES -> Icons.Rounded.Movie
-                                MediaFormatFilter.SERIES -> Icons.Rounded.Tv
-                            }
-                            Icon(
-                                imageVector = icon,
-                                contentDescription = formatLabel,
-                                modifier = Modifier.size(13.dp)
-                            )
-                        }
 
-                        if (showText) {
-                            if (showIcons) Spacer(modifier = Modifier.width(5.dp))
-                            Text(
-                                text = formatLabel,
-                                fontSize = 11.5.sp,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
-                            )
-                        }
+                    if (showText) {
+                        if (showIcons) Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = formatLabel,
+                            fontSize = 12.5.sp,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                        )
                     }
                 }
             }

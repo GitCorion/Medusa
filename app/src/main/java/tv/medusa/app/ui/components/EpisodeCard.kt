@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Tv
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -71,7 +72,7 @@ fun EpisodeCard(
             containerColor = if (isFocused) Color(0xFF1E222D) else Color(0xFF111319),
             focusedContainerColor = Color(0xFF1E222D)
         ),
-        scale = CardDefaults.scale(focusedScale = 1.0f),
+        scale = CardDefaults.scale(focusedScale = 1.05f),
         modifier = modifier
             .handleTouchClick { onClick() }
             .width(220.dp)
@@ -91,13 +92,34 @@ fun EpisodeCard(
                     .aspectRatio(16f / 9f)
                     .background(Color(0xFF1A1C24))
             ) {
-                if (episode.imageUrl != null) {
+                var isImageError by remember(episode.id, episode.imageUrl) { mutableStateOf(false) }
+
+                if (!isImageError && !episode.imageUrl.isNullOrBlank()) {
                     AsyncImage(
                         model = episode.imageUrl,
                         contentDescription = episode.name,
                         contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier.fillMaxSize(),
+                        onError = { isImageError = true }
                     )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                Brush.verticalGradient(
+                                    colors = listOf(Color(0xFF222838), Color(0xFF10131B))
+                                )
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Tv,
+                            contentDescription = null,
+                            tint = Color(0x66FFFFFF),
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
                 }
 
                 // Vignette gradient
@@ -182,14 +204,16 @@ fun EpisodeCard(
                         modifier = Modifier
                             .align(Alignment.Center)
                             .size(36.dp)
-                            .background(focusColor, RoundedCornerShape(18.dp)),
+                            .background(Color.White, CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.PlayArrow,
                             contentDescription = stringResource(R.string.common_play),
-                            tint = focusContent,
-                            modifier = Modifier.size(22.dp)
+                            tint = Color(0xFF0F172A),
+                            modifier = Modifier
+                                .size(22.dp)
+                                .padding(start = 2.dp) // Optical center compensation for triangle
                         )
                     }
                 }

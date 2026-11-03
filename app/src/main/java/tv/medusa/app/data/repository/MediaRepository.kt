@@ -266,6 +266,12 @@ class MediaRepository(
     suspend fun getTmdbByProvider(apiKey: String, providerId: String, region: String = tv.medusa.app.data.remote.ApiConfig.TMDB_WATCH_REGION, maxPages: Int = 4): Result<List<TmdbItemDto>> =
         tmdb.getTmdbByProvider(apiKey, providerId, region, maxPages)
 
+    suspend fun getTmdbPopularByRegion(apiKey: String, region: String = tv.medusa.app.data.remote.ApiConfig.TMDB_WATCH_REGION, maxPages: Int = 4): Result<List<TmdbItemDto>> =
+        tmdb.getTmdbPopularByRegion(apiKey, region, maxPages)
+
+    suspend fun getTmdbProviderCatalog(apiKey: String, providerId: String, region: String = tv.medusa.app.data.remote.ApiConfig.TMDB_WATCH_REGION): Result<List<TmdbItemDto>> =
+        tmdb.getTmdbProviderCatalog(apiKey, providerId, region)
+
     suspend fun getTmdbMovieDetail(apiKey: String, movieId: Long): TmdbMovieDetailDto? =
         tmdb.getTmdbMovieDetail(apiKey, movieId)
 
@@ -367,8 +373,14 @@ class MediaRepository(
 
     fun getFavoritesFlow(): Flow<List<JellyfinMediaEntity>> = local.getFavoritesFlow()
 
-    suspend fun findLocal(tmdbId: String?, imdbId: String?, title: String? = null, year: Int? = null): JellyfinMediaEntity? =
-        local.findLocal(tmdbId, imdbId, title, year)
+    suspend fun findLocal(tmdbId: String?, imdbId: String?, title: String? = null, year: Int? = null, isTv: Boolean? = null): JellyfinMediaEntity? =
+        local.findLocal(tmdbId, imdbId, title, year, isTv)
+
+    suspend fun findLocalByTmdbIds(tmdbIds: Collection<String>): List<JellyfinMediaEntity> =
+        local.findLocalByTmdbIds(tmdbIds)
+
+    suspend fun findLocalByTitles(titles: Collection<String>): List<JellyfinMediaEntity> =
+        local.findLocalByTitles(titles)
 
     suspend fun getMostWatchedGenres(): List<String> = local.getMostWatchedGenres()
 

@@ -167,9 +167,13 @@ class GetSeasonalFeedUseCase @Inject constructor(
 
         val sections = mutableListOf<HomeSection>()
         val seen = mutableSetOf<String>()
+        val seenTitles = mutableSetOf<String>()
 
         fun addSection(title: String, items: List<JellyfinMediaEntity>) {
-            val unique = items.filter { seen.add(it.id) }
+            val unique = items.filter {
+                val norm = it.title.trim().lowercase().replace(Regex("[^a-z0-9áéíóúüñ]"), "")
+                seen.add(it.id) && seenTitles.add(norm)
+            }
             if (unique.isNotEmpty()) {
                 sections.add(
                     HomeSection(

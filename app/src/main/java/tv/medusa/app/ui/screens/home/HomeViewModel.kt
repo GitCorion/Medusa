@@ -163,6 +163,8 @@ class HomeViewModel @Inject constructor(
                         MediaRepository.invalidateServerCaches()
                         lastStaticSections = null
                         lastSections = null
+                        // Nuevo catálogo → reconstruir el índice de descubrimiento en background.
+                        tv.medusa.app.data.worker.CollectionIndexScheduler.enqueueNow(context, force = false)
                         loadFeedForPrefs(prefs, forceRefresh = true, startSync = false)
                     }
                 }

@@ -420,6 +420,12 @@ fun DetailScreen(
                         val showIcons = state.buttonStyle != BUTTON_STYLE_TEXT_ONLY
                         val showText = state.buttonStyle != BUTTON_STYLE_ICONS_ONLY
 
+                        val actionButtonPadding = if (!showText) {
+                            PaddingValues(horizontal = 14.dp, vertical = 10.dp)
+                        } else {
+                            PaddingValues(horizontal = 18.dp, vertical = 10.dp)
+                        }
+
                         // Action Buttons Row (Adapts dynamically to buttonStyle)
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -450,6 +456,8 @@ fun DetailScreen(
                                     isLaunchingPlayer = true
                                     onPlay(playTargetId)
                                 },
+                                contentPadding = actionButtonPadding,
+                                scale = ButtonDefaults.scale(focusedScale = 1.05f),
                                 colors = ButtonDefaults.colors(
                                     containerColor = Color(0x28FFFFFF),
                                     contentColor = Color.White,
@@ -459,11 +467,11 @@ fun DetailScreen(
                                 border = ButtonDefaults.border(
                                     border = Border(
                                         border = BorderStroke(0.5.dp, Color(0x28FFFFFF)),
-                                        shape = RoundedCornerShape(12.dp)
+                                        shape = RoundedCornerShape(10.dp)
                                     ),
                                     focusedBorder = Border.None
                                 ),
-                                shape = ButtonDefaults.shape(shape = RoundedCornerShape(12.dp)),
+                                shape = ButtonDefaults.shape(shape = RoundedCornerShape(10.dp)),
                                 modifier = Modifier
                                     .handleTouchClick {
                                         isLaunchingPlayer = true
@@ -492,6 +500,16 @@ fun DetailScreen(
                                     onClick = {
                                         onNavigateToDetail(entity.seriesId)
                                     },
+                                    contentPadding = actionButtonPadding,
+                                    scale = ButtonDefaults.scale(focusedScale = 1.05f),
+                                    shape = ButtonDefaults.shape(shape = RoundedCornerShape(10.dp)),
+                                    border = ButtonDefaults.border(
+                                        border = Border(
+                                            border = BorderStroke(0.5.dp, Color(0x28FFFFFF)),
+                                            shape = RoundedCornerShape(10.dp)
+                                        ),
+                                        focusedBorder = Border.None
+                                    ),
                                     modifier = Modifier.handleTouchClick { onNavigateToDetail(entity.seriesId) },
                                     colors = ButtonDefaults.colors(
                                         containerColor = Color(0x14FFFFFF),
@@ -524,6 +542,16 @@ fun DetailScreen(
                             var isFavFocused by remember { mutableStateOf(false) }
                             Button(
                                 onClick = { viewModel.toggleFavorite() },
+                                contentPadding = actionButtonPadding,
+                                scale = ButtonDefaults.scale(focusedScale = 1.05f),
+                                shape = ButtonDefaults.shape(shape = RoundedCornerShape(10.dp)),
+                                border = ButtonDefaults.border(
+                                    border = Border(
+                                        border = BorderStroke(0.5.dp, Color(0x28FFFFFF)),
+                                        shape = RoundedCornerShape(10.dp)
+                                    ),
+                                    focusedBorder = Border.None
+                                ),
                                 modifier = Modifier
                                     .onFocusChanged { isFavFocused = it.isFocused }
                                     .handleTouchClick { viewModel.toggleFavorite() },
@@ -559,6 +587,16 @@ fun DetailScreen(
                             if (state.trailerUrl != null) {
                                 Button(
                                     onClick = { isShowingTrailer = true },
+                                    contentPadding = actionButtonPadding,
+                                    scale = ButtonDefaults.scale(focusedScale = 1.05f),
+                                    shape = ButtonDefaults.shape(shape = RoundedCornerShape(10.dp)),
+                                    border = ButtonDefaults.border(
+                                        border = Border(
+                                            border = BorderStroke(0.5.dp, Color(0x28FFFFFF)),
+                                            shape = RoundedCornerShape(10.dp)
+                                        ),
+                                        focusedBorder = Border.None
+                                    ),
                                     modifier = Modifier.handleTouchClick { isShowingTrailer = true },
                                     colors = ButtonDefaults.colors(
                                         containerColor = Color(0x14FFFFFF),
@@ -587,6 +625,16 @@ fun DetailScreen(
                             var isWatchedFocused by remember { mutableStateOf(false) }
                             Button(
                                 onClick = { viewModel.togglePlayed() },
+                                contentPadding = actionButtonPadding,
+                                scale = ButtonDefaults.scale(focusedScale = 1.05f),
+                                shape = ButtonDefaults.shape(shape = RoundedCornerShape(10.dp)),
+                                border = ButtonDefaults.border(
+                                    border = Border(
+                                        border = BorderStroke(0.5.dp, Color(0x28FFFFFF)),
+                                        shape = RoundedCornerShape(10.dp)
+                                    ),
+                                    focusedBorder = Border.None
+                                ),
                                 modifier = Modifier
                                     .onFocusChanged { isWatchedFocused = it.isFocused }
                                     .handleTouchClick { viewModel.togglePlayed() },

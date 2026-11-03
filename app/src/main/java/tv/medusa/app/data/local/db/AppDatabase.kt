@@ -16,9 +16,11 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         JellyfinMediaGenresFts::class,
         AllowedMediaIdEntity::class,
         SeasonalItemEntity::class,
-        SeasonalIndexMetaEntity::class
+        SeasonalIndexMetaEntity::class,
+        CollectionItemEntity::class,
+        CollectionMetaEntity::class
     ],
-    version = 21,
+    version = 22,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -28,6 +30,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun homeSectionCacheDao(): HomeSectionCacheDao
     abstract fun allowedMediaDao(): AllowedMediaDao
     abstract fun seasonalDao(): SeasonalDao
+    abstract fun collectionDao(): CollectionDao
 
     companion object {
         @Volatile
@@ -232,6 +235,40 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * v21 → v22: índice genérico de colecciones (plataformas, tendencias, popular regional).
+         * Guarda solo la pertenencia + clave de orden; los datos del título siguen en
+         * `jellyfin_media`.
+         */
+        val MIGRATION_21_22 = object : Migration(21, 22) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """CREATE TABLE IF NOT EXISTS `collection_items` (
+                        `collectionKey` TEXT NOT NULL,
+                        `mediaId` TEXT NOT NULL,
+                        `rank` INTEGER,
+                        `score` REAL NOT NULL,
+                        `updatedAt` INTEGER NOT NULL,
+                        PRIMARY KEY(`collectionKey`, `mediaId`)
+                    )"""
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_collection_items_collectionKey_score` ON `collection_items` (`collectionKey`, `score`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_collection_items_collectionKey_rank` ON `collection_items` (`collectionKey`, `rank`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_collection_items_mediaId` ON `collection_items` (`mediaId`)")
+
+                db.execSQL(
+                    """CREATE TABLE IF NOT EXISTS `collection_meta` (
+                        `collectionKey` TEXT NOT NULL,
+                        `region` TEXT NOT NULL,
+                        `catalogVersion` TEXT NOT NULL,
+                        `itemCount` INTEGER NOT NULL,
+                        `updatedAt` INTEGER NOT NULL,
+                        PRIMARY KEY(`collectionKey`)
+                    )"""
+                )
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -251,6 +288,7 @@ abstract class AppDatabase : RoomDatabase() {
                         MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12,
                         MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16,
                         MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21
+                        , MIGRATION_21_22
                     )
                     .fallbackToDestructiveMigration()
                     .build()

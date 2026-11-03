@@ -225,7 +225,8 @@ fun MedusaProDialog(
                             focusedContainerColor = focusColor,
                             focusedContentColor = focusContent
                         ),
-                        shape = ButtonDefaults.shape(RoundedCornerShape(12.dp))
+                        scale = ButtonDefaults.scale(focusedScale = 1.05f),
+                        shape = ButtonDefaults.shape(RoundedCornerShape(10.dp))
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Rounded.CheckCircle, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -249,7 +250,8 @@ fun MedusaProDialog(
                             focusedContainerColor = focusColor,
                             focusedContentColor = focusContent
                         ),
-                        shape = ButtonDefaults.shape(RoundedCornerShape(12.dp))
+                        scale = ButtonDefaults.scale(focusedScale = 1.05f),
+                        shape = ButtonDefaults.shape(RoundedCornerShape(10.dp))
                     ) {
                         Text(
                             text = stringResource(R.string.pro_restore),
@@ -260,14 +262,15 @@ fun MedusaProDialog(
 
                     Button(
                         onClick = onDismiss,
+                        scale = ButtonDefaults.scale(focusedScale = 1.05f),
+                        shape = ButtonDefaults.shape(RoundedCornerShape(10.dp)),
                         modifier = Modifier.handleTouchClick { onDismiss() },
                         colors = ButtonDefaults.colors(
                             containerColor = Color.Transparent,
                             contentColor = Color(0xFF64748B),
                             focusedContainerColor = focusColor,
                             focusedContentColor = focusContent
-                        ),
-                        shape = ButtonDefaults.shape(RoundedCornerShape(12.dp))
+                        )
                     ) {
                         Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.pro_close), modifier = Modifier.size(16.dp))
                     }

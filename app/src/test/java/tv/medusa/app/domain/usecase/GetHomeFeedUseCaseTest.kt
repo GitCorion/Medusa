@@ -4,6 +4,7 @@ import tv.medusa.app.data.local.UserPreferences
 import tv.medusa.app.data.local.db.JellyfinMediaEntity
 import tv.medusa.app.data.repository.MediaRepository
 import tv.medusa.app.domain.model.HomeSection
+import tv.medusa.app.domain.model.HomeSectionKind
 import tv.medusa.app.domain.model.MediaItem
 import tv.medusa.app.domain.model.MediaSource
 import kotlinx.coroutines.flow.first
@@ -156,23 +157,49 @@ class GetHomeFeedUseCaseTest {
     @Test
     fun `sectionPriority respects established ordering hierarchy`() {
         assertEquals(0, GetHomeFeedUseCase.sectionPriority("Continuar Viendo"))
+        assertEquals(2, GetHomeFeedUseCase.sectionPriority("Top 10 hoy"))
         assertEquals(5, GetHomeFeedUseCase.sectionPriority("Últimos estrenos"))
-        assertEquals(10, GetHomeFeedUseCase.sectionPriority("Top 10 Películas Global"))
         assertEquals(20, GetHomeFeedUseCase.sectionPriority("Añadido recientemente"))
         assertEquals(30, GetHomeFeedUseCase.sectionPriority("Porque viste Matrix"))
         assertEquals(40, GetHomeFeedUseCase.sectionPriority("Populares en Netflix"))
-        assertEquals(41, GetHomeFeedUseCase.sectionPriority("Populares en Prime Video"))
-        assertEquals(42, GetHomeFeedUseCase.sectionPriority("Populares en Disney+"))
+        assertEquals(40, GetHomeFeedUseCase.sectionPriority("Populares en Prime Video"))
+        assertEquals(40, GetHomeFeedUseCase.sectionPriority("Populares en Disney+"))
         assertEquals(70, GetHomeFeedUseCase.sectionPriority("Grandes Producciones de tu colección"))
         assertEquals(80, GetHomeFeedUseCase.sectionPriority("Series Destacadas"))
         assertEquals(90, GetHomeFeedUseCase.sectionPriority("Películas Recomendadas"))
         assertEquals(100, GetHomeFeedUseCase.sectionPriority("Recomendados de Acción"))
         assertEquals(200, GetHomeFeedUseCase.sectionPriority("Otra sección desconocida"))
 
-        // La prioridad de 'Continuar Viendo' (0) debe ser menor (más prioritario) que 'Series Destacadas' (80)
+        // La tendencia del día debe ir por encima de las novedades de la biblioteca.
+        assertTrue(
+            GetHomeFeedUseCase.sectionPriority("Top 10 hoy") <
+                    GetHomeFeedUseCase.sectionPriority("Últimos estrenos")
+        )
         assertTrue(
             GetHomeFeedUseCase.sectionPriority("Continuar Viendo") <
                     GetHomeFeedUseCase.sectionPriority("Series Destacadas")
+        )
+    }
+
+    @Test
+    fun `sectionPriority uses stable kind instead of the display title`() {
+        assertEquals(
+            2,
+            GetHomeFeedUseCase.sectionPriority(
+                HomeSection(title = "Cualquier texto", items = emptyList(), kind = HomeSectionKind.TRENDING)
+            )
+        )
+        assertEquals(
+            40,
+            GetHomeFeedUseCase.sectionPriority(
+                HomeSection(title = "Otro texto", items = emptyList(), kind = HomeSectionKind.PLATFORM)
+            )
+        )
+        assertEquals(
+            70,
+            GetHomeFeedUseCase.sectionPriority(
+                HomeSection(title = "Texto distinto", items = emptyList(), kind = HomeSectionKind.LIBRARY_TOP_MOVIES)
+            )
         )
     }
 

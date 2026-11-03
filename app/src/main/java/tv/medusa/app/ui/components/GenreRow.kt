@@ -64,15 +64,6 @@ fun GenreRow(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(horizontal = 48.dp, vertical = 6.dp)
         ) {
-            if (!isMonochrome) {
-                Box(
-                    modifier = Modifier
-                        .height(18.dp)
-                        .width(3.dp)
-                        .background(focusColor, RoundedCornerShape(1.5.dp))
-                )
-                Spacer(modifier = Modifier.width(10.dp))
-            }
             Text(
                 text = stringResource(R.string.genre_favorites_title),
                 style = MaterialTheme.typography.titleLarge,
@@ -127,7 +118,7 @@ private fun GenreChip(
             border = Border(border = BorderStroke(0.75.dp, Color(0x18FFFFFF))),
             focusedBorder = Border.None
         ),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.0f)
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.05f)
     ) {
         Box(
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),

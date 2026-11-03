@@ -538,6 +538,7 @@ class SettingsViewModel @Inject constructor(
         GenreViewModel.clearAllCaches()
         BrandViewModel.clearCache()
         GetHomeFeedUseCase.clearMemorySnapshot()
+        runCatching { database.collectionDao().clearAll() }
         return true
     }
 
@@ -557,6 +558,7 @@ class SettingsViewModel @Inject constructor(
         GenreViewModel.clearAllCaches()
         BrandViewModel.clearCache()
         GetHomeFeedUseCase.clearMemorySnapshot()
+        runCatching { database.collectionDao().clearAll() }
     }
 
     fun disconnectJellyfin() {

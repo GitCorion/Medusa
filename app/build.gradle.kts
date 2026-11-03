@@ -36,7 +36,9 @@ android {
         // Claves para TMDB/Trakt. Los valores reales se inyectan en build-time vía variables de
         // entorno o keystore.properties (gitignored); aquí solo hay defaults vacíos. Si falta una
         // clave, el campo queda vacío y la funcionalidad correspondiente se desactiva en runtime.
-        buildConfigField("String", "DEFAULT_TMDB_API_KEY", "\"${envOr("TMDB_API_KEY", "")}\"")
+        // La app ya no lleva la clave TMDB: todas las llamadas pasan por el proxy de Firebase.
+        // Este token no es secreto y solo mantiene activas las comprobaciones de disponibilidad.
+        buildConfigField("String", "DEFAULT_TMDB_API_KEY", "\"\"")
         buildConfigField("String", "DEFAULT_TRAKT_CLIENT_ID", "\"${envOr("TRAKT_CLIENT_ID", "")}\"")
         buildConfigField("String", "DEFAULT_TRAKT_CLIENT_SECRET", "\"${envOr("TRAKT_CLIENT_SECRET", "")}\"")
     }

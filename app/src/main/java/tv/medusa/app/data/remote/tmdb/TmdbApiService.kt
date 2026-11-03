@@ -117,6 +117,26 @@ interface TmdbApiService {
         @Query("language") language: String = ApiConfig.TMDB_LANGUAGE
     ): TmdbTrendingResponse
 
+    @GET("discover/movie")
+    suspend fun discoverPopularMovies(
+        @Query("api_key") apiKey: String,
+        @Query("watch_region") watchRegion: String = ApiConfig.TMDB_WATCH_REGION,
+        @Query("with_watch_monetization_types") monetizationTypes: String = "flatrate|free|ads",
+        @Query("sort_by") sortBy: String = "popularity.desc",
+        @Query("page") page: Int = 1,
+        @Query("language") language: String = ApiConfig.TMDB_LANGUAGE
+    ): TmdbTrendingResponse
+
+    @GET("discover/tv")
+    suspend fun discoverPopularTv(
+        @Query("api_key") apiKey: String,
+        @Query("watch_region") watchRegion: String = ApiConfig.TMDB_WATCH_REGION,
+        @Query("with_watch_monetization_types") monetizationTypes: String = "flatrate|free|ads",
+        @Query("sort_by") sortBy: String = "popularity.desc",
+        @Query("page") page: Int = 1,
+        @Query("language") language: String = ApiConfig.TMDB_LANGUAGE
+    ): TmdbTrendingResponse
+
     @GET("movie/top_rated")
     suspend fun getTopRatedMovies(
         @Query("api_key") apiKey: String,

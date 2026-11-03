@@ -374,7 +374,7 @@ fun MediaContextMenuDialog(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text(
-                            text = "OPCIONES",
+                            text = stringResource(R.string.context_menu_options),
                             style = MaterialTheme.typography.labelSmall,
                             color = Color(0xFF64748B),
                             fontWeight = FontWeight.Bold,

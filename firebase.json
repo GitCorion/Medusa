@@ -1,26 +1,67 @@
 {
-  "hosting": {
-    "public": "docs",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/*.md",
-      "store_assets/**"
-    ],
-    "headers": [
-      {
-        "source": "/api/version.json",
-        "headers": [
-          { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
-        ]
-      },
-      {
-        "source": "**/*.apk",
-        "headers": [
-          { "key": "Content-Type", "value": "application/vnd.android.package-archive" },
-          { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
-        ]
-      }
-    ]
-  }
+  "functions": {
+    "source": "functions",
+    "runtime": "nodejs22"
+  },
+  "hosting": [
+    {
+      "target": "ota",
+      "public": "docs",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/*.md",
+        "store_assets/**",
+        "catalogs/**"
+      ],
+      "rewrites": [
+        {
+          "source": "/api/tmdb/**",
+          "function": "tmdbProxy"
+        },
+        {
+          "source": "/api/catalog/**",
+          "function": "requestRegionCatalog"
+        }
+      ],
+      "headers": [
+        {
+          "source": "/api/version.json",
+          "headers": [
+            { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+          ]
+        },
+        {
+          "source": "**/*.apk",
+          "headers": [
+            { "key": "Content-Type", "value": "application/vnd.android.package-archive" },
+            { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
+          ]
+        }
+      ]
+    },
+    {
+      "target": "catalogs",
+      "public": "docs/catalogs",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/*.md"
+      ],
+      "headers": [
+        {
+          "source": "**/index.json",
+          "headers": [
+            { "key": "Cache-Control", "value": "no-cache, max-age=300, must-revalidate" }
+          ]
+        },
+        {
+          "source": "**",
+          "headers": [
+            { "key": "Cache-Control", "value": "public, max-age=3600" }
+          ]
+        }
+      ]
+    }
+  ]
 }

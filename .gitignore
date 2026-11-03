@@ -23,3 +23,5 @@ MEMORIA_INSTRUCCIONES.md
 *.strm
 .firebase/
 .codex/
+# Catálogos de descubrimiento generados (se publican en Firebase Hosting, no se versionan)
+docs/catalogs/

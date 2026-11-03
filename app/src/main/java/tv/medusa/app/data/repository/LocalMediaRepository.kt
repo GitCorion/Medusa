@@ -287,16 +287,63 @@ class LocalMediaRepository(
             else jellyfinDao.getFavoritesFlow()
         }
 
-    suspend fun findLocal(tmdbId: String?, imdbId: String?, title: String? = null, year: Int? = null): JellyfinMediaEntity? {
-        val matched = findLocalInternal(tmdbId, imdbId, title, year) ?: return null
+    suspend fun findLocal(tmdbId: String?, imdbId: String?, title: String? = null, year: Int? = null, isTv: Boolean? = null): JellyfinMediaEntity? {
+        val matched = findLocalInternal(tmdbId, imdbId, title, year, isTv) ?: return null
         return resolveToSeriesIfEpisode(matched)
     }
 
-    private suspend fun findLocalInternal(tmdbId: String?, imdbId: String?, title: String? = null, year: Int? = null): JellyfinMediaEntity? {
-        // 1. Try matching by TMDB or IMDB ID
+    /**
+     * Cruce por lotes por TMDB ID. Devuelve todas las filas que compartan alguno de los IDs
+     * (el llamador decide tipo/versión). Trocea en bloques de 900 para no superar el límite
+     * de variables de SQLite.
+     */
+    suspend fun findLocalByTmdbIds(tmdbIds: Collection<String>): List<JellyfinMediaEntity> {
+        if (tmdbIds.isEmpty()) return emptyList()
+        val result = mutableListOf<JellyfinMediaEntity>()
+        tmdbIds.asSequence()
+            .filter { it.isNotBlank() }
+            .distinct()
+            .chunked(900)
+            .forEach { chunk ->
+                result += jellyfinDao.findByTmdbIds(chunk)
+            }
+        return result
+    }
+
+    suspend fun findLocalByTitles(titles: Collection<String>): List<JellyfinMediaEntity> {
+        if (titles.isEmpty()) return emptyList()
+        val result = mutableListOf<JellyfinMediaEntity>()
+        titles.asSequence()
+            .filter { it.isNotBlank() }
+            .map { it.trim().lowercase() }
+            .distinct()
+            .chunked(900)
+            .forEach { chunk ->
+                result += jellyfinDao.findByTitles(chunk)
+            }
+        return result
+    }
+
+    private suspend fun findLocalInternal(tmdbId: String?, imdbId: String?, title: String? = null, year: Int? = null, isTv: Boolean? = null): JellyfinMediaEntity? {
+        // 1. Try matching by TMDB or IMDB ID (con verificación estricta de tipo Movie/Series para evitar colisiones de IDs entre películas y series)
         if (tmdbId != null || imdbId != null) {
-            val matchedById = jellyfinDao.findByTmdbOrImdb(tmdbId, imdbId)
-            if (matchedById != null) return matchedById
+            val matchedById = when (isTv) {
+                true -> jellyfinDao.findTvByTmdbOrImdb(tmdbId, imdbId)
+                false -> jellyfinDao.findMovieByTmdbOrImdb(tmdbId, imdbId)
+                null -> jellyfinDao.findByTmdbOrImdb(tmdbId, imdbId)
+            }
+            if (matchedById != null) {
+                if (title != null) {
+                    val cleanQuery = title.trim().lowercase().replace(Regex("[^a-z0-9]"), "")
+                    val cleanMatched = matchedById.title.trim().lowercase().replace(Regex("[^a-z0-9]"), "")
+                    val cleanOrig = (matchedById.originalTitle ?: "").trim().lowercase().replace(Regex("[^a-z0-9]"), "")
+                    val isPlausible = cleanQuery.isEmpty() || cleanMatched.contains(cleanQuery) || cleanQuery.contains(cleanMatched) ||
+                            (cleanOrig.isNotEmpty() && (cleanOrig.contains(cleanQuery) || cleanQuery.contains(cleanOrig)))
+                    if (isPlausible) return matchedById
+                } else {
+                    return matchedById
+                }
+            }
         }
 
         // 2. Fallback: match by title and year
@@ -407,8 +454,11 @@ class LocalMediaRepository(
         }
 
         val defaultGenres = listOf("Acción", "Comedia", "Drama", "Ciencia ficción", "Terror", "Aventura", "Animación", "Thriller", "Romance", "Fantasía", "Documental")
-        for (g in defaultGenres) {
-            if (!counts.containsKey(g)) {
+        // Solo rellenar cuando no existe ninguna señal real de consumo. Antes se añadían 11
+        // géneros por defecto siempre, así que la fila de chips mostraba ruido irrelevante
+        // incluso para usuarios con historial.
+        if (counts.isEmpty()) {
+            for (g in defaultGenres) {
                 counts[g] = 1
             }
         }
@@ -416,7 +466,7 @@ class LocalMediaRepository(
         return counts.entries
             .sortedByDescending { it.value }
             .map { it.key }
-            .take(12)
+            .take(8)
     }
 
     private fun getGenreSynonyms(genre: String): List<String> {
@@ -481,13 +531,13 @@ class LocalMediaRepository(
         val combined = mutableListOf<JellyfinMediaEntity>()
         val seen = mutableSetOf<String>()
         val isRestricted = restrictionsActive()
+        val limitPerSyn = (limit / synonyms.size.coerceAtLeast(1)).coerceAtLeast(60)
         for (syn in synonyms) {
-            val items = if (isRestricted) jellyfinDao.getMoviesByGenreRestricted(syn, limit)
-            else jellyfinDao.getMoviesByGenre(syn, limit)
+            val items = if (isRestricted) jellyfinDao.getMoviesByGenreRestricted(syn, limitPerSyn)
+            else jellyfinDao.getMoviesByGenre(syn, limitPerSyn)
             for (item in items) {
                 if (seen.add(item.id)) combined.add(item)
             }
-            if (combined.size >= limit) break
         }
         return combined.deduplicateMediaEntities()
     }
@@ -497,13 +547,13 @@ class LocalMediaRepository(
         val combined = mutableListOf<JellyfinMediaEntity>()
         val seen = mutableSetOf<String>()
         val isRestricted = restrictionsActive()
+        val limitPerSyn = (limit / synonyms.size.coerceAtLeast(1)).coerceAtLeast(60)
         for (syn in synonyms) {
-            val items = if (isRestricted) jellyfinDao.getSeriesByGenreRestricted(syn, limit)
-            else jellyfinDao.getSeriesByGenre(syn, limit)
+            val items = if (isRestricted) jellyfinDao.getSeriesByGenreRestricted(syn, limitPerSyn)
+            else jellyfinDao.getSeriesByGenre(syn, limitPerSyn)
             for (item in items) {
                 if (seen.add(item.id)) combined.add(item)
             }
-            if (combined.size >= limit) break
         }
         return combined.deduplicateMediaEntities()
     }
@@ -513,13 +563,13 @@ class LocalMediaRepository(
         val combined = mutableListOf<JellyfinMediaEntity>()
         val seen = mutableSetOf<String>()
         val isRestricted = restrictionsActive()
+        val limitPerSyn = (limit / synonyms.size.coerceAtLeast(1)).coerceAtLeast(20)
         for (syn in synonyms) {
-            val items = if (isRestricted) jellyfinDao.getRecentMoviesByGenreRestricted(syn, limit)
-            else jellyfinDao.getRecentMoviesByGenre(syn, limit)
+            val items = if (isRestricted) jellyfinDao.getRecentMoviesByGenreRestricted(syn, limitPerSyn)
+            else jellyfinDao.getRecentMoviesByGenre(syn, limitPerSyn)
             for (item in items) {
                 if (seen.add(item.id)) combined.add(item)
             }
-            if (combined.size >= limit) break
         }
         return combined.deduplicateMediaEntities()
     }
@@ -529,13 +579,13 @@ class LocalMediaRepository(
         val combined = mutableListOf<JellyfinMediaEntity>()
         val seen = mutableSetOf<String>()
         val isRestricted = restrictionsActive()
+        val limitPerSyn = (limit / synonyms.size.coerceAtLeast(1)).coerceAtLeast(20)
         for (syn in synonyms) {
-            val items = if (isRestricted) jellyfinDao.getRecentSeriesByGenreRestricted(syn, limit)
-            else jellyfinDao.getRecentSeriesByGenre(syn, limit)
+            val items = if (isRestricted) jellyfinDao.getRecentSeriesByGenreRestricted(syn, limitPerSyn)
+            else jellyfinDao.getRecentSeriesByGenre(syn, limitPerSyn)
             for (item in items) {
                 if (seen.add(item.id)) combined.add(item)
             }
-            if (combined.size >= limit) break
         }
         return combined.deduplicateMediaEntities()
     }

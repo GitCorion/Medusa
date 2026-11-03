@@ -30,7 +30,14 @@ val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "me
 
 // Claves por defecto para TMDB/Trakt. Provienen de BuildConfig (inyectables en build-time vía
 // env/keystore.properties); ya no hay literales hardcodeados en el código fuente.
-val DEFAULT_TMDB_API_KEY: String = BuildConfig.DEFAULT_TMDB_API_KEY
+/**
+ * La app ya no lleva la clave de TMDB: todas las llamadas pasan por el proxy de Firebase
+ * (`ApiConfig.TMDB_BASE_URL`). Este valor no es secreto; solo mantiene activas las
+ * comprobaciones de "TMDB disponible" del código existente.
+ */
+val DEFAULT_TMDB_API_KEY: String =
+    BuildConfig.DEFAULT_TMDB_API_KEY.takeIf { it.isNotBlank() }
+        ?: tv.medusa.app.data.remote.ApiConfig.TMDB_PROXY_TOKEN
 val DEFAULT_TRAKT_CLIENT_ID: String = BuildConfig.DEFAULT_TRAKT_CLIENT_ID
 val DEFAULT_TRAKT_CLIENT_SECRET: String = BuildConfig.DEFAULT_TRAKT_CLIENT_SECRET
 

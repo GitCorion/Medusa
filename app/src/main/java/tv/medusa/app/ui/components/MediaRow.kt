@@ -59,16 +59,6 @@ fun MediaRow(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(horizontal = 48.dp, vertical = 8.dp)
         ) {
-            if (!isMonochrome) {
-                Box(
-                    modifier = Modifier
-                        .height(18.dp)
-                        .width(3.dp)
-                        .background(focusColor, RoundedCornerShape(1.5.dp))
-                )
-                Spacer(modifier = Modifier.width(10.dp))
-            }
-
             val badgeText = localizedSectionBadge(section.badge)
             if (!badgeText.isNullOrBlank()) {
                 TvPill(

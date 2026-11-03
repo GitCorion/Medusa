@@ -48,6 +48,30 @@ class FakeJellyfinDao : JellyfinDao {
         }
     }
 
+    override suspend fun findByTmdbIds(tmdbIds: List<String>): List<JellyfinMediaEntity> {
+        val ids = tmdbIds.toSet()
+        return localDb.filter { it.tmdbId != null && it.tmdbId in ids }
+    }
+
+    override suspend fun findByTitles(titles: List<String>): List<JellyfinMediaEntity> {
+        val wanted = titles.toSet()
+        return localDb.filter { it.title.trim().lowercase() in wanted }
+    }
+
+    override suspend fun findTvByTmdbOrImdb(tmdbId: String?, imdbId: String?): JellyfinMediaEntity? {
+        return localDb.firstOrNull {
+            it.type in listOf("Series", "Episode") &&
+                ((tmdbId != null && it.tmdbId == tmdbId) || (imdbId != null && it.imdbId == imdbId))
+        }
+    }
+
+    override suspend fun findMovieByTmdbOrImdb(tmdbId: String?, imdbId: String?): JellyfinMediaEntity? {
+        return localDb.firstOrNull {
+            it.type in listOf("Movie", "BoxSet") &&
+                ((tmdbId != null && it.tmdbId == tmdbId) || (imdbId != null && it.imdbId == imdbId))
+        }
+    }
+
     override suspend fun getItemById(id: String): JellyfinMediaEntity? {
         return localDb.firstOrNull { it.id == id }
     }
@@ -525,6 +549,57 @@ class FilterToLibraryUseCaseTest {
 
         assertEquals(1, filtered.size)
         assertEquals("jf-mario-bros", filtered[0].id)
+    }
+
+    @Test
+    fun `filterTmdbItems does not match a movie with a same-title series`() = runTest {
+        val fakeDao = FakeJellyfinDao()
+        val series = JellyfinMediaEntity(
+            id = "series-resident-evil",
+            title = "Resident Evil",
+            type = "Series",
+            tmdbId = "108296",
+            productionYear = 2022
+        )
+        fakeDao.setLocalItems(listOf(series))
+
+        val repo = MediaRepository(fakeDao)
+        val useCase = FilterToLibraryUseCase(repo)
+
+        // Película "Resident Evil" (2026) que NO está en la biblioteca. Comparte título con
+        // la serie de 2022: no debe emparejarse ignorando el tipo.
+        val tmdbMovie = listOf(
+            TmdbItemDto(id = 1_423_191, title = "Resident Evil", releaseDate = "2026-09-16")
+        )
+
+        val filtered = useCase.filterTmdbItems(tmdbMovie, maxCandidates = 10)
+
+        assertTrue("Una película no debe emparejar con una serie del mismo título", filtered.isEmpty())
+    }
+
+    @Test
+    fun `filterTmdbItems still matches a tv item with its series`() = runTest {
+        val fakeDao = FakeJellyfinDao()
+        val series = JellyfinMediaEntity(
+            id = "series-resident-evil",
+            title = "Resident Evil",
+            type = "Series",
+            tmdbId = "108296",
+            productionYear = 2022
+        )
+        fakeDao.setLocalItems(listOf(series))
+
+        val repo = MediaRepository(fakeDao)
+        val useCase = FilterToLibraryUseCase(repo)
+
+        val tmdbTv = listOf(
+            TmdbItemDto(id = 108_296, name = "Resident Evil", firstAirDate = "2022-07-14")
+        )
+
+        val filtered = useCase.filterTmdbItems(tmdbTv, maxCandidates = 10)
+
+        assertEquals(1, filtered.size)
+        assertEquals("series-resident-evil", filtered[0].id)
     }
 
     @Test

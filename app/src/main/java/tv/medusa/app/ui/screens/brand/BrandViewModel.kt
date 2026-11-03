@@ -1,6 +1,7 @@
 package tv.medusa.app.ui.screens.brand
 
 import android.util.Log
+import android.content.Context
 import androidx.compose.ui.graphics.Color
 import tv.medusa.app.data.local.DEFAULT_TRAKT_CLIENT_ID
 import tv.medusa.app.data.local.db.JellyfinMediaEntity
@@ -20,10 +21,15 @@ import tv.medusa.app.domain.model.HomeSection
 import tv.medusa.app.domain.model.MediaItem
 import tv.medusa.app.domain.model.MediaSource
 import tv.medusa.app.domain.usecase.FilterToLibraryUseCase
+import tv.medusa.app.domain.usecase.CollectionIndexUseCase
+import tv.medusa.app.data.worker.CollectionIndexScheduler
 import tv.medusa.app.util.toOptimizedMediaItem
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -49,21 +55,34 @@ sealed interface BrandUiState {
     data class Success(
         val brand: BrandInfo,
         val sections: List<HomeSection>,
+        val allItems: List<MediaItem> = emptyList(),
+        val allCount: Int = 0,
         val focusedItem: MediaItem? = null,
         val format: MediaFormatFilter = MediaFormatFilter.ALL,
-        val hideWatched: Boolean = false
+        val hideWatched: Boolean = false,
+        val showAll: Boolean = false,
+        val hasMoreAll: Boolean = false,
+        val isLoadingAll: Boolean = false,
+        val fromIndex: Boolean = false
     ) : BrandUiState
     data class Error(val message: String) : BrandUiState
 }
 
 @HiltViewModel
 class BrandViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val userPreferencesRepository: UserPreferencesRepository,
     private val mediaRepository: MediaRepository,
-    private val filterToLibraryUseCase: FilterToLibraryUseCase
+    private val filterToLibraryUseCase: FilterToLibraryUseCase,
+    private val collectionIndexUseCase: CollectionIndexUseCase
 ) : ViewModel() {
 
     companion object {
+        private const val PAGE_SIZE = 60
+        private const val LANDING_ROW_SIZE = 20
+        private const val INDEX_POLL_ATTEMPTS = 20
+        private const val INDEX_POLL_DELAY_MS = 1_500L
+
         private val brandCache = ConcurrentHashMap<String, BrandUiState.Success>()
 
         fun clearCache(brandId: String? = null) {
@@ -91,25 +110,61 @@ class BrandViewModel @Inject constructor(
             userPreferencesRepository.hideWatched.collect { hide ->
                 val state = _uiState.value as? BrandUiState.Success ?: return@collect
                 if (state.hideWatched != hide) {
-                    val filtered = filterSections(allRawSections, currentFormat, hide)
-                    _uiState.value = state.copy(
-                        sections = filtered,
-                        focusedItem = filtered.firstOrNull()?.items?.firstOrNull(),
-                        hideWatched = hide
-                    )
+                    if (state.fromIndex) {
+                        loadFromIndex(
+                            brand = state.brand,
+                            key = CollectionIndexUseCase.platformKey(state.brand.id),
+                            hide = hide,
+                            format = currentFormat,
+                            showAll = state.showAll
+                        )
+                    } else {
+                        val (filteredSections, filteredItems) = filterSectionsAndItems(allRawSections, currentFormat, hide)
+                        _uiState.value = state.copy(
+                            sections = filteredSections,
+                            allItems = filteredItems,
+                            allCount = filteredItems.size,
+                            focusedItem = filteredSections.firstOrNull()?.items?.firstOrNull() ?: filteredItems.firstOrNull(),
+                            hideWatched = hide
+                        )
+                    }
                 }
             }
         }
+    }
+
+    fun openAll() {
+        val state = _uiState.value as? BrandUiState.Success ?: return
+        _uiState.value = state.copy(showAll = true)
+    }
+
+    fun closeAll() {
+        val state = _uiState.value as? BrandUiState.Success ?: return
+        _uiState.value = state.copy(showAll = false)
     }
 
     fun setFormat(format: MediaFormatFilter) {
         currentFormat = format
         val state = _uiState.value
         if (state is BrandUiState.Success) {
-            val filtered = filterSections(allRawSections, format, state.hideWatched)
+            if (state.fromIndex) {
+                viewModelScope.launch {
+                    loadFromIndex(
+                        brand = state.brand,
+                        key = CollectionIndexUseCase.platformKey(state.brand.id),
+                        hide = state.hideWatched,
+                        format = format,
+                        showAll = state.showAll
+                    )
+                }
+                return
+            }
+            val (filteredSections, filteredItems) = filterSectionsAndItems(allRawSections, format, state.hideWatched)
             _uiState.value = state.copy(
-                sections = filtered,
-                focusedItem = filtered.firstOrNull()?.items?.firstOrNull(),
+                sections = filteredSections,
+                allItems = filteredItems,
+                allCount = filteredItems.size,
+                focusedItem = filteredSections.firstOrNull()?.items?.firstOrNull() ?: filteredItems.firstOrNull(),
                 format = format
             )
         }
@@ -121,12 +176,12 @@ class BrandViewModel @Inject constructor(
         }
     }
 
-    private fun filterSections(
+    private fun filterSectionsAndItems(
         rawSections: List<HomeSection>,
         format: MediaFormatFilter,
         hideWatched: Boolean = userPreferencesRepository.hideWatched.value
-    ): List<HomeSection> {
-        val result = when (format) {
+    ): Pair<List<HomeSection>, List<MediaItem>> {
+        val filteredSections = when (format) {
             MediaFormatFilter.ALL -> rawSections.mapNotNull { section ->
                 val items = if (hideWatched) section.items.filter { !it.isPlayed } else section.items
                 if (items.isNotEmpty()) section.copy(items = items) else null
@@ -141,8 +196,16 @@ class BrandViewModel @Inject constructor(
                 }
                 if (filteredItems.isNotEmpty()) section.copy(items = filteredItems) else null
             }
+        }.distinctBy { it.title }
+
+        val allRawItems = rawSections.flatMap { it.items }.distinctBy { it.id }
+        val filteredAllItems = when (format) {
+            MediaFormatFilter.ALL -> allRawItems.filter { !hideWatched || !it.isPlayed }
+            MediaFormatFilter.MOVIES -> allRawItems.filter { it.type.equals("Movie", ignoreCase = true) && (!hideWatched || !it.isPlayed) }
+            MediaFormatFilter.SERIES -> allRawItems.filter { (it.type.equals("Series", ignoreCase = true) || it.type.equals("Episode", ignoreCase = true)) && (!hideWatched || !it.isPlayed) }
         }
-        return result.distinctBy { it.title }
+
+        return Pair(filteredSections, filteredAllItems)
     }
 
     fun loadBrandFeed(brandId: String, forceRefresh: Boolean = false) {
@@ -152,13 +215,16 @@ class BrandViewModel @Inject constructor(
         val cached = brandCache[brandId]
         // Si la marca es Trakt y solo tiene 1 sección (probablemente tendencias pre-login), no usamos la caché
         val isStaleTraktCache = brandId.equals("trakt", ignoreCase = true) && cached != null && cached.sections.size <= 1
-        if (cached != null && cached.sections.isNotEmpty() && !isStaleTraktCache) {
+        if (cached != null && cached.sections.isNotEmpty() && !isStaleTraktCache && !cached.fromIndex) {
             allRawSections = cached.sections
-            val filtered = filterSections(allRawSections, currentFormat)
+            val (filteredSections, filteredItems) = filterSectionsAndItems(allRawSections, currentFormat)
             _uiState.value = cached.copy(
-                sections = filtered,
-                focusedItem = filtered.firstOrNull()?.items?.firstOrNull(),
-                format = currentFormat
+                sections = filteredSections,
+                allItems = filteredItems,
+                allCount = filteredItems.size,
+                focusedItem = filteredSections.firstOrNull()?.items?.firstOrNull() ?: filteredItems.firstOrNull(),
+                format = currentFormat,
+                showAll = false
             )
             return
         } else {
@@ -328,29 +394,44 @@ class BrandViewModel @Inject constructor(
                     Log.e("BrandVM", "Error loading Trakt trending", e)
                 }
             } else {
+                // 1. Índice persistente: si ya está construido, la pantalla carga al instante
+                //    el catálogo COMPLETO de la plataforma (sin red y paginado).
+                val indexKey = CollectionIndexUseCase.platformKey(brand.id)
+                val hideNow = userPreferencesRepository.hideWatched.value
+                if (loadFromIndex(brand, indexKey, hideNow, currentFormat, showAll = false)) {
+                    return@launch
+                }
+
+                // 2. Primera apertura: construir solo esta plataforma en background mientras
+                //    se pinta el fallback en vivo. Al terminar, la pantalla se refresca sola.
+                CollectionIndexScheduler.enqueuePlatformNow(context, brand.id)
+
                 val api = NetworkClientFactory.createService(ApiConfig.TMDB_BASE_URL, TmdbApiService::class.java)
 
                 val tmdbSectionOrder = listOf("En Tendencia", "Series Destacadas", "Cine Aclamado")
 
                 val updateUiAndCache = {
                     val currentSnapshot = synchronized(sections) {
-                        sections.sortedBy { s ->
-                            val idx = tmdbSectionOrder.indexOf(s.title)
-                            if (idx != -1) idx else 999
-                        }
+                        dedupeAndOrderSections(sections, tmdbSectionOrder)
                     }
                     allRawSections = currentSnapshot
-                    val filtered = filterSections(allRawSections, currentFormat)
+                    val (filteredSections, filteredItems) = filterSectionsAndItems(allRawSections, currentFormat)
                     val currentFocused = (_uiState.value as? BrandUiState.Success)?.focusedItem
+                    val currentShowAll = (_uiState.value as? BrandUiState.Success)?.showAll ?: false
                     val successState = BrandUiState.Success(
                         brand = brand,
-                        sections = filtered,
-                        focusedItem = currentFocused ?: filtered.firstOrNull()?.items?.firstOrNull(),
-                        format = currentFormat
+                        sections = filteredSections,
+                        allItems = filteredItems,
+                        allCount = filteredItems.size,
+                        focusedItem = currentFocused ?: filteredSections.firstOrNull()?.items?.firstOrNull() ?: filteredItems.firstOrNull(),
+                        format = currentFormat,
+                        showAll = currentShowAll
                     )
                     _uiState.value = successState
                     brandCache[brandId] = successState.copy(sections = allRawSections, format = MediaFormatFilter.ALL)
                 }
+
+                Log.d("BrandVM", "=== Loading brand feed: id=${brand.id}, name=${brand.name}, providerId=${brand.providerId}, region=$effectiveRegion ===")
 
                 try {
                     supervisorScope {
@@ -368,6 +449,7 @@ class BrandViewModel @Inject constructor(
                                 }
                                 Pair(m.await(), t.await())
                             }
+                            Log.d("BrandVM", "[${brand.id}] TMDB Trending raw: ${trendingMovies.size} movies, ${trendingTv.size} tv")
                             val combined = (trendingMovies + trendingTv).take(40)
 
                             val localMatched = filterToLibraryUseCase.filterTmdbItems(
@@ -380,6 +462,7 @@ class BrandViewModel @Inject constructor(
                             val displayItems = localMatched.map {
                                 it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TMDB_TRENDING)
                             }
+                            Log.d("BrandVM", "[${brand.id}] En Tendencia local matches (${displayItems.size}): ${displayItems.map { "${it.title} [${it.type}]" }}")
                             if (displayItems.isNotEmpty()) {
                                 synchronized(sections) {
                                     sections.removeAll { it.title == "En Tendencia" }
@@ -404,6 +487,7 @@ class BrandViewModel @Inject constructor(
                             val displayItems = localMatched.map {
                                 it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TMDB_TRENDING)
                             }
+                            Log.d("BrandVM", "[${brand.id}] Series Destacadas matches (${displayItems.size}): ${displayItems.map { "${it.title} [${it.type}]" }}")
                             if (displayItems.isNotEmpty()) {
                                 synchronized(sections) {
                                     sections.removeAll { it.title == "Series Destacadas" }
@@ -428,6 +512,7 @@ class BrandViewModel @Inject constructor(
                             val displayItems = localMatched.map {
                                 it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TMDB_TRENDING)
                             }
+                            Log.d("BrandVM", "[${brand.id}] Cine Aclamado matches (${displayItems.size}): ${displayItems.map { "${it.title} [${it.type}]" }}")
                             if (displayItems.isNotEmpty()) {
                                 synchronized(sections) {
                                     sections.removeAll { it.title == "Cine Aclamado" }
@@ -441,25 +526,174 @@ class BrandViewModel @Inject constructor(
             }
 
             allRawSections = synchronized(sections) {
-                sections.sortedBy { s ->
-                    val idx = listOf("En Tendencia", "Series Destacadas", "Cine Aclamado").indexOf(s.title)
-                    if (idx != -1) idx else 999
-                }
+                dedupeAndOrderSections(
+                    sections,
+                    listOf("En Tendencia", "Series Destacadas", "Cine Aclamado")
+                )
             }
             val hide = userPreferencesRepository.hideWatched.value
-            val filtered = filterSections(allRawSections, currentFormat, hide)
+            val (filteredSections, filteredItems) = filterSectionsAndItems(allRawSections, currentFormat, hide)
             val currentFocused = (_uiState.value as? BrandUiState.Success)?.focusedItem
+            val currentShowAll = (_uiState.value as? BrandUiState.Success)?.showAll ?: false
             val successState = BrandUiState.Success(
                 brand = brand,
-                sections = filtered,
-                focusedItem = currentFocused ?: filtered.firstOrNull()?.items?.firstOrNull(),
+                sections = filteredSections,
+                allItems = filteredItems,
+                allCount = filteredItems.size,
+                focusedItem = currentFocused ?: filteredSections.firstOrNull()?.items?.firstOrNull() ?: filteredItems.firstOrNull(),
                 format = currentFormat,
-                hideWatched = hide
+                hideWatched = hide,
+                showAll = currentShowAll
             )
             if (sections.isNotEmpty()) {
                 brandCache[brandId] = successState.copy(sections = allRawSections, format = MediaFormatFilter.ALL)
             }
             _uiState.value = successState
+            if (brand.id != "trakt" && !successState.fromIndex) {
+                pollIndexUntilReady(
+                    brand = brand,
+                    key = CollectionIndexUseCase.platformKey(brand.id),
+                    hide = hide
+                )
+            }
+        }
+    }
+
+    /**
+     * Ordena las filas de una plataforma y elimina duplicados cruzados por id y por título
+     * normalizado. La primera fila del orden se queda con el título; las siguientes lo omiten.
+     */
+    private fun dedupeAndOrderSections(
+        sections: List<HomeSection>,
+        sectionOrder: List<String>
+    ): List<HomeSection> {
+        val sorted = sections.sortedBy { section ->
+            val index = sectionOrder.indexOf(section.title)
+            if (index != -1) index else Int.MAX_VALUE
+        }
+        val seenIds = mutableSetOf<String>()
+        val seenTitles = mutableSetOf<String>()
+        return sorted.mapNotNull { section ->
+            val cleanItems = section.items.filter { item ->
+                seenIds.add(item.id) && seenTitles.add(normalizeTitle(item.title))
+            }
+            if (cleanItems.isNotEmpty()) section.copy(items = cleanItems) else null
+        }
+    }
+
+    private fun normalizeTitle(title: String): String =
+        title.trim().lowercase().replace(Regex("[^a-z0-9áéíóúüñ]"), "")
+
+    private fun typeForFormat(format: MediaFormatFilter): String? = when (format) {
+        MediaFormatFilter.ALL -> null
+        MediaFormatFilter.MOVIES -> "Movie"
+        MediaFormatFilter.SERIES -> "Series"
+    }
+
+    /**
+     * Carga la plataforma desde el índice persistente: sin red, paginada y con el catálogo
+     * completo que haya en la biblioteca. Devuelve false si todavía no hay índice.
+     */
+    private suspend fun loadFromIndex(
+        brand: BrandInfo,
+        key: String,
+        hide: Boolean,
+        format: MediaFormatFilter,
+        showAll: Boolean
+    ): Boolean {
+        val total = collectionIndexUseCase.countJoined(key, null, hide)
+        if (total <= 0) return false
+
+        val prefs = userPreferencesRepository.userPreferencesFlow.first()
+        val type = typeForFormat(format)
+
+        fun JellyfinMediaEntity.toItem(): MediaItem =
+            toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TMDB_TRENDING)
+
+        val sections = buildList {
+            val trending = collectionIndexUseCase.top(key, LANDING_ROW_SIZE, type, hide)
+            if (trending.isNotEmpty()) {
+                add(HomeSection("En Tendencia", trending.map { it.toItem() }))
+            }
+            if (type == null || type == "Series") {
+                val series = collectionIndexUseCase.top(key, LANDING_ROW_SIZE, "Series", hide)
+                if (series.isNotEmpty()) {
+                    add(HomeSection("Series Destacadas", series.map { it.toItem() }))
+                }
+            }
+            if (type == null || type == "Movie") {
+                val movies = collectionIndexUseCase.top(key, LANDING_ROW_SIZE, "Movie", hide)
+                if (movies.isNotEmpty()) {
+                    add(HomeSection("Cine Aclamado", movies.map { it.toItem() }))
+                }
+            }
+        }
+
+        val filteredTotal = collectionIndexUseCase.countJoined(key, type, hide)
+        val firstPage = collectionIndexUseCase.page(key, 0, PAGE_SIZE, type, hide)
+            .map { it.toItem() }
+        val success = BrandUiState.Success(
+            brand = brand,
+            sections = sections,
+            allItems = firstPage,
+            allCount = filteredTotal,
+            focusedItem = sections.firstOrNull()?.items?.firstOrNull() ?: firstPage.firstOrNull(),
+            format = format,
+            hideWatched = hide,
+            showAll = showAll,
+            hasMoreAll = firstPage.size < filteredTotal,
+            isLoadingAll = false,
+            fromIndex = true
+        )
+        allRawSections = sections
+        _uiState.value = success
+        brandCache[brand.id] = success
+        return true
+    }
+
+    /**
+     * Si la plataforma aún no tenía índice, se lanza su construcción y se refresca la pantalla
+     * en cuanto está lista (sin que el usuario tenga que salir y volver a entrar).
+     */
+    private suspend fun pollIndexUntilReady(brand: BrandInfo, key: String, hide: Boolean) {
+        repeat(INDEX_POLL_ATTEMPTS) {
+            delay(INDEX_POLL_DELAY_MS)
+            if (!viewModelScope.isActive) return
+            if (collectionIndexUseCase.countJoined(key, null, hide) > 0) {
+                brandCache.remove(brand.id)
+                if (loadFromIndex(brand, key, hide, currentFormat, showAll = false)) return
+            }
+        }
+    }
+
+    fun loadMoreAll() {
+        val state = _uiState.value as? BrandUiState.Success ?: return
+        if (!state.fromIndex || state.isLoadingAll || !state.hasMoreAll) return
+        viewModelScope.launch {
+            val current = _uiState.value as? BrandUiState.Success ?: return@launch
+            _uiState.value = current.copy(isLoadingAll = true)
+            val prefs = userPreferencesRepository.userPreferencesFlow.first()
+            val key = CollectionIndexUseCase.platformKey(current.brand.id)
+            val type = typeForFormat(current.format)
+            val hide = current.hideWatched
+            val page = collectionIndexUseCase.page(
+                key = key,
+                offset = current.allItems.size,
+                limit = PAGE_SIZE,
+                type = type,
+                hideWatched = hide
+            )
+            val items = page.map {
+                it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TMDB_TRENDING)
+            }
+            val merged = (current.allItems + items).distinctBy { it.id }
+            val total = collectionIndexUseCase.countJoined(key, type, hide)
+            _uiState.value = current.copy(
+                allItems = merged,
+                allCount = total,
+                hasMoreAll = merged.size < total,
+                isLoadingAll = false
+            )
         }
     }
 

@@ -26,6 +26,8 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
@@ -52,6 +54,7 @@ import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.Card
 import androidx.tv.material3.CardDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
+import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import tv.medusa.app.R
@@ -111,6 +114,8 @@ fun PlatformSelectionScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Button(
                         onClick = { viewModel.selectAll() },
+                        scale = ButtonDefaults.scale(focusedScale = 1.05f),
+                        shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
                         modifier = Modifier.handleTouchClick { viewModel.selectAll() },
                         colors = ButtonDefaults.colors(
                             containerColor = Color(0x1AFFFFFF),
@@ -125,6 +130,8 @@ fun PlatformSelectionScreen(
 
                     Button(
                         onClick = { viewModel.deselectAll() },
+                        scale = ButtonDefaults.scale(focusedScale = 1.05f),
+                        shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
                         modifier = Modifier.handleTouchClick { viewModel.deselectAll() },
                         colors = ButtonDefaults.colors(
                             containerColor = Color(0x1AFFFFFF),
@@ -208,6 +215,8 @@ fun PlatformSelectionScreen(
 
                 Button(
                     onClick = { viewModel.onContinue(onDone) },
+                    scale = ButtonDefaults.scale(focusedScale = 1.05f),
+                    shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
                     modifier = Modifier.handleTouchClick { viewModel.onContinue(onDone) },
                     colors = ButtonDefaults.colors(
                         containerColor = Color(0xFF4F46E5),
@@ -306,11 +315,11 @@ private fun PlatformTileCard(
                 contentAlignment = Alignment.Center
             ) {
                 if (isSelected) {
-                    Text(
-                        text = "✓",
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp
+                    Icon(
+                        imageVector = Icons.Rounded.Check,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(15.dp)
                     )
                 }
             }

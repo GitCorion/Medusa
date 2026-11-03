@@ -16,6 +16,7 @@ import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -36,8 +37,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBackIos
 import androidx.compose.material.icons.automirrored.rounded.ArrowForwardIos
+import androidx.compose.material.icons.automirrored.rounded.PlaylistPlay
 import androidx.compose.material.icons.rounded.Info
-import androidx.compose.material.icons.rounded.Collections
+import androidx.compose.material.icons.rounded.Movie
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -357,44 +359,33 @@ fun HeroBanner(
                 when (currentSlideState) {
                     is HeroSlideState.Seasonal -> {
                         val event = currentSlideState.event
-                        val cinematicFont = remember {
-                            FontFamily(Font(R.font.cinzel_decorative_bold, FontWeight.Bold))
+                        Column {
+                            Text(
+                                text = stringResource(R.string.seasonal_thematic_collection),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isMonochrome) Color(0xFF94A3B8) else Color(0xFFFDBA74),
+                                letterSpacing = 1.4.sp
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = event.title,
+                                style = MaterialTheme.typography.headlineLarge.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 32.sp,
+                                    lineHeight = 38.sp,
+                                    letterSpacing = (-0.5).sp,
+                                    shadow = Shadow(
+                                        color = Color(0xCC000000),
+                                        blurRadius = 12f,
+                                        offset = Offset(0f, 2f)
+                                    )
+                                ),
+                                color = Color.White,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
                         }
-                        val titleGradient = remember(event.id) {
-                            when (event.id) {
-                                "halloween" -> Brush.verticalGradient(
-                                    listOf(Color(0xFFFFFFFF), Color(0xFFFFEBD9), Color(0xFFFDBA74))
-                                )
-                                "christmas" -> Brush.verticalGradient(
-                                    listOf(Color(0xFFFFFFFF), Color(0xFFFEF3C7), Color(0xFFFDE68A))
-                                )
-                                "valentines" -> Brush.verticalGradient(
-                                    listOf(Color(0xFFFFFFFF), Color(0xFFFCE7F3), Color(0xFFFBCFE8))
-                                )
-                                else -> Brush.verticalGradient(
-                                    listOf(Color(0xFFFFFFFF), Color(0xFFE2E8F0))
-                                )
-                            }
-                        }
-
-                        Text(
-                            text = event.title.uppercase(),
-                            fontFamily = cinematicFont,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 30.sp,
-                            letterSpacing = 1.8.sp,
-                            lineHeight = 36.sp,
-                            style = MaterialTheme.typography.headlineLarge.copy(
-                                brush = titleGradient,
-                                shadow = Shadow(
-                                    color = Color(0xEE000000),
-                                    blurRadius = 18f,
-                                    offset = Offset(2f, 3f)
-                                )
-                            ),
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
-                        )
                     }
                     is HeroSlideState.Movie -> {
                         val effectiveItem = currentSlideState.item
@@ -474,101 +465,77 @@ fun HeroBanner(
                     }
                     is HeroSlideState.Movie -> {
                         val effectiveItem = currentSlideState.item
-                        // Metadata Badges Row
+                        // Metadata Row (Typographic hierarchy with clean delimiters)
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             if (effectiveItem.rating != null && effectiveItem.rating > 0f) {
                                 TvRatingBadge(rating = effectiveItem.rating, compact = false)
-                                Spacer(modifier = Modifier.width(8.dp))
-                            }
-
-                            if (effectiveItem.year != null) {
-                                TvPill(
-                                    text = "${effectiveItem.year}",
-                                    containerColor = Color(0x18FFFFFF),
-                                    textColor = Color(0xFFE2E8F0),
-                                    borderColor = Color(0x22FFFFFF)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
+                                Spacer(modifier = Modifier.width(10.dp))
                             }
 
                             val isTv = effectiveItem.type.equals("Series", ignoreCase = true) ||
                                     effectiveItem.type.equals("TvProgram", ignoreCase = true) ||
                                     effectiveItem.type.equals("Episode", ignoreCase = true)
-                            TvPill(
-                                text = stringResource(if (isTv) R.string.type_series else R.string.type_movie),
-                                containerColor = if (isMonochrome) Color(0x18FFFFFF) else Color(0x2400A4DC),
-                                textColor = if (isMonochrome) Color(0xFFE2E8F0) else Color(0xFF7DD3FC),
-                                borderColor = if (isMonochrome) Color(0x22FFFFFF) else Color(0x5500A4DC)
-                            )
+                            val typeText = stringResource(if (isTv) R.string.type_series else R.string.type_movie)
+                            val metaParts = listOfNotNull(
+                                effectiveItem.year?.toString(),
+                                typeText
+                            ).joinToString("  •  ")
 
-                            val isTvSeries = effectiveItem.type.equals("Series", ignoreCase = true)
+                            if (metaParts.isNotBlank()) {
+                                Text(
+                                    text = metaParts,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = Color(0xFFCBD5E1),
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+
                             val hasEpisodeProgress = !effectiveItem.isPlayed &&
-                                    isTvSeries &&
+                                    isTv &&
                                     effectiveItem.playedEpisodes != null &&
                                     effectiveItem.playedEpisodes > 0
                             val hasMovieProgress = !effectiveItem.isPlayed &&
-                                    !isTvSeries &&
+                                    !isTv &&
                                     effectiveItem.playbackPositionTicks > 0
 
                             if (hasEpisodeProgress) {
                                 val progressText = if (effectiveItem.totalEpisodes != null && effectiveItem.totalEpisodes > 0) {
-                                    "PROGRESO: ${effectiveItem.playedEpisodes}/${effectiveItem.totalEpisodes}"
+                                    "${effectiveItem.playedEpisodes}/${effectiveItem.totalEpisodes} caps"
                                 } else {
-                                    "PROGRESO: ${effectiveItem.playedEpisodes} caps"
+                                    "${effectiveItem.playedEpisodes} caps"
                                 }
-                                Spacer(modifier = Modifier.width(8.dp))
+                                Spacer(modifier = Modifier.width(10.dp))
                                 TvPill(
                                     text = progressText,
-                                    containerColor = Color(0x22FFFFFF),
+                                    containerColor = Color(0x2238BDF8),
                                     textColor = if (isMonochrome) Color.White else Color(0xFF38BDF8),
                                     borderColor = if (isMonochrome) Color(0x33FFFFFF) else Color(0x5500A4DC)
                                 )
-                            }
-
-                            if (hasMovieProgress) {
-                                Spacer(modifier = Modifier.width(8.dp))
+                            } else if (hasMovieProgress) {
+                                Spacer(modifier = Modifier.width(10.dp))
                                 TvPill(
                                     text = stringResource(R.string.badge_in_progress),
-                                    containerColor = Color(0x22FFFFFF),
+                                    containerColor = Color(0x2238BDF8),
                                     textColor = if (isMonochrome) Color.White else Color(0xFF38BDF8),
                                     borderColor = if (isMonochrome) Color(0x33FFFFFF) else Color(0x5500A4DC)
                                 )
-                            }
-
-                            if (effectiveItem.isFavorite) {
-                                Spacer(modifier = Modifier.width(8.dp))
-                                TvPill(
-                                    text = stringResource(R.string.badge_favorite),
-                                    containerColor = Color(0x22FFFFFF),
-                                    textColor = if (isMonochrome) Color.White else Color(0xFFEF4444),
-                                    borderColor = if (isMonochrome) Color(0x33FFFFFF) else Color(0x66EF4444)
-                                )
-                            }
-
-                            if (effectiveItem.isPlayed && !hasEpisodeProgress && !hasMovieProgress) {
-                                Spacer(modifier = Modifier.width(8.dp))
+                            } else if (effectiveItem.isPlayed) {
+                                Spacer(modifier = Modifier.width(10.dp))
                                 TvPill(
                                     text = stringResource(R.string.badge_watched),
-                                    containerColor = Color(0x22FFFFFF),
+                                    containerColor = Color(0x2210B981),
                                     textColor = if (isMonochrome) Color.White else Color(0xFF6EE7B7),
                                     borderColor = if (isMonochrome) Color(0x33FFFFFF) else Color(0x3310B981)
                                 )
+                            } else if (effectiveItem.isFavorite) {
+                                Spacer(modifier = Modifier.width(10.dp))
+                                TvPill(
+                                    text = stringResource(R.string.badge_favorite),
+                                    containerColor = Color(0x22EF4444),
+                                    textColor = if (isMonochrome) Color.White else Color(0xFFF87171),
+                                    borderColor = if (isMonochrome) Color(0x33FFFFFF) else Color(0x55EF4444)
+                                )
                             }
-
-                            val sourceLabel = when (effectiveItem.source) {
-                                MediaSource.TRAKT_RECOMMENDATION -> stringResource(R.string.hero_source_trakt_recommended)
-                                MediaSource.TMDB_TRENDING -> if (effectiveItem.rank != null && effectiveItem.rank <= 10) stringResource(R.string.hero_source_top_today, effectiveItem.rank) else stringResource(R.string.hero_source_trending)
-                                MediaSource.TMDB_RECOMMENDATION -> stringResource(R.string.hero_source_for_you)
-                                MediaSource.TRAKT_WATCHLIST -> stringResource(R.string.hero_source_watchlist)
-                                MediaSource.JELLYFIN -> stringResource(R.string.hero_source_collection)
-                            }
-                            Spacer(modifier = Modifier.width(8.dp))
-                            TvPill(
-                                text = sourceLabel,
-                                containerColor = Color(0x12FFFFFF),
-                                textColor = Color(0xFF94A3B8),
-                                borderColor = Color(0x18FFFFFF)
-                            )
                         }
 
                         // Synopsis
@@ -596,21 +563,19 @@ fun HeroBanner(
                 val focusContent = if (isMonochrome) Color(0xFF0F172A) else TvAccent.getFocusedContentColor(accentColor)
                 val showIcons = buttonStyle != BUTTON_STYLE_TEXT_ONLY
                 val showText = buttonStyle != BUTTON_STYLE_ICONS_ONLY
-
                 val isSeasonalActive = currentSlideState is HeroSlideState.Seasonal
-                val activeEventAccent = if (isSeasonalActive) {
-                    val event = (currentSlideState as HeroSlideState.Seasonal).event
-                    runCatching { Color(android.graphics.Color.parseColor(event.accentHex)) }
-                        .getOrDefault(Color(0xFFEA580C))
-                } else {
-                    focusColor
-                }
 
                 val buttonContainerColor = Color(0x28FFFFFF)
-                val buttonFocusedContainerColor = if (isMonochrome) Color.White else activeEventAccent
+                val buttonFocusedContainerColor = if (isMonochrome) Color.White else focusColor
                 val buttonContentColor = Color.White
-                val buttonFocusedContentColor = focusContent
+                val buttonFocusedContentColor = if (isMonochrome) Color(0xFF0F172A) else focusContent
                 val buttonBorderColor = Color(0x28FFFFFF)
+
+                val buttonPadding = if (!showText) {
+                    PaddingValues(horizontal = 14.dp, vertical = 10.dp)
+                } else {
+                    PaddingValues(horizontal = 20.dp, vertical = 10.dp)
+                }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Button(
@@ -621,6 +586,8 @@ fun HeroBanner(
                                 HeroSlideState.Empty -> {}
                             }
                         },
+                        contentPadding = buttonPadding,
+                        scale = ButtonDefaults.scale(focusedScale = 1.05f),
                         modifier = Modifier
                             .handleTouchClick {
                                 when (currentSlideState) {
@@ -657,11 +624,11 @@ fun HeroBanner(
                             focusedContainerColor = buttonFocusedContainerColor,
                             focusedContentColor = buttonFocusedContentColor
                         ),
-                        shape = ButtonDefaults.shape(shape = CircleShape),
+                        shape = ButtonDefaults.shape(shape = RoundedCornerShape(10.dp)),
                         border = ButtonDefaults.border(
                             border = Border(
                                 border = BorderStroke(1.dp, buttonBorderColor),
-                                shape = CircleShape
+                                shape = RoundedCornerShape(10.dp)
                             ),
                             focusedBorder = Border.None
                         )
@@ -670,8 +637,8 @@ fun HeroBanner(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.Center
                         ) {
-                            val actionIcon = if (isSeasonalActive) Icons.Rounded.Collections else Icons.Rounded.Info
-                            val actionLabel = if (isSeasonalActive) "Ver colección" else stringResource(R.string.common_details)
+                            val actionIcon = if (isSeasonalActive) Icons.AutoMirrored.Rounded.PlaylistPlay else Icons.Rounded.Info
+                            val actionLabel = if (isSeasonalActive) stringResource(R.string.seasonal_view_collection) else stringResource(R.string.common_details)
 
                             if (showIcons) {
                                 Icon(
@@ -681,11 +648,11 @@ fun HeroBanner(
                                 )
                             }
                             if (showText) {
-                                if (showIcons) Spacer(modifier = Modifier.width(6.dp))
+                                if (showIcons) Spacer(modifier = Modifier.width(8.dp))
                                 Text(
                                     text = actionLabel,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 14.sp,
                                     maxLines = 1,
                                     softWrap = false
                                 )

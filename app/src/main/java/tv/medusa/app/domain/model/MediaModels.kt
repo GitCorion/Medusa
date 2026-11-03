@@ -33,14 +33,35 @@ data class MediaItem(
     val playedEpisodes: Int? = null,
     val trailerUrl: String? = null,
     val seriesId: String? = null,
-    val seriesName: String? = null
+    val seriesName: String? = null,
+    val premiereDateMs: Long? = null
 )
+
+/**
+ * Identidad estable de una sección del feed. Evita depender del título en español para
+ * ordenar o clasificar (el título se sigue usando solo para pintar).
+ */
+enum class HomeSectionKind {
+    CONTINUE_WATCHING,
+    TRENDING,
+    NEW_RELEASES,
+    RECENTLY_ADDED,
+    BECAUSE_YOU_WATCHED,
+    PLATFORM,
+    TRAKT,
+    LIBRARY_TOP_MOVIES,
+    LIBRARY_TOP_SERIES,
+    RECOMMENDED_MOVIES,
+    GENRE,
+    CUSTOM
+}
 
 @Immutable
 data class HomeSection(
     val title: String,
     val items: List<MediaItem>,
     val badge: String? = null,
-    val isRanked: Boolean = false
+    val isRanked: Boolean = false,
+    val kind: HomeSectionKind = HomeSectionKind.CUSTOM
 )
 

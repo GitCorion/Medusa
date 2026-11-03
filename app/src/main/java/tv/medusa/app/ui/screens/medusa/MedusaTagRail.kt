@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -51,7 +52,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Check
 import androidx.tv.material3.ExperimentalTvMaterial3Api
+import androidx.tv.material3.Icon
 import androidx.tv.material3.Text
 
 /**
@@ -222,12 +226,12 @@ fun MedusaTagPill(
     Box(
         modifier = modifier
             .scale(scale)
-            .height(30.dp)
-            .clip(RoundedCornerShape(15.dp))
+            .height(32.dp)
+            .clip(RoundedCornerShape(8.dp))
             .background(containerColor)
             .then(
                 if (!isFocused) {
-                    Modifier.border(borderWidth, borderColor, RoundedCornerShape(15.dp))
+                    Modifier.border(borderWidth, borderColor, RoundedCornerShape(8.dp))
                 } else Modifier
             )
             .clickable(
@@ -235,7 +239,7 @@ fun MedusaTagPill(
                 indication = null,
                 onClick = onClick
             )
-            .padding(horizontal = 14.dp, vertical = 2.dp),
+            .padding(horizontal = 14.dp, vertical = 4.dp),
         contentAlignment = Alignment.Center
     ) {
         Row(
@@ -243,13 +247,13 @@ fun MedusaTagPill(
             horizontalArrangement = Arrangement.Center
         ) {
             if (tag.isSelected) {
-                Text(
-                    text = "✓",
-                    color = contentColor,
-                    fontSize = 11.5.sp,
-                    fontWeight = FontWeight.Bold
+                Icon(
+                    imageVector = Icons.Rounded.Check,
+                    contentDescription = null,
+                    tint = contentColor,
+                    modifier = Modifier.size(13.dp)
                 )
-                Spacer(modifier = Modifier.width(5.dp))
+                Spacer(modifier = Modifier.width(6.dp))
             }
             Text(
                 text = tag.label,

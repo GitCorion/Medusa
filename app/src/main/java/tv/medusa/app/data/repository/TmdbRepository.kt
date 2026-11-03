@@ -12,6 +12,7 @@ import tv.medusa.app.domain.model.SeriesStatus
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.withPermit
 
 /**
  * Acceso a TMDB (tendencias, descubrimiento por género/proveedor, recomendaciones,
@@ -59,7 +60,7 @@ class TmdbRepository(
                 if (i < moviePages.size) interleaved.add(moviePages[i])
                 if (i < tvPages.size) interleaved.add(tvPages[i])
             }
-            val distinct = interleaved.distinctBy { it.id }
+            val distinct = interleaved.distinctBy { it.typeAwareKey() }
             if (distinct.isNotEmpty()) {
                 MediaCaches.tmdbTrendingDayCache.put(cacheKey, distinct)
             }
@@ -188,6 +189,113 @@ class TmdbRepository(
         }
     }
 
+    /**
+     * Catálogo COMPLETO de un proveedor en la región: descubre `total_pages` con la primera
+     * página (películas y series) y pide el resto con concurrencia acotada. Es la fuente del
+     * índice de plataformas, así que no lleva tope fijo de páginas: se adapta a cualquier
+     * catálogo (Netflix ~500 páginas, Filmin ~40, una plataforma regional puede tener 3).
+     */
+    suspend fun getTmdbProviderCatalog(
+        apiKey: String,
+        providerId: String,
+        region: String = ApiConfig.TMDB_WATCH_REGION
+    ): Result<List<TmdbItemDto>> {
+        return runCatching {
+            val api = NetworkClientFactory.createService(ApiConfig.TMDB_BASE_URL, TmdbApiService::class.java)
+
+            val first = coroutineScope {
+                val m = async {
+                    runCatching {
+                        api.discoverMoviesByProvider(apiKey = apiKey, providerId = providerId, watchRegion = region, page = 1)
+                    }.getOrNull()
+                }
+                val t = async {
+                    runCatching {
+                        api.discoverTvByProvider(apiKey = apiKey, providerId = providerId, watchRegion = region, page = 1)
+                    }.getOrNull()
+                }
+                Pair(m.await(), t.await())
+            }
+
+            val moviePages = first.first?.totalPages ?: 0
+            val tvPages = first.second?.totalPages ?: 0
+
+            val all = mutableListOf<TmdbItemDto>()
+            first.first?.results?.let { all.addAll(it) }
+            first.second?.results?.let { all.addAll(it) }
+
+            val tasks = buildList {
+                for (page in 2..moviePages) add("movie" to page)
+                for (page in 2..tvPages) add("tv" to page)
+            }
+            if (tasks.isNotEmpty()) {
+                val semaphore = kotlinx.coroutines.sync.Semaphore(6)
+                val rest = coroutineScope {
+                    tasks.map { (kind, page) ->
+                        async {
+                            semaphore.withPermit {
+                                runCatching {
+                                    if (kind == "movie") {
+                                        api.discoverMoviesByProvider(apiKey = apiKey, providerId = providerId, watchRegion = region, page = page).results
+                                    } else {
+                                        api.discoverTvByProvider(apiKey = apiKey, providerId = providerId, watchRegion = region, page = page).results
+                                    }
+                                }.getOrDefault(emptyList())
+                            }
+                        }
+                    }.awaitAll()
+                }
+                rest.forEach { all.addAll(it) }
+            }
+
+            val distinct = all.distinctBy { it.typeAwareKey() }
+            // No se guarda en la caché en memoria: son ~10k DTOs por plataforma y el índice
+            // persistente (Room) ya es la caché. Así no se hincha la RAM de la TV.
+            distinct
+        }
+    }
+
+    /**
+     * "Lo más popular en tu país" como respaldo del Top 10 cuando el trending global no
+     * cruza con la biblioteca (catálogos locales/regionales). Usa `discover` con
+     * `watch_region` y ordena por popularidad, que es el equivalente más cercano a
+     * "lo más visto de la semana" sin depender de un proveedor concreto.
+     */
+    suspend fun getTmdbPopularByRegion(
+        apiKey: String,
+        region: String = ApiConfig.TMDB_WATCH_REGION,
+        maxPages: Int = 4
+    ): Result<List<TmdbItemDto>> {
+        val cacheKey = "$region-$maxPages-$apiKey"
+        MediaCaches.tmdbPopularRegionCache.get(cacheKey)?.let { return Result.success(it) }
+
+        return runCatching {
+            val api = NetworkClientFactory.createService(ApiConfig.TMDB_BASE_URL, TmdbApiService::class.java)
+            val (movies, tv) = coroutineScope {
+                val m = async {
+                    (1..maxPages).flatMap { p ->
+                        runCatching {
+                            api.discoverPopularMovies(apiKey = apiKey, watchRegion = region, page = p)
+                        }.getOrNull()?.results ?: emptyList()
+                    }
+                }
+                val t = async {
+                    (1..maxPages).flatMap { p ->
+                        runCatching {
+                            api.discoverPopularTv(apiKey = apiKey, watchRegion = region, page = p)
+                        }.getOrNull()?.results ?: emptyList()
+                    }
+                }
+                Pair(m.await(), t.await())
+            }
+            val combined = mergeTmdbByPopularity(movies, tv)
+            if (combined.isNotEmpty()) {
+                MediaCaches.tmdbPopularRegionCache.put(cacheKey, combined)
+            }
+            combined
+        }
+    }
+
     suspend fun getTmdbMovieDetail(apiKey: String, movieId: Long): TmdbMovieDetailDto? {
         return runCatching {
             val api = NetworkClientFactory.createService(ApiConfig.TMDB_BASE_URL, TmdbApiService::class.java)
@@ -292,4 +400,14 @@ internal fun mergeTmdbByPopularity(
 ): List<TmdbItemDto> =
     (movies + tv)
         .sortedByDescending { it.popularity ?: 0.0 }
-        .distinctBy { it.id }
+        .distinctBy { it.typeAwareKey() }
+
+/**
+ * Clave de identidad que respeta el espacio de nombres de TMDB: un id numérico puede existir
+ * a la vez como película y como serie. Deduplicar solo por `id` haría desaparecer una de las
+ * dos (p. ej. "Resident Evil" película 2026 vs. serie 2022).
+ */
+private fun TmdbItemDto.typeAwareKey(): String {
+    val isTv = !name.isNullOrBlank() || !firstAirDate.isNullOrBlank()
+    return "${if (isTv) "tv" else "movie"}:$id"
+}

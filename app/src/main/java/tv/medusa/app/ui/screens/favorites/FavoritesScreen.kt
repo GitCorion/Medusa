@@ -175,9 +175,9 @@ fun FavoritesScreen(
                                 Spacer(modifier = Modifier.height(16.dp))
                                 Text(
                                     text = if (state.allItems.isEmpty()) {
-                                        "No tienes elementos en favoritos"
+                                        stringResource(R.string.favorites_empty_title)
                                     } else {
-                                        "No hay elementos con este filtro"
+                                        stringResource(R.string.favorites_empty_filter_title)
                                     },
                                     style = MaterialTheme.typography.titleMedium,
                                     color = Color.White,

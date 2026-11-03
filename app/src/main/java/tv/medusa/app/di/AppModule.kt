@@ -4,6 +4,7 @@ import android.content.Context
 import tv.medusa.app.data.local.UserPreferencesRepository
 import tv.medusa.app.data.local.db.AllowedMediaDao
 import tv.medusa.app.data.local.db.AppDatabase
+import tv.medusa.app.data.local.db.CollectionDao
 import tv.medusa.app.data.local.db.HomeSectionCacheDao
 import tv.medusa.app.data.local.db.JellyfinDao
 import tv.medusa.app.data.local.db.SeasonalDao
@@ -11,6 +12,7 @@ import tv.medusa.app.data.local.db.TmdbVoteCacheDao
 import tv.medusa.app.data.remote.update.AppUpdateManager
 import tv.medusa.app.data.repository.MediaRepository
 import tv.medusa.app.domain.usecase.FilterToLibraryUseCase
+import tv.medusa.app.domain.usecase.CollectionIndexUseCase
 import tv.medusa.app.domain.usecase.GetHomeFeedUseCase
 import dagger.Module
 import dagger.Provides
@@ -39,6 +41,9 @@ object AppModule {
 
     @Provides
     fun provideSeasonalDao(database: AppDatabase): SeasonalDao = database.seasonalDao()
+
+    @Provides
+    fun provideCollectionDao(database: AppDatabase): CollectionDao = database.collectionDao()
 
     @Provides
     @Singleton
@@ -77,8 +82,15 @@ object AppModule {
         @ApplicationContext context: Context,
         mediaRepository: MediaRepository,
         filterToLibraryUseCase: FilterToLibraryUseCase,
-        homeSectionCacheDao: HomeSectionCacheDao
-    ): GetHomeFeedUseCase = GetHomeFeedUseCase(mediaRepository, filterToLibraryUseCase, homeSectionCacheDao, context)
+        homeSectionCacheDao: HomeSectionCacheDao,
+        collectionIndexUseCase: CollectionIndexUseCase
+    ): GetHomeFeedUseCase = GetHomeFeedUseCase(
+        mediaRepository,
+        filterToLibraryUseCase,
+        homeSectionCacheDao,
+        context,
+        collectionIndexUseCase
+    )
 
     @Provides
     @Singleton

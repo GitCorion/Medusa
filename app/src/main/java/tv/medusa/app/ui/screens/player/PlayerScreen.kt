@@ -2149,7 +2149,8 @@ private fun SkipIntroBanner(
 
     Surface(
         onClick = onSkip,
-        shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(14.dp)),
+        shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(10.dp)),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.05f),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = Color(0xEE1A1C2E),
             focusedContainerColor = if (isMonochrome) Color.White else focusColor,
@@ -2159,11 +2160,11 @@ private fun SkipIntroBanner(
         border = ClickableSurfaceDefaults.border(
             border = Border(
                 border = BorderStroke(1.5.dp, if (isMonochrome) Color(0x66FFFFFF) else focusColor.copy(alpha = 0.6f)),
-                shape = RoundedCornerShape(14.dp)
+                shape = RoundedCornerShape(10.dp)
             ),
             focusedBorder = Border(
                 border = BorderStroke(2.dp, if (isMonochrome) Color.White else focusColor),
-                shape = RoundedCornerShape(14.dp)
+                shape = RoundedCornerShape(10.dp)
             )
         ),
         modifier = Modifier.focusRequester(skipFocusRequester)
@@ -2411,7 +2412,8 @@ private fun TvPillButton(
 
     Surface(
         onClick = onClick,
-        shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(20.dp)),
+        shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(10.dp)),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.05f),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = if (isSelected) (if (isMonochrome) Color(0x35FFFFFF) else focusColor.copy(alpha = 0.22f)) else Color(0x18FFFFFF),
             focusedContainerColor = if (isMonochrome) Color.White else focusColor,
@@ -2421,11 +2423,11 @@ private fun TvPillButton(
         border = ClickableSurfaceDefaults.border(
             border = Border(
                 border = BorderStroke(1.dp, if (isSelected) (if (isMonochrome) Color.White else focusColor) else Color(0x20FFFFFF)),
-                shape = RoundedCornerShape(20.dp)
+                shape = RoundedCornerShape(10.dp)
             ),
             focusedBorder = Border(
                 border = BorderStroke(1.5.dp, if (isMonochrome) Color.White else focusColor),
-                shape = RoundedCornerShape(20.dp)
+                shape = RoundedCornerShape(10.dp)
             )
         ),
         modifier = modifier
@@ -3159,8 +3161,8 @@ private fun TvAudioVolumeSliderRow(
             localDb = nextDb
             onValueChange(nextDb)
         },
-        shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(14.dp)),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.02f),
+        shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(10.dp)),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.05f),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = if (isBoosted) {
                 if (isMonochrome) Color(0x2EFFFFFF) else focusColor.copy(alpha = 0.20f)
@@ -3176,14 +3178,14 @@ private fun TvAudioVolumeSliderRow(
                         if (isMonochrome) Color(0x44FFFFFF) else focusColor.copy(alpha = 0.35f)
                     } else Color(0x18FFFFFF)
                 ),
-                shape = RoundedCornerShape(14.dp)
+                shape = RoundedCornerShape(10.dp)
             ),
             focusedBorder = Border(
                 border = BorderStroke(
                     2.dp,
                     if (isMonochrome) Color.White else focusColor
                 ),
-                shape = RoundedCornerShape(14.dp)
+                shape = RoundedCornerShape(10.dp)
             )
         ),
         modifier = Modifier

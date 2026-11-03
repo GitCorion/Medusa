@@ -1,0 +1,58 @@
+name: Refresh discovery catalogs
+
+# Genera a diario los catálogos de descubrimiento (plataformas, tendencias y popular regional)
+# con la clave TMDB del servidor y los publica en Firebase Hosting. La app solo descarga el
+# JSON de su región; la clave nunca viaja en el APK.
+#
+# Secretos necesarios:
+#   TMDB_API_KEY   → clave de TMDB (la misma que usa el build, pero aquí vive en servidor)
+#   FIREBASE_TOKEN → token de CI (`firebase login:ci`)
+
+on:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+    inputs:
+      regions:
+        description: "Regiones separadas por coma (vacío = las de scripts/catalog/platforms.json)"
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  refresh:
+    name: Generate & publish catalogs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Check secrets
+        id: secrets
+        run: |
+          echo "tmdb=${{ secrets.TMDB_API_KEY != '' }}" >> "$GITHUB_OUTPUT"
+          echo "firebase=${{ secrets.FIREBASE_TOKEN != '' }}" >> "$GITHUB_OUTPUT"
+
+      - name: Generate catalogs
+        if: steps.secrets.outputs.tmdb == 'true'
+        env:
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+          CATALOG_REGIONS: ${{ inputs.regions }}
+        run: node scripts/catalog/generate-catalogs.mjs
+
+      - name: Install Firebase CLI
+        if: steps.secrets.outputs.tmdb == 'true' && steps.secrets.outputs.firebase == 'true'
+        run: npm install -g firebase-tools
+
+      - name: Deploy to Firebase Hosting
+        if: steps.secrets.outputs.tmdb == 'true' && steps.secrets.outputs.firebase == 'true'
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        run: firebase deploy --only hosting:catalogs --token "$FIREBASE_TOKEN" --non-interactive

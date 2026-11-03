@@ -47,6 +47,8 @@
     <string name="common_retry">Retry</string>
     <string name="common_back">Back</string>
     <string name="common_cancel">Cancel</string>
+    <string name="common_view_all_count">View all items (%1$d)</string>
+    <string name="common_delete">Delete</string>
 
     <!-- Badges -->
     <string name="badge_in_progress">IN PROGRESS</string>
@@ -61,7 +63,14 @@
     <string name="trailer_close_back">Close trailer (Back)</string>
 
     <!-- Genres -->
-    <string name="genre_favorites_title">Your Favorite Genres</string>
+    <string name="genre_favorites_title">Favorite Genres</string>
+    <string name="seasonal_thematic_collection">THEMATIC COLLECTION</string>
+    <string name="seasonal_catalog_count">%1$d titles in catalog</string>
+    <string name="seasonal_updating">Updating…</string>
+    <string name="seasonal_view_collection">View Collection</string>
+    <string name="favorites_empty_title">No Favorites Yet</string>
+    <string name="favorites_empty_filter_title">No Items Match This Filter</string>
+    <string name="context_menu_options">OPTIONS</string>
 
     <!-- Home -->
     <string name="home_loading">Loading catalog...</string>

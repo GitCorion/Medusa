@@ -131,8 +131,7 @@ class AppDatabaseMigrationTest {
     }
 
     @Test
-    fun migrate15To16_addsLastPlayedTicksColumn() {
-        helper.createDatabase(TEST_DB, 15).apply {
+    fun migrate15To16_addsLastPlayedTicksColumn() {        helper.createDatabase(TEST_DB, 15).apply {
             execSQL(
                 "INSERT INTO jellyfin_media (id, title, type, isPlayed, playbackPositionTicks, isFavorite) " +
                     "VALUES ('m1', 'Test Movie', 'Movie', 0, 0, 0)"
@@ -145,6 +144,36 @@ class AppDatabaseMigrationTest {
         db.query("SELECT lastPlayedTicks FROM jellyfin_media WHERE id = 'm1'").use { cursor ->
             assertTrue(cursor.moveToFirst())
             assertEquals(0L, cursor.getLong(0))
+        }
+    }
+
+    @Test
+    fun migrate21To22_createsGenericCollectionIndex() {
+        helper.createDatabase(TEST_DB, 21).apply { close() }
+
+        val db = helper.runMigrationsAndValidate(
+            TEST_DB,
+            22,
+            true,
+            AppDatabase.MIGRATION_21_22
+        )
+
+        db.execSQL(
+            "INSERT INTO collection_items (collectionKey, mediaId, rank, score, updatedAt) " +
+                "VALUES ('platform:netflix', 'm1', NULL, 10.0, 1)"
+        )
+        db.execSQL(
+            "INSERT INTO collection_meta (collectionKey, region, catalogVersion, itemCount, updatedAt) " +
+                "VALUES ('platform:netflix', 'ES', 'v1', 1, 1)"
+        )
+
+        db.query("SELECT COUNT(*) FROM collection_items WHERE collectionKey = 'platform:netflix'").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(1, cursor.getInt(0))
+        }
+        db.query("SELECT itemCount FROM collection_meta WHERE collectionKey = 'platform:netflix'").use { cursor ->
+            assertTrue(cursor.moveToFirst())
+            assertEquals(1, cursor.getInt(0))
         }
     }
 }

@@ -1,0 +1,14 @@
+{
+  "regions": ["ES", "MX", "AR", "CO", "CL", "PE", "US", "GB", "FR", "DE", "IT", "PT", "BR"],
+  "platforms": [
+    { "id": "netflix", "providerId": "8" },
+    { "id": "prime", "providerId": "119|9" },
+    { "id": "disney", "providerId": "337" },
+    { "id": "apple", "providerId": "350" },
+    { "id": "max", "providerId": "1899|384" },
+    { "id": "skyshowtime", "providerId": "1773" },
+    { "id": "movistar", "providerId": "2241|149" },
+    { "id": "filmin", "providerId": "63" },
+    { "id": "crunchyroll", "providerId": "283" }
+  ]
+}

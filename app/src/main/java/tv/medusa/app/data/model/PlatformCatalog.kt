@@ -26,7 +26,7 @@ data class StreamPlatform(
 
 val SUPPORTED_PLATFORMS: List<StreamPlatform> = listOf(
     StreamPlatform("netflix", "NETFLIX", "8", R.drawable.ic_brand_netflix, R.drawable.ic_brand_netflix_mono, Color(0xFFE50914), Color(0xFF1E0507)),
-    StreamPlatform("prime", "PRIME VIDEO", "119|9|10", R.drawable.ic_brand_prime, R.drawable.ic_brand_prime_mono, Color(0xFF00A8E1), Color(0xFF02141C)),
+    StreamPlatform("prime", "PRIME VIDEO", "119|9", R.drawable.ic_brand_prime, R.drawable.ic_brand_prime_mono, Color(0xFF00A8E1), Color(0xFF02141C)),
     StreamPlatform("disney", "DISNEY+", "337", R.drawable.ic_brand_disney, R.drawable.ic_brand_disney_mono, Color(0xFF1B4DFF), Color(0xFF040D2D)),
     StreamPlatform("apple", "APPLE TV+", "350", R.drawable.ic_brand_apple, R.drawable.ic_brand_apple_mono, Color(0xFFE2E8F0), Color(0xFF101116)),
     StreamPlatform("max", "MAX", "1899|384", R.drawable.ic_brand_max, R.drawable.ic_brand_max_mono, Color(0xFF002BE7), Color(0xFF020A24)),

@@ -94,7 +94,6 @@ fun TvTopBar(
     modifier: Modifier = Modifier,
     syncProgress: SyncProgress? = null,
     localMediaCount: Int = 0,
-    titleBadge: @Composable (() -> Unit)? = null,
     medusaFocusRequester: FocusRequester? = null,
     onDownFromMedusa: (() -> Unit)? = null
 ) {
@@ -130,16 +129,14 @@ fun TvTopBar(
             )
         }
 
-        // Sección central: Insignia de contexto / Logo de Plataforma (Centrado perfectamente)
+        // Sección central: Estado de sincronización / alertas del sistema
         Box(
             contentAlignment = Alignment.Center,
             modifier = Modifier
                 .weight(1f, fill = false)
                 .padding(horizontal = 16.dp)
         ) {
-            if (titleBadge != null) {
-                titleBadge()
-            } else if (syncProgress != null && syncProgress.isSyncing) {
+            if (syncProgress != null && syncProgress.isSyncing) {
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier

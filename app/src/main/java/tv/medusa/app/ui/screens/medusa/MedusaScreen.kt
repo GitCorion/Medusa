@@ -59,7 +59,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Close
 import androidx.tv.material3.ExperimentalTvMaterial3Api
+import androidx.tv.material3.Icon
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import tv.medusa.app.R
@@ -509,6 +513,7 @@ private fun MedusaMoviesHeader(
  * Píldora de temática seleccionada en la cadena activa.
  * Enfocable con mando TV, resalte bioluminiscente nítido y tecla [OK] para eliminar.
  */
+@OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 private fun SelectedTagBadge(
     tag: MedusaMosaicTag,
@@ -551,12 +556,12 @@ private fun SelectedTagBadge(
     Box(
         modifier = Modifier
             .scale(scale)
-            .height(30.dp)
-            .clip(RoundedCornerShape(15.dp))
+            .height(32.dp)
+            .clip(RoundedCornerShape(8.dp))
             .background(containerColor)
             .then(
                 if (!isFocused) {
-                    Modifier.border(1.dp, borderColor, RoundedCornerShape(15.dp))
+                    Modifier.border(1.dp, borderColor, RoundedCornerShape(8.dp))
                 } else Modifier
             )
             .clickable(
@@ -564,18 +569,18 @@ private fun SelectedTagBadge(
                 indication = null,
                 onClick = onRemove
             )
-            .padding(horizontal = 14.dp, vertical = 2.dp),
+            .padding(horizontal = 12.dp, vertical = 4.dp),
         contentAlignment = Alignment.Center
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(5.dp)
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Text(
-                text = "✓",
-                color = contentColor,
-                fontSize = 11.5.sp,
-                fontWeight = FontWeight.Bold
+            Icon(
+                imageVector = Icons.Rounded.Check,
+                contentDescription = null,
+                tint = contentColor,
+                modifier = Modifier.size(13.dp)
             )
             Text(
                 text = tag.label,
@@ -584,11 +589,11 @@ private fun SelectedTagBadge(
                 fontWeight = FontWeight.Bold,
                 fontFamily = FontFamily.SansSerif
             )
-            Text(
-                text = "✕",
-                color = contentColor,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.ExtraBold
+            Icon(
+                imageVector = Icons.Rounded.Close,
+                contentDescription = stringResource(R.string.common_delete),
+                tint = contentColor,
+                modifier = Modifier.size(13.dp)
             )
         }
     }

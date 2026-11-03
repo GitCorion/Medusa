@@ -47,6 +47,8 @@
     <string name="common_retry">Reintentar</string>
     <string name="common_back">Volver</string>
     <string name="common_cancel">Cancelar</string>
+    <string name="common_view_all_count">Ver todos los elementos (%1$d)</string>
+    <string name="common_delete">Eliminar</string>
 
     <!-- Insignias -->
     <string name="badge_in_progress">EN PROGRESO</string>
@@ -61,7 +63,14 @@
     <string name="trailer_close_back">Cerrar Tráiler (Atrás)</string>
 
     <!-- Géneros -->
-    <string name="genre_favorites_title">Tus Géneros Favoritos</string>
+    <string name="genre_favorites_title">Géneros Favoritos</string>
+    <string name="seasonal_thematic_collection">COLECCIÓN TEMÁTICA</string>
+    <string name="seasonal_catalog_count">%1$d títulos en catálogo</string>
+    <string name="seasonal_updating">Actualizando…</string>
+    <string name="seasonal_view_collection">Ver colección</string>
+    <string name="favorites_empty_title">No tienes elementos en favoritos</string>
+    <string name="favorites_empty_filter_title">No hay elementos con este filtro</string>
+    <string name="context_menu_options">OPCIONES</string>
 
     <!-- Inicio (Home) -->
     <string name="home_loading">Cargando catálogo...</string>

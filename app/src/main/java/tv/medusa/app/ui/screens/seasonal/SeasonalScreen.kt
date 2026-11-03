@@ -64,6 +64,7 @@ import tv.medusa.app.ui.components.SeasonalParticles
 import tv.medusa.app.ui.components.TvNavTab
 import tv.medusa.app.ui.components.TvTopBar
 import tv.medusa.app.ui.theme.TvAccent
+import tv.medusa.app.ui.util.handleTouchClick
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
@@ -171,25 +172,7 @@ fun SeasonalScreen(
                         onOpenSettings = onOpenSettings,
                         accentColorKey = accentColorKey,
                         buttonStyleKey = buttonStyleKey,
-                        isMonochrome = isMonochrome,
-                        titleBadge = {
-                            val badgeBorder = if (isMonochrome) Color(0x33FFFFFF) else eventAccent.copy(alpha = 0.28f)
-                            val badgeBg = if (isMonochrome) Color(0x22FFFFFF) else eventAccent.copy(alpha = 0.15f)
-                            Box(
-                                modifier = Modifier
-                                    .background(badgeBg, RoundedCornerShape(16.dp))
-                                    .border(0.75.dp, badgeBorder, RoundedCornerShape(16.dp))
-                                    .padding(horizontal = 12.dp, vertical = 5.dp)
-                            ) {
-                                Text(
-                                    text = event.badgeLabel,
-                                    color = if (isMonochrome) Color.White else eventAccent,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    letterSpacing = 1.2.sp
-                                )
-                            }
-                        }
+                        isMonochrome = isMonochrome
                     )
 
                     if (current.showAll) {
@@ -239,21 +222,6 @@ private fun SeasonalHeading(
     isMonochrome: Boolean
 ) {
     val event = state.event
-    val cinematicFont = remember { FontFamily(Font(R.font.cinzel_decorative_bold, FontWeight.Bold)) }
-    val titleGradient = remember(event.id) {
-        when (event.id) {
-            "halloween" -> Brush.verticalGradient(
-                listOf(Color(0xFFFFFFFF), Color(0xFFFFEBD9), Color(0xFFFDBA74))
-            )
-            "christmas" -> Brush.verticalGradient(
-                listOf(Color(0xFFFFFFFF), Color(0xFFFEF3C7), Color(0xFFFDE68A))
-            )
-            "valentines" -> Brush.verticalGradient(
-                listOf(Color(0xFFFFFFFF), Color(0xFFFCE7F3), Color(0xFFFBCFE8))
-            )
-            else -> Brush.verticalGradient(listOf(Color(0xFFFFFFFF), Color(0xFFE2E8F0)))
-        }
-    }
 
     Column(
         modifier = Modifier
@@ -261,33 +229,42 @@ private fun SeasonalHeading(
             .padding(start = 48.dp, end = 48.dp, top = 16.dp, bottom = 8.dp)
     ) {
         Text(
-            text = event.title.uppercase(),
-            fontFamily = cinematicFont,
+            text = stringResource(R.string.seasonal_thematic_collection),
+            style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
-            fontSize = 32.sp,
-            letterSpacing = 2.sp,
-            lineHeight = 38.sp,
+            color = if (isMonochrome) Color(0xFF94A3B8) else eventAccent,
+            letterSpacing = 1.4.sp
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = event.title,
             style = MaterialTheme.typography.headlineLarge.copy(
-                brush = titleGradient,
+                fontWeight = FontWeight.Bold,
+                fontSize = 32.sp,
+                lineHeight = 38.sp,
+                letterSpacing = (-0.5).sp,
                 shadow = Shadow(
-                    color = Color(0xEE000000),
-                    blurRadius = 18f,
-                    offset = Offset(2f, 3f)
+                    color = Color(0xCC000000),
+                    blurRadius = 12f,
+                    offset = Offset(0f, 2f)
                 )
-            )
+            ),
+            color = Color.White
         )
         Spacer(modifier = Modifier.height(6.dp))
         Text(
             text = event.subtitle,
+            style = MaterialTheme.typography.bodyMedium.copy(
+                lineHeight = 22.sp
+            ),
             fontSize = 14.sp,
-            color = Color(0xCCFFFFFF),
-            lineHeight = 20.sp,
+            color = Color(0xFFCBD5E1),
             modifier = Modifier.fillMaxWidth(0.75f)
         )
         Spacer(modifier = Modifier.height(8.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = "${state.allCount} títulos en catálogo",
+                text = stringResource(R.string.seasonal_catalog_count, state.allCount),
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = if (isMonochrome) Color(0xFF94A3B8) else eventAccent.copy(alpha = 0.9f)
@@ -295,7 +272,7 @@ private fun SeasonalHeading(
             if (state.isRefreshing) {
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(
-                    text = "Actualizando…",
+                    text = stringResource(R.string.seasonal_updating),
                     fontSize = 11.sp,
                     color = Color(0x99FFFFFF)
                 )
@@ -344,23 +321,26 @@ private fun SeasonalLanding(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 48.dp, end = 48.dp, top = 12.dp, bottom = 12.dp),
+                    .padding(start = 48.dp, end = 48.dp, top = 16.dp, bottom = 24.dp),
                 horizontalArrangement = Arrangement.Center
             ) {
                 Button(
                     onClick = onOpenAll,
+                    scale = ButtonDefaults.scale(focusedScale = 1.05f),
+                    modifier = Modifier.handleTouchClick { onOpenAll() },
                     colors = ButtonDefaults.colors(
                         containerColor = if (isMonochrome) Color(0x22FFFFFF) else eventAccent.copy(alpha = 0.18f),
                         contentColor = Color.White,
                         focusedContainerColor = if (isMonochrome) Color.White else eventAccent,
                         focusedContentColor = if (isMonochrome) Color(0xFF0F172A) else Color.White
                     ),
-                    shape = ButtonDefaults.shape(RoundedCornerShape(20.dp)),
+                    shape = ButtonDefaults.shape(RoundedCornerShape(10.dp)),
                     border = ButtonDefaults.border(
                         border = Border(
                             border = androidx.compose.foundation.BorderStroke(1.dp, eventAccent.copy(alpha = 0.35f)),
-                            shape = RoundedCornerShape(20.dp)
-                        )
+                            shape = RoundedCornerShape(10.dp)
+                        ),
+                        focusedBorder = Border.None
                     )
                 ) {
                     Icon(
@@ -370,7 +350,7 @@ private fun SeasonalLanding(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Ver toda la colección (${state.allCount})",
+                        text = stringResource(R.string.common_view_all_count, state.allCount),
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -433,15 +413,23 @@ private fun SeasonalAllGrid(
                 )
                 Button(
                     onClick = onBackToLanding,
+                    scale = ButtonDefaults.scale(focusedScale = 1.05f),
                     colors = ButtonDefaults.colors(
                         containerColor = Color(0x22FFFFFF),
                         contentColor = Color.White,
                         focusedContainerColor = eventAccent,
                         focusedContentColor = Color.White
                     ),
-                    shape = ButtonDefaults.shape(RoundedCornerShape(16.dp))
+                    shape = ButtonDefaults.shape(RoundedCornerShape(10.dp)),
+                    border = ButtonDefaults.border(
+                        border = Border(
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x25FFFFFF)),
+                            shape = RoundedCornerShape(10.dp)
+                        ),
+                        focusedBorder = Border.None
+                    )
                 ) {
-                    Text(text = "Volver", fontWeight = FontWeight.Bold)
+                    Text(text = stringResource(R.string.common_back), fontWeight = FontWeight.Bold)
                 }
             }
         }

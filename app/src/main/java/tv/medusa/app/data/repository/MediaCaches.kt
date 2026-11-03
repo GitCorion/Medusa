@@ -75,6 +75,7 @@ object MediaCaches {
     val tmdbRecommendationsCache = TtlCache<String, List<TmdbItemDto>>(WEEK_MS)
     val tmdbGenreCache = TtlCache<String, List<TmdbItemDto>>(WEEK_MS)
     val tmdbProviderCache = TtlCache<String, List<TmdbItemDto>>(WEEK_MS)
+    val tmdbPopularRegionCache = TtlCache<String, List<TmdbItemDto>>(WEEK_MS)
 
     // Jellyfin remoto
     val serverTopMoviesCache = TtlCache<String, List<JellyfinMediaEntity>>(15 * 60 * 1000L)

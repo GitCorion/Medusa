@@ -231,6 +231,7 @@ fun JellyfinMediaEntity.toOptimizedMediaItem(
         totalEpisodes = total,
         playedEpisodes = played,
         seriesId = seriesId,
-        seriesName = seriesName
+        seriesName = seriesName,
+        premiereDateMs = premiereDateMs
     )
 }
