@@ -41,7 +41,7 @@ jobs:
           echo "firebase=${{ secrets.FIREBASE_TOKEN != '' }}" >> "$GITHUB_OUTPUT"
 
       - name: Generate catalogs
-        if: steps.secrets.outputs.tmdb == 'true'
+        if: steps.secrets.outputs.tmdb == 'true' && steps.secrets.outputs.firebase == 'true'
         env:
           TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
         run: node scripts/catalog/generate-catalogs.mjs
