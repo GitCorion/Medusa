@@ -38,20 +38,24 @@ jobs:
         id: secrets
         run: |
           echo "tmdb=${{ secrets.TMDB_API_KEY != '' }}" >> "$GITHUB_OUTPUT"
-          echo "firebase=${{ secrets.FIREBASE_TOKEN != '' }}" >> "$GITHUB_OUTPUT"
+          echo "deploy=${{ secrets.FIREBASE_SERVICE_ACCOUNT != '' }}" >> "$GITHUB_OUTPUT"
 
       - name: Generate catalogs
-        if: steps.secrets.outputs.tmdb == 'true' && steps.secrets.outputs.firebase == 'true'
+        if: steps.secrets.outputs.tmdb == 'true' && steps.secrets.outputs.deploy == 'true'
         env:
           TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
         run: node scripts/catalog/generate-catalogs.mjs
 
       - name: Install Firebase CLI
-        if: steps.secrets.outputs.tmdb == 'true' && steps.secrets.outputs.firebase == 'true'
+        if: steps.secrets.outputs.tmdb == 'true' && steps.secrets.outputs.deploy == 'true'
         run: npm install -g firebase-tools
 
+      - name: Authenticate to Google Cloud
+        if: steps.secrets.outputs.tmdb == 'true' && steps.secrets.outputs.deploy == 'true'
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+
       - name: Deploy to Firebase Hosting
-        if: steps.secrets.outputs.tmdb == 'true' && steps.secrets.outputs.firebase == 'true'
-        env:
-          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
-        run: firebase deploy --only hosting:catalogs --token "$FIREBASE_TOKEN" --non-interactive
+        if: steps.secrets.outputs.tmdb == 'true' && steps.secrets.outputs.deploy == 'true'
+        run: firebase deploy --only hosting:catalogs --project medusa-fd388 --non-interactive
