@@ -75,7 +75,6 @@ class GetHomeFeedUseCase(
             // de Continuar Viendo y por encima de las novedades de la biblioteca.
             title.contains("Top 10", ignoreCase = true) -> 2
             title == "Últimos estrenos" -> 5
-            title == "Tendencias hoy" -> 10
             title == "Añadido recientemente" -> 20
             title.startsWith("Porque viste") -> 30
             // Todas las filas de plataformas se generan como "Populares en X"; las antiguas
@@ -457,7 +456,7 @@ class GetHomeFeedUseCase(
                     }
                     postSection(
                         HomeSection(
-                            title = "Tendencias hoy",
+                            title = "Top 10 hoy",
                             items = items,
                             badge = null,
                             isRanked = true,
@@ -525,7 +524,7 @@ class GetHomeFeedUseCase(
                         it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TMDB_TRENDING).copy(rank = idx + 1)
                     }
                     val top10Section = HomeSection(
-                        title = "Tendencias hoy",
+                        title = "Top 10 hoy",
                         items = top10Items,
                         badge = null,
                         isRanked = true,
@@ -630,54 +629,6 @@ class GetHomeFeedUseCase(
                                 semaphore.release()
                             }
                         }
-                    }
-
-                    // Top 10 OFICIAL de Netflix (semanal, por país, TSV de Tudum).
-                    val netflixFilmItems = collectionIndexUseCase
-                        ?.top(CollectionIndexUseCase.netflixTop10FilmKey(effectiveWatchRegion), 10)
-                        .orEmpty()
-                    if (netflixFilmItems.isNotEmpty()) {
-                        val items = netflixFilmItems.mapIndexed { idx, entity ->
-                            entity.toMediaItem(
-                                prefs.jellyfinServerUrl,
-                                prefs.jellyfinAccessToken,
-                                MediaSource.TMDB_TRENDING
-                            ).copy(rank = idx + 1)
-                        }
-                        postSection(
-                            HomeSection(
-                                title = "Top 10 Netflix · Películas",
-                                items = items,
-                                badge = null,
-                                isRanked = true,
-                                kind = HomeSectionKind.PLATFORM
-                            ),
-                            cacheKey = "netflix_top10_films",
-                            itemIds = items.map { it.id }
-                        )
-                    }
-                    val netflixTvItems = collectionIndexUseCase
-                        ?.top(CollectionIndexUseCase.netflixTop10TvKey(effectiveWatchRegion), 10)
-                        .orEmpty()
-                    if (netflixTvItems.isNotEmpty()) {
-                        val items = netflixTvItems.mapIndexed { idx, entity ->
-                            entity.toMediaItem(
-                                prefs.jellyfinServerUrl,
-                                prefs.jellyfinAccessToken,
-                                MediaSource.TMDB_TRENDING
-                            ).copy(rank = idx + 1)
-                        }
-                        postSection(
-                            HomeSection(
-                                title = "Top 10 Netflix · Series",
-                                items = items,
-                                badge = null,
-                                isRanked = true,
-                                kind = HomeSectionKind.PLATFORM
-                            ),
-                            cacheKey = "netflix_top10_tv",
-                            itemIds = items.map { it.id }
-                        )
                     }
                 }
             }

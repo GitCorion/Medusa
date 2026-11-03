@@ -157,10 +157,8 @@ class GetHomeFeedUseCaseTest {
     @Test
     fun `sectionPriority respects established ordering hierarchy`() {
         assertEquals(0, GetHomeFeedUseCase.sectionPriority("Continuar Viendo"))
-        assertEquals(2, GetHomeFeedUseCase.sectionPriority("Top 10 Netflix · Películas"))
-        assertEquals(2, GetHomeFeedUseCase.sectionPriority("Top 10 Netflix · Series"))
+        assertEquals(2, GetHomeFeedUseCase.sectionPriority("Top 10 hoy"))
         assertEquals(5, GetHomeFeedUseCase.sectionPriority("Últimos estrenos"))
-        assertEquals(10, GetHomeFeedUseCase.sectionPriority("Tendencias hoy"))
         assertEquals(20, GetHomeFeedUseCase.sectionPriority("Añadido recientemente"))
         assertEquals(30, GetHomeFeedUseCase.sectionPriority("Porque viste Matrix"))
         assertEquals(40, GetHomeFeedUseCase.sectionPriority("Populares en Netflix"))

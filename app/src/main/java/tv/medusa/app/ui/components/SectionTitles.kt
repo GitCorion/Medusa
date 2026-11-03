@@ -57,15 +57,6 @@ fun localizedSectionTitle(section: HomeSection): String {
         title == "Top 10 hoy" || title == "Top 10 Global hoy" -> {
             if (java.util.Locale.getDefault().language == "en") "Top 10 Today" else "Top 10 hoy"
         }
-        title == "Tendencias hoy" -> {
-            if (java.util.Locale.getDefault().language == "en") "Trending Today" else title
-        }
-        title == "Top 10 Netflix · Películas" -> {
-            if (java.util.Locale.getDefault().language == "en") "Netflix Top 10 · Movies" else title
-        }
-        title == "Top 10 Netflix · Series" -> {
-            if (java.util.Locale.getDefault().language == "en") "Netflix Top 10 · Series" else title
-        }
         title == "Grandes Éxitos de tu colección" -> {
             if (java.util.Locale.getDefault().language == "en") "Blockbusters in Your Library" else title
         }
