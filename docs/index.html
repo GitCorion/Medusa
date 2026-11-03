@@ -72,7 +72,7 @@
 </head>
 <body>
     <div class="container">
-        <span class="badge">Última actualización: Octubre 2026</span>
+        <span class="badge">Última actualización: Noviembre 2026</span>
         <h1>Política de Privacidad de Medusa</h1>
         <p><strong>Medusa</strong> es una aplicación cliente independiente para servidores multimedia Jellyfin, diseñada para dispositivos Android y Android TV. Esta Política de Privacidad describe cómo se gestiona y protege la información al utilizar la aplicación.</p>
 
@@ -83,26 +83,34 @@
         <p>Toda la información necesaria para el funcionamiento de la aplicación se almacena <strong>exclusivamente de forma local en tu dispositivo</strong>:</p>
         <ul>
             <li><strong>Credenciales del Servidor:</strong> La dirección de tu servidor Jellyfin, tu nombre de usuario y los tokens de sesión se guardan de forma segura en el almacenamiento local protegido del sistema operativo.</li>
-            <li><strong>Caché y Preferencias:</strong> Preferencias de interfaz (temas, tamaño de texto, configuración de reproducción) e historial de caché de imágenes de tu propio servidor.</li>
+            <li><strong>Caché y Preferencias:</strong> Preferencias de interfaz (temas, tamaño de texto, configuración de reproducción, región seleccionada) e historial de caché de imágenes de tu propio servidor.</li>
         </ul>
 
-        <h2>3. Comunicaciones de Red</h2>
-        <p>La aplicación solo establece comunicaciones directas con los siguientes puntos:</p>
+        <h2>3. Comunicaciones de Red y Fuentes de Datos</h2>
+        <p>La aplicación solo establece comunicaciones con los siguientes puntos y servicios:</p>
         <ul>
-            <li><strong>Tu Servidor Jellyfin:</strong> Las peticiones de catálogo, imágenes y reproducción de vídeo se realizan directamente entre tu dispositivo y el servidor Jellyfin configurado por ti.</li>
-            <li><strong>Servicios Opcionales de Metadatos (TMDB / Trakt):</strong> Si decides activar funciones adicionales como la sincronización con Trakt o consulta de sinopsis en The Movie Database (TMDB), la app se comunicará directamente con sus respectivas APIs públicas bajo sus propias políticas de privacidad.</li>
+            <li><strong>Tu Servidor Jellyfin:</strong> Las peticiones de catálogo personal, imágenes y reproducción de vídeo se realizan directa y exclusivamente entre tu dispositivo y el servidor Jellyfin configurado por ti.</li>
+            <li><strong>Servidor Backend y Catálogos de Descubrimiento (TMDB y Trakt):</strong> Para ofrecer listas de tendencias, novedades y catálogos organizados por plataforma y región sin requerir que el usuario configure o exponga claves de API, estos catálogos de metadatos se generan y sirven de forma anónima desde nuestra infraestructura optimizada de servidor y CDN. Las consultas son públicas, en caché y no recopilan ni asocian ningún dato personal ni identificador de tu biblioteca personal.</li>
+            <li><strong>Trakt.tv (Sincronización Personal Opcional):</strong> Si decides vincular voluntariamente tu cuenta de Trakt mediante inicio de sesión seguro (OAuth), la app sincroniza tu historial de visualización, listas y colecciones directamente con los servidores de Trakt.tv bajo sus propios términos.</li>
         </ul>
 
-        <h2>4. Analíticas y Diagnóstico de Errores</h2>
+        <h2>4. Atribución de Fuentes de Datos</h2>
+        <p>Medusa integra información pública y metadatos de las siguientes plataformas:</p>
+        <ul>
+            <li><strong>TMDB (The Movie Database):</strong> This product uses the TMDB API but is not endorsed or certified by TMDB.</li>
+            <li><strong>Trakt.tv:</strong> Listas y tendencias proporcionadas por Trakt.tv.</li>
+        </ul>
+
+        <h2>5. Analíticas y Diagnóstico de Errores</h2>
         <p>Medusa no incluye rastreadores de publicidad ni servicios de seguimiento de actividad. En caso de caídas o errores críticos del reproductor, la aplicación puede utilizar herramientas estándar anónimas (como Firebase Crashlytics) para registrar el código de error y el modelo del dispositivo, con el único fin de corregir fallos técnicos y mejorar la estabilidad.</p>
 
-        <h2>5. Menores de Edad</h2>
+        <h2>6. Menores de Edad</h2>
         <p>Medusa no recopila conscientemente información de identificación personal de niños ni de ningún otro usuario.</p>
 
-        <h2>6. Descargo de Responsabilidad</h2>
+        <h2>7. Descargo de Responsabilidad</h2>
         <p>Medusa es un reproductor cliente y no proporciona, distribuye ni aloja ningún tipo de contenido multimedia. El usuario es el único responsable del contenido al que accede a través de su servidor multimedia.</p>
 
-        <h2>7. Contacto</h2>
+        <h2>8. Contacto</h2>
         <p>Si tienes preguntas sobre esta Política de Privacidad, puedes ponerte en contacto a través del repositorio oficial del proyecto o por correo electrónico.</p>
 
         <div class="footer">

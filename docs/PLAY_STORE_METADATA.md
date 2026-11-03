@@ -45,16 +45,23 @@ CARACTERÍSTICAS DESTACADAS:
 • Logotipos vectoriales transparentes (ClearLogo) para una presentación impecable de las portadas.
 • Navegación por Hubs y Plataformas para encontrar lo que buscas en segundos.
 
+🌐 DESCUBRIMIENTO Y CATÁLOGOS REGIONALES
+• Explora tendencias, populares y novedades organizadas por tus plataformas favoritas y según tu región geográfica (España, México, Argentina, EE.UU., etc.).
+• Catálogos optimizados servidos directamente desde nuestra infraestructura de backend/servidor sin necesidad de introducir ni configurar claves de API.
+
 🔗 INTEGRACIÓN CON TRAKT
 • Vincula tu cuenta de Trakt para sincronizar tu historial de visualización, listas de seguimiento y colecciones.
 
 🔒 MÁXIMA PRIVACIDAD Y SEGURIDAD
-• Sin intermediarios ni recopilación de datos: la aplicación se comunica directa y exclusivamente entre tu televisor y tu servidor Jellyfin personal.
+• Sin intermediarios ni recopilación de datos: la reproducción y metadatos personales se comunican directa y exclusivamente entre tu televisor y tu servidor Jellyfin personal.
 • Las credenciales se almacenan únicamente de forma local y cifrada en tu dispositivo.
 
 ---
-NOTA LEGAL / DESCARGO DE RESPONSABILIDAD:
-Medusa es una aplicación cliente de terceros desarrollada de forma independiente y no está afiliada, respaldada ni patrocinada por el proyecto Jellyfin ni por ninguna plataforma de streaming comercial. Medusa no incluye, aloja, distribuye ni facilita ningún tipo de contenido multimedia. El usuario es el único responsable de configurar y conectar su propio servidor personal con contenido propio o del que tenga los derechos correspondientes.
+NOTA LEGAL, FUENTES DE DATOS Y DESCARGO DE RESPONSABILIDAD:
+• Medusa es una aplicación cliente de terceros desarrollada de forma independiente y no está afiliada, respaldada ni patrocinada por el proyecto Jellyfin ni por ninguna plataforma de streaming comercial. Medusa no incluye, aloja, distribuye ni facilita ningún tipo de contenido multimedia. El usuario es el único responsable de configurar y conectar su propio servidor personal con contenido propio o del que tenga los derechos correspondientes.
+• TMDB (The Movie Database): This product uses the TMDB API but is not endorsed or certified by TMDB.
+• Trakt.tv: Listas y tendencias proporcionadas por Trakt.tv.
+• Los catálogos de descubrimiento y metadatos públicos se sirven en caché desde nuestra infraestructura de backend/servidor sin recopilar información personal del usuario.
 ```
 
 ---

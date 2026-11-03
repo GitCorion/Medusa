@@ -1107,39 +1107,118 @@ private fun AboutCategory(
         }
     }
 
+    val context = LocalContext.current
+    val openUrl: (String) -> Unit = { url ->
+        try {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+        } catch (_: Exception) {
+        }
+    }
+
     TvSectionHeader(title = stringResource(R.string.settings_section_data_sources))
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Color(0x0CFFFFFF), RoundedCornerShape(10.dp))
-            .border(0.5.dp, Color(0x14FFFFFF), RoundedCornerShape(10.dp))
-            .padding(16.dp)
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(
-                text = stringResource(R.string.settings_row_tmdb),
-                color = Color.White,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold
-            )
-            Text(
-                text = stringResource(R.string.settings_tmdb_attribution),
-                color = Color(0xFFE2E8F0),
-                fontSize = 12.sp,
-                lineHeight = 18.sp
-            )
-            Text(
-                text = stringResource(R.string.settings_row_trakt_data),
-                color = Color.White,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold
-            )
-            Text(
-                text = stringResource(R.string.settings_trakt_attribution),
-                color = Color(0xFFE2E8F0),
-                fontSize = 12.sp,
-                lineHeight = 18.sp
-            )
+        // TMDB Source Card
+        Surface(
+            onClick = { openUrl("https://www.themoviedb.org/") },
+            modifier = Modifier
+                .handleTouchClick { openUrl("https://www.themoviedb.org/") }
+                .fillMaxWidth(),
+            shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(10.dp)),
+            colors = ClickableSurfaceDefaults.colors(
+                containerColor = Color(0x0CFFFFFF),
+                focusedContainerColor = Color(0x28FFFFFF)
+            ),
+            border = ClickableSurfaceDefaults.border(
+                border = Border(border = BorderStroke(0.5.dp, Color(0x14FFFFFF))),
+                focusedBorder = Border(border = BorderStroke(1.5.dp, focusColor))
+            ),
+            scale = ClickableSurfaceDefaults.scale(focusedScale = 1.01f)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Image(
+                        painter = painterResource(R.drawable.ic_tmdb_logo),
+                        contentDescription = "TMDB",
+                        modifier = Modifier.height(20.dp),
+                        contentScale = ContentScale.Fit
+                    )
+                    Text(
+                        text = stringResource(R.string.settings_row_tmdb),
+                        color = Color.White,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+                Text(
+                    text = stringResource(R.string.settings_tmdb_attribution),
+                    color = Color(0xFFE2E8F0),
+                    fontSize = 12.sp,
+                    lineHeight = 18.sp
+                )
+            }
+        }
+
+        // Trakt.tv Source Card
+        Surface(
+            onClick = { openUrl("https://trakt.tv/") },
+            modifier = Modifier
+                .handleTouchClick { openUrl("https://trakt.tv/") }
+                .fillMaxWidth(),
+            shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(10.dp)),
+            colors = ClickableSurfaceDefaults.colors(
+                containerColor = Color(0x0CFFFFFF),
+                focusedContainerColor = Color(0x28FFFFFF)
+            ),
+            border = ClickableSurfaceDefaults.border(
+                border = Border(border = BorderStroke(0.5.dp, Color(0x14FFFFFF))),
+                focusedBorder = Border(border = BorderStroke(1.5.dp, focusColor))
+            ),
+            scale = ClickableSurfaceDefaults.scale(focusedScale = 1.01f)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Image(
+                        painter = painterResource(R.drawable.ic_brand_trakt),
+                        contentDescription = "Trakt.tv",
+                        modifier = Modifier.height(18.dp),
+                        contentScale = ContentScale.Fit
+                    )
+                    Text(
+                        text = stringResource(R.string.settings_row_trakt_data),
+                        color = Color.White,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+                Text(
+                    text = stringResource(R.string.settings_trakt_attribution),
+                    color = Color(0xFFE2E8F0),
+                    fontSize = 12.sp,
+                    lineHeight = 18.sp
+                )
+            }
         }
     }
 
