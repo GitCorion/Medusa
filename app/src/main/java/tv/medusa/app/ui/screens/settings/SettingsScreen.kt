@@ -1107,6 +1107,42 @@ private fun AboutCategory(
         }
     }
 
+    TvSectionHeader(title = stringResource(R.string.settings_section_data_sources))
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0x0CFFFFFF), RoundedCornerShape(10.dp))
+            .border(0.5.dp, Color(0x14FFFFFF), RoundedCornerShape(10.dp))
+            .padding(16.dp)
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                text = stringResource(R.string.settings_row_tmdb),
+                color = Color.White,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = stringResource(R.string.settings_tmdb_attribution),
+                color = Color(0xFFE2E8F0),
+                fontSize = 12.sp,
+                lineHeight = 18.sp
+            )
+            Text(
+                text = stringResource(R.string.settings_row_trakt_data),
+                color = Color.White,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = stringResource(R.string.settings_trakt_attribution),
+                color = Color(0xFFE2E8F0),
+                fontSize = 12.sp,
+                lineHeight = 18.sp
+            )
+        }
+    }
+
     TvSectionHeader(title = stringResource(R.string.settings_section_legal))
     TvSettingRow(
         title = stringResource(R.string.settings_row_privacy_policy),

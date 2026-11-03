@@ -311,6 +311,11 @@
     <string name="settings_section_legal">LEGAL</string>
     <string name="settings_row_privacy_policy">Política de privacidad</string>
     <string name="settings_privacy_policy_value">Ver enlace / QR</string>
+    <string name="settings_section_data_sources">FUENTES DE DATOS</string>
+    <string name="settings_row_tmdb">TMDB (The Movie Database)</string>
+    <string name="settings_tmdb_attribution">This product uses the TMDB API but is not endorsed or certified by TMDB.</string>
+    <string name="settings_row_trakt_data">Trakt.tv</string>
+    <string name="settings_trakt_attribution">Listas y tendencias proporcionadas por Trakt.tv.</string>
     <string name="settings_privacy_policy_dialog_title">Política de privacidad</string>
     <string name="settings_privacy_policy_dialog_desc">Escanea el código QR con tu móvil para leer la política completa o visita:</string>
     <string name="settings_privacy_policy_dialog_open_browser">Abrir en navegador</string>
