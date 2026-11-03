@@ -145,12 +145,150 @@ async function popularCatalog(region) {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Top 10 OFICIAL de Netflix (Tudum), semanal y por país.
+// ---------------------------------------------------------------------------
+const NETFLIX_TSV_URL = 'https://www.netflix.com/tudum/top10/data/all-weeks-countries.tsv';
+
+function normalizeTitle(value) {
+  return (value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]/g, '');
+}
+
+/** Descarga el TSV oficial una vez y devuelve el último semana por país. */
+async function fetchNetflixTop10ByCountry() {
+  const response = await fetch(NETFLIX_TSV_URL, {
+    headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'text/tab-separated-values,*/*' },
+  });
+  if (!response.ok) throw new Error(`Netflix TSV HTTP ${response.status}`);
+  const text = await response.text();
+  const lines = text.split('\n');
+  const header = lines[0].split('\t');
+  const col = (name) => header.indexOf(name);
+  const iCountry = col('country_iso2');
+  const iWeek = col('week');
+  const iCategory = col('category');
+  const iRank = col('weekly_rank');
+  const iTitle = col('show_title');
+  const iSeason = col('season_title');
+
+  const latestWeek = new Map();
+  for (let i = 1; i < lines.length; i++) {
+    if (!lines[i]) continue;
+    const cols = lines[i].split('\t');
+    if (cols.length <= iTitle) continue;
+    const iso = cols[iCountry];
+    const week = cols[iWeek];
+    if (!iso || !week) continue;
+    const prev = latestWeek.get(iso);
+    if (!prev || week > prev) latestWeek.set(iso, week);
+  }
+
+  const byCountry = new Map();
+  for (let i = 1; i < lines.length; i++) {
+    if (!lines[i]) continue;
+    const cols = lines[i].split('\t');
+    if (cols.length <= iTitle) continue;
+    const iso = cols[iCountry];
+    if (latestWeek.get(iso) !== cols[iWeek]) continue;
+    const category = cols[iCategory];
+    const rank = Number.parseInt(cols[iRank], 10);
+    const title = cols[iTitle];
+    if (!title || !Number.isFinite(rank)) continue;
+    if (!byCountry.has(iso)) byCountry.set(iso, { week: cols[iWeek], films: [], tv: [] });
+    const entry = { rank, title, season: cols[iSeason] };
+    if (category === 'Films') byCountry.get(iso).films.push(entry);
+    else if (category === 'TV') byCountry.get(iso).tv.push(entry);
+  }
+  byCountry.forEach((value) => {
+    value.films.sort((a, b) => a.rank - b.rank);
+    value.tv.sort((a, b) => a.rank - b.rank);
+  });
+  return byCountry;
+}
+
+/** Resuelve un título del TSV a su TMDB ID (el TSV no trae año ni ID). */
+async function resolveTmdbTitle(title, isTv) {
+  const kind = isTv ? 'tv' : 'movie';
+  const url = `${TMDB}/search/${kind}?${q({
+    api_key: apiKey,
+    query: title,
+    language: LANG,
+    include_adult: false,
+    page: 1,
+  })}`;
+  try {
+    const data = await fetchJson(url);
+    const results = data.results || [];
+    const target = normalizeTitle(title);
+    let best = null;
+    let bestScore = -1;
+    for (const result of results) {
+      const names = [result.title, result.name, result.original_title, result.original_name]
+        .filter(Boolean)
+        .map(normalizeTitle);
+      let score = 0;
+      if (names.includes(target)) score = 100;
+      else if (names.some((name) => name.includes(target) || target.includes(name))) score = 50;
+      score += Math.min(result.popularity || 0, 100) / 100;
+      if (score > bestScore) {
+        bestScore = score;
+        best = result;
+      }
+    }
+    if (!best) return null;
+    return {
+      tmdbId: best.id,
+      title: best.title || best.name || title,
+      type: isTv ? 'tv' : 'movie',
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function netflixTop10For(region, netflixByCountry) {
+  const data = netflixByCountry.get(region);
+  if (!data) return null;
+  const films = [];
+  for (const entry of data.films) {
+    const resolved = await resolveTmdbTitle(entry.title, false);
+    if (resolved) films.push({ rank: entry.rank, ...resolved });
+  }
+  const tv = [];
+  for (const entry of data.tv) {
+    const resolved = await resolveTmdbTitle(entry.title, true);
+    if (resolved) tv.push({ rank: entry.rank, ...resolved });
+  }
+  // Varias partes/seasons del mismo título comparten tmdbId: nos quedamos con la mejor.
+  const dedupeByTmdb = (list) => {
+    const seen = new Set();
+    return list.filter((item) => {
+      const key = String(item.tmdbId);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  };
+  return { week: data.week, films: dedupeByTmdb(films), tv: dedupeByTmdb(tv) };
+}
+
 function writeJson(file, data) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, JSON.stringify(data));
 }
 
 async function main() {
+  process.stdout.write('Descargando Top 10 oficial de Netflix... ');
+  const netflixByCountry = await fetchNetflixTop10ByCountry().catch((e) => {
+    console.log(`ERROR ${e.message}`);
+    return new Map();
+  });
+  console.log(`${netflixByCountry.size} países`);
+
   for (const region of regions) {
     const dir = path.join(OUT_ROOT, region);
     const platformFiles = {};
@@ -186,14 +324,37 @@ async function main() {
       console.log(`ERROR ${e.message}`);
     }
 
-    writeJson(path.join(dir, 'index.json'), {
+    process.stdout.write(`[${region}] netflix top10... `);
+    let netflixTop10File = null;
+    try {
+      const netflix = await netflixTop10For(region, netflixByCountry);
+      if (netflix) {
+        writeJson(path.join(dir, 'netflix_top10.json'), {
+          v: FORMAT_VERSION,
+          region,
+          week: netflix.week,
+          films: netflix.films,
+          tv: netflix.tv,
+        });
+        netflixTop10File = 'netflix_top10.json';
+        console.log(`films ${netflix.films.length}, tv ${netflix.tv.length}`);
+      } else {
+        console.log('sin datos para la región');
+      }
+    } catch (e) {
+      console.log(`ERROR ${e.message}`);
+    }
+
+    const index = {
       v: FORMAT_VERSION,
       region,
       updatedAt: Date.now(),
       platforms: platformFiles,
       trending_day: 'trending_day.json',
       popular: 'popular.json',
-    });
+    };
+    if (netflixTop10File) index.netflix_top10 = netflixTop10File;
+    writeJson(path.join(dir, 'index.json'), index);
   }
   console.log(`Catálogos generados en ${OUT_ROOT}`);
 }

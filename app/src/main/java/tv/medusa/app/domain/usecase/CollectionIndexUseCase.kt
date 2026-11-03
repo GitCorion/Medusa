@@ -41,6 +41,8 @@ class CollectionIndexUseCase @Inject constructor(
         const val PLATFORM_PREFIX = "platform:"
         const val TRENDING_PREFIX = "trending:day:"
         const val POPULAR_PREFIX = "popular:"
+        const val NETFLIX_TOP10_FILM_PREFIX = "netflix_top10:film:"
+        const val NETFLIX_TOP10_TV_PREFIX = "netflix_top10:tv:"
         private const val TTL_MS = 24L * 60 * 60 * 1000
         // Súbela cuando cambie el algoritmo de matching/orden: invalida los índices existentes.
         private const val INDEX_VERSION = 3
@@ -49,6 +51,10 @@ class CollectionIndexUseCase @Inject constructor(
         fun platformKey(platformId: String): String = PLATFORM_PREFIX + platformId.lowercase()
         fun trendingKey(region: String): String = TRENDING_PREFIX + region.uppercase()
         fun popularKey(region: String): String = POPULAR_PREFIX + region.uppercase()
+        fun netflixTop10FilmKey(region: String): String =
+            NETFLIX_TOP10_FILM_PREFIX + region.uppercase()
+        fun netflixTop10TvKey(region: String): String =
+            NETFLIX_TOP10_TV_PREFIX + region.uppercase()
     }
 
     suspend fun ensureIndex(force: Boolean = false, onlyPlatformId: String? = null): Int =
@@ -117,8 +123,87 @@ class CollectionIndexUseCase @Inject constructor(
                 }
             }
 
+            // 4. Top 10 OFICIAL de Netflix (semanal, por país, del TSV público de Tudum).
+            val netflixPath = manifest?.netflixTop10
+            if (netflixPath != null) {
+                val netflix = catalogRemote.fetchNetflixTop10(region, netflixPath)
+                if (netflix != null) {
+                    built += ensureNetflixTop10Collection(
+                        key = netflixTop10FilmKey(region),
+                        entries = netflix.films,
+                        region = region,
+                        version = version,
+                        force = force
+                    )
+                    built += ensureNetflixTop10Collection(
+                        key = netflixTop10TvKey(region),
+                        entries = netflix.tv,
+                        region = region,
+                        version = version,
+                        force = force
+                    )
+                }
+            }
+
             built
         }
+
+    /**
+     * Indexa una lista del Top 10 de Netflix. El TSV de Tudum no trae TMDB ID, así que el
+     * generador lo resuelve; aquí solo cruzamos esos IDs con la biblioteca y guardamos el rank.
+     */
+    private suspend fun ensureNetflixTop10Collection(
+        key: String,
+        entries: List<CatalogRemoteDataSource.NetflixTop10Entry>,
+        region: String,
+        version: String,
+        force: Boolean
+    ): Int {
+        if (entries.isEmpty()) return 0
+
+        val meta = collectionDao.getMeta(key)
+        val now = System.currentTimeMillis()
+        if (!force && meta != null && meta.catalogVersion == version && now - meta.updatedAt < TTL_MS) {
+            return meta.itemCount
+        }
+
+        val rankById = entries.associate { it.tmdbId.toString() to it.rank }
+        val items = entries.map { entry ->
+            TmdbItemDto(
+                id = entry.tmdbId,
+                title = if (!entry.isTv) entry.title else null,
+                name = if (entry.isTv) entry.title else null,
+                popularity = 0.0
+            )
+        }
+        val matches = filterToLibraryUseCase.filterTmdbItemsWithSource(
+            tmdbItems = items,
+            maxCandidates = Int.MAX_VALUE
+        )
+        if (matches.isEmpty() && meta != null) return meta.itemCount
+
+        val ranked = matches.mapNotNull { match ->
+            val rank = rankById[match.source.id.toString()] ?: return@mapNotNull null
+            CollectionItemEntity(
+                collectionKey = key,
+                mediaId = match.entity.id,
+                rank = rank,
+                score = 0.0
+            )
+        }.distinctBy { it.mediaId }
+
+        collectionDao.replaceCollection(
+            key = key,
+            items = ranked,
+            meta = CollectionMetaEntity(
+                collectionKey = key,
+                region = region,
+                catalogVersion = version,
+                itemCount = ranked.size
+            )
+        )
+        return ranked.size
+    }
 
     private suspend fun ensureCollection(
         key: String,

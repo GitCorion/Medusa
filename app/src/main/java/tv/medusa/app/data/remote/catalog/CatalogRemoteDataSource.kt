@@ -28,7 +28,21 @@ class CatalogRemoteDataSource @Inject constructor() {
         val updatedAt: Long,
         val platforms: Map<String, String>,
         val trendingDay: String?,
-        val popular: String?
+        val popular: String?,
+        val netflixTop10: String?
+    )
+
+    data class NetflixTop10Entry(
+        val rank: Int,
+        val tmdbId: Long,
+        val title: String?,
+        val isTv: Boolean
+    )
+
+    data class NetflixTop10(
+        val week: String?,
+        val films: List<NetflixTop10Entry>,
+        val tv: List<NetflixTop10Entry>
     )
 
     private val client = OkHttpClient.Builder()
@@ -66,7 +80,8 @@ class CatalogRemoteDataSource @Inject constructor() {
                     updatedAt = obj.optLong("updatedAt", 0L),
                     platforms = platforms,
                     trendingDay = obj.optString("trending_day").ifBlank { null },
-                    popular = obj.optString("popular").ifBlank { null }
+                    popular = obj.optString("popular").ifBlank { null },
+                    netflixTop10 = obj.optString("netflix_top10").ifBlank { null }
                 )
             }
         }.onFailure {
@@ -124,6 +139,42 @@ class CatalogRemoteDataSource @Inject constructor() {
                 out
             }.onFailure {
                 Log.w("CatalogRemote", "items $regionKey/$relativePath: ${it.message}")
+            }.getOrNull()
+        }
+
+    suspend fun fetchNetflixTop10(region: String, relativePath: String): NetflixTop10? =
+        withContext(Dispatchers.IO) {
+            val regionKey = region.uppercase()
+            runCatching {
+                val raw = get("$regionKey/$relativePath") ?: return@runCatching null
+                val obj = JSONObject(raw)
+
+                fun parse(array: org.json.JSONArray?): List<NetflixTop10Entry> {
+                    if (array == null) return emptyList()
+                    val out = ArrayList<NetflixTop10Entry>(array.length())
+                    for (i in 0 until array.length()) {
+                        val item = array.optJSONObject(i) ?: continue
+                        val tmdbId = item.optLong("tmdbId", 0L)
+                        if (tmdbId <= 0L) continue
+                        out.add(
+                            NetflixTop10Entry(
+                                rank = item.optInt("rank", i + 1),
+                                tmdbId = tmdbId,
+                                title = item.optString("title").ifBlank { null },
+                                isTv = item.optString("type").equals("tv", ignoreCase = true)
+                            )
+                        )
+                    }
+                    return out
+                }
+
+                NetflixTop10(
+                    week = obj.optString("week").ifBlank { null },
+                    films = parse(obj.optJSONArray("films")),
+                    tv = parse(obj.optJSONArray("tv"))
+                )
+            }.onFailure {
+                Log.w("CatalogRemote", "netflix_top10 $regionKey: ${it.message}")
             }.getOrNull()
         }
 

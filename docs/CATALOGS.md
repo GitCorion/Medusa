@@ -7,6 +7,7 @@ Sistema centralizado para que la app descubra contenido **sin llevar claves ni p
 | Dato | Origen | Clave en el cliente |
 |---|---|---|
 | Plataformas, tendencias y popular regional | JSON estático en `https://medusa-catalogs.web.app/<REGION>/` (Firebase Hosting + CDN) | No |
+| Top 10 oficial de Netflix (películas y series) | TSV semanal de Tudum, resuelto a TMDB y cruzado con la biblioteca | No |
 | Recomendaciones, géneros, detalle, vídeos, temporada | Cloud Function `tmdbProxy` (`/api/tmdb/**`) con caché | No |
 | Cruce con la biblioteca del usuario | Room (`collection_items`) en el dispositivo | — |
 | Trakt | OAuth del usuario | No |
