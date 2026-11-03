@@ -179,7 +179,7 @@ exports.requestRegionCatalog = onRequest(
             "Content-Type": "application/json",
             "User-Agent": "medusa-catalog",
           },
-          body: JSON.stringify({ ref: "main", inputs: { regions: "" } }),
+          body: JSON.stringify({ ref: "main" }),
         }
       );
       if (response.status === 204) {

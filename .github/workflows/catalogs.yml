@@ -12,11 +12,6 @@ on:
   schedule:
     - cron: '17 3 * * *'
   workflow_dispatch:
-    inputs:
-      regions:
-        description: "Regiones separadas por coma (vacío = las de scripts/catalog/platforms.json)"
-        type: string
-        default: ""
 
 permissions:
   contents: read
@@ -44,7 +39,6 @@ jobs:
         if: steps.secrets.outputs.tmdb == 'true'
         env:
           TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
-          CATALOG_REGIONS: ${{ inputs.regions }}
         run: node scripts/catalog/generate-catalogs.mjs
 
       - name: Install Firebase CLI
