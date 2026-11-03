@@ -29,6 +29,30 @@ const ALLOWED = [
 const cache = new Map();
 const MAX_ENTRIES = 800;
 
+/** ¿Hay ya una ejecución del workflow en curso? Evita disparos duplicados (coste de minutos). */
+async function hasActiveCatalogRun(token) {
+  try {
+    const response = await fetch(
+      `https://api.github.com/repos/${GITHUB_REPO}/actions/workflows/catalogs.yml/runs?per_page=1`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28",
+          "User-Agent": "medusa-catalog",
+        },
+      }
+    );
+    if (!response.ok) return false;
+    const data = await response.json();
+    const run = (data.workflow_runs || [])[0];
+    if (!run) return false;
+    return ["queued", "in_progress", "requested", "waiting", "pending"].includes(run.status);
+  } catch (_) {
+    return false;
+  }
+}
+
 function ttlMs(path) {
   if (path.startsWith("trending/")) return 15 * 60 * 1000;
   if (path.startsWith("discover/")) return 6 * 60 * 60 * 1000;
@@ -164,6 +188,12 @@ exports.requestRegionCatalog = onRequest(
     const token = GITHUB_TOKEN.value();
     if (!token || token === "none") {
       res.status(200).json({ status: "disabled", region });
+      return;
+    }
+
+    // Si ya hay una generación en curso, no lanzamos otra (protege los minutos de Actions).
+    if (await hasActiveCatalogRun(token)) {
+      res.status(202).json({ status: "queued", region, reason: "already_running" });
       return;
     }
 

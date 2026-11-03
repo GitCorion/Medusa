@@ -13,6 +13,11 @@ on:
     - cron: '17 3 * * *'
   workflow_dispatch:
 
+# Una sola ejecución a la vez: si llega otro disparo, espera en cola en vez de duplicar.
+concurrency:
+  group: refresh-discovery-catalogs
+  cancel-in-progress: false
+
 permissions:
   contents: read
 
