@@ -83,7 +83,7 @@ interface CollectionDao {
           AND (:hideWatched = 0 OR (jm.isPlayed = 0 AND jm.playbackPositionTicks = 0))
           AND jm.communityRating IS NOT NULL AND jm.communityRating > 0
         ORDER BY
-          jm.communityRating DESC,
+          (ci.score / (ci.score + 12.0) * jm.communityRating + 12.0 / (ci.score + 12.0) * 6.5) DESC,
           ci.score DESC,
           jm.id ASC
         LIMIT :limit OFFSET :offset
@@ -109,7 +109,7 @@ interface CollectionDao {
           AND (:hideWatched = 0 OR (jm.isPlayed = 0 AND jm.playbackPositionTicks = 0))
           AND (jm.premiereDateMs IS NOT NULL OR jm.productionYear IS NOT NULL)
         ORDER BY
-          COALESCE(jm.premiereDateMs, CAST(jm.productionYear AS INTEGER) * 31536000000) DESC,
+          COALESCE(jm.premiereDateMs, (CAST(jm.productionYear AS INTEGER) - 1970) * 31536000000) DESC,
           ci.score DESC,
           jm.id ASC
         LIMIT :limit OFFSET :offset

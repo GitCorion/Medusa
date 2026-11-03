@@ -43,7 +43,7 @@ class CollectionIndexUseCase @Inject constructor(
         const val POPULAR_PREFIX = "popular:"
         private const val TTL_MS = 24L * 60 * 60 * 1000
         // Súbela cuando cambie el algoritmo de matching/orden: invalida los índices existentes.
-        private const val INDEX_VERSION = 3
+        private const val INDEX_VERSION = 4
         private val INDEX_MUTEX = Mutex()
 
         fun platformKey(platformId: String): String = PLATFORM_PREFIX + platformId.lowercase()
@@ -88,7 +88,7 @@ class CollectionIndexUseCase @Inject constructor(
                 region = region,
                 version = version,
                 force = force,
-                ranked = false,
+                ranked = true,
                 remotePath = manifest?.popular
             ) {
                 mediaRepository.getTmdbPopularByRegion(apiKey, region, maxPages = 10)
@@ -109,7 +109,7 @@ class CollectionIndexUseCase @Inject constructor(
                     region = region,
                     version = version,
                     force = force,
-                    ranked = false,
+                    ranked = true,
                     remotePath = manifest?.platforms?.get(platform.id)
                 ) {
                     mediaRepository.getTmdbProviderCatalog(apiKey, platform.providerId, region)

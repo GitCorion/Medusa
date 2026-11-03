@@ -79,7 +79,8 @@ class BrandViewModel @Inject constructor(
 
     companion object {
         private const val PAGE_SIZE = 60
-        private const val LANDING_ROW_SIZE = 20
+        private const val LANDING_ROW_SIZE = 24
+        private const val CANDIDATE_POOL_SIZE = 300
         private const val INDEX_POLL_ATTEMPTS = 20
         private const val INDEX_POLL_DELAY_MS = 1_500L
 
@@ -620,7 +621,9 @@ class BrandViewModel @Inject constructor(
                 }
 
             // 1. En Tendencia: los títulos con mayor tracción y tendencia de la plataforma
-            val trending = collectionIndexUseCase.top(key, LANDING_ROW_SIZE, type, hide).distinctNew()
+            val trending = collectionIndexUseCase.top(key, CANDIDATE_POOL_SIZE, type, hide)
+                .distinctNew()
+                .take(LANDING_ROW_SIZE)
             if (trending.isNotEmpty()) {
                 val title = when (format) {
                     MediaFormatFilter.MOVIES -> "Películas en Tendencia"
@@ -631,7 +634,7 @@ class BrandViewModel @Inject constructor(
             }
 
             // 2. Novedades y Estrenos: orden cronológico estricto por fecha de estreno (sin repetir)
-            val recent = collectionIndexUseCase.recent(key, LANDING_ROW_SIZE * 2, type, hide)
+            val recent = collectionIndexUseCase.recent(key, CANDIDATE_POOL_SIZE, type, hide)
                 .distinctNew()
                 .take(LANDING_ROW_SIZE)
             if (recent.isNotEmpty()) {
@@ -645,7 +648,7 @@ class BrandViewModel @Inject constructor(
 
             // 3. Series Destacadas (si la vista incluye series, sin repetir lo que ya está en Tendencia o Novedades)
             if (type == null || type == "Series") {
-                val series = collectionIndexUseCase.top(key, LANDING_ROW_SIZE * 2, "Series", hide)
+                val series = collectionIndexUseCase.top(key, CANDIDATE_POOL_SIZE, "Series", hide)
                     .distinctNew()
                     .take(LANDING_ROW_SIZE)
                 if (series.isNotEmpty()) {
@@ -655,7 +658,7 @@ class BrandViewModel @Inject constructor(
 
             // 4. Cine Aclamado: obras con alta puntuación crítica (communityRating DESC >= 6.8f, sin repetir)
             if (type == null || type == "Movie") {
-                val acclaimed = collectionIndexUseCase.topRated(key, LANDING_ROW_SIZE * 2, "Movie", hide)
+                val acclaimed = collectionIndexUseCase.topRated(key, CANDIDATE_POOL_SIZE, "Movie", hide)
                     .filter { (it.communityRating ?: 0f) >= 6.8f }
                     .distinctNew()
                     .take(LANDING_ROW_SIZE)

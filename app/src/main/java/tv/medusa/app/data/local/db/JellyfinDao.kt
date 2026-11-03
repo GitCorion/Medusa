@@ -337,34 +337,115 @@ interface JellyfinDao {
     @Query("SELECT * FROM jellyfin_media WHERE type = 'Movie' AND (genres IS NULL OR (LOWER(genres) NOT LIKE '%música%' AND LOWER(genres) NOT LIKE '%musica%')) AND (LOWER(genres) LIKE '%españ%' OR LOWER(tags) LIKE '%españ%' OR LOWER(tags) LIKE '%spain%' OR LOWER(tags) LIKE '%spanish%') AND (backdropImageTag IS NOT NULL AND backdropImageTag != '') AND (communityRating IS NULL OR communityRating <= 9.3) AND id IN (SELECT mediaId FROM allowed_media_ids) ORDER BY CASE WHEN communityRating IS NOT NULL THEN communityRating ELSE 0 END DESC, COALESCE(productionYear, 0) DESC LIMIT :limit")
     suspend fun getSpanishCinemaLocalRestricted(limit: Int = 20): List<JellyfinMediaEntity>
 
-    @Query("SELECT * FROM jellyfin_media WHERE type IN ('Movie', 'Series') AND (communityRating IS NULL OR communityRating <= 9.5) AND (LOWER(genres) LIKE '%' || LOWER(:genre) || '%' OR LOWER(title) LIKE '%' || LOWER(:genre) || '%') ORDER BY communityRating DESC LIMIT :limit")
+    @Query(
+        """
+        SELECT jm.* FROM jellyfin_media jm
+        LEFT JOIN (SELECT mediaId, MAX(score) AS maxScore FROM collection_items GROUP BY mediaId) ci ON ci.mediaId = jm.id
+        WHERE jm.type IN ('Movie', 'Series')
+          AND (LOWER(jm.genres) LIKE '%' || LOWER(:genre) || '%' OR LOWER(jm.title) LIKE '%' || LOWER(:genre) || '%')
+        ORDER BY
+          (COALESCE(ci.maxScore, 0.0) / (COALESCE(ci.maxScore, 0.0) + 12.0) * COALESCE(jm.communityRating, 6.0) +
+           12.0 / (COALESCE(ci.maxScore, 0.0) + 12.0) * 6.5) DESC,
+          COALESCE(ci.maxScore, 0.0) DESC,
+          COALESCE(jm.communityRating, 0.0) DESC
+        LIMIT :limit
+        """
+    )
     suspend fun getItemsByGenre(genre: String, limit: Int = 40): List<JellyfinMediaEntity>
 
-    @Query("SELECT * FROM jellyfin_media WHERE type IN ('Movie', 'Series') AND (communityRating IS NULL OR communityRating <= 9.5) AND (LOWER(genres) LIKE '%' || LOWER(:genre) || '%' OR LOWER(title) LIKE '%' || LOWER(:genre) || '%') AND id IN (SELECT mediaId FROM allowed_media_ids) ORDER BY communityRating DESC LIMIT :limit")
+    @Query(
+        """
+        SELECT jm.* FROM jellyfin_media jm
+        LEFT JOIN (SELECT mediaId, MAX(score) AS maxScore FROM collection_items GROUP BY mediaId) ci ON ci.mediaId = jm.id
+        WHERE jm.type IN ('Movie', 'Series')
+          AND (LOWER(jm.genres) LIKE '%' || LOWER(:genre) || '%' OR LOWER(jm.title) LIKE '%' || LOWER(:genre) || '%')
+          AND jm.id IN (SELECT mediaId FROM allowed_media_ids)
+        ORDER BY
+          (COALESCE(ci.maxScore, 0.0) / (COALESCE(ci.maxScore, 0.0) + 12.0) * COALESCE(jm.communityRating, 6.0) +
+           12.0 / (COALESCE(ci.maxScore, 0.0) + 12.0) * 6.5) DESC,
+          COALESCE(ci.maxScore, 0.0) DESC,
+          COALESCE(jm.communityRating, 0.0) DESC
+        LIMIT :limit
+        """
+    )
     suspend fun getItemsByGenreRestricted(genre: String, limit: Int = 40): List<JellyfinMediaEntity>
 
-    @Query("SELECT * FROM jellyfin_media WHERE type = 'Movie' AND (LOWER(genres) LIKE '%' || LOWER(:genre) || '%' OR LOWER(title) LIKE '%' || LOWER(:genre) || '%') ORDER BY communityRating DESC LIMIT :limit")
+    @Query(
+        """
+        SELECT jm.* FROM jellyfin_media jm
+        LEFT JOIN (SELECT mediaId, MAX(score) AS maxScore FROM collection_items GROUP BY mediaId) ci ON ci.mediaId = jm.id
+        WHERE jm.type = 'Movie'
+          AND (LOWER(jm.genres) LIKE '%' || LOWER(:genre) || '%' OR LOWER(jm.title) LIKE '%' || LOWER(:genre) || '%')
+        ORDER BY
+          (COALESCE(ci.maxScore, 0.0) / (COALESCE(ci.maxScore, 0.0) + 12.0) * COALESCE(jm.communityRating, 6.0) +
+           12.0 / (COALESCE(ci.maxScore, 0.0) + 12.0) * 6.5) DESC,
+          COALESCE(ci.maxScore, 0.0) DESC,
+          COALESCE(jm.communityRating, 0.0) DESC
+        LIMIT :limit
+        """
+    )
     suspend fun getMoviesByGenre(genre: String, limit: Int = 40): List<JellyfinMediaEntity>
 
-    @Query("SELECT * FROM jellyfin_media WHERE type = 'Movie' AND (LOWER(genres) LIKE '%' || LOWER(:genre) || '%' OR LOWER(title) LIKE '%' || LOWER(:genre) || '%') AND id IN (SELECT mediaId FROM allowed_media_ids) ORDER BY communityRating DESC LIMIT :limit")
+    @Query(
+        """
+        SELECT jm.* FROM jellyfin_media jm
+        LEFT JOIN (SELECT mediaId, MAX(score) AS maxScore FROM collection_items GROUP BY mediaId) ci ON ci.mediaId = jm.id
+        WHERE jm.type = 'Movie'
+          AND (LOWER(jm.genres) LIKE '%' || LOWER(:genre) || '%' OR LOWER(jm.title) LIKE '%' || LOWER(:genre) || '%')
+          AND jm.id IN (SELECT mediaId FROM allowed_media_ids)
+        ORDER BY
+          (COALESCE(ci.maxScore, 0.0) / (COALESCE(ci.maxScore, 0.0) + 12.0) * COALESCE(jm.communityRating, 6.0) +
+           12.0 / (COALESCE(ci.maxScore, 0.0) + 12.0) * 6.5) DESC,
+          COALESCE(ci.maxScore, 0.0) DESC,
+          COALESCE(jm.communityRating, 0.0) DESC
+        LIMIT :limit
+        """
+    )
     suspend fun getMoviesByGenreRestricted(genre: String, limit: Int = 40): List<JellyfinMediaEntity>
 
-    @Query("SELECT * FROM jellyfin_media WHERE type = 'Series' AND (LOWER(genres) LIKE '%' || LOWER(:genre) || '%' OR LOWER(title) LIKE '%' || LOWER(:genre) || '%') ORDER BY communityRating DESC LIMIT :limit")
+    @Query(
+        """
+        SELECT jm.* FROM jellyfin_media jm
+        LEFT JOIN (SELECT mediaId, MAX(score) AS maxScore FROM collection_items GROUP BY mediaId) ci ON ci.mediaId = jm.id
+        WHERE jm.type = 'Series'
+          AND (LOWER(jm.genres) LIKE '%' || LOWER(:genre) || '%' OR LOWER(jm.title) LIKE '%' || LOWER(:genre) || '%')
+        ORDER BY
+          (COALESCE(ci.maxScore, 0.0) / (COALESCE(ci.maxScore, 0.0) + 12.0) * COALESCE(jm.communityRating, 6.0) +
+           12.0 / (COALESCE(ci.maxScore, 0.0) + 12.0) * 6.5) DESC,
+          COALESCE(ci.maxScore, 0.0) DESC,
+          COALESCE(jm.communityRating, 0.0) DESC
+        LIMIT :limit
+        """
+    )
     suspend fun getSeriesByGenre(genre: String, limit: Int = 40): List<JellyfinMediaEntity>
 
-    @Query("SELECT * FROM jellyfin_media WHERE type = 'Series' AND (LOWER(genres) LIKE '%' || LOWER(:genre) || '%' OR LOWER(title) LIKE '%' || LOWER(:genre) || '%') AND id IN (SELECT mediaId FROM allowed_media_ids) ORDER BY communityRating DESC LIMIT :limit")
+    @Query(
+        """
+        SELECT jm.* FROM jellyfin_media jm
+        LEFT JOIN (SELECT mediaId, MAX(score) AS maxScore FROM collection_items GROUP BY mediaId) ci ON ci.mediaId = jm.id
+        WHERE jm.type = 'Series'
+          AND (LOWER(jm.genres) LIKE '%' || LOWER(:genre) || '%' OR LOWER(jm.title) LIKE '%' || LOWER(:genre) || '%')
+          AND jm.id IN (SELECT mediaId FROM allowed_media_ids)
+        ORDER BY
+          (COALESCE(ci.maxScore, 0.0) / (COALESCE(ci.maxScore, 0.0) + 12.0) * COALESCE(jm.communityRating, 6.0) +
+           12.0 / (COALESCE(ci.maxScore, 0.0) + 12.0) * 6.5) DESC,
+          COALESCE(ci.maxScore, 0.0) DESC,
+          COALESCE(jm.communityRating, 0.0) DESC
+        LIMIT :limit
+        """
+    )
     suspend fun getSeriesByGenreRestricted(genre: String, limit: Int = 40): List<JellyfinMediaEntity>
 
-    @Query("SELECT * FROM jellyfin_media WHERE type = 'Movie' AND (LOWER(genres) LIKE '%' || LOWER(:genre) || '%' OR LOWER(title) LIKE '%' || LOWER(:genre) || '%') ORDER BY COALESCE(premiereDateMs, COALESCE(productionYear, 0) * 31536000000) DESC, communityRating DESC LIMIT :limit")
+    @Query("SELECT * FROM jellyfin_media WHERE type = 'Movie' AND (LOWER(genres) LIKE '%' || LOWER(:genre) || '%' OR LOWER(title) LIKE '%' || LOWER(:genre) || '%') ORDER BY COALESCE(premiereDateMs, (CAST(COALESCE(productionYear, 1970) AS INTEGER) - 1970) * 31536000000) DESC, communityRating DESC LIMIT :limit")
     suspend fun getRecentMoviesByGenre(genre: String, limit: Int = 20): List<JellyfinMediaEntity>
 
-    @Query("SELECT * FROM jellyfin_media WHERE type = 'Movie' AND (LOWER(genres) LIKE '%' || LOWER(:genre) || '%' OR LOWER(title) LIKE '%' || LOWER(:genre) || '%') AND id IN (SELECT mediaId FROM allowed_media_ids) ORDER BY COALESCE(premiereDateMs, COALESCE(productionYear, 0) * 31536000000) DESC, communityRating DESC LIMIT :limit")
+    @Query("SELECT * FROM jellyfin_media WHERE type = 'Movie' AND (LOWER(genres) LIKE '%' || LOWER(:genre) || '%' OR LOWER(title) LIKE '%' || LOWER(:genre) || '%') AND id IN (SELECT mediaId FROM allowed_media_ids) ORDER BY COALESCE(premiereDateMs, (CAST(COALESCE(productionYear, 1970) AS INTEGER) - 1970) * 31536000000) DESC, communityRating DESC LIMIT :limit")
     suspend fun getRecentMoviesByGenreRestricted(genre: String, limit: Int = 20): List<JellyfinMediaEntity>
 
-    @Query("SELECT * FROM jellyfin_media WHERE type = 'Series' AND (LOWER(genres) LIKE '%' || LOWER(:genre) || '%' OR LOWER(title) LIKE '%' || LOWER(:genre) || '%') ORDER BY COALESCE(premiereDateMs, COALESCE(productionYear, 0) * 31536000000) DESC, communityRating DESC LIMIT :limit")
+    @Query("SELECT * FROM jellyfin_media WHERE type = 'Series' AND (LOWER(genres) LIKE '%' || LOWER(:genre) || '%' OR LOWER(title) LIKE '%' || LOWER(:genre) || '%') ORDER BY COALESCE(premiereDateMs, (CAST(COALESCE(productionYear, 1970) AS INTEGER) - 1970) * 31536000000) DESC, communityRating DESC LIMIT :limit")
     suspend fun getRecentSeriesByGenre(genre: String, limit: Int = 20): List<JellyfinMediaEntity>
 
-    @Query("SELECT * FROM jellyfin_media WHERE type = 'Series' AND (LOWER(genres) LIKE '%' || LOWER(:genre) || '%' OR LOWER(title) LIKE '%' || LOWER(:genre) || '%') AND id IN (SELECT mediaId FROM allowed_media_ids) ORDER BY COALESCE(premiereDateMs, COALESCE(productionYear, 0) * 31536000000) DESC, communityRating DESC LIMIT :limit")
+    @Query("SELECT * FROM jellyfin_media WHERE type = 'Series' AND (LOWER(genres) LIKE '%' || LOWER(:genre) || '%' OR LOWER(title) LIKE '%' || LOWER(:genre) || '%') AND id IN (SELECT mediaId FROM allowed_media_ids) ORDER BY COALESCE(premiereDateMs, (CAST(COALESCE(productionYear, 1970) AS INTEGER) - 1970) * 31536000000) DESC, communityRating DESC LIMIT :limit")
     suspend fun getRecentSeriesByGenreRestricted(genre: String, limit: Int = 20): List<JellyfinMediaEntity>
 
     @Query("SELECT * FROM jellyfin_media WHERE isFavorite = 1 ORDER BY title ASC")
