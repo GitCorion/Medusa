@@ -117,7 +117,7 @@ class MedusaTagMatrixEngine {
         favTags.clear()
         favTags.addAll(favorites.flatMap { extractCanonicalTags(it) })
 
-        // 2. Pre-ordenar el catálogo UNA SOLA VEZ con el criterio canónico
+        // 2. Pre-ordenar el catálogo con prioridad a no vistos y valoración
         val sortedCatalog = catalog.sortedWith(
             compareByDescending<JellyfinMediaEntity> { !it.isPlayed }
                 .thenByDescending { it.communityRating ?: 0f }

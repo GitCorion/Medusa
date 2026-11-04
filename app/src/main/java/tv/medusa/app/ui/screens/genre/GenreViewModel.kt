@@ -143,54 +143,20 @@ class GenreViewModel @Inject constructor(
                 it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.JELLYFIN)
             }
 
-            val sanitizedLocalMovies = sanitizeRatings(localMovieItems)
-            val sanitizedLocalSeries = sanitizeRatings(localSeriesItems)
-            allRawItems = (sanitizedLocalMovies + sanitizedLocalSeries + recentMovies + recentSeries).distinctBy { it.id }
+            allRawItems = (localMovieItems + localSeriesItems + recentMovies + recentSeries).distinctBy { it.id }
 
             val buildSections = { tmdbMovies: List<MediaItem>, tmdbSeries: List<MediaItem> ->
                 val collected = mutableListOf<Pair<GenreFormat, HomeSection>>()
                 val shownMediaIds = mutableSetOf<String>()
                 val shownNormalizedTitles = mutableSetOf<String>()
 
-                val unplayedLocalMovies = sanitizedLocalMovies.filter { !it.isPlayed && it.playbackPositionTicks <= 0L }
-                val unplayedLocalSeries = sanitizedLocalSeries.filter { !it.isPlayed && it.playbackPositionTicks <= 0L }
+                val unplayedLocalMovies = localMovieItems.filter { !it.isPlayed && it.playbackPositionTicks <= 0L }
+                val unplayedLocalSeries = localSeriesItems.filter { !it.isPlayed && it.playbackPositionTicks <= 0L }
 
-                val calculateCompositeScore = { item: MediaItem ->
-                    val isTmdbTrending = item.source == MediaSource.TMDB_TRENDING
-                    val hasBackdrop = !item.backdropUrl.isNullOrBlank()
-                    val hasOverview = !item.overview.isNullOrBlank() && item.overview.length > 30
-                    val hasPoster = !item.posterUrl.isNullOrBlank()
-                    val year = item.year ?: 2000
-                    val effRating = calculateEffectiveRating(item.rating, isTmdbTrending, hasOverview)
-
-                    var score = effRating
-                    // Máxima prioridad a los éxitos probados de TMDB Trending presentes en la biblioteca
-                    if (isTmdbTrending) {
-                        score += 4.5f
-                    }
-                    if (hasBackdrop) score += 0.8f
-                    if (hasOverview) score += 0.6f
-                    if (hasPoster) score += 0.4f
-
-                    // Relevancia cronológica: actualidad vs clásicos legendarios contrastados
-                    if (year >= 2024) {
-                        score += 1.5f
-                    } else if (year >= 2020) {
-                        score += 0.9f
-                    } else if (year >= 2010) {
-                        score += 0.4f
-                    } else if (year in 1980..2005 && isTmdbTrending) {
-                        score += 0.8f
-                    }
-                    score
-                }
-
-                // 1. TOP 10 IMPRESCINDIBLES
+                // 1. TOP 10 IMPRESCINDIBLES (orden canónico Bayesiano y éxitos TMDB de la biblioteca)
                 val curatedTopCandidates = (tmdbMovies + tmdbSeries + unplayedLocalMovies + unplayedLocalSeries)
                     .distinctBy { it.id }
                     .filter { !it.isPlayed && it.playbackPositionTicks <= 0L }
-                    .filter { (it.rating ?: 0f) >= 6.8f }
-                    .sortedByDescending { calculateCompositeScore(it) }
                     .take(10)
 
                 if (curatedTopCandidates.isNotEmpty()) {
@@ -206,25 +172,10 @@ class GenreViewModel @Inject constructor(
                     )
                 }
 
-                val allLocalSanitized = (sanitizedLocalMovies + sanitizedLocalSeries).distinctBy { it.id }
-
-                val calculateGemScore = { item: MediaItem ->
-                    val hasOverview = !item.overview.isNullOrBlank() && item.overview.length > 30
-                    val hasBackdrop = !item.backdropUrl.isNullOrBlank()
-                    val hasPoster = !item.posterUrl.isNullOrBlank()
-                    val year = item.year ?: 2000
-                    val effRating = calculateEffectiveRating(item.rating, false, hasOverview)
-
-                    var gemScore = effRating * 1.5f
-                    if (hasOverview) gemScore += 1.2f
-                    if (hasBackdrop) gemScore += 1.0f
-                    if (hasPoster) gemScore += 0.5f
-                    if (year >= 2015) gemScore += 0.6f
-                    gemScore
-                }
+                val allLocal = (localMovieItems + localSeriesItems).distinctBy { it.id }
 
                 // 2. JOYAS OCULTAS: No reproducidas, sin sobre-exposición, metadatos ricos y alta calidad bayesiana
-                val hiddenGems = allLocalSanitized
+                val hiddenGems = allLocal
                     .filter {
                         it.id !in shownMediaIds &&
                         normalizeTitle(it.title) !in shownNormalizedTitles &&
@@ -234,8 +185,7 @@ class GenreViewModel @Inject constructor(
                     .filter {
                         val hasOverview = !it.overview.isNullOrBlank() && it.overview.length > 30
                         val hasBackdrop = !it.backdropUrl.isNullOrBlank()
-                        val effRating = calculateEffectiveRating(it.rating, false, hasOverview)
-                        hasOverview && hasBackdrop && effRating in 7.3f..9.2f
+                        hasOverview && hasBackdrop
                     }
                     .filter {
                         val titleLower = it.title.lowercase()
@@ -245,7 +195,6 @@ class GenreViewModel @Inject constructor(
                         !titleLower.contains("trailer") &&
                         !titleLower.contains("featurette")
                     }
-                    .sortedByDescending { calculateGemScore(it) }
                     .take(15)
 
                 if (hiddenGems.isNotEmpty()) {
@@ -260,12 +209,11 @@ class GenreViewModel @Inject constructor(
                     )
                 }
 
-                // 3. PELÍCULAS CURADAS DEL GÉNERO
-                val curatedMovies = (sanitizedLocalMovies + tmdbMovies)
+                // 3. PELÍCULAS CURADAS DEL GÉNERO (en orden Bayesiano)
+                val curatedMovies = (tmdbMovies + localMovieItems)
                     .distinctBy { it.id }
                     .filter { it.id !in shownMediaIds && normalizeTitle(it.title) !in shownNormalizedTitles }
-                    .sortedByDescending { calculateCompositeScore(it) }
-                    .take(20)
+                    .take(24)
 
                 if (curatedMovies.isNotEmpty()) {
                     shownMediaIds.addAll(curatedMovies.map { it.id })
@@ -279,12 +227,11 @@ class GenreViewModel @Inject constructor(
                     )
                 }
 
-                // 4. SERIES CURADAS DEL GÉNERO
-                val curatedSeries = (sanitizedLocalSeries + tmdbSeries)
+                // 4. SERIES CURADAS DEL GÉNERO (en orden Bayesiano)
+                val curatedSeries = (tmdbSeries + localSeriesItems)
                     .distinctBy { it.id }
                     .filter { it.id !in shownMediaIds && normalizeTitle(it.title) !in shownNormalizedTitles }
-                    .sortedByDescending { calculateCompositeScore(it) }
-                    .take(20)
+                    .take(24)
 
                 if (curatedSeries.isNotEmpty()) {
                     shownMediaIds.addAll(curatedSeries.map { it.id })
@@ -303,7 +250,7 @@ class GenreViewModel @Inject constructor(
                     .distinctBy { it.id }
                     .filter { it.id !in shownMediaIds && normalizeTitle(it.title) !in shownNormalizedTitles }
                     .filter { (it.year ?: 0) >= 1970 }
-                    .sortedByDescending { it.premiereDateMs ?: ((it.year ?: 0).toLong() * 31536000000L) }
+                    .sortedByDescending { it.premiereDateMs ?: (((it.year ?: 1970).toLong() - 1970L) * 31536000000L) }
                     .take(15)
 
                 if (recentCombined.isNotEmpty()) {
@@ -474,36 +421,8 @@ class GenreViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Normalización Bayesiana y de títulos:
-     * - Si proviene de TMDB Trending verificado (cientos/miles de votos), se mantiene su nota intacta.
-     * - Si es un título de biblioteca local con nota inflada (>=8.8f), se mitiga la distorsión
-     *   provocada por fichas con un único voto (10.0 pasa a ~7.2f, 9.3 pasa a ~7.47f).
-     * - Títulos locales sin sinopsis contrastada bajan a 6.8f.
-     */
     private fun normalizeTitle(title: String): String =
         title.trim().lowercase().replace(Regex("[^a-z0-9áéíóúüñ]"), "")
-
-    private fun calculateEffectiveRating(raw: Float?, isVerifiedTmdb: Boolean, hasOverview: Boolean): Float {
-        if (raw == null || raw <= 0f) return 6.0f
-        if (isVerifiedTmdb) return raw
-
-        return when {
-            raw >= 9.8f -> 7.2f
-            raw in 8.85f..9.5f && !hasOverview -> 6.8f
-            raw >= 8.8f -> 7.4f + (raw - 8.8f) * 0.15f
-            else -> raw
-        }
-    }
-
-    private fun sanitizeRatings(items: List<MediaItem>): List<MediaItem> {
-        return items.map { item ->
-            val hasOverview = !item.overview.isNullOrBlank() && item.overview.length > 30
-            val isVerified = item.source == MediaSource.TMDB_TRENDING
-            val eff = calculateEffectiveRating(item.rating, isVerified, hasOverview)
-            item.copy(rating = eff)
-        }
-    }
 
     private fun tmdbMovieGenreId(genreName: String): String? = when (genreName.lowercase()) {
         "acción", "accion" -> "28"

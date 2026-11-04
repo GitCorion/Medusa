@@ -610,22 +610,25 @@ class LocalMediaRepository(
         val topGenres = (genres ?: getMostWatchedGenres()).take(4)
         val addedIds = mutableSetOf<String>().apply { addAll(excludeIds) }
 
-        // Máximo de ítems por género para garantizar variedad real.
-        // Con 4 géneros × 4 = 16, completamos hasta 20 con el fallback.
-        val maxPerGenre = 4
+        // Máximo de ítems por género para garantizar variedad real intercalada
+        val maxPerGenre = 5
 
         val isRestricted = restrictionsActive()
 
-        // Recoger candidatos de cada género por separado, luego intercalar
+        // Recoger películas de cada género ordenadas por puntuación Bayesiana
         val buckets: List<List<JellyfinMediaEntity>> = topGenres.map { genre ->
-            val genreItems = getItemsByGenre(genre)
-            genreItems.filter {
-                it.type.equals("Movie", ignoreCase = true)
-                    && it.id !in addedIds
+            val genreItems = getMoviesByGenre(genre, limit = 50)
+            val unplayed = genreItems.filter {
+                it.id !in addedIds
                     && !it.isPlayed
                     && it.playbackPositionTicks <= 0L
                     && ((it.communityRating ?: 0f) >= 5.0f || it.communityRating == null)
-            }.take(maxPerGenre)
+            }
+            if (unplayed.size >= maxPerGenre) {
+                unplayed.take(maxPerGenre)
+            } else {
+                (unplayed + genreItems.filter { it.id !in addedIds }).distinctBy { it.id }.take(maxPerGenre)
+            }
         }
 
         // Intercalar: primero un item de cada género, luego el segundo de cada género, etc.
@@ -644,14 +647,14 @@ class LocalMediaRepository(
             }
         }
 
-        // Fallback: rellenar con películas locales no mostradas aún
+        // Fallback: rellenar con películas locales ordenadas por Bayesian score
         if (resultList.size < limit) {
             val topCandidates = if (isRestricted) {
                 jellyfinDao.getTopMoviesLocalRestricted(limit = 50)
             } else {
                 jellyfinDao.getTopMoviesLocal(limit = 50)
             }
-            topCandidates.filter { it.id !in addedIds && !it.isPlayed && it.playbackPositionTicks <= 0L }
+            topCandidates.filter { it.id !in addedIds }
                 .take(limit - resultList.size)
                 .forEach {
                     resultList.add(it)

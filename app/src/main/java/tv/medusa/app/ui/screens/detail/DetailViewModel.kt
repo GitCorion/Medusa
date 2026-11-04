@@ -1,6 +1,7 @@
 package tv.medusa.app.ui.screens.detail
 
 import tv.medusa.app.data.local.ACCENT_CYAN
+import tv.medusa.app.data.local.DEFAULT_TMDB_API_KEY
 import tv.medusa.app.data.remote.NetworkClientFactory
 import tv.medusa.app.data.remote.tmdb.TmdbApiService
 import tv.medusa.app.data.remote.ApiConfig
@@ -351,8 +352,9 @@ class DetailViewModel @Inject constructor(
                 launch {
                     try {
                         var similarItems: List<MediaItem> = emptyList()
-                        if (tmdbLong != null && prefs.tmdbApiKey.isNotBlank()) {
-                            val tmdbRecs = mediaRepository.getTmdbRecommendations(prefs.tmdbApiKey, tmdbLong, isTv).getOrDefault(emptyList())
+                        val effectiveTmdbKey = prefs.tmdbApiKey.takeIf { it.isNotBlank() } ?: DEFAULT_TMDB_API_KEY
+                        if (tmdbLong != null && effectiveTmdbKey.isNotBlank()) {
+                            val tmdbRecs = mediaRepository.getTmdbRecommendations(effectiveTmdbKey, tmdbLong, isTv).getOrDefault(emptyList())
                             if (tmdbRecs.isNotEmpty()) {
                                 val matchedRecs = filterToLibraryUseCase.filterTmdbItems(
                                     tmdbItems = tmdbRecs,
@@ -370,7 +372,7 @@ class DetailViewModel @Inject constructor(
                         val firstGenre = finalEntity.genres?.split(",", ";")?.firstOrNull()?.trim()
                         var genreItems: List<MediaItem> = emptyList()
                         if (!firstGenre.isNullOrBlank()) {
-                            val sameGenreEntities = mediaRepository.getItemsByGenre(firstGenre)
+                            val sameGenreEntities = (if (isTv) mediaRepository.getSeriesByGenre(firstGenre, 30) else mediaRepository.getMoviesByGenre(firstGenre, 30))
                                 .filter { candidate ->
                                     candidate.id != finalEntity.id &&
                                             similarItems.none { s -> s.id == candidate.id } &&
@@ -409,7 +411,7 @@ class DetailViewModel @Inject constructor(
                                 .replace(" Collection", "", ignoreCase = true)
                                 .trim()
                             if (cleanName.isNotBlank()) {
-                                colEntities = jellyfinDao.searchLocalMedia(cleanName, limit = 20)
+                                colEntities = mediaRepository.searchLocalMedia(cleanName, limit = 20)
                                     .filter { it.id != finalEntity.id && !it.type.equals("BoxSet", ignoreCase = true) }
                             }
                         }

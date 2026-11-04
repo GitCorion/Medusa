@@ -576,11 +576,7 @@ class NebulaSpatialEngine {
         }.map { it.first }
 
         return strictMatches
-            .sortedWith(
-                compareByDescending<JellyfinMediaEntity> { !it.isPlayed }
-                    .thenByDescending { it.communityRating ?: 0f }
-                    .thenByDescending { it.productionYear ?: 0 }
-            )
+            .sortedByDescending { !it.isPlayed }
             .take(40)
             .map { it.toMediaItem(serverUrl, accessToken) }
     }

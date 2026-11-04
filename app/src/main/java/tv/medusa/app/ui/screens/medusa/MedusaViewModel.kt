@@ -1,5 +1,6 @@
 package tv.medusa.app.ui.screens.medusa
 
+import tv.medusa.app.data.local.DEFAULT_TMDB_API_KEY
 import tv.medusa.app.data.remote.tmdb.TmdbItemDto
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -179,7 +180,7 @@ class MedusaViewModel @Inject constructor(
             MedusaCache.lastRecentWatched = recentWatched
 
             // Enriquecer en segundo plano con TMDB si hay conexión sin bloquear la UI
-            val tmdbKey = prefs.tmdbApiKey.trim()
+            val tmdbKey = prefs.tmdbApiKey.takeIf { it.isNotBlank() } ?: DEFAULT_TMDB_API_KEY
             if (tmdbKey.isNotBlank()) {
                 withContext(Dispatchers.IO) {
                     val (matchedCanon, matchedTrending) = coroutineScope {

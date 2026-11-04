@@ -88,10 +88,37 @@ interface JellyfinDao {
     @Query("SELECT * FROM jellyfin_media WHERE (titleLower = LOWER(:title) OR originalTitleLower = LOWER(:title)) AND type = 'Series' LIMIT 1")
     suspend fun getSeriesByTitle(title: String): JellyfinMediaEntity?
 
-    @Query("SELECT * FROM jellyfin_media WHERE type IN ('Movie', 'Series') AND (LOWER(title) LIKE '%' || LOWER(:query) || '%' OR LOWER(originalTitle) LIKE '%' || LOWER(:query) || '%') ORDER BY communityRating DESC LIMIT :limit")
+    @Query(
+        """
+        SELECT jm.* FROM jellyfin_media jm
+        LEFT JOIN (SELECT mediaId, MAX(score) AS maxScore FROM collection_items GROUP BY mediaId) ci ON ci.mediaId = jm.id
+        WHERE jm.type IN ('Movie', 'Series')
+          AND (LOWER(jm.title) LIKE '%' || LOWER(:query) || '%' OR LOWER(jm.originalTitle) LIKE '%' || LOWER(:query) || '%')
+        ORDER BY
+          (COALESCE(ci.maxScore, 0.0) / (COALESCE(ci.maxScore, 0.0) + 12.0) * COALESCE(jm.communityRating, 6.0) +
+           12.0 / (COALESCE(ci.maxScore, 0.0) + 12.0) * 6.5) DESC,
+          COALESCE(ci.maxScore, 0.0) DESC,
+          COALESCE(jm.communityRating, 0.0) DESC
+        LIMIT :limit
+        """
+    )
     suspend fun searchLocalMedia(query: String, limit: Int = 40): List<JellyfinMediaEntity>
 
-    @Query("SELECT * FROM jellyfin_media WHERE type IN ('Movie', 'Series') AND (LOWER(title) LIKE '%' || LOWER(:query) || '%' OR LOWER(originalTitle) LIKE '%' || LOWER(:query) || '%') AND id IN (SELECT mediaId FROM allowed_media_ids) ORDER BY communityRating DESC LIMIT :limit")
+    @Query(
+        """
+        SELECT jm.* FROM jellyfin_media jm
+        LEFT JOIN (SELECT mediaId, MAX(score) AS maxScore FROM collection_items GROUP BY mediaId) ci ON ci.mediaId = jm.id
+        WHERE jm.type IN ('Movie', 'Series')
+          AND (LOWER(jm.title) LIKE '%' || LOWER(:query) || '%' OR LOWER(jm.originalTitle) LIKE '%' || LOWER(:query) || '%')
+          AND jm.id IN (SELECT mediaId FROM allowed_media_ids)
+        ORDER BY
+          (COALESCE(ci.maxScore, 0.0) / (COALESCE(ci.maxScore, 0.0) + 12.0) * COALESCE(jm.communityRating, 6.0) +
+           12.0 / (COALESCE(ci.maxScore, 0.0) + 12.0) * 6.5) DESC,
+          COALESCE(ci.maxScore, 0.0) DESC,
+          COALESCE(jm.communityRating, 0.0) DESC
+        LIMIT :limit
+        """
+    )
     suspend fun searchLocalMediaRestricted(query: String, limit: Int = 40): List<JellyfinMediaEntity>
 
     /**
@@ -102,9 +129,14 @@ interface JellyfinDao {
         """
         SELECT jm.* FROM jellyfin_media jm
         JOIN jellyfin_media_fts ON jm.rowid = jellyfin_media_fts.rowid
+        LEFT JOIN (SELECT mediaId, MAX(score) AS maxScore FROM collection_items GROUP BY mediaId) ci ON ci.mediaId = jm.id
         WHERE jellyfin_media_fts MATCH :match
         AND jm.type IN ('Movie', 'Series')
-        ORDER BY jm.communityRating DESC
+        ORDER BY
+          (COALESCE(ci.maxScore, 0.0) / (COALESCE(ci.maxScore, 0.0) + 12.0) * COALESCE(jm.communityRating, 6.0) +
+           12.0 / (COALESCE(ci.maxScore, 0.0) + 12.0) * 6.5) DESC,
+          COALESCE(ci.maxScore, 0.0) DESC,
+          COALESCE(jm.communityRating, 0.0) DESC
         LIMIT :limit
         """
     )
@@ -117,10 +149,15 @@ interface JellyfinDao {
         """
         SELECT jm.* FROM jellyfin_media jm
         JOIN jellyfin_media_fts ON jm.rowid = jellyfin_media_fts.rowid
+        LEFT JOIN (SELECT mediaId, MAX(score) AS maxScore FROM collection_items GROUP BY mediaId) ci ON ci.mediaId = jm.id
         WHERE jellyfin_media_fts MATCH :match
         AND jm.type IN ('Movie', 'Series')
         AND jm.id IN (SELECT mediaId FROM allowed_media_ids)
-        ORDER BY jm.communityRating DESC
+        ORDER BY
+          (COALESCE(ci.maxScore, 0.0) / (COALESCE(ci.maxScore, 0.0) + 12.0) * COALESCE(jm.communityRating, 6.0) +
+           12.0 / (COALESCE(ci.maxScore, 0.0) + 12.0) * 6.5) DESC,
+          COALESCE(ci.maxScore, 0.0) DESC,
+          COALESCE(jm.communityRating, 0.0) DESC
         LIMIT :limit
         """
     )
@@ -172,17 +209,24 @@ interface JellyfinDao {
      */
     @Query(
         """
-        SELECT id, title, NULL AS originalTitle, type,
+        SELECT jm.id, jm.title, NULL AS originalTitle, jm.type,
                NULL AS tmdbId, NULL AS imdbId, NULL AS tvdbId,
-               NULL AS overview, primaryImageTag, backdropImageTag,
-               communityRating, productionYear, genres,
-               NULL AS officialRating, tags, isPlayed, playbackPositionTicks,
-               isFavorite, seriesId, seriesName, seriesPrimaryImageTag,
-               seasonNumber, episodeNumber, totalItemCount, unplayedItemCount,
+               NULL AS overview, jm.primaryImageTag, jm.backdropImageTag,
+               jm.communityRating, jm.productionYear, jm.genres,
+               NULL AS officialRating, jm.tags, jm.isPlayed, jm.playbackPositionTicks,
+               jm.isFavorite, jm.seriesId, jm.seriesName, jm.seriesPrimaryImageTag,
+               jm.seasonNumber, jm.episodeNumber, jm.totalItemCount, jm.unplayedItemCount,
                0 AS lastPlayedTicks,
-               '' AS titleLower, '' AS originalTitleLower, '' AS seriesNameLower
-        FROM jellyfin_media
-        WHERE type IN ('Movie', 'Series')
+               '' AS titleLower, '' AS originalTitleLower, '' AS seriesNameLower,
+               NULL AS premiereDateMs
+        FROM jellyfin_media jm
+        LEFT JOIN (SELECT mediaId, MAX(score) AS maxScore FROM collection_items GROUP BY mediaId) ci ON ci.mediaId = jm.id
+        WHERE jm.type IN ('Movie', 'Series')
+        ORDER BY
+          (COALESCE(ci.maxScore, 0.0) / (COALESCE(ci.maxScore, 0.0) + 12.0) * COALESCE(jm.communityRating, 6.0) +
+           12.0 / (COALESCE(ci.maxScore, 0.0) + 12.0) * 6.5) DESC,
+          COALESCE(ci.maxScore, 0.0) DESC,
+          COALESCE(jm.communityRating, 0.0) DESC
         """
     )
     suspend fun getCatalogForMatrix(): List<JellyfinMediaEntity>
@@ -192,18 +236,25 @@ interface JellyfinDao {
      */
     @Query(
         """
-        SELECT id, title, NULL AS originalTitle, type,
+        SELECT jm.id, jm.title, NULL AS originalTitle, jm.type,
                NULL AS tmdbId, NULL AS imdbId, NULL AS tvdbId,
-               NULL AS overview, primaryImageTag, backdropImageTag,
-               communityRating, productionYear, genres,
-               NULL AS officialRating, tags, isPlayed, playbackPositionTicks,
-               isFavorite, seriesId, seriesName, seriesPrimaryImageTag,
-               seasonNumber, episodeNumber, totalItemCount, unplayedItemCount,
+               NULL AS overview, jm.primaryImageTag, jm.backdropImageTag,
+               jm.communityRating, jm.productionYear, jm.genres,
+               NULL AS officialRating, jm.tags, jm.isPlayed, jm.playbackPositionTicks,
+               jm.isFavorite, jm.seriesId, jm.seriesName, jm.seriesPrimaryImageTag,
+               jm.seasonNumber, jm.episodeNumber, jm.totalItemCount, jm.unplayedItemCount,
                0 AS lastPlayedTicks,
-               '' AS titleLower, '' AS originalTitleLower, '' AS seriesNameLower
-        FROM jellyfin_media
-        WHERE type IN ('Movie', 'Series')
-          AND id IN (SELECT mediaId FROM allowed_media_ids)
+               '' AS titleLower, '' AS originalTitleLower, '' AS seriesNameLower,
+               NULL AS premiereDateMs
+        FROM jellyfin_media jm
+        LEFT JOIN (SELECT mediaId, MAX(score) AS maxScore FROM collection_items GROUP BY mediaId) ci ON ci.mediaId = jm.id
+        WHERE jm.type IN ('Movie', 'Series')
+          AND jm.id IN (SELECT mediaId FROM allowed_media_ids)
+        ORDER BY
+          (COALESCE(ci.maxScore, 0.0) / (COALESCE(ci.maxScore, 0.0) + 12.0) * COALESCE(jm.communityRating, 6.0) +
+           12.0 / (COALESCE(ci.maxScore, 0.0) + 12.0) * 6.5) DESC,
+          COALESCE(ci.maxScore, 0.0) DESC,
+          COALESCE(jm.communityRating, 0.0) DESC
         """
     )
     suspend fun getCatalogForMatrixRestricted(): List<JellyfinMediaEntity>
@@ -283,34 +334,119 @@ interface JellyfinDao {
      * independientemente de cuándo se incorporó al servidor. Es distinto de [getLatestLocal]
      * (añadido recientemente) y de [getTopRatedLocal] (mejor valorado).
      */
-    @Query("SELECT * FROM jellyfin_media WHERE type IN ('Movie', 'Series') ORDER BY COALESCE(premiereDateMs, COALESCE(productionYear, 0) * 31536000000) DESC, rowid DESC LIMIT :limit")
+    @Query("SELECT * FROM jellyfin_media WHERE type IN ('Movie', 'Series') ORDER BY COALESCE(premiereDateMs, (CAST(COALESCE(productionYear, 1970) AS INTEGER) - 1970) * 31536000000) DESC, rowid DESC LIMIT :limit")
     suspend fun getNewReleasesLocal(limit: Int = 20): List<JellyfinMediaEntity>
 
-    @Query("SELECT * FROM jellyfin_media WHERE type IN ('Movie', 'Series') AND id IN (SELECT mediaId FROM allowed_media_ids) ORDER BY COALESCE(premiereDateMs, COALESCE(productionYear, 0) * 31536000000) DESC, rowid DESC LIMIT :limit")
+    @Query("SELECT * FROM jellyfin_media WHERE type IN ('Movie', 'Series') AND id IN (SELECT mediaId FROM allowed_media_ids) ORDER BY COALESCE(premiereDateMs, (CAST(COALESCE(productionYear, 1970) AS INTEGER) - 1970) * 31536000000) DESC, rowid DESC LIMIT :limit")
     suspend fun getNewReleasesLocalRestricted(limit: Int = 20): List<JellyfinMediaEntity>
 
-    @Query("SELECT * FROM jellyfin_media WHERE type IN ('Movie', 'Series') AND (communityRating IS NULL OR (communityRating <= 9.3 AND communityRating >= 5.0)) AND (genres IS NULL OR (LOWER(genres) NOT LIKE '%música%' AND LOWER(genres) NOT LIKE '%musica%')) ORDER BY CASE WHEN communityRating IS NOT NULL AND communityRating > 0 THEN communityRating ELSE 0 END DESC, COALESCE(productionYear, 0) DESC, rowid DESC LIMIT :limit")
+    @Query(
+        """
+        SELECT jm.* FROM jellyfin_media jm
+        LEFT JOIN (SELECT mediaId, MAX(score) AS maxScore FROM collection_items GROUP BY mediaId) ci ON ci.mediaId = jm.id
+        WHERE jm.type IN ('Movie', 'Series')
+        ORDER BY
+          (COALESCE(ci.maxScore, 0.0) / (COALESCE(ci.maxScore, 0.0) + 12.0) * COALESCE(jm.communityRating, 6.0) +
+           12.0 / (COALESCE(ci.maxScore, 0.0) + 12.0) * 6.5) DESC,
+          COALESCE(ci.maxScore, 0.0) DESC,
+          COALESCE(jm.communityRating, 0.0) DESC,
+          jm.rowid DESC
+        LIMIT :limit
+        """
+    )
     suspend fun getTopRatedLocal(limit: Int = 20): List<JellyfinMediaEntity>
 
-    @Query("SELECT * FROM jellyfin_media WHERE type IN ('Movie', 'Series') AND (communityRating IS NULL OR (communityRating <= 9.3 AND communityRating >= 5.0)) AND (genres IS NULL OR (LOWER(genres) NOT LIKE '%música%' AND LOWER(genres) NOT LIKE '%musica%')) AND id IN (SELECT mediaId FROM allowed_media_ids) ORDER BY CASE WHEN communityRating IS NOT NULL AND communityRating > 0 THEN communityRating ELSE 0 END DESC, COALESCE(productionYear, 0) DESC, rowid DESC LIMIT :limit")
+    @Query(
+        """
+        SELECT jm.* FROM jellyfin_media jm
+        LEFT JOIN (SELECT mediaId, MAX(score) AS maxScore FROM collection_items GROUP BY mediaId) ci ON ci.mediaId = jm.id
+        WHERE jm.type IN ('Movie', 'Series')
+          AND jm.id IN (SELECT mediaId FROM allowed_media_ids)
+        ORDER BY
+          (COALESCE(ci.maxScore, 0.0) / (COALESCE(ci.maxScore, 0.0) + 12.0) * COALESCE(jm.communityRating, 6.0) +
+           12.0 / (COALESCE(ci.maxScore, 0.0) + 12.0) * 6.5) DESC,
+          COALESCE(ci.maxScore, 0.0) DESC,
+          COALESCE(jm.communityRating, 0.0) DESC,
+          jm.rowid DESC
+        LIMIT :limit
+        """
+    )
     suspend fun getTopRatedLocalRestricted(limit: Int = 20): List<JellyfinMediaEntity>
 
-    @Query("SELECT * FROM jellyfin_media WHERE type = 'Movie' AND (communityRating IS NULL OR (communityRating <= 9.3 AND communityRating >= 5.0)) AND (genres IS NULL OR (LOWER(genres) NOT LIKE '%música%' AND LOWER(genres) NOT LIKE '%musica%' AND LOWER(genres) NOT LIKE '%documental%' AND LOWER(genres) NOT LIKE '%documentary%')) AND (backdropImageTag IS NOT NULL AND backdropImageTag != '') ORDER BY (isPlayed = 0 AND playbackPositionTicks = 0) DESC, CASE WHEN communityRating IS NOT NULL AND communityRating > 0 THEN communityRating ELSE 0 END DESC, COALESCE(productionYear, 0) DESC, rowid DESC LIMIT :limit")
+    @Query(
+        """
+        SELECT jm.* FROM jellyfin_media jm
+        LEFT JOIN (SELECT mediaId, MAX(score) AS maxScore FROM collection_items GROUP BY mediaId) ci ON ci.mediaId = jm.id
+        WHERE jm.type = 'Movie'
+          AND (jm.backdropImageTag IS NOT NULL AND jm.backdropImageTag != '')
+        ORDER BY
+          (COALESCE(ci.maxScore, 0.0) / (COALESCE(ci.maxScore, 0.0) + 12.0) * COALESCE(jm.communityRating, 6.0) +
+           12.0 / (COALESCE(ci.maxScore, 0.0) + 12.0) * 6.5) DESC,
+          COALESCE(ci.maxScore, 0.0) DESC,
+          COALESCE(jm.communityRating, 0.0) DESC,
+          jm.rowid DESC
+        LIMIT :limit
+        """
+    )
     suspend fun getTopMoviesLocal(limit: Int = 20): List<JellyfinMediaEntity>
 
-    @Query("SELECT * FROM jellyfin_media WHERE type = 'Movie' AND (communityRating IS NULL OR (communityRating <= 9.3 AND communityRating >= 5.0)) AND (genres IS NULL OR (LOWER(genres) NOT LIKE '%música%' AND LOWER(genres) NOT LIKE '%musica%' AND LOWER(genres) NOT LIKE '%documental%' AND LOWER(genres) NOT LIKE '%documentary%')) AND (backdropImageTag IS NOT NULL AND backdropImageTag != '') AND id IN (SELECT mediaId FROM allowed_media_ids) ORDER BY (isPlayed = 0 AND playbackPositionTicks = 0) DESC, CASE WHEN communityRating IS NOT NULL AND communityRating > 0 THEN communityRating ELSE 0 END DESC, COALESCE(productionYear, 0) DESC, rowid DESC LIMIT :limit")
+    @Query(
+        """
+        SELECT jm.* FROM jellyfin_media jm
+        LEFT JOIN (SELECT mediaId, MAX(score) AS maxScore FROM collection_items GROUP BY mediaId) ci ON ci.mediaId = jm.id
+        WHERE jm.type = 'Movie'
+          AND (jm.backdropImageTag IS NOT NULL AND jm.backdropImageTag != '')
+          AND jm.id IN (SELECT mediaId FROM allowed_media_ids)
+        ORDER BY
+          (COALESCE(ci.maxScore, 0.0) / (COALESCE(ci.maxScore, 0.0) + 12.0) * COALESCE(jm.communityRating, 6.0) +
+           12.0 / (COALESCE(ci.maxScore, 0.0) + 12.0) * 6.5) DESC,
+          COALESCE(ci.maxScore, 0.0) DESC,
+          COALESCE(jm.communityRating, 0.0) DESC,
+          jm.rowid DESC
+        LIMIT :limit
+        """
+    )
     suspend fun getTopMoviesLocalRestricted(limit: Int = 20): List<JellyfinMediaEntity>
 
-    @Query("SELECT * FROM jellyfin_media WHERE type = 'Series' AND (communityRating IS NULL OR (communityRating <= 9.3 AND communityRating >= 5.0)) AND (genres IS NULL OR (LOWER(genres) NOT LIKE '%música%' AND LOWER(genres) NOT LIKE '%musica%')) AND (backdropImageTag IS NOT NULL AND backdropImageTag != '') ORDER BY (isPlayed = 0 AND playbackPositionTicks = 0) DESC, CASE WHEN communityRating IS NOT NULL AND communityRating > 0 THEN communityRating ELSE 0 END DESC, COALESCE(productionYear, 0) DESC, rowid DESC LIMIT :limit")
+    @Query(
+        """
+        SELECT jm.* FROM jellyfin_media jm
+        LEFT JOIN (SELECT mediaId, MAX(score) AS maxScore FROM collection_items GROUP BY mediaId) ci ON ci.mediaId = jm.id
+        WHERE jm.type = 'Series'
+          AND (jm.backdropImageTag IS NOT NULL AND jm.backdropImageTag != '')
+        ORDER BY
+          (COALESCE(ci.maxScore, 0.0) / (COALESCE(ci.maxScore, 0.0) + 12.0) * COALESCE(jm.communityRating, 6.0) +
+           12.0 / (COALESCE(ci.maxScore, 0.0) + 12.0) * 6.5) DESC,
+          COALESCE(ci.maxScore, 0.0) DESC,
+          COALESCE(jm.communityRating, 0.0) DESC,
+          jm.rowid DESC
+        LIMIT :limit
+        """
+    )
     suspend fun getTopSeriesLocal(limit: Int = 20): List<JellyfinMediaEntity>
 
-    @Query("SELECT * FROM jellyfin_media WHERE type = 'Series' AND (communityRating IS NULL OR (communityRating <= 9.3 AND communityRating >= 5.0)) AND (genres IS NULL OR (LOWER(genres) NOT LIKE '%música%' AND LOWER(genres) NOT LIKE '%musica%')) AND (backdropImageTag IS NOT NULL AND backdropImageTag != '') AND id IN (SELECT mediaId FROM allowed_media_ids) ORDER BY (isPlayed = 0 AND playbackPositionTicks = 0) DESC, CASE WHEN communityRating IS NOT NULL AND communityRating > 0 THEN communityRating ELSE 0 END DESC, COALESCE(productionYear, 0) DESC, rowid DESC LIMIT :limit")
+    @Query(
+        """
+        SELECT jm.* FROM jellyfin_media jm
+        LEFT JOIN (SELECT mediaId, MAX(score) AS maxScore FROM collection_items GROUP BY mediaId) ci ON ci.mediaId = jm.id
+        WHERE jm.type = 'Series'
+          AND (jm.backdropImageTag IS NOT NULL AND jm.backdropImageTag != '')
+          AND jm.id IN (SELECT mediaId FROM allowed_media_ids)
+        ORDER BY
+          (COALESCE(ci.maxScore, 0.0) / (COALESCE(ci.maxScore, 0.0) + 12.0) * COALESCE(jm.communityRating, 6.0) +
+           12.0 / (COALESCE(ci.maxScore, 0.0) + 12.0) * 6.5) DESC,
+          COALESCE(ci.maxScore, 0.0) DESC,
+          COALESCE(jm.communityRating, 0.0) DESC,
+          jm.rowid DESC
+        LIMIT :limit
+        """
+    )
     suspend fun getTopSeriesLocalRestricted(limit: Int = 20): List<JellyfinMediaEntity>
 
-    @Query("SELECT * FROM jellyfin_media WHERE type = 'Movie' AND isPlayed = 1 AND (isFavorite = 1 OR (communityRating IS NOT NULL AND communityRating >= 7.5 AND communityRating <= 9.3)) AND (backdropImageTag IS NOT NULL AND backdropImageTag != '') ORDER BY isFavorite DESC, lastPlayedTicks ASC, communityRating DESC LIMIT :limit")
+    @Query("SELECT * FROM jellyfin_media WHERE type = 'Movie' AND isPlayed = 1 AND (isFavorite = 1 OR (communityRating IS NOT NULL AND communityRating >= 7.5)) AND (backdropImageTag IS NOT NULL AND backdropImageTag != '') ORDER BY isFavorite DESC, lastPlayedTicks ASC, communityRating DESC LIMIT :limit")
     suspend fun getRewatchableMoviesLocal(limit: Int = 20): List<JellyfinMediaEntity>
 
-    @Query("SELECT * FROM jellyfin_media WHERE type = 'Movie' AND isPlayed = 1 AND (isFavorite = 1 OR (communityRating IS NOT NULL AND communityRating >= 7.5 AND communityRating <= 9.3)) AND (backdropImageTag IS NOT NULL AND backdropImageTag != '') AND id IN (SELECT mediaId FROM allowed_media_ids) ORDER BY isFavorite DESC, lastPlayedTicks ASC, communityRating DESC LIMIT :limit")
+    @Query("SELECT * FROM jellyfin_media WHERE type = 'Movie' AND isPlayed = 1 AND (isFavorite = 1 OR (communityRating IS NOT NULL AND communityRating >= 7.5)) AND (backdropImageTag IS NOT NULL AND backdropImageTag != '') AND id IN (SELECT mediaId FROM allowed_media_ids) ORDER BY isFavorite DESC, lastPlayedTicks ASC, communityRating DESC LIMIT :limit")
     suspend fun getRewatchableMoviesLocalRestricted(limit: Int = 20): List<JellyfinMediaEntity>
 
     @Query("SELECT * FROM jellyfin_media WHERE type = 'BoxSet' AND primaryImageTag IS NOT NULL AND primaryImageTag != '' ORDER BY rowid DESC LIMIT :limit")
@@ -319,22 +455,109 @@ interface JellyfinDao {
     @Query("SELECT * FROM jellyfin_media WHERE type = 'BoxSet' AND primaryImageTag IS NOT NULL AND primaryImageTag != '' AND id IN (SELECT mediaId FROM allowed_media_ids) ORDER BY rowid DESC LIMIT :limit")
     suspend fun getBoxSetsLocalRestricted(limit: Int = 20): List<JellyfinMediaEntity>
 
-    @Query("SELECT * FROM jellyfin_media WHERE (LOWER(genres) LIKE '%documental%' OR LOWER(genres) LIKE '%documentary%') AND (backdropImageTag IS NOT NULL AND backdropImageTag != '') AND (communityRating IS NULL OR communityRating <= 9.3) ORDER BY CASE WHEN communityRating IS NOT NULL THEN communityRating ELSE 0 END DESC, COALESCE(productionYear, 0) DESC LIMIT :limit")
+    @Query(
+        """
+        SELECT jm.* FROM jellyfin_media jm
+        LEFT JOIN (SELECT mediaId, MAX(score) AS maxScore FROM collection_items GROUP BY mediaId) ci ON ci.mediaId = jm.id
+        WHERE (LOWER(jm.genres) LIKE '%documental%' OR LOWER(jm.genres) LIKE '%documentary%')
+          AND (jm.backdropImageTag IS NOT NULL AND jm.backdropImageTag != '')
+        ORDER BY
+          (COALESCE(ci.maxScore, 0.0) / (COALESCE(ci.maxScore, 0.0) + 12.0) * COALESCE(jm.communityRating, 6.0) +
+           12.0 / (COALESCE(ci.maxScore, 0.0) + 12.0) * 6.5) DESC,
+          COALESCE(ci.maxScore, 0.0) DESC,
+          COALESCE(jm.communityRating, 0.0) DESC,
+          COALESCE(jm.productionYear, 0) DESC
+        LIMIT :limit
+        """
+    )
     suspend fun getDocumentariesLocal(limit: Int = 20): List<JellyfinMediaEntity>
 
-    @Query("SELECT * FROM jellyfin_media WHERE (LOWER(genres) LIKE '%documental%' OR LOWER(genres) LIKE '%documentary%') AND (backdropImageTag IS NOT NULL AND backdropImageTag != '') AND (communityRating IS NULL OR communityRating <= 9.3) AND id IN (SELECT mediaId FROM allowed_media_ids) ORDER BY CASE WHEN communityRating IS NOT NULL THEN communityRating ELSE 0 END DESC, COALESCE(productionYear, 0) DESC LIMIT :limit")
+    @Query(
+        """
+        SELECT jm.* FROM jellyfin_media jm
+        LEFT JOIN (SELECT mediaId, MAX(score) AS maxScore FROM collection_items GROUP BY mediaId) ci ON ci.mediaId = jm.id
+        WHERE (LOWER(jm.genres) LIKE '%documental%' OR LOWER(jm.genres) LIKE '%documentary%')
+          AND (jm.backdropImageTag IS NOT NULL AND jm.backdropImageTag != '')
+          AND jm.id IN (SELECT mediaId FROM allowed_media_ids)
+        ORDER BY
+          (COALESCE(ci.maxScore, 0.0) / (COALESCE(ci.maxScore, 0.0) + 12.0) * COALESCE(jm.communityRating, 6.0) +
+           12.0 / (COALESCE(ci.maxScore, 0.0) + 12.0) * 6.5) DESC,
+          COALESCE(ci.maxScore, 0.0) DESC,
+          COALESCE(jm.communityRating, 0.0) DESC,
+          COALESCE(jm.productionYear, 0) DESC
+        LIMIT :limit
+        """
+    )
     suspend fun getDocumentariesLocalRestricted(limit: Int = 20): List<JellyfinMediaEntity>
 
-    @Query("SELECT * FROM jellyfin_media WHERE type = 'Movie' AND (genres IS NULL OR (LOWER(genres) NOT LIKE '%música%' AND LOWER(genres) NOT LIKE '%musica%')) AND (LOWER(genres) LIKE '%' || LOWER(:pattern) || '%' OR LOWER(tags) LIKE '%' || LOWER(:pattern) || '%') AND (backdropImageTag IS NOT NULL AND backdropImageTag != '') AND (communityRating IS NULL OR communityRating <= 9.3) ORDER BY CASE WHEN communityRating IS NOT NULL THEN communityRating ELSE 0 END DESC, COALESCE(productionYear, 0) DESC LIMIT :limit")
+    @Query(
+        """
+        SELECT jm.* FROM jellyfin_media jm
+        LEFT JOIN (SELECT mediaId, MAX(score) AS maxScore FROM collection_items GROUP BY mediaId) ci ON ci.mediaId = jm.id
+        WHERE jm.type = 'Movie'
+          AND (LOWER(jm.genres) LIKE '%' || LOWER(:pattern) || '%' OR LOWER(jm.tags) LIKE '%' || LOWER(:pattern) || '%')
+          AND (jm.backdropImageTag IS NOT NULL AND jm.backdropImageTag != '')
+        ORDER BY
+          (COALESCE(ci.maxScore, 0.0) / (COALESCE(ci.maxScore, 0.0) + 12.0) * COALESCE(jm.communityRating, 6.0) +
+           12.0 / (COALESCE(ci.maxScore, 0.0) + 12.0) * 6.5) DESC,
+          COALESCE(ci.maxScore, 0.0) DESC,
+          COALESCE(jm.communityRating, 0.0) DESC
+        LIMIT :limit
+        """
+    )
     suspend fun getNationalCinemaLocal(pattern: String, limit: Int = 20): List<JellyfinMediaEntity>
 
-    @Query("SELECT * FROM jellyfin_media WHERE type = 'Movie' AND (genres IS NULL OR (LOWER(genres) NOT LIKE '%música%' AND LOWER(genres) NOT LIKE '%musica%')) AND (LOWER(genres) LIKE '%' || LOWER(:pattern) || '%' OR LOWER(tags) LIKE '%' || LOWER(:pattern) || '%') AND (backdropImageTag IS NOT NULL AND backdropImageTag != '') AND (communityRating IS NULL OR communityRating <= 9.3) AND id IN (SELECT mediaId FROM allowed_media_ids) ORDER BY CASE WHEN communityRating IS NOT NULL THEN communityRating ELSE 0 END DESC, COALESCE(productionYear, 0) DESC LIMIT :limit")
+    @Query(
+        """
+        SELECT jm.* FROM jellyfin_media jm
+        LEFT JOIN (SELECT mediaId, MAX(score) AS maxScore FROM collection_items GROUP BY mediaId) ci ON ci.mediaId = jm.id
+        WHERE jm.type = 'Movie'
+          AND (LOWER(jm.genres) LIKE '%' || LOWER(:pattern) || '%' OR LOWER(jm.tags) LIKE '%' || LOWER(:pattern) || '%')
+          AND (jm.backdropImageTag IS NOT NULL AND jm.backdropImageTag != '')
+          AND jm.id IN (SELECT mediaId FROM allowed_media_ids)
+        ORDER BY
+          (COALESCE(ci.maxScore, 0.0) / (COALESCE(ci.maxScore, 0.0) + 12.0) * COALESCE(jm.communityRating, 6.0) +
+           12.0 / (COALESCE(ci.maxScore, 0.0) + 12.0) * 6.5) DESC,
+          COALESCE(ci.maxScore, 0.0) DESC,
+          COALESCE(jm.communityRating, 0.0) DESC
+        LIMIT :limit
+        """
+    )
     suspend fun getNationalCinemaLocalRestricted(pattern: String, limit: Int = 20): List<JellyfinMediaEntity>
 
-    @Query("SELECT * FROM jellyfin_media WHERE type = 'Movie' AND (genres IS NULL OR (LOWER(genres) NOT LIKE '%música%' AND LOWER(genres) NOT LIKE '%musica%')) AND (LOWER(genres) LIKE '%españ%' OR LOWER(tags) LIKE '%españ%' OR LOWER(tags) LIKE '%spain%' OR LOWER(tags) LIKE '%spanish%') AND (backdropImageTag IS NOT NULL AND backdropImageTag != '') AND (communityRating IS NULL OR communityRating <= 9.3) ORDER BY CASE WHEN communityRating IS NOT NULL THEN communityRating ELSE 0 END DESC, COALESCE(productionYear, 0) DESC LIMIT :limit")
+    @Query(
+        """
+        SELECT jm.* FROM jellyfin_media jm
+        LEFT JOIN (SELECT mediaId, MAX(score) AS maxScore FROM collection_items GROUP BY mediaId) ci ON ci.mediaId = jm.id
+        WHERE jm.type = 'Movie'
+          AND (LOWER(jm.genres) LIKE '%españ%' OR LOWER(jm.tags) LIKE '%españ%' OR LOWER(jm.tags) LIKE '%spain%' OR LOWER(jm.tags) LIKE '%spanish%')
+          AND (jm.backdropImageTag IS NOT NULL AND jm.backdropImageTag != '')
+        ORDER BY
+          (COALESCE(ci.maxScore, 0.0) / (COALESCE(ci.maxScore, 0.0) + 12.0) * COALESCE(jm.communityRating, 6.0) +
+           12.0 / (COALESCE(ci.maxScore, 0.0) + 12.0) * 6.5) DESC,
+          COALESCE(ci.maxScore, 0.0) DESC,
+          COALESCE(jm.communityRating, 0.0) DESC
+        LIMIT :limit
+        """
+    )
     suspend fun getSpanishCinemaLocal(limit: Int = 20): List<JellyfinMediaEntity>
 
-    @Query("SELECT * FROM jellyfin_media WHERE type = 'Movie' AND (genres IS NULL OR (LOWER(genres) NOT LIKE '%música%' AND LOWER(genres) NOT LIKE '%musica%')) AND (LOWER(genres) LIKE '%españ%' OR LOWER(tags) LIKE '%españ%' OR LOWER(tags) LIKE '%spain%' OR LOWER(tags) LIKE '%spanish%') AND (backdropImageTag IS NOT NULL AND backdropImageTag != '') AND (communityRating IS NULL OR communityRating <= 9.3) AND id IN (SELECT mediaId FROM allowed_media_ids) ORDER BY CASE WHEN communityRating IS NOT NULL THEN communityRating ELSE 0 END DESC, COALESCE(productionYear, 0) DESC LIMIT :limit")
+    @Query(
+        """
+        SELECT jm.* FROM jellyfin_media jm
+        LEFT JOIN (SELECT mediaId, MAX(score) AS maxScore FROM collection_items GROUP BY mediaId) ci ON ci.mediaId = jm.id
+        WHERE jm.type = 'Movie'
+          AND (LOWER(jm.genres) LIKE '%españ%' OR LOWER(jm.tags) LIKE '%españ%' OR LOWER(jm.tags) LIKE '%spain%' OR LOWER(jm.tags) LIKE '%spanish%')
+          AND (jm.backdropImageTag IS NOT NULL AND jm.backdropImageTag != '')
+          AND jm.id IN (SELECT mediaId FROM allowed_media_ids)
+        ORDER BY
+          (COALESCE(ci.maxScore, 0.0) / (COALESCE(ci.maxScore, 0.0) + 12.0) * COALESCE(jm.communityRating, 6.0) +
+           12.0 / (COALESCE(ci.maxScore, 0.0) + 12.0) * 6.5) DESC,
+          COALESCE(ci.maxScore, 0.0) DESC,
+          COALESCE(jm.communityRating, 0.0) DESC
+        LIMIT :limit
+        """
+    )
     suspend fun getSpanishCinemaLocalRestricted(limit: Int = 20): List<JellyfinMediaEntity>
 
     @Query(

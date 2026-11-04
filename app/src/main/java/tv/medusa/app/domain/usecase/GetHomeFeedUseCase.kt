@@ -247,8 +247,8 @@ class GetHomeFeedUseCase(
             localContinueWatching = continueWatchingJob.await()
             localRecentlyPlayed = recentlyPlayedJob.await()
             localLatest = latestJob.await()
-            localTopMovies = topMoviesJob.await().filterPersonalizedForHeader(emptyList())
-            localTopSeries = topSeriesJob.await().filterPersonalizedForHeader(emptyList())
+            localTopMovies = topMoviesJob.await()
+            localTopSeries = topSeriesJob.await()
             watchedGenres = genresJob.await()
             localRecommendedMovies = recommendedJob.await()
             localNewReleases = newReleasesJob.await()
@@ -303,13 +303,9 @@ class GetHomeFeedUseCase(
         // Fila para cada género popular de la biblioteca del usuario (hasta 4 géneros)
         val genreCandidates = watchedGenres.take(4)
         for (genre in genreCandidates) {
-            // El DAO devuelve por nota descendente; eso repetía siempre los mismos clásicos.
-            // Reordenamos con el mismo scoring compuesto del resto del feed (nota saneada +
-            // recencia + metadatos + afinidad de género) para que la fila respire variedad.
             val genreItems = runCatching { mediaRepository.getItemsByGenre(genre) }
                 .getOrDefault(emptyList())
-                .filterPersonalizedForHeader(listOf(genre))
-            val unplayedGenre = genreItems.filter { !it.isPlayed }
+            val unplayedGenre = genreItems.filter { !it.isPlayed && it.playbackPositionTicks <= 0L }
             val valid = if (unplayedGenre.size >= 5) unplayedGenre else genreItems
             if (valid.size >= 3) {
                 updateOrAddSection(HomeSection(
@@ -385,53 +381,10 @@ class GetHomeFeedUseCase(
                 }
             }
 
-            // Antes aquí se pedían los "vistos" al servidor solo para elegir la referencia de
-            // "Porque viste X": era la consulta más cara del arranque (hasta ~37 s con el
-            // servidor ocupado) y su dato ya está en Room (quick init y sync de fondo). Ahora la
-            // referencia sale de `getRecentlyPlayedLocal`, así que esa consulta desaparece.
-            //
-            // Top servidor curado
-            launch {
-                val topMoviesServer = runCatching {
-                    mediaRepository.getTopRatedMoviesServer(prefs.jellyfinServerUrl, prefs.jellyfinUserId, prefs.jellyfinAccessToken, limit = 20)
-                }.getOrDefault(localTopMovies)
-                val curatedMovies = if (prefs.tmdbApiKey.isNotBlank()) {
-                    filterHighQualityMovies(topMoviesServer, prefs.tmdbApiKey).filterPersonalizedForHeader(watchedGenres)
-                } else {
-                    topMoviesServer.filterPersonalizedForHeader(watchedGenres)
-                }
-                if (curatedMovies.isNotEmpty()) {
-                    shownMediaIds.addAll(curatedMovies.map { it.id })
-                    postSection(
-                        HomeSection(
-                            title = "Grandes Producciones de tu colección",
-                            items = curatedMovies.take(20).map { it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.JELLYFIN) },
-                            kind = HomeSectionKind.LIBRARY_TOP_MOVIES
-                        )
-                    )
-                }
-            }
-
-            launch {
-                val topSeriesServer = runCatching {
-                    mediaRepository.getTopRatedSeriesServer(prefs.jellyfinServerUrl, prefs.jellyfinUserId, prefs.jellyfinAccessToken, limit = 20)
-                }.getOrDefault(localTopSeries)
-                val curatedSeries = if (prefs.tmdbApiKey.isNotBlank()) {
-                    filterHighQualitySeries(topSeriesServer, prefs.tmdbApiKey).filterPersonalizedForHeader(watchedGenres)
-                } else {
-                    topSeriesServer.filterPersonalizedForHeader(watchedGenres)
-                }
-                if (curatedSeries.isNotEmpty()) {
-                    shownMediaIds.addAll(curatedSeries.map { it.id })
-                    postSection(
-                        HomeSection(
-                            title = "Series Destacadas",
-                            items = curatedSeries.take(20).map { it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.JELLYFIN) },
-                            kind = HomeSectionKind.LIBRARY_TOP_SERIES
-                        )
-                    )
-                }
-            }
+            // Las secciones de "Grandes Producciones de tu colección" y "Series Destacadas"
+            // ya se calcularon con la fórmula Bayesiana ponderada con TMDB en Room DB.
+            shownMediaIds.addAll(localTopMovies.take(20).map { it.id })
+            shownMediaIds.addAll(localTopSeries.take(20).map { it.id })
 
             // ---------------------------------------------------------------------
             // JOB 2: TOP 10 HOY (TMDB TRENDING DAY CON MEDALLAS 1-10)
@@ -872,130 +825,6 @@ class GetHomeFeedUseCase(
             }
         }
         return result
-    }
-
-    /**
-     * Filtra las películas del servidor contra TMDB para descartar títulos con nota
-     * alta pero pocos votos (ej. película de nicho con 10 votos familiares y nota 10).
-     * Pondera la nota junto con el volumen de votos para dar prioridad a verdaderas producciones.
-     */
-    private suspend fun filterHighQualityMovies(
-        movies: List<JellyfinMediaEntity>,
-        tmdbApiKey: String
-    ): List<JellyfinMediaEntity> {
-        val validMovies = movies.filter { !it.backdropImageTag.isNullOrEmpty() || !it.overview.isNullOrBlank() }
-        val candidates = validMovies.filter { it.tmdbId != null }
-
-        if (candidates.isEmpty()) {
-            return validMovies.filter {
-                val r = it.communityRating ?: 0f
-                r in 7.0f..9.5f
-            }.take(20)
-        }
-
-        val checked = coroutineScope {
-            candidates.take(6).map { movie ->
-                async {
-                    withTimeoutOrNull(800L) {
-                        val tmdbId = movie.tmdbId?.toLongOrNull() ?: return@withTimeoutOrNull null
-                        val stats = mediaRepository.getTmdbVoteStats(tmdbApiKey, tmdbId, isTv = false)
-                            ?: return@withTimeoutOrNull null
-                        Triple(movie.copy(communityRating = stats.voteAverage), stats.voteCount, stats.voteAverage)
-                    }
-                }
-            }.awaitAll().filterNotNull()
-        }
-
-        val passed = checked
-            .filter { (_, count, avg) -> count >= 100 && avg >= 6.5f }
-            .sortedByDescending { (_, count, avg) -> avg * 10f + min(count, 5000) / 500f }
-            .map { it.first }
-
-        val passedIds = passed.map { it.id }.toSet()
-        val remainder = validMovies.filter { it.id !in passedIds }
-            .sortedByDescending { sanitizeRating(it.communityRating, !it.overview.isNullOrBlank() && it.overview.length > 30) }
-        return (passed + remainder).take(20)
-    }
-
-    /**
-     * Filtra las series del servidor contra TMDB para descartar títulos con nota
-     * adulterada o inflada por poquísimos votos (ej. documentales o telenovelas con 1 voto de 10).
-     * Exige una masa crítica de votos (mínimo 50 votos en TMDB y nota >= 6.8),
-     * pondera por volumen de votos para dar prioridad a series de prestigio contrastado,
-     * y reemplaza la nota local adulterada por la nota real ponderada de TMDB.
-     */
-    private suspend fun filterHighQualitySeries(
-        series: List<JellyfinMediaEntity>,
-        tmdbApiKey: String
-    ): List<JellyfinMediaEntity> {
-        val validSeries = series.filter { !it.backdropImageTag.isNullOrEmpty() || !it.overview.isNullOrBlank() }
-        val candidates = validSeries.filter { it.tmdbId != null }
-
-        if (candidates.isEmpty()) {
-            return validSeries
-                .sortedByDescending { sanitizeRating(it.communityRating, !it.overview.isNullOrBlank() && it.overview.length > 30) }
-                .take(20)
-        }
-
-        val checked = coroutineScope {
-            candidates.take(6).map { s ->
-                async {
-                    withTimeoutOrNull(800L) {
-                        val tmdbId = s.tmdbId?.toLongOrNull() ?: return@withTimeoutOrNull null
-                        val stats = mediaRepository.getTmdbVoteStats(tmdbApiKey, tmdbId, isTv = true)
-                            ?: return@withTimeoutOrNull null
-                        Triple(s.copy(communityRating = stats.voteAverage), stats.voteCount, stats.voteAverage)
-                    }
-                }
-            }.awaitAll().filterNotNull()
-        }
-
-        val passed = checked
-            .filter { (_, count, avg) -> count >= 30 && avg >= 6.5f }
-            .sortedByDescending { (_, count, avg) -> avg * 10f + min(count, 5000) / 500f }
-            .map { it.first }
-
-        val passedIds = passed.map { it.id }.toSet()
-        val remainder = validSeries.filter { it.id !in passedIds }
-            .sortedByDescending { sanitizeRating(it.communityRating, !it.overview.isNullOrBlank() && it.overview.length > 30) }
-        return (passed + remainder).take(20)
-    }
-
-    private fun sanitizeRating(rating: Float?, hasOverview: Boolean): Float {
-        if (rating == null || rating <= 0f) return 6.0f
-        return when {
-            rating >= 9.8f -> 7.2f
-            rating in 8.85f..9.5f && !hasOverview -> 6.8f
-            rating >= 8.8f -> 7.4f + (rating - 8.8f) * 0.15f
-            else -> rating
-        }
-    }
-
-    private fun List<JellyfinMediaEntity>.filterPersonalizedForHeader(watchedGenres: List<String>): List<JellyfinMediaEntity> {
-        val userGenresLower = watchedGenres.map { it.lowercase().trim() }
-        val unplayed = this.filter { !it.isPlayed && it.playbackPositionTicks <= 0L }
-        val withBackdrop = unplayed.filter { !it.backdropImageTag.isNullOrBlank() }
-        val candidates = when {
-            withBackdrop.size >= 5 -> withBackdrop
-            unplayed.size >= 5 -> unplayed
-            else -> this
-        }
-
-        return candidates.sortedByDescending { entity ->
-            var score = sanitizeRating(entity.communityRating, !entity.overview.isNullOrBlank() && entity.overview.length > 30)
-            val year = entity.productionYear ?: 1990
-            val genres = entity.genres?.split(",", ";")?.map { it.lowercase().trim() } ?: emptyList()
-
-            if (userGenresLower.isNotEmpty() && genres.any { it in userGenresLower }) {
-                score += 1.5f
-            }
-            if (year >= 2015) {
-                score += 0.8f
-            } else if (year >= 2000) {
-                score += 0.4f
-            }
-            score
-        }
     }
 
     private fun JellyfinMediaEntity.toMediaItem(baseUrl: String, token: String, source: MediaSource): MediaItem =
