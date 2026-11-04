@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -388,47 +389,12 @@ fun MedusaScreen(
                     Spacer(modifier = Modifier.weight(1f))
                 }
 
-                // =========================================================================
-                // 6. HUD INFERIOR SOBRIO
-                // =========================================================================
-                Row(
+                // Margen inferior respetando la barra de navegación del sistema (gestos Android / tablet)
+                Spacer(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .background(Color(0xFF030508))
-                        .padding(horizontal = 48.dp, vertical = 6.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    val hudText = when {
-                        isFocusedOnMoviesRow -> stringResource(R.string.medusa_hint_movies)
-                        isFocusedOnActiveChain -> stringResource(R.string.medusa_hint_active_chain)
-                        uiState.activeChain.isNotEmpty() -> stringResource(R.string.medusa_hint_chain)
-                        else -> stringResource(R.string.medusa_hint_default)
-                    }
-
-                    Text(
-                        text = hudText,
-                        color = if (uiState.activeChain.isNotEmpty()) {
-                            if (isMonochrome) Color.White else accentColor
-                        } else Color(0x8094A3B8),
-                        fontSize = 10.5.sp,
-                        fontFamily = FontFamily.SansSerif,
-                        letterSpacing = 0.5.sp
-                    )
-
-                    if (uiState.matchingMovies.isNotEmpty()) {
-                        Text(
-                            text = if (uiState.activeChain.isNotEmpty()) {
-                                stringResource(R.string.medusa_available_count, uiState.totalMatchingCount, formatNounPlural)
-                            } else {
-                                stringResource(R.string.medusa_available_count, uiState.matchingMovies.size, formatNounPlural)
-                            },
-                            color = if (isMonochrome) Color.White else accentColor,
-                            fontSize = 10.5.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
+                        .navigationBarsPadding()
+                        .height(14.dp)
+                )
             }
         }
     }
