@@ -74,9 +74,11 @@ fun LandscapeMediaCard(
     val contextMenuController = tv.medusa.app.ui.components.contextmenu.LocalContextMenuController.current
     val view = androidx.compose.ui.platform.LocalView.current
     var lastLongClickTimestamp by remember { mutableStateOf(0L) }
+    var isLongPressConsumed by remember { mutableStateOf(false) }
 
     val effectiveLongClick: (() -> Unit)? = onLongClick ?: contextMenuController?.let { controller ->
         {
+            isLongPressConsumed = true
             lastLongClickTimestamp = android.os.SystemClock.uptimeMillis()
             view.playSoundEffect(android.view.SoundEffectConstants.CLICK)
             controller.showContextMenu(item)
@@ -84,7 +86,11 @@ fun LandscapeMediaCard(
     }
 
     val safeOnClick: () -> Unit = {
-        if (android.os.SystemClock.uptimeMillis() - lastLongClickTimestamp > 800L) {
+        val now = android.os.SystemClock.uptimeMillis()
+        // Si ha habido una pulsación larga o está en curso, ignorar cualquier clic residual al soltar
+        if (isLongPressConsumed || now - lastLongClickTimestamp < 1200L) {
+            isLongPressConsumed = false
+        } else {
             onClick()
         }
     }

@@ -1,7 +1,10 @@
 package tv.medusa.app.ui.components
 
+import android.view.KeyEvent
 import android.view.SoundEffectConstants
 import androidx.activity.compose.BackHandler
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import tv.medusa.app.ui.util.handleTouchClick
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -101,11 +104,14 @@ fun MediaContextMenuDialog(
     val focusColor = if (isMonochrome) Color.White else TvAccent.getColor(accentColorKey)
     val focusContent = if (isMonochrome) Color(0xFF0F172A) else TvAccent.getFocusedContentColor(accentColorKey)
     val dialogOpenedTime = remember { android.os.SystemClock.uptimeMillis() }
+    var isArmed by remember { mutableStateOf(false) }
 
     val firstFocusRequester = remember { FocusRequester() }
 
     LaunchedEffect(Unit) {
-        delay(250)
+        // Escudo temporal para evitar que soltar la pulsación larga active una opción o cierre el diálogo
+        delay(400)
+        isArmed = true
         try {
             firstFocusRequester.requestFocus()
         } catch (_: Exception) {}
@@ -236,17 +242,46 @@ fun MediaContextMenuDialog(
     }
 
     Dialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = {
+            if (isArmed && android.os.SystemClock.uptimeMillis() - dialogOpenedTime > 500L) {
+                onDismiss()
+            }
+        },
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .onPreviewKeyEvent { keyEvent ->
+                    val native = keyEvent.nativeKeyEvent
+                    val isSelect = native.keyCode == KeyEvent.KEYCODE_DPAD_CENTER ||
+                            native.keyCode == KeyEvent.KEYCODE_ENTER ||
+                            native.keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER ||
+                            native.keyCode == KeyEvent.KEYCODE_BUTTON_A
+
+                    if (isSelect) {
+                        if (native.action == KeyEvent.ACTION_UP) {
+                            if (!isArmed || android.os.SystemClock.uptimeMillis() - dialogOpenedTime < 500L) {
+                                isArmed = true
+                                return@onPreviewKeyEvent true // Consumir el KEY_UP de la pulsación larga que abrió el menú
+                            }
+                        } else if (native.action == KeyEvent.ACTION_DOWN) {
+                            if (!isArmed || android.os.SystemClock.uptimeMillis() - dialogOpenedTime < 500L) {
+                                return@onPreviewKeyEvent true // Ignorar repeticiones de la pulsación larga
+                            }
+                        }
+                    }
+                    false
+                }
                 .background(Color(0xCC06080E))
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null
-                ) { onDismiss() },
+                ) {
+                    if (isArmed && android.os.SystemClock.uptimeMillis() - dialogOpenedTime > 500L) {
+                        onDismiss()
+                    }
+                },
             contentAlignment = Alignment.Center
         ) {
             Box(
@@ -385,15 +420,14 @@ fun MediaContextMenuDialog(
                         actions.forEachIndexed { index, actionItem ->
                             val isFirst = index == 0
                             var isBtnFocused by remember { mutableStateOf(false) }
-                            Button(
-                                onClick = {
-                                    if (android.os.SystemClock.uptimeMillis() - dialogOpenedTime < 450L) {
-                                        // Ignora la pulsación residual provocada por soltar el botón D-pad tras abrir el menú
-                                        return@Button
-                                    }
+                            val safeActionClick: () -> Unit = {
+                                if (isArmed && android.os.SystemClock.uptimeMillis() - dialogOpenedTime >= 500L) {
                                     view.playSoundEffect(SoundEffectConstants.CLICK)
                                     actionItem.action()
-                                },
+                                }
+                            }
+                            Button(
+                                onClick = safeActionClick,
                                 colors = ButtonDefaults.colors(
                                     containerColor = Color(0x18FFFFFF),
                                     contentColor = Color.White,
@@ -410,6 +444,7 @@ fun MediaContextMenuDialog(
                                 shape = ButtonDefaults.shape(shape = RoundedCornerShape(10.dp)),
                                 modifier = Modifier
                                     .fillMaxWidth()
+                                    .handleTouchClick(onClick = safeActionClick)
                                     .onFocusChanged { isBtnFocused = it.isFocused }
                                     .then(if (isFirst) Modifier.focusRequester(firstFocusRequester) else Modifier)
                             ) {
