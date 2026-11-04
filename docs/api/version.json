@@ -1,12 +1,12 @@
 {
-  "versionCode": 1000120,
-  "versionName": "2.2.73-beta",
+  "versionCode": 1000121,
+  "versionName": "2.2.74-beta",
   "minSupportedVersionCode": 1000105,
   "forceUpdate": true,
   "killSwitch": false,
-  "releaseNotes": "Reproductor: seek nativo en .strm sin volver al principio, fin de capítulo con reintento de Next Up y controles visibles si no hay siguiente. Catálogo: especiales paginados, caché persistente y cambio de servidor seguro.",
+  "releaseNotes": "Feed dinámico estilo Netflix (filas 'Porque viste...', sagas panorámicas 16:9, rotación diaria con peso Bayesiano), protección de pulsación prolongada en menús para mando y táctil, y limpieza de interfaz en Descubrir.",
   "apkUrl": "https://medusa-fd388.web.app/Medusa.apk",
-  "apkSha256": "0a27af674c44bebd40c08841a8b45122f1791ccca1d13a62f5ff30972cc5071c",
+  "apkSha256": "76fa2cff0f01ac8360abca924c1e60287559128bef165b221f461a1fc38965e0",
   "signatures": [
     "26bccb39ed122a69ecf7a8d0b50deeabeb15bc1a4b2a8b77941b47a96fdd3fea",
     "78a588afcc90d8ea59e008c9cbd1e8bbed3b2831518184d5a9935948b9d245ac"
