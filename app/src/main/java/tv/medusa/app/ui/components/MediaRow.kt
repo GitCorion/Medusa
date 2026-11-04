@@ -114,12 +114,21 @@ fun MediaRow(
                     } else null
                 }
 
-                MediaCard(
-                    item = displayItem,
-                    onClick = onClickLambda,
-                    onFocus = onFocusLambda,
-                    onLongClick = onLongClickLambda
-                )
+                if (section.layout == tv.medusa.app.domain.model.HomeSectionLayout.LANDSCAPE) {
+                    LandscapeMediaCard(
+                        item = displayItem,
+                        onClick = onClickLambda,
+                        onFocus = onFocusLambda,
+                        onLongClick = onLongClickLambda
+                    )
+                } else {
+                    MediaCard(
+                        item = displayItem,
+                        onClick = onClickLambda,
+                        onFocus = onFocusLambda,
+                        onLongClick = onLongClickLambda
+                    )
+                }
             }
         }
     }

@@ -346,6 +346,18 @@ class FakeJellyfinDao : JellyfinDao {
     override suspend fun getBoxSetsLocalRestricted(limit: Int): List<JellyfinMediaEntity> =
         getBoxSetsLocal(limit)
 
+    override suspend fun getHiddenGemsLocal(limit: Int): List<JellyfinMediaEntity> =
+        localDb.filter { !it.isPlayed }.take(limit)
+
+    override suspend fun getHiddenGemsLocalRestricted(limit: Int): List<JellyfinMediaEntity> =
+        getHiddenGemsLocal(limit)
+
+    override suspend fun getSimilarByKeywords(tag1: String, tag2: String, genre: String, excludeId: String, limit: Int): List<JellyfinMediaEntity> =
+        localDb.filter { it.id != excludeId }.take(limit)
+
+    override suspend fun getSimilarByKeywordsRestricted(tag1: String, tag2: String, genre: String, excludeId: String, limit: Int): List<JellyfinMediaEntity> =
+        getSimilarByKeywords(tag1, tag2, genre, excludeId, limit)
+
     override suspend fun getDocumentariesLocal(limit: Int): List<JellyfinMediaEntity> =
         localDb.filter { it.genres?.contains("documental", ignoreCase = true) == true || it.genres?.contains("documentary", ignoreCase = true) == true }.take(limit)
 

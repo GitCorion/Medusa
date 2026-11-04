@@ -17,6 +17,7 @@ import tv.medusa.app.data.local.db.JellyfinMediaEntity
 import tv.medusa.app.data.repository.MediaRepository
 import tv.medusa.app.domain.model.HomeSection
 import tv.medusa.app.domain.model.HomeSectionKind
+import tv.medusa.app.domain.model.HomeSectionLayout
 import tv.medusa.app.domain.model.MediaItem
 import tv.medusa.app.domain.model.MediaSource
 import tv.medusa.app.domain.model.MediaItemSnapshotCodec
@@ -77,16 +78,22 @@ class GetHomeFeedUseCase(
             title == "Últimos estrenos" -> 5
             title == "Añadido recientemente" -> 20
             title.startsWith("Porque viste") -> 30
-            // Todas las filas de plataformas se generan como "Populares en X"; las antiguas
-            // ramas por nombre de plataforma eran código muerto.
+            title.startsWith("Para esta") || title.startsWith("Viernes de") ||
+            title.startsWith("Sábado de") || title.startsWith("Domingo de") ||
+            title.startsWith("Cine para") || title.startsWith("Tarde de") ||
+            title.startsWith("Noche de") || title.startsWith("Grandes historias para") -> 35
+            title == "Sagas y Colecciones" -> 38
+            // Filas de plataformas se generan como "Populares en X"
             title.startsWith("Populares en ") -> 40
             title.startsWith("Trakt:") -> 50
             title == "Tu Watchlist de Trakt.tv" -> 51
             title == "Recomendado por la comunidad Trakt" -> 52
             title == "Tendencias en Trakt.tv" -> 53
+            title == "Joyas de tu videoteca" || title.contains("Joyas") -> 60
             title == "Grandes Producciones de tu colección" -> 70
             title == "Series Destacadas" -> 80
             title == "Películas Recomendadas" -> 90
+            title == "Para volver a disfrutar" || title.startsWith("Para volver a") -> 95
             title.startsWith("Recomendados de") -> 100
             else -> 200
         }
@@ -101,11 +108,15 @@ class GetHomeFeedUseCase(
             HomeSectionKind.NEW_RELEASES -> 5
             HomeSectionKind.RECENTLY_ADDED -> 20
             HomeSectionKind.BECAUSE_YOU_WATCHED -> 30
+            HomeSectionKind.TIME_CONTEXTUAL -> 35
+            HomeSectionKind.FRANCHISES -> 38
             HomeSectionKind.PLATFORM -> 40
             HomeSectionKind.TRAKT -> 50
+            HomeSectionKind.HIDDEN_GEMS -> 60
             HomeSectionKind.LIBRARY_TOP_MOVIES -> 70
             HomeSectionKind.LIBRARY_TOP_SERIES -> 80
             HomeSectionKind.RECOMMENDED_MOVIES -> 90
+            HomeSectionKind.REWATCH -> 95
             HomeSectionKind.GENRE -> 100
             HomeSectionKind.CUSTOM -> sectionPriority(section.title)
         }
@@ -169,10 +180,15 @@ class GetHomeFeedUseCase(
             val uniqueItems = newSection.items.distinctBy { it.id }
             if (uniqueItems.isEmpty()) return
             val cleanSection = if (uniqueItems.size == newSection.items.size) newSection else newSection.copy(items = uniqueItems)
+            val isPlatform = cleanSection.kind == HomeSectionKind.PLATFORM || cleanSection.title.startsWith("Populares en ")
             val idx = sections.indexOfFirst { it.title == cleanSection.title }
             if (idx != -1) {
                 sections[idx] = cleanSection
             } else {
+                if (isPlatform && sections.any { it.kind == HomeSectionKind.PLATFORM || it.title.startsWith("Populares en ") }) {
+                    // Mantener solo 1 plataforma destacada en la portada principal para evitar saturación estilo directorio
+                    return
+                }
                 val newPriority = sectionPriority(cleanSection)
                 val insertIdx = sections.indexOfFirst { sectionPriority(it) > newPriority }
                 if (insertIdx != -1) {
@@ -228,19 +244,44 @@ class GetHomeFeedUseCase(
         var watchedGenres: List<String> = emptyList()
         var localRecommendedMovies: List<JellyfinMediaEntity> = emptyList()
         var localNewReleases: List<JellyfinMediaEntity> = emptyList()
+        var localBoxSets: List<JellyfinMediaEntity> = emptyList()
+        var localHiddenGems: List<JellyfinMediaEntity> = emptyList()
+        var localContextualItems: List<JellyfinMediaEntity> = emptyList()
+
+        val dayOfYear = java.time.LocalDate.now().dayOfYear
+        val nowTime = java.time.LocalDateTime.now()
+        val currentHour = nowTime.hour
+        val currentDay = nowTime.dayOfWeek
+        val (contextTitle, contextGenre) = when {
+            (currentDay == java.time.DayOfWeek.FRIDAY || currentDay == java.time.DayOfWeek.SATURDAY) && (currentHour >= 20 || currentHour < 4) -> {
+                Pair("Noche de cine: Adrenalina y Tensión", "Acción")
+            }
+            (currentDay == java.time.DayOfWeek.SATURDAY || currentDay == java.time.DayOfWeek.SUNDAY) && currentHour in 12..19 -> {
+                Pair("Tarde de fin de semana: Animación y Familia", "Animación")
+            }
+            (currentDay != java.time.DayOfWeek.FRIDAY && currentDay != java.time.DayOfWeek.SATURDAY) && (currentHour >= 21 || currentHour < 4) -> {
+                Pair("Cine para terminar el día", "Comedia")
+            }
+            else -> {
+                Pair("Grandes historias para hoy", "Drama")
+            }
+        }
 
         coroutineScope {
             val continueWatchingJob = async { runCatching { mediaRepository.getContinueWatchingLocal(20) }.getOrDefault(emptyList()) }
             val recentlyPlayedJob = async { runCatching { mediaRepository.getRecentlyPlayedLocal(20) }.getOrDefault(emptyList()) }
             val latestJob = async { runCatching { mediaRepository.getLatestLocal(prefs.jellyfinServerUrl, prefs.jellyfinUserId, 20) }.getOrDefault(emptyList()) }
-            val topMoviesJob = async { runCatching { mediaRepository.getTopMoviesLocal(30) }.getOrDefault(emptyList()) }
-            val topSeriesJob = async { runCatching { mediaRepository.getTopSeriesLocal(30) }.getOrDefault(emptyList()) }
+            val topMoviesJob = async { runCatching { mediaRepository.getTopMoviesLocal(40) }.getOrDefault(emptyList()) }
+            val topSeriesJob = async { runCatching { mediaRepository.getTopSeriesLocal(40) }.getOrDefault(emptyList()) }
+            val boxSetsJob = async { runCatching { mediaRepository.getBoxSetsLocal(20) }.getOrDefault(emptyList()) }
+            val hiddenGemsJob = async { runCatching { mediaRepository.getHiddenGemsLocal(40) }.getOrDefault(emptyList()) }
+            val contextualJob = async { runCatching { mediaRepository.getItemsByGenre(contextGenre) }.getOrDefault(emptyList()) }
             val genresJob = async { runCatching { mediaRepository.getMostWatchedGenres() }.getOrDefault(emptyList()) }
             val newReleasesJob = async { runCatching { mediaRepository.getNewReleasesLocal(20) }.getOrDefault(emptyList()) }
             val recommendedJob = async {
                 val genres = genresJob.await()
                 runCatching {
-                    mediaRepository.getRecommendedMovies(excludeIds = emptySet(), limit = 20, genres = genres)
+                    mediaRepository.getRecommendedMovies(excludeIds = emptySet(), limit = 40, genres = genres)
                 }.getOrDefault(emptyList())
             }
 
@@ -249,6 +290,9 @@ class GetHomeFeedUseCase(
             localLatest = latestJob.await()
             localTopMovies = topMoviesJob.await()
             localTopSeries = topSeriesJob.await()
+            localBoxSets = boxSetsJob.await()
+            localHiddenGems = hiddenGemsJob.await()
+            localContextualItems = contextualJob.await()
             watchedGenres = genresJob.await()
             localRecommendedMovies = recommendedJob.await()
             localNewReleases = newReleasesJob.await()
@@ -261,7 +305,6 @@ class GetHomeFeedUseCase(
                 kind = HomeSectionKind.CONTINUE_WATCHING
             ))
         }
-
 
         // Últimos estrenos: lo más nuevo por año de estreno que hay en la biblioteca. Va arriba,
         // justo después de Continuar Viendo, para que lo recién estrenado no quede enterrado.
@@ -279,28 +322,69 @@ class GetHomeFeedUseCase(
                 kind = HomeSectionKind.RECENTLY_ADDED
             ))
         }
+
+        // Fila contextual por hora del día y día de la semana
+        val unplayedContext = localContextualItems.filter { !it.isPlayed && it.playbackPositionTicks <= 0L }
+        val validContext = if (unplayedContext.size >= 5) unplayedContext else localContextualItems
+        if (validContext.size >= 3) {
+            val shuffledContext = validContext.shuffled(kotlin.random.Random(dayOfYear + currentHour)).take(15)
+            updateOrAddSection(HomeSection(
+                title = contextTitle,
+                items = shuffledContext.map { it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.JELLYFIN) },
+                kind = HomeSectionKind.TIME_CONTEXTUAL
+            ))
+        }
+
+        // Sagas y Colecciones (Formato apaisado 16:9 con ClearLogo integrado)
+        if (localBoxSets.isNotEmpty()) {
+            val boxSetItems = localBoxSets.take(15).map {
+                it.toOptimizedMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.JELLYFIN)
+            }
+            updateOrAddSection(HomeSection(
+                title = "Sagas y Colecciones",
+                items = boxSetItems,
+                kind = HomeSectionKind.FRANCHISES,
+                layout = HomeSectionLayout.LANDSCAPE
+            ))
+        }
+
+        // Joyas ocultas de la videoteca (sin reproducir, con excelente valoración)
+        if (localHiddenGems.isNotEmpty()) {
+            val shuffledHiddenGems = localHiddenGems.shuffled(kotlin.random.Random(dayOfYear + 33)).take(20)
+            updateOrAddSection(HomeSection(
+                title = "Joyas de tu videoteca",
+                items = shuffledHiddenGems.map { it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.JELLYFIN) },
+                badge = "JOYAS OCULTAS",
+                kind = HomeSectionKind.HIDDEN_GEMS
+            ))
+        }
+
+        // Barajado diario (Shuffle de la Home) sobre el Top Bayesiano
         if (localTopMovies.isNotEmpty()) {
+            val shuffledTopMovies = localTopMovies.shuffled(kotlin.random.Random(dayOfYear)).take(20)
             updateOrAddSection(HomeSection(
                 title = "Grandes Producciones de tu colección",
-                items = localTopMovies.take(20).map { it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.JELLYFIN) },
+                items = shuffledTopMovies.map { it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.JELLYFIN) },
                 kind = HomeSectionKind.LIBRARY_TOP_MOVIES
             ))
         }
         if (localTopSeries.isNotEmpty()) {
+            val shuffledTopSeries = localTopSeries.shuffled(kotlin.random.Random(dayOfYear + 11)).take(20)
             updateOrAddSection(HomeSection(
                 title = "Series Destacadas",
-                items = localTopSeries.take(20).map { it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.JELLYFIN) },
+                items = shuffledTopSeries.map { it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.JELLYFIN) },
                 kind = HomeSectionKind.LIBRARY_TOP_SERIES
             ))
         }
         if (localRecommendedMovies.isNotEmpty()) {
+            val shuffledRecommended = localRecommendedMovies.shuffled(kotlin.random.Random(dayOfYear + 22)).take(20)
             updateOrAddSection(HomeSection(
                 title = "Películas Recomendadas",
-                items = localRecommendedMovies.take(20).map { it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.JELLYFIN) },
+                items = shuffledRecommended.map { it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.JELLYFIN) },
                 kind = HomeSectionKind.RECOMMENDED_MOVIES
             ))
         }
-        // Fila para cada género popular de la biblioteca del usuario (hasta 4 géneros)
+        // Fila para cada género popular de la biblioteca del usuario (hasta 4 géneros con shuffle diario)
         val genreCandidates = watchedGenres.take(4)
         for (genre in genreCandidates) {
             val genreItems = runCatching { mediaRepository.getItemsByGenre(genre) }
@@ -308,9 +392,10 @@ class GetHomeFeedUseCase(
             val unplayedGenre = genreItems.filter { !it.isPlayed && it.playbackPositionTicks <= 0L }
             val valid = if (unplayedGenre.size >= 5) unplayedGenre else genreItems
             if (valid.size >= 3) {
+                val shuffledGenre = valid.shuffled(kotlin.random.Random(dayOfYear + genre.hashCode())).take(20)
                 updateOrAddSection(HomeSection(
                     title = "Recomendados de $genre",
-                    items = valid.take(20).map { it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.JELLYFIN) },
+                    items = shuffledGenre.map { it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.JELLYFIN) },
                     kind = HomeSectionKind.GENRE
                 ))
             }
@@ -509,8 +594,17 @@ class GetHomeFeedUseCase(
                             it.isAvailableIn(effectiveWatchRegion)
                     }
 
-                    val semaphore = Semaphore(3)
-                    activeProviders.forEach { platform ->
+                    // Para una experiencia ágil tipo Netflix, seleccionamos 1 plataforma destacada
+                    // en la portada (rotativa diaria si no hay selección manual), evitando saturar con 9 filas;
+                    // el usuario puede acceder a todas las plataformas en cualquier momento desde los botones de marca superiores.
+                    val activeProvidersList = activeProviders.toList()
+                    val featuredProviders = if (activeProvidersList.isNotEmpty()) {
+                        val selectedIndex = kotlin.math.abs(dayOfYear % activeProvidersList.size)
+                        listOf(activeProvidersList[selectedIndex])
+                    } else emptyList()
+
+                    val semaphore = Semaphore(2)
+                    featuredProviders.forEach { platform ->
                         launch {
                             // Índice persistente: catálogo completo ya cruzado con la biblioteca.
                             // Si existe, la fila se pinta sin red y con todos los títulos.
@@ -734,32 +828,66 @@ class GetHomeFeedUseCase(
             // JOB 5: RECOMENDACIÓN PERSONALIZADA ("PORQUE VISTE X")
             // ---------------------------------------------------------------------
             launch {
-                val refItem = sharedResumeReference ?: sharedRecentReference
-                // La clave efectiva (la del usuario o la que trae la app): antes se exigía que el
-                // usuario hubiese guardado la suya en Ajustes, así que la sección no aparecía nunca.
-                if (refItem != null && effectiveTmdbKey.isNotBlank()) {
-                    runCatching {
-                        withTimeoutOrNull(3500L) {
-                            val tmdbIdLong = refItem.tmdbId?.toLongOrNull() ?: return@withTimeoutOrNull
-                            val isTv = refItem.type.equals("Series", ignoreCase = true) || refItem.type.equals("Episode", ignoreCase = true)
-                            val recsResult = mediaRepository.getTmdbRecommendations(apiKey = effectiveTmdbKey, tmdbId = tmdbIdLong, isTv = isTv).getOrDefault(emptyList())
-                            if (recsResult.isNotEmpty()) {
-                                val matchedRecs = filterToLibraryUseCase.filterTmdbItems(
-                                    tmdbItems = recsResult,
-                                    serverUrl = prefs.jellyfinServerUrl,
-                                    userId = prefs.jellyfinUserId,
-                                    token = prefs.jellyfinAccessToken,
-                                    maxCandidates = 25
-                                ).filter { it.id != refItem.id }
-                                if (matchedRecs.size >= 3) {
-                                    val section = HomeSection(
-                                        title = "Porque viste ${refItem.title}",
-                                        items = matchedRecs.take(15).map { it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TMDB_RECOMMENDATION) },
-                                        kind = HomeSectionKind.BECAUSE_YOU_WATCHED
-                                    )
-                                    postSection(section, cacheKey = "tmdb_because_watched", itemIds = matchedRecs.map { it.id })
+                // Seleccionar hasta 2 semillas distintas de lo visto recientemente o en reproducción
+                val seedCandidates = (localRecentlyPlayed + localContinueWatching)
+                    .distinctBy { it.id }
+                    .take(2)
+
+                seedCandidates.forEach { seed ->
+                    launch {
+                        val matchedRecs = mutableListOf<JellyfinMediaEntity>()
+
+                        // 1. Intentar con recomendaciones de TMDB si hay tmdbId y clave configurada
+                        if (effectiveTmdbKey.isNotBlank() && seed.tmdbId != null) {
+                            runCatching {
+                                withTimeoutOrNull(3500L) {
+                                    val tmdbIdLong = seed.tmdbId?.toLongOrNull() ?: return@withTimeoutOrNull
+                                    val isTv = seed.type.equals("Series", ignoreCase = true) || seed.type.equals("Episode", ignoreCase = true)
+                                    val recsResult = mediaRepository.getTmdbRecommendations(
+                                        apiKey = effectiveTmdbKey,
+                                        tmdbId = tmdbIdLong,
+                                        isTv = isTv
+                                    ).getOrDefault(emptyList())
+                                    if (recsResult.isNotEmpty()) {
+                                        val filtered = filterToLibraryUseCase.filterTmdbItems(
+                                            tmdbItems = recsResult,
+                                            serverUrl = prefs.jellyfinServerUrl,
+                                            userId = prefs.jellyfinUserId,
+                                            token = prefs.jellyfinAccessToken,
+                                            maxCandidates = 25
+                                        ).filter { it.id != seed.id }
+                                        matchedRecs.addAll(filtered)
+                                    }
                                 }
                             }
+                        }
+
+                        // 2. Si TMDB no devolvió suficientes o no hay red, usar afinidad local por tags y género en Room
+                        if (matchedRecs.size < 4) {
+                            val tagList = seed.tags?.split(",")?.map { it.trim() }?.filter { it.isNotBlank() } ?: emptyList()
+                            val tag1 = tagList.getOrNull(0) ?: ""
+                            val tag2 = tagList.getOrNull(1) ?: ""
+                            val genre = seed.genres?.split(",")?.map { it.trim() }?.firstOrNull { it.isNotBlank() } ?: ""
+                            if (tag1.isNotBlank() || genre.isNotBlank()) {
+                                val localSimilar = runCatching {
+                                    mediaRepository.getSimilarByKeywords(tag1, tag2, genre, seed.id, limit = 20)
+                                }.getOrDefault(emptyList())
+                                for (item in localSimilar) {
+                                    if (item.id != seed.id && matchedRecs.none { it.id == item.id }) {
+                                        matchedRecs.add(item)
+                                    }
+                                }
+                            }
+                        }
+
+                        val uniqueMatched = matchedRecs.distinctBy { it.id }.take(15)
+                        if (uniqueMatched.size >= 3) {
+                            val section = HomeSection(
+                                title = "Porque viste ${seed.title}",
+                                items = uniqueMatched.map { it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.TMDB_RECOMMENDATION) },
+                                kind = HomeSectionKind.BECAUSE_YOU_WATCHED
+                            )
+                            postSection(section, cacheKey = "seed_${seed.id}", itemIds = uniqueMatched.map { it.id })
                         }
                     }
                 }
@@ -921,6 +1049,10 @@ class GetHomeFeedUseCase(
         }
         if (fileSections.isNotEmpty()) {
             fileSections.forEach { section ->
+                val isPlatform = section.kind == HomeSectionKind.PLATFORM || section.title.startsWith("Populares en ")
+                if (isPlatform && sections.any { it.kind == HomeSectionKind.PLATFORM || it.title.startsWith("Populares en ") }) {
+                    return@forEach
+                }
                 if (sections.none { it.title == section.title }) {
                     sections.add(section)
                     shownMediaIds.addAll(section.items.map { it.id })
@@ -998,13 +1130,47 @@ class GetHomeFeedUseCase(
             if (uniqueItems.isEmpty()) return
             val isSnapshot = entry.sectionKey.startsWith("snapshot_")
             if (entry.isRanked && uniqueItems.size < 10) return
-            if (!isSnapshot && !entry.isRanked && uniqueItems.size < 5) return
+            if (!isSnapshot && !entry.isRanked && uniqueItems.size < 3) return
             shownMediaIds.addAll(uniqueItems.map { it.id })
+
+            val kind = when {
+                entry.sectionKey.startsWith("platform_") -> HomeSectionKind.PLATFORM
+                entry.sectionKey.startsWith("tmdb_trending") -> HomeSectionKind.TRENDING
+                entry.sectionKey.startsWith("seed_") || entry.sectionKey.startsWith("tmdb_because") -> HomeSectionKind.BECAUSE_YOU_WATCHED
+                entry.sectionKey == "local_boxsets" -> HomeSectionKind.FRANCHISES
+                entry.sectionKey == "local_hidden_gems" -> HomeSectionKind.HIDDEN_GEMS
+                entry.sectionKey.startsWith("trakt_") -> HomeSectionKind.TRAKT
+                entry.title.startsWith("Porque viste") -> HomeSectionKind.BECAUSE_YOU_WATCHED
+                entry.title == "Sagas y Colecciones" -> HomeSectionKind.FRANCHISES
+                entry.title == "Joyas de tu videoteca" -> HomeSectionKind.HIDDEN_GEMS
+                entry.title.startsWith("Populares en ") -> HomeSectionKind.PLATFORM
+                entry.title.startsWith("Top 10") -> HomeSectionKind.TRENDING
+                entry.title == "Últimos estrenos" -> HomeSectionKind.NEW_RELEASES
+                entry.title == "Añadido recientemente" -> HomeSectionKind.RECENTLY_ADDED
+                entry.title == "Grandes Producciones de tu colección" -> HomeSectionKind.LIBRARY_TOP_MOVIES
+                entry.title == "Series Destacadas" -> HomeSectionKind.LIBRARY_TOP_SERIES
+                entry.title == "Películas Recomendadas" -> HomeSectionKind.RECOMMENDED_MOVIES
+                entry.title.startsWith("Recomendados de") -> HomeSectionKind.GENRE
+                else -> HomeSectionKind.CUSTOM
+            }
+            val layout = when {
+                entry.isRanked || kind == HomeSectionKind.TRENDING -> HomeSectionLayout.RANKED
+                kind == HomeSectionKind.FRANCHISES || entry.title == "Sagas y Colecciones" -> HomeSectionLayout.LANDSCAPE
+                else -> HomeSectionLayout.POSTER
+            }
+
+            val isPlatform = kind == HomeSectionKind.PLATFORM || entry.title.startsWith("Populares en ")
+            if (isPlatform && sections.any { it.kind == HomeSectionKind.PLATFORM || it.title.startsWith("Populares en ") }) {
+                return
+            }
+
             val restoredSection = HomeSection(
                 title = entry.title,
                 items = uniqueItems,
                 badge = entry.badge,
-                isRanked = entry.isRanked
+                isRanked = entry.isRanked,
+                kind = kind,
+                layout = layout
             )
             val newPriority = sectionPriority(restoredSection)
             val insertIdx = sections.indexOfFirst { sectionPriority(it) > newPriority }

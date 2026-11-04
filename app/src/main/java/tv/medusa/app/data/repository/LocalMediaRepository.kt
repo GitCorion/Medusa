@@ -203,6 +203,26 @@ class LocalMediaRepository(
             jellyfinDao.getBoxSetsLocal(limit).deduplicateMediaEntities()
         }
 
+    suspend fun getHiddenGemsLocal(limit: Int = 30): List<JellyfinMediaEntity> =
+        if (restrictionsActive()) {
+            jellyfinDao.getHiddenGemsLocalRestricted(limit).deduplicateMediaEntities()
+        } else {
+            jellyfinDao.getHiddenGemsLocal(limit).deduplicateMediaEntities()
+        }
+
+    suspend fun getSimilarByKeywords(
+        tag1: String,
+        tag2: String,
+        genre: String,
+        excludeId: String,
+        limit: Int = 30
+    ): List<JellyfinMediaEntity> =
+        if (restrictionsActive()) {
+            jellyfinDao.getSimilarByKeywordsRestricted(tag1, tag2, genre, excludeId, limit).deduplicateMediaEntities()
+        } else {
+            jellyfinDao.getSimilarByKeywords(tag1, tag2, genre, excludeId, limit).deduplicateMediaEntities()
+        }
+
     suspend fun getDocumentariesLocal(limit: Int = 20): List<JellyfinMediaEntity> =
         if (restrictionsActive()) {
             jellyfinDao.getDocumentariesLocalRestricted(limit).deduplicateMediaEntities()

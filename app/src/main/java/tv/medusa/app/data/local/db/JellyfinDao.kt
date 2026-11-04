@@ -449,11 +449,101 @@ interface JellyfinDao {
     @Query("SELECT * FROM jellyfin_media WHERE type = 'Movie' AND isPlayed = 1 AND (isFavorite = 1 OR (communityRating IS NOT NULL AND communityRating >= 7.5)) AND (backdropImageTag IS NOT NULL AND backdropImageTag != '') AND id IN (SELECT mediaId FROM allowed_media_ids) ORDER BY isFavorite DESC, lastPlayedTicks ASC, communityRating DESC LIMIT :limit")
     suspend fun getRewatchableMoviesLocalRestricted(limit: Int = 20): List<JellyfinMediaEntity>
 
-    @Query("SELECT * FROM jellyfin_media WHERE type = 'BoxSet' AND primaryImageTag IS NOT NULL AND primaryImageTag != '' ORDER BY rowid DESC LIMIT :limit")
+    @Query("SELECT * FROM jellyfin_media WHERE type = 'BoxSet' AND ((backdropImageTag IS NOT NULL AND backdropImageTag != '') OR (primaryImageTag IS NOT NULL AND primaryImageTag != '')) ORDER BY (backdropImageTag IS NOT NULL AND backdropImageTag != '') DESC, rowid DESC LIMIT :limit")
     suspend fun getBoxSetsLocal(limit: Int = 20): List<JellyfinMediaEntity>
 
-    @Query("SELECT * FROM jellyfin_media WHERE type = 'BoxSet' AND primaryImageTag IS NOT NULL AND primaryImageTag != '' AND id IN (SELECT mediaId FROM allowed_media_ids) ORDER BY rowid DESC LIMIT :limit")
+    @Query("SELECT * FROM jellyfin_media WHERE type = 'BoxSet' AND ((backdropImageTag IS NOT NULL AND backdropImageTag != '') OR (primaryImageTag IS NOT NULL AND primaryImageTag != '')) AND id IN (SELECT mediaId FROM allowed_media_ids) ORDER BY (backdropImageTag IS NOT NULL AND backdropImageTag != '') DESC, rowid DESC LIMIT :limit")
     suspend fun getBoxSetsLocalRestricted(limit: Int = 20): List<JellyfinMediaEntity>
+
+    /**
+     * Joyas ocultas / Obras maestras de tu colección que tienes pendientes (no vistas, playback=0).
+     */
+    @Query(
+        """
+        SELECT jm.* FROM jellyfin_media jm
+        LEFT JOIN (SELECT mediaId, MAX(score) AS maxScore FROM collection_items GROUP BY mediaId) ci ON ci.mediaId = jm.id
+        WHERE jm.type IN ('Movie', 'Series')
+          AND jm.isPlayed = 0 AND jm.playbackPositionTicks = 0
+          AND (jm.backdropImageTag IS NOT NULL AND jm.backdropImageTag != '')
+        ORDER BY
+          (COALESCE(ci.maxScore, 0.0) / (COALESCE(ci.maxScore, 0.0) + 12.0) * COALESCE(jm.communityRating, 6.0) +
+           12.0 / (COALESCE(ci.maxScore, 0.0) + 12.0) * 6.5) DESC,
+          COALESCE(ci.maxScore, 0.0) DESC,
+          COALESCE(jm.communityRating, 0.0) DESC,
+          jm.rowid DESC
+        LIMIT :limit
+        """
+    )
+    suspend fun getHiddenGemsLocal(limit: Int = 30): List<JellyfinMediaEntity>
+
+    @Query(
+        """
+        SELECT jm.* FROM jellyfin_media jm
+        LEFT JOIN (SELECT mediaId, MAX(score) AS maxScore FROM collection_items GROUP BY mediaId) ci ON ci.mediaId = jm.id
+        WHERE jm.type IN ('Movie', 'Series')
+          AND jm.isPlayed = 0 AND jm.playbackPositionTicks = 0
+          AND (jm.backdropImageTag IS NOT NULL AND jm.backdropImageTag != '')
+          AND jm.id IN (SELECT mediaId FROM allowed_media_ids)
+        ORDER BY
+          (COALESCE(ci.maxScore, 0.0) / (COALESCE(ci.maxScore, 0.0) + 12.0) * COALESCE(jm.communityRating, 6.0) +
+           12.0 / (COALESCE(ci.maxScore, 0.0) + 12.0) * 6.5) DESC,
+          COALESCE(ci.maxScore, 0.0) DESC,
+          COALESCE(jm.communityRating, 0.0) DESC,
+          jm.rowid DESC
+        LIMIT :limit
+        """
+    )
+    suspend fun getHiddenGemsLocalRestricted(limit: Int = 30): List<JellyfinMediaEntity>
+
+    /**
+     * Búsqueda por afinidad de etiquetas (Tags/Keywords) para las filas semilla "Porque viste X".
+     */
+    @Query(
+        """
+        SELECT jm.* FROM jellyfin_media jm
+        LEFT JOIN (SELECT mediaId, MAX(score) AS maxScore FROM collection_items GROUP BY mediaId) ci ON ci.mediaId = jm.id
+        WHERE jm.id != :excludeId
+          AND jm.type IN ('Movie', 'Series')
+          AND (
+            (:tag1 != '' AND LOWER(jm.tags) LIKE '%' || LOWER(:tag1) || '%') OR
+            (:tag2 != '' AND LOWER(jm.tags) LIKE '%' || LOWER(:tag2) || '%') OR
+            (:genre != '' AND LOWER(jm.genres) LIKE '%' || LOWER(:genre) || '%')
+          )
+          AND (jm.backdropImageTag IS NOT NULL AND jm.backdropImageTag != '')
+        ORDER BY
+          (COALESCE(ci.maxScore, 0.0) / (COALESCE(ci.maxScore, 0.0) + 12.0) * COALESCE(jm.communityRating, 6.0) +
+           12.0 / (COALESCE(ci.maxScore, 0.0) + 12.0) * 6.5) DESC,
+          COALESCE(ci.maxScore, 0.0) DESC,
+          COALESCE(jm.communityRating, 0.0) DESC,
+          jm.rowid DESC
+        LIMIT :limit
+        """
+    )
+    suspend fun getSimilarByKeywords(tag1: String, tag2: String, genre: String, excludeId: String, limit: Int = 30): List<JellyfinMediaEntity>
+
+    @Query(
+        """
+        SELECT jm.* FROM jellyfin_media jm
+        LEFT JOIN (SELECT mediaId, MAX(score) AS maxScore FROM collection_items GROUP BY mediaId) ci ON ci.mediaId = jm.id
+        WHERE jm.id != :excludeId
+          AND jm.type IN ('Movie', 'Series')
+          AND (
+            (:tag1 != '' AND LOWER(jm.tags) LIKE '%' || LOWER(:tag1) || '%') OR
+            (:tag2 != '' AND LOWER(jm.tags) LIKE '%' || LOWER(:tag2) || '%') OR
+            (:genre != '' AND LOWER(jm.genres) LIKE '%' || LOWER(:genre) || '%')
+          )
+          AND (jm.backdropImageTag IS NOT NULL AND jm.backdropImageTag != '')
+          AND jm.id IN (SELECT mediaId FROM allowed_media_ids)
+        ORDER BY
+          (COALESCE(ci.maxScore, 0.0) / (COALESCE(ci.maxScore, 0.0) + 12.0) * COALESCE(jm.communityRating, 6.0) +
+           12.0 / (COALESCE(ci.maxScore, 0.0) + 12.0) * 6.5) DESC,
+          COALESCE(ci.maxScore, 0.0) DESC,
+          COALESCE(jm.communityRating, 0.0) DESC,
+          jm.rowid DESC
+        LIMIT :limit
+        """
+    )
+    suspend fun getSimilarByKeywordsRestricted(tag1: String, tag2: String, genre: String, excludeId: String, limit: Int = 30): List<JellyfinMediaEntity>
 
     @Query(
         """

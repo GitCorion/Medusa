@@ -357,6 +357,9 @@ class MediaRepository(
     suspend fun getTopRatedLocal(limit: Int = 20): List<JellyfinMediaEntity> = local.getTopRatedLocal(limit)
     suspend fun getRewatchableMoviesLocal(limit: Int = 20): List<JellyfinMediaEntity> = local.getRewatchableMoviesLocal(limit)
     suspend fun getBoxSetsLocal(limit: Int = 20): List<JellyfinMediaEntity> = local.getBoxSetsLocal(limit)
+    suspend fun getHiddenGemsLocal(limit: Int = 30): List<JellyfinMediaEntity> = local.getHiddenGemsLocal(limit)
+    suspend fun getSimilarByKeywords(tag1: String, tag2: String, genre: String, excludeId: String, limit: Int = 30): List<JellyfinMediaEntity> =
+        local.getSimilarByKeywords(tag1, tag2, genre, excludeId, limit)
     suspend fun getDocumentariesLocal(limit: Int = 20): List<JellyfinMediaEntity> = local.getDocumentariesLocal(limit)
     suspend fun getNationalCinemaLocal(pattern: String, limit: Int = 20): List<JellyfinMediaEntity> = local.getNationalCinemaLocal(pattern, limit)
     suspend fun getSpanishCinemaLocal(limit: Int = 20): List<JellyfinMediaEntity> = local.getSpanishCinemaLocal(limit)

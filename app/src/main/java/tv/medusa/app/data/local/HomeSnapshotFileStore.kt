@@ -2,6 +2,8 @@ package tv.medusa.app.data.local
 
 import android.content.Context
 import tv.medusa.app.domain.model.HomeSection
+import tv.medusa.app.domain.model.HomeSectionKind
+import tv.medusa.app.domain.model.HomeSectionLayout
 import tv.medusa.app.domain.model.MediaItemSnapshotCodec
 import java.io.File
 
@@ -28,7 +30,7 @@ class HomeSnapshotFileStore(context: Context) {
             val timeEnd = raw.indexOf('\n', versionEnd + 1)
             if (versionEnd <= 0 || timeEnd <= versionEnd) return emptyList()
             val version = raw.substring(0, versionEnd)
-            if (version != "1") return emptyList()
+            if (version != "1" && version != "2") return emptyList()
             val timestamp = raw.substring(versionEnd + 1, timeEnd).toLongOrNull() ?: return emptyList()
             if (System.currentTimeMillis() - timestamp > MAX_AGE_MS) return emptyList()
 
@@ -38,15 +40,31 @@ class HomeSnapshotFileStore(context: Context) {
                 .take(maxSections)
                 .filter { it.isNotBlank() }
                 .mapNotNull { block ->
-                    val fields = block.split('\u001D', limit = 4)
-                    if (fields.size < 4) return@mapNotNull null
-                    val items = MediaItemSnapshotCodec.decode(fields[3])
+                    val minFields = if (version == "2") 6 else 4
+                    val fields = block.split('\u001D', limit = minFields)
+                    if (fields.size < minFields) return@mapNotNull null
+                    val items = MediaItemSnapshotCodec.decode(fields.last())
                     if (items.isEmpty()) return@mapNotNull null
+                    val isRanked = fields[2] == "1"
+                    val layout = if (version == "2") {
+                        runCatching { HomeSectionLayout.valueOf(fields[3]) }
+                            .getOrDefault(if (isRanked) HomeSectionLayout.RANKED else HomeSectionLayout.POSTER)
+                    } else {
+                        if (isRanked) HomeSectionLayout.RANKED else HomeSectionLayout.POSTER
+                    }
+                    val kind = if (version == "2") {
+                        runCatching { HomeSectionKind.valueOf(fields[4]) }
+                            .getOrDefault(HomeSectionKind.CUSTOM)
+                    } else {
+                        HomeSectionKind.CUSTOM
+                    }
                     HomeSection(
                         title = fields[0],
                         items = items,
                         badge = fields[1].ifBlank { null },
-                        isRanked = fields[2] == "1"
+                        isRanked = isRanked,
+                        kind = kind,
+                        layout = layout
                     )
                 }
                 .toList()
@@ -58,7 +76,7 @@ class HomeSnapshotFileStore(context: Context) {
         runCatching {
             file.parentFile?.mkdirs()
             val sb = StringBuilder(64 * 1024)
-            sb.append("1\n")
+            sb.append("2\n")
             sb.append(System.currentTimeMillis()).append('\n')
             for (section in sections) {
                 val items = MediaItemSnapshotCodec.encode(section.items)
@@ -66,6 +84,8 @@ class HomeSnapshotFileStore(context: Context) {
                 sb.append(section.title).append('\u001D')
                     .append(section.badge.orEmpty()).append('\u001D')
                     .append(if (section.isRanked) '1' else '0').append('\u001D')
+                    .append(section.layout.name).append('\u001D')
+                    .append(section.kind.name).append('\u001D')
                     .append(items).append('\u001C')
             }
             val tmp = File(file.parentFile, "${file.name}.tmp")

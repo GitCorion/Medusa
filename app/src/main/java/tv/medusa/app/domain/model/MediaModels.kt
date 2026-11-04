@@ -47,6 +47,10 @@ enum class HomeSectionKind {
     NEW_RELEASES,
     RECENTLY_ADDED,
     BECAUSE_YOU_WATCHED,
+    TIME_CONTEXTUAL,
+    FRANCHISES,
+    HIDDEN_GEMS,
+    REWATCH,
     PLATFORM,
     TRAKT,
     LIBRARY_TOP_MOVIES,
@@ -56,12 +60,22 @@ enum class HomeSectionKind {
     CUSTOM
 }
 
+/**
+ * Disposición visual de las tarjetas dentro de una fila de la Home.
+ */
+enum class HomeSectionLayout {
+    POSTER,      // 2:3 vertical estándar (150x225 dp)
+    LANDSCAPE,   // 16:9 panorámico con backdrop + ClearLogo (260x146 dp)
+    RANKED       // 2:3 vertical con medallas / número 1-10 detrás
+}
+
 @Immutable
 data class HomeSection(
     val title: String,
     val items: List<MediaItem>,
     val badge: String? = null,
     val isRanked: Boolean = false,
-    val kind: HomeSectionKind = HomeSectionKind.CUSTOM
+    val kind: HomeSectionKind = HomeSectionKind.CUSTOM,
+    val layout: HomeSectionLayout = if (isRanked) HomeSectionLayout.RANKED else HomeSectionLayout.POSTER
 )
 
