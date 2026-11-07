@@ -975,39 +975,25 @@ fun DetailScreen(
                         )
                 )
 
-                // Botón Volver (esquina superior izquierda con insets táctil y TV)
+                // Botón Volver táctil / puntero (sin foco D-pad para no crear trampas de foco en TV)
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopStart)
                         .statusBarsPadding()
                         .padding(start = 24.dp, top = 18.dp)
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(Color(0x33000000))
+                        .border(1.dp, Color(0x22FFFFFF), CircleShape)
+                        .handleTouchClick { onBack() },
+                    contentAlignment = Alignment.Center
                 ) {
-                    Button(
-                        onClick = onBack,
-                        colors = ButtonDefaults.colors(
-                            containerColor = Color(0x33FFFFFF),
-                            contentColor = Color.White,
-                            focusedContainerColor = focusColor,
-                            focusedContentColor = focusContent
-                        ),
-                        shape = ButtonDefaults.shape(CircleShape),
-                        border = ButtonDefaults.border(
-                            border = Border.None,
-                            focusedBorder = Border.None
-                        ),
-                        modifier = Modifier
-                            .size(48.dp)
-                            .handleTouchClick { onBack() }
-                    ) {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                                contentDescription = stringResource(R.string.common_back),
-                                tint = Color.White,
-                                modifier = Modifier.size(22.dp)
-                            )
-                        }
-                    }
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                        contentDescription = stringResource(R.string.common_back),
+                        tint = Color.White.copy(alpha = 0.85f),
+                        modifier = Modifier.size(20.dp)
+                    )
                 }
 
                 if (isShowingTrailer && state.trailerUrl != null) {
