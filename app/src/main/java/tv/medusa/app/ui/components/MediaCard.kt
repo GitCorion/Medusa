@@ -1,10 +1,9 @@
 package tv.medusa.app.ui.components
 
-import androidx.compose.ui.text.font.FontStyle
-import tv.medusa.app.data.local.INDICATOR_THEME_MONOCHROME
-import tv.medusa.app.ui.theme.LocalAccentColor
-import tv.medusa.app.ui.theme.LocalIndicatorTheme
-import tv.medusa.app.ui.theme.LocalIsMonochromeTheme
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -25,7 +24,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.Movie
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -34,29 +32,45 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.zIndex
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
+import androidx.tv.material3.Border
 import androidx.tv.material3.Card
 import androidx.tv.material3.CardDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
-import tv.medusa.app.ui.util.handleTouchClick
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import tv.medusa.app.R
+import tv.medusa.app.data.local.INDICATOR_THEME_MONOCHROME
 import tv.medusa.app.domain.model.MediaItem
+import tv.medusa.app.ui.theme.LocalAccentColor
+import tv.medusa.app.ui.theme.LocalIndicatorTheme
+import tv.medusa.app.ui.theme.LocalIsMonochromeTheme
 import tv.medusa.app.ui.theme.TvAccent
 import tv.medusa.app.ui.theme.TvRatingBadge
+import tv.medusa.app.ui.util.handleTouchClick
 
+/**
+ * Tarjeta de póster vertical (2:3) para Android TV.
+ *
+ * Filosofía Anti-Slop:
+ * - Cero cajón gris inferior de plantilla: el póster es 100% arte a sangre con esquinas suaves (12.dp).
+ * - Título y metadatos ubicados FUERA del póster, directamente sobre el fondo abisal, con iluminación selectiva.
+ * - Escalado y zIndex aplicados en el contenedor raíz exterior antes de cualquier clip para evitar recortes de badges o bordes.
+ * - Efecto Spotlight: atenúa las tarjetas inactivas de la fila enfocada (0.65f) para resaltar la tarjeta en foco.
+ */
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 fun MediaCard(
@@ -64,6 +78,7 @@ fun MediaCard(
     onClick: () -> Unit,
     onFocus: () -> Unit = {},
     onLongClick: (() -> Unit)? = null,
+    isRowFocused: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     var isFocused by remember { mutableStateOf(false) }
@@ -91,7 +106,6 @@ fun MediaCard(
 
     val safeOnClick: () -> Unit = {
         val now = android.os.SystemClock.uptimeMillis()
-        // Si ha habido una pulsación larga o está en curso, ignorar cualquier clic residual al soltar
         if (isLongPressConsumed || now - lastLongClickTimestamp < 1200L) {
             isLongPressConsumed = false
         } else {
@@ -99,43 +113,67 @@ fun MediaCard(
         }
     }
 
+    // Animaciones de foco y Spotlight
+    val scale by animateFloatAsState(
+        targetValue = if (isFocused) 1.08f else 1.0f,
+        animationSpec = spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMediumLow),
+        label = "mediaCardScale"
+    )
+
+    val spotlightAlpha by animateFloatAsState(
+        targetValue = if (isRowFocused && !isFocused) 0.65f else 1.0f,
+        animationSpec = tween(durationMillis = 220),
+        label = "spotlightAlpha"
+    )
+
+    val textAlpha by animateFloatAsState(
+        targetValue = if (isFocused) 1.0f else 0.40f,
+        animationSpec = tween(durationMillis = 200),
+        label = "textAlpha"
+    )
+
+    // Contenedor Raíz de TV sin clipping: scale y zIndex aplicados ANTES de cualquier clip
     Card(
         onClick = safeOnClick,
         onLongClick = effectiveLongClick,
         colors = CardDefaults.colors(
-            containerColor = Color(0xFF0C1017),
-            focusedContainerColor = Color(0xFF141B26)
+            containerColor = Color.Transparent,
+            focusedContainerColor = Color.Transparent
         ),
-        scale = CardDefaults.scale(
-            scale = 1.0f,
-            focusedScale = 1.08f
-        ),
+        scale = CardDefaults.scale(scale = 1.0f, focusedScale = 1.0f),
+        border = CardDefaults.border(border = Border.None, focusedBorder = Border.None),
+        shape = CardDefaults.shape(shape = RoundedCornerShape(0.dp)),
         modifier = modifier
-            .handleTouchClick(onLongClick = effectiveLongClick, onClick = safeOnClick)
             .width(150.dp)
+            .zIndex(if (isFocused) 10f else 0f)
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+                this.alpha = spotlightAlpha
+            }
             .onFocusChanged {
                 isFocused = it.isFocused
                 if (it.isFocused) {
                     onFocus()
                 }
             }
-            .clip(RoundedCornerShape(10.dp))
-            .then(
-                if (isFocused) {
-                    Modifier.border(2.dp, focusColor, RoundedCornerShape(10.dp))
-                } else Modifier
-            )
+            .handleTouchClick(onLongClick = effectiveLongClick, onClick = safeOnClick)
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(if (isFocused) Color(0xFF181F2C) else Color(0xFF0C1017))
+            modifier = Modifier.fillMaxWidth()
         ) {
+            // Póster vertical (2:3) 100% arte a sangre con esquinas redondeadas
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(2f / 3f)
-                    .clip(RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp))
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xFF0C1017))
+                    .then(
+                        if (isFocused) {
+                            Modifier.border(2.dp, focusColor, RoundedCornerShape(12.dp))
+                        } else Modifier
+                    )
             ) {
                 var isImageError by remember(item.id, item.posterUrl) { mutableStateOf(false) }
 
@@ -185,21 +223,17 @@ fun MediaCard(
                     }
                 }
 
-                // Top-Right Rating Badge
+                // Insignia de Nota superior derecha (con padding holgado para no rozar el borde)
                 if (item.rating != null && item.rating > 0f) {
                     TvRatingBadge(
                         rating = item.rating,
                         compact = true,
                         modifier = Modifier
                             .align(Alignment.TopEnd)
-                            .padding(top = 8.dp, end = 8.dp)
+                            .padding(top = 10.dp, end = 10.dp)
                             .zIndex(2f)
                     )
                 }
-
-                val indicatorTheme = LocalIndicatorTheme.current
-                val isMonochrome = LocalIsMonochromeTheme.current ||
-                        indicatorTheme == INDICATOR_THEME_MONOCHROME
 
                 val isTvSeries = item.type.equals("Series", ignoreCase = true)
                 val hasEpisodeProgress = !item.isPlayed &&
@@ -210,22 +244,19 @@ fun MediaCard(
                         !isTvSeries &&
                         item.playbackPositionTicks > 0
 
-                // Top-Left Badges: Favorito, Visto
+                // Insignias superior izquierda: Favorito, Visto (con padding holgado de 10.dp)
                 Row(
                     modifier = Modifier
                         .align(Alignment.TopStart)
-                        .padding(top = 8.dp, start = 8.dp)
+                        .padding(top = 10.dp, start = 10.dp)
                         .zIndex(2f),
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-
                     if (hasEpisodeProgress) {
                         val progressText = if (item.totalEpisodes != null && item.totalEpisodes > 0) {
                             "${item.playedEpisodes}/${item.totalEpisodes}"
-                        } else {
-                            null
-                        }
+                        } else null
 
                         if (progressText != null) {
                             Box(
@@ -285,63 +316,14 @@ fun MediaCard(
                         }
                     }
                 }
-
-                val progressFraction = when {
-                    hasEpisodeProgress && (item.totalEpisodes ?: 0) > 0 ->
-                        (item.playedEpisodes!!.toFloat() / item.totalEpisodes!!.toFloat()).coerceIn(0.05f, 0.98f)
-                    hasMovieProgress -> 0.40f
-                    else -> null
-                }
-
-                if (progressFraction != null) {
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .padding(start = 8.dp, end = 8.dp, bottom = 6.dp)
-                            .fillMaxWidth()
-                            .height(3.5.dp)
-                            .clip(RoundedCornerShape(2.dp))
-                            .background(Color(0x80000000))
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth(progressFraction)
-                                .height(3.5.dp)
-                                .clip(RoundedCornerShape(2.dp))
-                                .background(if (isFocused) Color.White else (if (isMonochrome) Color.White else focusColor))
-                        )
-                    }
-                }
-
-                if (item.rank != null) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(
-                                brush = Brush.verticalGradient(
-                                    colors = listOf(Color.Transparent, Color(0xD9000000)),
-                                    startY = 90f
-                                )
-                            )
-                    )
-
-                    Text(
-                        text = "${item.rank}",
-                        color = Color.White.copy(alpha = 0.95f),
-                        fontWeight = FontWeight.Black,
-                        fontStyle = FontStyle.Italic,
-                        fontSize = 42.sp,
-                        modifier = Modifier
-                            .align(Alignment.BottomStart)
-                            .padding(start = 6.dp, bottom = 2.dp)
-                    )
-                }
             }
 
+            // Metadatos FUERA del póster, sobre el fondo negro abisal, con iluminación en foco
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 10.dp, end = 10.dp, top = 8.dp, bottom = 12.dp)
+                    .padding(top = 8.dp, start = 2.dp, end = 2.dp)
+                    .graphicsLayer { this.alpha = textAlpha }
             ) {
                 Text(
                     text = item.title,
@@ -361,8 +343,9 @@ fun MediaCard(
                         Text(
                             text = item.year.toString(),
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFF94A3B8),
-                            fontSize = 11.sp
+                            color = if (isFocused) focusColor else Color(0xFF94A3B8),
+                            fontSize = 11.sp,
+                            fontWeight = if (isFocused) FontWeight.SemiBold else FontWeight.Normal
                         )
                     }
                     if (item.year != null) {
@@ -388,6 +371,3 @@ fun MediaCard(
         }
     }
 }
-
-
-
