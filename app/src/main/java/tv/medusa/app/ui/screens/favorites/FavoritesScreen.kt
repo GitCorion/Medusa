@@ -218,11 +218,11 @@ fun FavoritesScreen(
                             LazyVerticalGrid(
                                 columns = GridCells.Adaptive(150.dp),
                                 horizontalArrangement = Arrangement.spacedBy(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(20.dp),
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .weight(1f),
-                                contentPadding = PaddingValues(bottom = 32.dp)
+                                contentPadding = PaddingValues(start = 12.dp, end = 16.dp, top = 18.dp, bottom = 48.dp)
                             ) {
                                 items(
                                     items = state.filteredItems,

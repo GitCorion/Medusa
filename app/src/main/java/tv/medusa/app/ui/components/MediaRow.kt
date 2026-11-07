@@ -98,7 +98,7 @@ fun MediaRow(
                 section.title.contains("Coleccion", ignoreCase = true)
 
         LazyRow(
-            contentPadding = PaddingValues(horizontal = 48.dp, vertical = 8.dp),
+            contentPadding = PaddingValues(start = 48.dp, end = 48.dp, top = 18.dp, bottom = 24.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             modifier = Modifier
                 .fillMaxWidth()

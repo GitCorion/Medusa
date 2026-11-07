@@ -76,6 +76,7 @@ fun EpisodeCard(
         modifier = modifier
             .handleTouchClick { onClick() }
             .width(220.dp)
+            .zIndex(if (isFocused) 10f else 0f)
             .onFocusChanged { isFocused = it.isFocused }
             .clip(RoundedCornerShape(10.dp))
             .then(

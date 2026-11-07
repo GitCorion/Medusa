@@ -439,9 +439,9 @@ fun SearchScreen(
                             // Cuadrícula TV de Resultados (Pósters interactivos)
                             LazyVerticalGrid(
                                 columns = GridCells.Adaptive(minSize = 140.dp),
-                                horizontalArrangement = Arrangement.spacedBy(14.dp),
-                                verticalArrangement = Arrangement.spacedBy(14.dp),
-                                contentPadding = PaddingValues(bottom = 32.dp),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(20.dp),
+                                contentPadding = PaddingValues(start = 12.dp, end = 16.dp, top = 18.dp, bottom = 48.dp),
                                 modifier = Modifier.fillMaxSize()
                             ) {
                                 items(
