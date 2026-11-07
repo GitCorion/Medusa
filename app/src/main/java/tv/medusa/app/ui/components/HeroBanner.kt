@@ -10,6 +10,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -425,7 +426,13 @@ fun HeroBanner(
                                         ),
                                         color = Color.White,
                                         maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.basicMarquee(
+                                            iterations = Int.MAX_VALUE,
+                                            initialDelayMillis = 1500,
+                                            repeatDelayMillis = 2000,
+                                            velocity = 35.dp
+                                        )
                                     )
                                 }
                             }
@@ -442,7 +449,13 @@ fun HeroBanner(
                                 ),
                                 color = Color.White,
                                 maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.basicMarquee(
+                                    iterations = Int.MAX_VALUE,
+                                    initialDelayMillis = 1500,
+                                    repeatDelayMillis = 2000,
+                                    velocity = 35.dp
+                                )
                             )
                         }
                     }
@@ -462,8 +475,16 @@ fun HeroBanner(
                                 letterSpacing = 0.2.sp
                             ),
                             color = Color(0xFFCBD5E1),
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier
+                                .fillMaxWidth(0.65f)
+                                .basicMarquee(
+                                    iterations = Int.MAX_VALUE,
+                                    initialDelayMillis = 2000,
+                                    repeatDelayMillis = 2000,
+                                    velocity = 30.dp
+                                )
                         )
                     }
                     is HeroSlideState.Movie -> {
@@ -546,8 +567,16 @@ fun HeroBanner(
                                     lineHeight = 20.sp
                                 ),
                                 color = Color(0xFFCBD5E1),
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier
+                                    .fillMaxWidth(0.65f)
+                                    .basicMarquee(
+                                        iterations = Int.MAX_VALUE,
+                                        initialDelayMillis = 2000,
+                                        repeatDelayMillis = 2000,
+                                        velocity = 30.dp
+                                    )
                             )
                         }
                     }

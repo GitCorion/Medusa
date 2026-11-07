@@ -2,6 +2,7 @@ package tv.medusa.app.ui.components
 
 import tv.medusa.app.data.local.ACCENT_CYAN
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -232,7 +233,17 @@ fun EpisodeCard(
                     fontWeight = FontWeight.SemiBold,
                     color = if (isFocused) Color.White else Color(0xFFE2E8F0),
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.then(
+                        if (isFocused) {
+                            Modifier.basicMarquee(
+                                iterations = Int.MAX_VALUE,
+                                initialDelayMillis = 1000,
+                                repeatDelayMillis = 1500,
+                                velocity = 35.dp
+                            )
+                        } else Modifier
+                    )
                 )
 
                 if (!episode.overview.isNullOrBlank()) {
@@ -241,9 +252,19 @@ fun EpisodeCard(
                         text = episode.overview,
                         style = MaterialTheme.typography.bodySmall,
                         color = Color(0xFF94A3B8),
-                        maxLines = 2,
+                        maxLines = if (isFocused) 1 else 2,
                         overflow = TextOverflow.Ellipsis,
-                        lineHeight = 14.sp
+                        lineHeight = 14.sp,
+                        modifier = Modifier.then(
+                            if (isFocused) {
+                                Modifier.basicMarquee(
+                                    iterations = Int.MAX_VALUE,
+                                    initialDelayMillis = 1500,
+                                    repeatDelayMillis = 1500,
+                                    velocity = 30.dp
+                                )
+                            } else Modifier
+                        )
                     )
                 }
             }

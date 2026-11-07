@@ -10,6 +10,7 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -302,8 +303,14 @@ fun DetailScreen(
                                     style = MaterialTheme.typography.headlineLarge,
                                     color = Color.White,
                                     fontWeight = FontWeight.Bold,
-                                    maxLines = 2,
-                                    overflow = TextOverflow.Ellipsis
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.basicMarquee(
+                                        iterations = Int.MAX_VALUE,
+                                        initialDelayMillis = 1500,
+                                        repeatDelayMillis = 2000,
+                                        velocity = 35.dp
+                                    )
                                 )
                             }
 
