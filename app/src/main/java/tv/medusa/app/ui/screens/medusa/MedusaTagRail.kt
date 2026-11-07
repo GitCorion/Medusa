@@ -206,22 +206,14 @@ fun MedusaTagPill(
     val containerColor = when {
         isFocused -> focusColor
         tag.isSelected -> if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.22f)
-        else -> Color(0x0CFFFFFF)
+        else -> Color(0x0EFFFFFF)
     }
 
     val contentColor = when {
-        isFocused -> Color(0xFF0F172A)
+        isFocused -> Color(0xFF06080D)
         tag.isSelected -> if (isMonochrome) Color.White else focusColor
-        else -> Color(0xFF94A3B8)
+        else -> Color(0xFFCBD5E1)
     }
-
-    val borderColor = when {
-        isFocused -> Color.Transparent
-        tag.isSelected -> if (isMonochrome) Color(0x33FFFFFF) else focusColor.copy(alpha = 0.45f)
-        else -> Color(0x14FFFFFF)
-    }
-
-    val borderWidth = if (tag.isSelected) 1.dp else 0.5.dp
 
     Box(
         modifier = modifier
@@ -229,11 +221,6 @@ fun MedusaTagPill(
             .height(32.dp)
             .clip(RoundedCornerShape(8.dp))
             .background(containerColor)
-            .then(
-                if (!isFocused) {
-                    Modifier.border(borderWidth, borderColor, RoundedCornerShape(8.dp))
-                } else Modifier
-            )
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,

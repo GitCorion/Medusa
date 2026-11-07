@@ -146,7 +146,7 @@ fun MedusaScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF05070B))
+            .background(Color(0xFF06080D))
     ) {
         // Fondo: Solo proyectar backdrop si el usuario ha seleccionado alguna temática.
         // La selección se lee en su propio composable para no recomponer la pantalla al
@@ -165,8 +165,8 @@ fun MedusaScreen(
                     Brush.radialGradient(
                         colors = listOf(
                             if (isMonochrome) Color(0x10FFFFFF) else accentColor.copy(alpha = 0.08f),
-                            Color(0xEE05070B),
-                            Color(0xFF05070B)
+                            Color(0xEE06080D),
+                            Color(0xFF06080D)
                         ),
                         radius = 1200f
                     )
@@ -508,15 +508,9 @@ private fun SelectedTagBadge(
     }
 
     val contentColor = if (isFocused) {
-        Color(0xFF0F172A)
+        Color(0xFF06080D)
     } else {
         if (isMonochrome) Color.White else accentColor
-    }
-
-    val borderColor = if (isFocused) {
-        Color.Transparent
-    } else {
-        if (isMonochrome) Color(0x33FFFFFF) else accentColor.copy(alpha = 0.45f)
     }
 
     Box(
@@ -525,11 +519,6 @@ private fun SelectedTagBadge(
             .height(32.dp)
             .clip(RoundedCornerShape(8.dp))
             .background(containerColor)
-            .then(
-                if (!isFocused) {
-                    Modifier.border(1.dp, borderColor, RoundedCornerShape(8.dp))
-                } else Modifier
-            )
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,

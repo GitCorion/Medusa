@@ -238,7 +238,7 @@ fun TvIntegratedKeyboard(
                 shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
                 scale = ButtonDefaults.scale(focusedScale = 1.08f),
                 colors = ButtonDefaults.colors(
-                    containerColor = Color(0xFF1E2235),
+                    containerColor = Color(0xFF141B26),
                     contentColor = Color(0xFFE2E8F0),
                     focusedContainerColor = focusColor,
                     focusedContentColor = focusContentColor,
@@ -246,8 +246,8 @@ fun TvIntegratedKeyboard(
                     disabledContentColor = Color(0xFF475569).copy(alpha = 0.35f)
                 ),
                 border = ButtonDefaults.border(
-                    border = Border(border = BorderStroke(0.5.dp, Color(0x35FFFFFF))),
-                    focusedBorder = Border(border = BorderStroke(1.5.dp, focusColor)),
+                    border = Border.None,
+                    focusedBorder = Border.None,
                     disabledBorder = Border.None
                 ),
                 modifier = Modifier
@@ -295,7 +295,7 @@ fun TvIntegratedKeyboard(
                 shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
                 scale = ButtonDefaults.scale(focusedScale = 1.08f),
                 colors = ButtonDefaults.colors(
-                    containerColor = Color(0xFF1E2235),
+                    containerColor = Color(0xFF141B26),
                     contentColor = Color(0xFFE2E8F0),
                     focusedContainerColor = focusColor,
                     focusedContentColor = focusContentColor,
@@ -303,8 +303,8 @@ fun TvIntegratedKeyboard(
                     disabledContentColor = Color(0xFF475569).copy(alpha = 0.35f)
                 ),
                 border = ButtonDefaults.border(
-                    border = Border(border = BorderStroke(0.5.dp, Color(0x35FFFFFF))),
-                    focusedBorder = Border(border = BorderStroke(1.5.dp, focusColor)),
+                    border = Border.None,
+                    focusedBorder = Border.None,
                     disabledBorder = Border.None
                 ),
                 modifier = Modifier
@@ -348,7 +348,7 @@ fun TvIntegratedKeyboard(
                 shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
                 scale = ButtonDefaults.scale(focusedScale = 1.08f),
                 colors = ButtonDefaults.colors(
-                    containerColor = Color(0xFF1E2235),
+                    containerColor = Color(0xFF141B26),
                     contentColor = Color(0xFFE2E8F0),
                     focusedContainerColor = focusColor,
                     focusedContentColor = focusContentColor,
@@ -356,8 +356,8 @@ fun TvIntegratedKeyboard(
                     disabledContentColor = Color(0xFF475569).copy(alpha = 0.35f)
                 ),
                 border = ButtonDefaults.border(
-                    border = Border(border = BorderStroke(0.5.dp, Color(0x35FFFFFF))),
-                    focusedBorder = Border(border = BorderStroke(1.5.dp, focusColor)),
+                    border = Border.None,
+                    focusedBorder = Border.None,
                     disabledBorder = Border.None
                 ),
                 modifier = Modifier
@@ -422,7 +422,7 @@ private fun TvKeyButton(
         shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
         scale = ButtonDefaults.scale(focusedScale = 1.15f),
         colors = ButtonDefaults.colors(
-            containerColor = Color(0xFF161926),
+            containerColor = Color(0xFF0C1017),
             contentColor = Color(0xFFE2E8F0),
             focusedContainerColor = focusColor,
             focusedContentColor = focusContentColor,
@@ -430,8 +430,8 @@ private fun TvKeyButton(
             disabledContentColor = Color(0xFF334155).copy(alpha = 0.20f)
         ),
         border = ButtonDefaults.border(
-            border = Border(border = BorderStroke(0.5.dp, Color(0x20FFFFFF))),
-            focusedBorder = Border(border = BorderStroke(1.5.dp, focusColor)),
+            border = Border.None,
+            focusedBorder = Border.None,
             disabledBorder = Border.None
         ),
         modifier = modifier

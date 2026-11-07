@@ -150,7 +150,7 @@ fun SearchScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF0A0B0E))
+            .background(Color(0xFF06080D))
     ) {
         // Universal Persistent TV TopBar
         TvTopBar(
@@ -183,11 +183,11 @@ fun SearchScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(38.dp)
-                        .background(Color(0xFF131622), RoundedCornerShape(8.dp))
-                        .border(
-                            0.5.dp,
-                            if (uiState.query.isNotEmpty()) Color.White.copy(alpha = 0.5f) else Color(0x18FFFFFF),
-                            RoundedCornerShape(8.dp)
+                        .background(Color(0xFF0C1017), RoundedCornerShape(8.dp))
+                        .then(
+                            if (uiState.query.isNotEmpty()) {
+                                Modifier.border(1.dp, focusColor.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                            } else Modifier
                         )
                         .padding(horizontal = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -246,7 +246,7 @@ fun SearchScreen(
                                     focusedContentColor = focusContent
                                 ),
                                 border = ButtonDefaults.border(
-                                    border = Border(border = BorderStroke(0.8.dp, Color(0x18FFFFFF))),
+                                    border = Border.None,
                                     focusedBorder = Border.None
                                 ),
                                 modifier = Modifier.height(26.dp)
@@ -277,12 +277,7 @@ fun SearchScreen(
                                 focusedContentColor = focusContent
                             ),
                             border = ButtonDefaults.border(
-                                border = Border(
-                                    border = BorderStroke(
-                                        0.8.dp,
-                                        if (uiState.isPredictiveActive) Color(0x28FFFFFF) else Color(0x18FFFFFF)
-                                    )
-                                ),
+                                border = Border.None,
                                 focusedBorder = Border.None
                             ),
                             modifier = Modifier.height(26.dp)
@@ -337,8 +332,7 @@ fun SearchScreen(
                             Box(
                                 modifier = Modifier
                                     .size(64.dp)
-                                    .background(Color(0x12FFFFFF), CircleShape)
-                                    .border(0.5.dp, Color(0x22FFFFFF), CircleShape),
+                                    .background(Color(0x12FFFFFF), CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
@@ -383,7 +377,7 @@ fun SearchScreen(
                                             focusedContentColor = focusContent
                                         ),
                                         border = ButtonDefaults.border(
-                                            border = Border(border = BorderStroke(0.7.dp, Color(0x22FFFFFF))),
+                                            border = Border.None,
                                             focusedBorder = Border.None
                                         ),
                                         modifier = Modifier.height(26.dp)

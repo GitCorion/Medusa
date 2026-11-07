@@ -94,17 +94,6 @@ fun MedusaMosaicChip(
         MedusaCategoryColors.getColorFor(tag.category, isMonochrome)
     }
 
-    val borderColor by animateColorAsState(
-        targetValue = when {
-            isFocused -> Color.White.copy(alpha = 0.90f)
-            tag.isSelected -> Color.White.copy(alpha = 0.60f)
-            else -> Color(0x18FFFFFF)
-        },
-        label = "mosaicBorderColor"
-    )
-
-    val borderWidth = if (isFocused) 1.5.dp else if (tag.isSelected) 1.dp else 0.5.dp
-
     val backgroundColor = when {
         isFocused -> Color(0xFF1E222D)
         tag.isSelected -> Color(0x28FFFFFF)
@@ -117,7 +106,13 @@ fun MedusaMosaicChip(
             .height(44.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(backgroundColor)
-            .border(borderWidth, borderColor, RoundedCornerShape(12.dp))
+            .then(
+                if (isFocused) {
+                    Modifier.border(2.dp, Color(0xFF00F2FE), RoundedCornerShape(12.dp))
+                } else if (tag.isSelected) {
+                    Modifier.border(1.dp, Color(0x44FFFFFF), RoundedCornerShape(12.dp))
+                } else Modifier
+            )
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,

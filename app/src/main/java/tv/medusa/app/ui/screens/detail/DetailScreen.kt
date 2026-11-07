@@ -131,7 +131,7 @@ fun DetailScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF07070B))
+            .background(Color(0xFF06080D))
     ) {
         when (val state = uiState) {
             is DetailUiState.Loading -> {
@@ -200,9 +200,9 @@ fun DetailScreen(
                         .background(
                             Brush.horizontalGradient(
                                 colors = listOf(
-                                    Color(0xF507070B),
-                                    Color(0xD807070B),
-                                    Color(0x8807070B),
+                                    Color(0xF506080D),
+                                    Color(0xD806080D),
+                                    Color(0x8806080D),
                                     Color.Transparent
                                 ),
                                 startX = 0f,
@@ -217,8 +217,8 @@ fun DetailScreen(
                             Brush.verticalGradient(
                                 colors = listOf(
                                     Color.Transparent,
-                                    Color(0x5507070B),
-                                    Color(0xFF07070B)
+                                    Color(0x5506080D),
+                                    Color(0xFF06080D)
                                 )
                             )
                         )
@@ -238,7 +238,6 @@ fun DetailScreen(
                                 .width(210.dp)
                                 .aspectRatio(2f / 3f)
                                 .clip(RoundedCornerShape(12.dp))
-                                .border(1.dp, Color(0xFF222438), RoundedCornerShape(12.dp))
                         ) {
                             AsyncImage(
                                 model = state.posterUrl,
@@ -387,8 +386,7 @@ fun DetailScreen(
                                 TvPill(
                                     text = stringResource(R.string.detail_progress, playedEps, totalEps ?: 0),
                                     containerColor = if (isMonochrome) Color(0x22FFFFFF) else focusColor.copy(alpha = 0.16f),
-                                    textColor = if (isMonochrome) Color.White else focusColor,
-                                    borderColor = if (isMonochrome) Color(0x44FFFFFF) else focusColor.copy(alpha = 0.40f)
+                                    textColor = if (isMonochrome) Color.White else focusColor
                                 )
                             }
 
@@ -396,8 +394,7 @@ fun DetailScreen(
                                 TvPill(
                                     text = stringResource(R.string.badge_in_progress),
                                     containerColor = if (isMonochrome) Color(0x22FFFFFF) else focusColor.copy(alpha = 0.16f),
-                                    textColor = if (isMonochrome) Color.White else focusColor,
-                                    borderColor = if (isMonochrome) Color(0x44FFFFFF) else focusColor.copy(alpha = 0.40f)
+                                    textColor = if (isMonochrome) Color.White else focusColor
                                 )
                             }
 
@@ -405,8 +402,7 @@ fun DetailScreen(
                                 TvPill(
                                     text = stringResource(R.string.badge_favorite),
                                     containerColor = if (isMonochrome) Color(0x18FFFFFF) else Color(0x20F43F5E),
-                                    textColor = if (isMonochrome) Color(0xFFE2E8F0) else Color(0xFFFDA4AF),
-                                    borderColor = if (isMonochrome) Color(0x25FFFFFF) else Color(0x35F43F5E)
+                                    textColor = if (isMonochrome) Color(0xFFE2E8F0) else Color(0xFFFDA4AF)
                                 )
                             }
 
@@ -414,8 +410,7 @@ fun DetailScreen(
                                 TvPill(
                                     text = stringResource(R.string.badge_watched),
                                     containerColor = if (isMonochrome) Color(0x18FFFFFF) else Color(0x2010B981),
-                                    textColor = if (isMonochrome) Color(0xFFE2E8F0) else Color(0xFF6EE7B7),
-                                    borderColor = if (isMonochrome) Color(0x25FFFFFF) else Color(0x3510B981)
+                                    textColor = if (isMonochrome) Color(0xFFE2E8F0) else Color(0xFF6EE7B7)
                                 )
                             }
                         }
@@ -461,7 +456,7 @@ fun DetailScreen(
                                     onPlay(playTargetId)
                                 },
                                 contentPadding = actionButtonPadding,
-                                scale = ButtonDefaults.scale(focusedScale = 1.05f),
+                                scale = ButtonDefaults.scale(focusedScale = 1.06f),
                                 colors = ButtonDefaults.colors(
                                     containerColor = if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.20f),
                                     contentColor = if (isMonochrome) Color.White else Color(0xFFE0F2FE),
@@ -469,10 +464,7 @@ fun DetailScreen(
                                     focusedContentColor = focusContent
                                 ),
                                 border = ButtonDefaults.border(
-                                    border = Border(
-                                        border = BorderStroke(0.5.dp, if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.45f)),
-                                        shape = RoundedCornerShape(10.dp)
-                                    ),
+                                    border = Border.None,
                                     focusedBorder = Border.None
                                 ),
                                 shape = ButtonDefaults.shape(shape = RoundedCornerShape(10.dp)),
@@ -505,13 +497,10 @@ fun DetailScreen(
                                         onNavigateToDetail(entity.seriesId)
                                     },
                                     contentPadding = actionButtonPadding,
-                                    scale = ButtonDefaults.scale(focusedScale = 1.05f),
+                                    scale = ButtonDefaults.scale(focusedScale = 1.06f),
                                     shape = ButtonDefaults.shape(shape = RoundedCornerShape(10.dp)),
                                     border = ButtonDefaults.border(
-                                        border = Border(
-                                            border = BorderStroke(0.5.dp, if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.30f)),
-                                            shape = RoundedCornerShape(10.dp)
-                                        ),
+                                        border = Border.None,
                                         focusedBorder = Border.None
                                     ),
                                     modifier = Modifier.handleTouchClick { onNavigateToDetail(entity.seriesId) },
@@ -542,18 +531,15 @@ fun DetailScreen(
                                 }
                             }
 
-                            // 2. Favorite Toggle Button
+                            // 3. Favorite Toggle Button
                             var isFavFocused by remember { mutableStateOf(false) }
                             Button(
                                 onClick = { viewModel.toggleFavorite() },
                                 contentPadding = actionButtonPadding,
-                                scale = ButtonDefaults.scale(focusedScale = 1.05f),
+                                scale = ButtonDefaults.scale(focusedScale = 1.06f),
                                 shape = ButtonDefaults.shape(shape = RoundedCornerShape(10.dp)),
                                 border = ButtonDefaults.border(
-                                    border = Border(
-                                        border = BorderStroke(0.5.dp, if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.30f)),
-                                        shape = RoundedCornerShape(10.dp)
-                                    ),
+                                    border = Border.None,
                                     focusedBorder = Border.None
                                 ),
                                 modifier = Modifier
@@ -591,18 +577,15 @@ fun DetailScreen(
                                 }
                             }
 
-                            // 3. Trailer Button
+                            // 4. Trailer Button
                             if (state.trailerUrl != null) {
                                 Button(
                                     onClick = { isShowingTrailer = true },
                                     contentPadding = actionButtonPadding,
-                                    scale = ButtonDefaults.scale(focusedScale = 1.05f),
+                                    scale = ButtonDefaults.scale(focusedScale = 1.06f),
                                     shape = ButtonDefaults.shape(shape = RoundedCornerShape(10.dp)),
                                     border = ButtonDefaults.border(
-                                        border = Border(
-                                            border = BorderStroke(0.5.dp, if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.30f)),
-                                            shape = RoundedCornerShape(10.dp)
-                                        ),
+                                        border = Border.None,
                                         focusedBorder = Border.None
                                     ),
                                     modifier = Modifier.handleTouchClick { isShowingTrailer = true },
@@ -629,18 +612,15 @@ fun DetailScreen(
                                 }
                             }
 
-                            // 4. Mark as Watched / Watched Button
+                            // 5. Mark as Watched / Watched Button
                             var isWatchedFocused by remember { mutableStateOf(false) }
                             Button(
                                 onClick = { viewModel.togglePlayed() },
                                 contentPadding = actionButtonPadding,
-                                scale = ButtonDefaults.scale(focusedScale = 1.05f),
+                                scale = ButtonDefaults.scale(focusedScale = 1.06f),
                                 shape = ButtonDefaults.shape(shape = RoundedCornerShape(10.dp)),
                                 border = ButtonDefaults.border(
-                                    border = Border(
-                                        border = BorderStroke(0.5.dp, if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.30f)),
-                                        shape = RoundedCornerShape(10.dp)
-                                    ),
+                                    border = Border.None,
                                     focusedBorder = Border.None
                                 ),
                                 modifier = Modifier
@@ -684,8 +664,7 @@ fun DetailScreen(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(Color(0xFF111220), RoundedCornerShape(12.dp))
-                                .border(0.5.dp, Color(0x18FFFFFF), RoundedCornerShape(12.dp))
+                                .background(Color(0xFF0C1017), RoundedCornerShape(12.dp))
                                 .padding(18.dp)
                         ) {
                             Column {
@@ -751,13 +730,7 @@ fun DetailScreen(
                                                 focusedContentColor = focusContent
                                             ),
                                             border = ButtonDefaults.border(
-                                                border = Border(
-                                                    border = BorderStroke(
-                                                        0.5.dp,
-                                                        if (isSelected) Color(0x33FFFFFF) else Color(0x18FFFFFF)
-                                                    ),
-                                                    shape = RoundedCornerShape(16.dp)
-                                                ),
+                                                border = Border.None,
                                                 focusedBorder = Border.None
                                             ),
                                             shape = ButtonDefaults.shape(shape = RoundedCornerShape(16.dp))
@@ -986,7 +959,7 @@ fun DetailScreen(
                         ),
                         shape = ButtonDefaults.shape(CircleShape),
                         border = ButtonDefaults.border(
-                            border = Border(border = BorderStroke(1.dp, Color(0x33FFFFFF)), shape = CircleShape),
+                            border = Border.None,
                             focusedBorder = Border.None
                         ),
                         modifier = Modifier
