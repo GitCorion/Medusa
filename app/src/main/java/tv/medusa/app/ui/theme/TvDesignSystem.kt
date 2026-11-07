@@ -31,18 +31,19 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.Text
 
 object TvColors {
-    val Background = Color(0xFF0A0B0E)
-    val SurfaceDark = Color(0xFF12141A)
-    val SurfaceElevated = Color(0xFF181B24)
-    val SurfaceGlass = Color(0x18FFFFFF)
-    val SurfaceGlassFocused = Color(0xFFFFFFFF)
+    val Background = AbyssVoid
+    val SurfaceDark = AbyssSurface
+    val SurfaceElevated = AbyssSurfaceElevated
+    val SurfaceGlass = AbyssGlass
+    val SurfaceGlassFocused = Color.White
 
-    val TextPrimary = Color(0xFFFFFFFF)
-    val TextSecondary = Color(0xFF94A3B8)
-    val TextTertiary = Color(0xFF64748B)
+    val TextPrimary = tv.medusa.app.ui.theme.TextPrimary
+    val TextSecondary = tv.medusa.app.ui.theme.TextSecondary
+    val TextTertiary = tv.medusa.app.ui.theme.TextTertiary
 
-    val BorderSubtle = Color(0x18FFFFFF)
-    val BorderFocused = Color(0xFFFFFFFF)
+    // Anti-slop: zero borders in idle state
+    val BorderSubtle = Color.Transparent
+    val BorderFocused = CyanBioluminescent
 }
 
 @OptIn(ExperimentalTvMaterial3Api::class)
@@ -57,14 +58,12 @@ fun TvRatingBadge(
     val formattedRating = String.format(Locale.US, "%.1f", rating)
     val isMonochrome = LocalIsMonochromeTheme.current
 
-    val starTint = if (isMonochrome) Color.White else Color(0xFFFBBF24)
-    val badgeBg = if (isMonochrome) Color(0xCC000000) else Color(0xDC080A10)
-    val badgeBorder = if (isMonochrome) Color(0x33FFFFFF) else Color(0x44FBBF24)
+    val starTint = if (isMonochrome) Color.White else AmberCinema
+    val badgeBg = if (isMonochrome) Color(0xCC000000) else Color(0xD006080D)
 
     Box(
         modifier = modifier
             .background(badgeBg, RoundedCornerShape(4.dp))
-            .border(0.5.dp, badgeBorder, RoundedCornerShape(4.dp))
             .padding(
                 horizontal = if (compact) 5.dp else 7.dp,
                 vertical = if (compact) 2.dp else 3.dp
@@ -98,7 +97,7 @@ fun TvPill(
     modifier: Modifier = Modifier,
     containerColor: Color = Color(0x18FFFFFF),
     textColor: Color = Color(0xFFE2E8F0),
-    borderColor: Color? = Color(0x25FFFFFF),
+    borderColor: Color? = null,
     fontSizeSp: Int = 10,
     horizontalPadDp: Dp = 7.dp,
     verticalPadDp: Dp = 3.dp
@@ -107,7 +106,7 @@ fun TvPill(
         modifier = modifier
             .background(containerColor, RoundedCornerShape(4.dp))
             .then(
-                if (borderColor != null) {
+                if (borderColor != null && borderColor != Color.Transparent) {
                     Modifier.border(0.5.dp, borderColor, RoundedCornerShape(4.dp))
                 } else Modifier
             )
@@ -128,21 +127,21 @@ fun TvPill(
 object TvAccent {
     fun getColor(key: String): Color {
         return when (key) {
-            ACCENT_AMBER -> Color(0xFFF59E0B) // Amber Cinema Warm
-            ACCENT_WHITE -> Color(0xFFFFFFFF) // Pure White Minimal
-            else -> Color(0xFF00A4DC)                                         // Jellyfin Cyan Sky
+            ACCENT_AMBER -> AmberCinema             // Amber Cinema Warm
+            ACCENT_WHITE -> Color(0xFFFFFFFF)       // Pure White Minimal
+            else -> CyanBioluminescent             // Medusa Cyan Bioluminescent
         }
     }
 
     fun getFocusedContentColor(key: String): Color {
-        return Color(0xFF0F172A) // Dark slate high-contrast text on bright backgrounds
+        return CyanFocusedContent // Dark void #06080D high-contrast text on bright backgrounds
     }
 
     fun getDisplayName(key: String): String {
         return when (key) {
             ACCENT_AMBER -> "Ámbar Cine"
             ACCENT_WHITE -> "Blanco Puro"
-            else -> "Azul Cian (Jellyfin)"
+            else -> "Cian Bioluminiscente"
         }
     }
 
@@ -150,7 +149,7 @@ object TvAccent {
         return when (key) {
             ACCENT_AMBER -> "Tono ámbar dorado cálido inspirado en salas de cine clásicas."
             ACCENT_WHITE -> "Resalte blanco puro estilo Apple TV minimalista."
-            else -> "Azul cian característico de Jellyfin, moderno y con gran contraste."
+            else -> "Cian abisal vibrante con máximo contraste para salón a 3 metros."
         }
     }
 }

@@ -109,30 +109,25 @@ private fun GenreChip(
             .handleTouchClick { onClick() },
         shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(10.dp)),
         colors = ClickableSurfaceDefaults.colors(
-            containerColor = if (isMonochrome) Color(0x10FFFFFF) else focusColor.copy(alpha = 0.12f),
+            containerColor = Color(0x14FFFFFF),
             focusedContainerColor = focusColor,
-            contentColor = if (isMonochrome) Color(0xFFF1F5F9) else Color(0xFFE0F2FE),
+            contentColor = Color(0xFFF1F5F9),
             focusedContentColor = focusContent
         ),
         border = ClickableSurfaceDefaults.border(
-            border = Border(
-                border = BorderStroke(
-                    0.75.dp,
-                    if (isMonochrome) Color(0x18FFFFFF) else focusColor.copy(alpha = 0.28f)
-                )
-            ),
+            border = Border.None,
             focusedBorder = Border.None
         ),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.05f)
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.08f)
     ) {
         Box(
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+            modifier = Modifier.padding(horizontal = 22.dp, vertical = 12.dp),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text = genreName,
-                color = if (isFocused) focusContent else (if (isMonochrome) Color(0xFFF1F5F9) else Color(0xFFE0F2FE)),
-                fontWeight = FontWeight.SemiBold,
+                color = if (isFocused) focusContent else Color(0xFFF1F5F9),
+                fontWeight = if (isFocused) FontWeight.Bold else FontWeight.SemiBold,
                 fontSize = 13.sp,
                 letterSpacing = 0.5.sp
             )

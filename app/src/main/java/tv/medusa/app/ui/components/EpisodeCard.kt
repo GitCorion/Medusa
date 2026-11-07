@@ -69,19 +69,19 @@ fun EpisodeCard(
     Card(
         onClick = onClick,
         colors = CardDefaults.colors(
-            containerColor = if (isFocused) Color(0xFF1E222D) else Color(0xFF111319),
-            focusedContainerColor = Color(0xFF1E222D)
+            containerColor = Color(0xFF0C1017),
+            focusedContainerColor = Color(0xFF141B26)
         ),
-        scale = CardDefaults.scale(focusedScale = 1.05f),
+        scale = CardDefaults.scale(focusedScale = 1.08f),
         modifier = modifier
             .handleTouchClick { onClick() }
             .width(220.dp)
             .onFocusChanged { isFocused = it.isFocused }
             .clip(RoundedCornerShape(10.dp))
-            .border(
-                width = if (isFocused) 1.5.dp else 0.5.dp,
-                color = if (isFocused) focusColor else (if (isMonochrome) Color(0x18FFFFFF) else focusColor.copy(alpha = 0.16f)),
-                shape = RoundedCornerShape(10.dp)
+            .then(
+                if (isFocused) {
+                    Modifier.border(2.dp, focusColor, RoundedCornerShape(10.dp))
+                } else Modifier
             )
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {

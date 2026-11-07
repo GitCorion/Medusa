@@ -31,9 +31,16 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
@@ -62,6 +69,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -128,6 +136,8 @@ fun HomeScreen(
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
+    val heroActionFocusRequester = remember { FocusRequester() }
+    val topBarHomeFocusRequester = remember { FocusRequester() }
     var backPressedOnce by remember { mutableStateOf(false) }
 
     val exitHintStr = stringResource(R.string.home_exit_hint)
@@ -181,7 +191,11 @@ fun HomeScreen(
     val focusedItem by viewModel.focusedItem.collectAsStateWithLifecycle()
     val isBackdropEnabled by viewModel.isBackdropEnabled.collectAsStateWithLifecycle()
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF06080D))
+    ) {
         // Global ambient backdrop crossfade (aislado en su propio composable)
         HomeGlobalBackdrop(
             focusedItemBackdrop = focusedItem?.backdropUrl,
@@ -190,50 +204,14 @@ fun HomeScreen(
             isBackdropEnabled = isBackdropEnabled
         )
 
-        val topBarGradient = remember {
-            Brush.verticalGradient(
-                colors = listOf(
-                    Color(0xEE07070B),
-                    Color(0xAA07070B),
-                    Color(0x0007070B)
-                )
-            )
-        }
-
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-        ) {
-        // Universal Persistent TV TopBar con gradiente protector superior
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(topBarGradient)
-        ) {
-            TvTopBar(
-                selectedTab = TvNavTab.HOME,
-                onNavigateHome = { viewModel.loadHomeFeed(forceRefresh = false) },
-                onOpenMedusa = onOpenMedusa,
-                onOpenFavorites = onOpenFavorites,
-                onOpenSearch = onOpenSearch,
-                onOpenSettings = onOpenSettings,
-                accentColorKey = accentColorKey,
-                buttonStyleKey = buttonStyleKey,
-                isMonochrome = isMonochrome,
-                syncProgress = syncProgress,
-                localMediaCount = localMediaCount,
-                modifier = Modifier.onFocusChanged { focusState ->
-                    if (focusState.hasFocus) {
-                        viewModel.setFocusedItem(null)
-                    }
-                }
-            )
-        }
-
-
         when (val state = uiState) {
             is HomeUiState.Loading -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(top = 76.dp),
+                    contentAlignment = Alignment.Center
+                ) {
                     JellyLoadingIndicator(
                         size = 84.dp,
                         message = stringResource(R.string.home_loading),
@@ -243,7 +221,12 @@ fun HomeScreen(
             }
 
             is HomeUiState.EmptySettings -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(top = 76.dp),
+                    contentAlignment = Alignment.Center
+                ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(
                             imageVector = Icons.Rounded.Dns,
@@ -455,6 +438,12 @@ fun HomeScreen(
                                 onActiveHeroChanged = { activeItem -> backdropState.carouselBackdrop = activeItem.backdropUrl },
                                 seasonalEvent = activeSeasonalEvent,
                                 seasonalAudioEnabled = seasonalAudioEnabled,
+                                actionFocusRequester = heroActionFocusRequester,
+                                onUpFromHero = {
+                                    try {
+                                        topBarHomeFocusRequester.requestFocus()
+                                    } catch (_: Exception) {}
+                                },
                                 onExploreSeasonal = {
                                     if (activeSeasonalEvent != null) {
                                         if (isProUser) {
@@ -524,7 +513,68 @@ fun HomeScreen(
                 }
             }
         }
-    }
+
+        // Universal Persistent TV TopBar flotando directamente sobre el HeroBanner (se oculta al hacer scroll)
+        val topBarGradient = remember {
+            Brush.verticalGradient(
+                colors = listOf(
+                    Color(0xD906080D),
+                    Color(0x6006080D),
+                    Color.Transparent
+                )
+            )
+        }
+
+        val isTopBarVisible by remember(listState) {
+            derivedStateOf {
+                listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset < 60
+            }
+        }
+
+        AnimatedVisibility(
+            visible = isTopBarVisible,
+            enter = fadeIn(tween(250)) + slideInVertically(tween(250)) { -it },
+            exit = fadeOut(tween(200)) + slideOutVertically(tween(200)) { -it },
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .zIndex(10f)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(topBarGradient)
+            ) {
+                TvTopBar(
+                    selectedTab = TvNavTab.HOME,
+                    onNavigateHome = { viewModel.loadHomeFeed(forceRefresh = false) },
+                    onOpenMedusa = onOpenMedusa,
+                    onOpenFavorites = onOpenFavorites,
+                    onOpenSearch = onOpenSearch,
+                    onOpenSettings = onOpenSettings,
+                    accentColorKey = accentColorKey,
+                    buttonStyleKey = buttonStyleKey,
+                    isMonochrome = isMonochrome,
+                    syncProgress = syncProgress,
+                    localMediaCount = localMediaCount,
+                    homeFocusRequester = topBarHomeFocusRequester,
+                    onDownNav = {
+                        coroutineScope.launch {
+                            if (listState.firstVisibleItemIndex > 0) {
+                                listState.animateScrollToItem(0)
+                            }
+                            try {
+                                heroActionFocusRequester.requestFocus()
+                            } catch (_: Exception) {}
+                        }
+                    },
+                    modifier = Modifier.onFocusChanged { focusState ->
+                        if (focusState.hasFocus) {
+                            viewModel.setFocusedItem(null)
+                        }
+                    }
+                )
+            }
+        }
 
 
 

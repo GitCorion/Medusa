@@ -101,12 +101,12 @@ fun LandscapeMediaCard(
         onClick = safeOnClick,
         onLongClick = effectiveLongClick,
         colors = CardDefaults.colors(
-            containerColor = if (isFocused) Color(0xFF1E222D) else Color(0xFF111319),
-            focusedContainerColor = Color(0xFF1E222D)
+            containerColor = Color(0xFF0C1017),
+            focusedContainerColor = Color(0xFF141B26)
         ),
         scale = CardDefaults.scale(
             scale = 1.0f,
-            focusedScale = 1.05f
+            focusedScale = 1.08f
         ),
         modifier = modifier
             .handleTouchClick(onLongClick = effectiveLongClick, onClick = safeOnClick)
@@ -116,17 +116,17 @@ fun LandscapeMediaCard(
                 if (it.isFocused) onFocus()
             }
             .clip(RoundedCornerShape(10.dp))
-            .border(
-                width = if (isFocused) 1.5.dp else 0.5.dp,
-                color = if (isFocused) focusColor else (if (isMonochrome) Color(0x18FFFFFF) else focusColor.copy(alpha = 0.16f)),
-                shape = RoundedCornerShape(10.dp)
+            .then(
+                if (isFocused) {
+                    Modifier.border(2.dp, focusColor, RoundedCornerShape(10.dp))
+                } else Modifier
             )
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(16f / 9f)
-                .background(Color(0xFF0F1117))
+                .background(if (isFocused) Color(0xFF181F2C) else Color(0xFF0C1017))
         ) {
             var isImageError by remember(item.id, imageModel) { mutableStateOf(false) }
 
@@ -245,15 +245,18 @@ fun LandscapeMediaCard(
                 Box(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
+                        .padding(start = 8.dp, end = 8.dp, bottom = 6.dp)
                         .fillMaxWidth()
-                        .height(3.dp)
-                        .background(Color(0x55000000))
+                        .height(3.5.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(Color(0x80000000))
                 ) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth(0.45f) // progreso estimado
                             .fillMaxSize()
-                            .background(focusColor)
+                            .clip(RoundedCornerShape(2.dp))
+                            .background(if (isFocused) Color.White else focusColor)
                     )
                 }
             }

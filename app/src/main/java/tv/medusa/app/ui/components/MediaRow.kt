@@ -64,8 +64,7 @@ fun MediaRow(
                 TvPill(
                     text = badgeText,
                     containerColor = if (isMonochrome) Color(0x18FFFFFF) else focusColor.copy(alpha = 0.16f),
-                    textColor = if (isMonochrome) Color(0xFFCBD5E1) else Color(0xFF7DD3FC),
-                    borderColor = if (isMonochrome) Color(0x22FFFFFF) else focusColor.copy(alpha = 0.35f)
+                    textColor = if (isMonochrome) Color(0xFFCBD5E1) else Color(0xFF7DD3FC)
                 )
                 Spacer(modifier = Modifier.width(10.dp))
             }

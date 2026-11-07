@@ -12,10 +12,10 @@ import androidx.compose.material3.darkColorScheme as m3DarkColorScheme
 
 import tv.medusa.app.data.local.ACCENT_CYAN
 
-private val DeepBackground = Color(0xFF0C0C12)
-private val SurfaceDark = Color(0xFF161622)
-private val TextWhite = Color(0xFFF5F5FA)
-private val TextMuted = Color(0xFFB0B0C4)
+private val DeepBackground = AbyssVoid
+private val SurfaceDark = AbyssSurface
+private val TextWhite = TextPrimary
+private val TextMuted = TextSecondary
 
 val LocalBillingManager = staticCompositionLocalOf<BillingManager?> { null }
 

@@ -103,12 +103,12 @@ fun MediaCard(
         onClick = safeOnClick,
         onLongClick = effectiveLongClick,
         colors = CardDefaults.colors(
-            containerColor = if (isFocused) Color(0xFF1E222D) else Color(0xFF111319),
-            focusedContainerColor = Color(0xFF1E222D)
+            containerColor = Color(0xFF0C1017),
+            focusedContainerColor = Color(0xFF141B26)
         ),
         scale = CardDefaults.scale(
             scale = 1.0f,
-            focusedScale = 1.05f
+            focusedScale = 1.08f
         ),
         modifier = modifier
             .handleTouchClick(onLongClick = effectiveLongClick, onClick = safeOnClick)
@@ -120,16 +120,16 @@ fun MediaCard(
                 }
             }
             .clip(RoundedCornerShape(10.dp))
-            .border(
-                width = if (isFocused) 1.5.dp else 0.5.dp,
-                color = if (isFocused) focusColor else (if (isMonochrome) Color(0x18FFFFFF) else focusColor.copy(alpha = 0.16f)),
-                shape = RoundedCornerShape(10.dp)
+            .then(
+                if (isFocused) {
+                    Modifier.border(2.dp, focusColor, RoundedCornerShape(10.dp))
+                } else Modifier
             )
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(if (isFocused) Color(0xFF1B1F2A) else Color(0xFF0F1117))
+                .background(if (isFocused) Color(0xFF181F2C) else Color(0xFF0C1017))
         ) {
             Box(
                 modifier = Modifier
@@ -296,16 +296,19 @@ fun MediaCard(
                 if (progressFraction != null) {
                     Box(
                         modifier = Modifier
-                            .align(Alignment.BottomStart)
+                            .align(Alignment.BottomCenter)
+                            .padding(start = 8.dp, end = 8.dp, bottom = 6.dp)
                             .fillMaxWidth()
-                            .height(3.dp)
-                            .background(Color(0x66000000))
+                            .height(3.5.dp)
+                            .clip(RoundedCornerShape(2.dp))
+                            .background(Color(0x80000000))
                     ) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth(progressFraction)
-                                .height(3.dp)
-                                .background(if (isMonochrome) Color.White else focusColor)
+                                .height(3.5.dp)
+                                .clip(RoundedCornerShape(2.dp))
+                                .background(if (isFocused) Color.White else (if (isMonochrome) Color.White else focusColor))
                         )
                     }
                 }
@@ -338,7 +341,7 @@ fun MediaCard(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 10.dp, vertical = 8.dp)
+                    .padding(start = 10.dp, end = 10.dp, top = 8.dp, bottom = 12.dp)
             ) {
                 Text(
                     text = item.title,

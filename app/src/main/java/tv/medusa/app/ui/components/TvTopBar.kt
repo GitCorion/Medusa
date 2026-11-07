@@ -45,6 +45,7 @@ import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -94,8 +95,10 @@ fun TvTopBar(
     modifier: Modifier = Modifier,
     syncProgress: SyncProgress? = null,
     localMediaCount: Int = 0,
+    homeFocusRequester: FocusRequester? = null,
     medusaFocusRequester: FocusRequester? = null,
-    onDownFromMedusa: (() -> Unit)? = null
+    onDownFromMedusa: (() -> Unit)? = null,
+    onDownNav: (() -> Unit)? = null
 ) {
     val focusColor = if (isMonochrome) Color.White else TvAccent.getColor(accentColorKey)
     val focusContent = if (isMonochrome) Color(0xFF0F172A) else TvAccent.getFocusedContentColor(accentColorKey)
@@ -103,6 +106,15 @@ fun TvTopBar(
     val showTopText = buttonStyleKey != BUTTON_STYLE_ICONS_ONLY
     val autoUpdateInfo by AppUpdateManager.updateInfo.collectAsStateWithLifecycle()
     val hasAvailableUpdate = autoUpdateInfo?.hasUpdate == true
+
+    val navDownModifier = if (onDownNav != null) {
+        Modifier.onPreviewKeyEvent { keyEvent ->
+            if (keyEvent.type == KeyEventType.KeyDown && keyEvent.key == Key.DirectionDown) {
+                onDownNav()
+                true
+            } else false
+        }
+    } else Modifier
 
     Row(
         modifier = modifier
@@ -141,7 +153,6 @@ fun TvTopBar(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
                         .background(if (isMonochrome) Color(0x22FFFFFF) else focusColor.copy(alpha = 0.20f), RoundedCornerShape(16.dp))
-                        .border(0.75.dp, if (isMonochrome) Color(0x55FFFFFF) else focusColor.copy(alpha = 0.45f), RoundedCornerShape(16.dp))
                         .padding(horizontal = 8.dp, vertical = 6.dp)
                 ) {
                     CircularProgressIndicator(
@@ -156,7 +167,6 @@ fun TvTopBar(
                     modifier = Modifier
                         .widthIn(max = 260.dp)
                         .background(Color(0x30EF4444), RoundedCornerShape(16.dp))
-                        .border(0.75.dp, Color(0x70EF4444), RoundedCornerShape(16.dp))
                         .padding(horizontal = 10.dp, vertical = 5.dp)
                 ) {
                     Icon(
@@ -190,7 +200,10 @@ fun TvTopBar(
             val isHomeActive = selectedTab == TvNavTab.HOME
             Button(
                 onClick = onNavigateHome,
-                modifier = Modifier.handleTouchClick { onNavigateHome() },
+                modifier = Modifier
+                    .then(if (homeFocusRequester != null) Modifier.focusRequester(homeFocusRequester) else Modifier)
+                    .then(navDownModifier)
+                    .handleTouchClick { onNavigateHome() },
                 colors = topBarButtonColors(isHomeActive, isMonochrome, focusColor, focusContent),
                 shape = ButtonDefaults.shape(shape = CircleShape),
                 border = topBarButtonBorder(isHomeActive, isMonochrome, focusColor)
@@ -225,8 +238,9 @@ fun TvTopBar(
             Button(
                 onClick = onOpenMedusa,
                 modifier = Modifier
-                    .handleTouchClick { onOpenMedusa() }
                     .then(if (medusaFocusRequester != null) Modifier.focusRequester(medusaFocusRequester) else Modifier)
+                    .then(navDownModifier)
+                    .handleTouchClick { onOpenMedusa() }
                     .onFocusChanged { isDiscoverFocused = it.isFocused }
                     .onKeyEvent { keyEvent ->
                         if (keyEvent.type == KeyEventType.KeyDown && keyEvent.key == Key.DirectionDown) {
@@ -268,7 +282,9 @@ fun TvTopBar(
             val isFavoritesActive = selectedTab == TvNavTab.FAVORITES
             Button(
                 onClick = onOpenFavorites,
-                modifier = Modifier.handleTouchClick { onOpenFavorites() },
+                modifier = Modifier
+                    .then(navDownModifier)
+                    .handleTouchClick { onOpenFavorites() },
                 colors = topBarButtonColors(isFavoritesActive, isMonochrome, focusColor, focusContent),
                 shape = ButtonDefaults.shape(shape = CircleShape),
                 border = topBarButtonBorder(isFavoritesActive, isMonochrome, focusColor)
@@ -301,7 +317,9 @@ fun TvTopBar(
             val isSearchActive = selectedTab == TvNavTab.SEARCH
             Button(
                 onClick = onOpenSearch,
-                modifier = Modifier.handleTouchClick { onOpenSearch() },
+                modifier = Modifier
+                    .then(navDownModifier)
+                    .handleTouchClick { onOpenSearch() },
                 colors = topBarButtonColors(isSearchActive, isMonochrome, focusColor, focusContent),
                 shape = ButtonDefaults.shape(shape = CircleShape),
                 border = topBarButtonBorder(isSearchActive, isMonochrome, focusColor)
@@ -334,7 +352,9 @@ fun TvTopBar(
             val isSettingsActive = selectedTab == TvNavTab.SETTINGS
             Button(
                 onClick = onOpenSettings,
-                modifier = Modifier.handleTouchClick { onOpenSettings() },
+                modifier = Modifier
+                    .then(navDownModifier)
+                    .handleTouchClick { onOpenSettings() },
                 colors = topBarButtonColors(isSettingsActive, isMonochrome, focusColor, focusContent),
                 shape = ButtonDefaults.shape(shape = CircleShape),
                 border = topBarButtonBorder(isSettingsActive, isMonochrome, focusColor)
@@ -389,8 +409,8 @@ private fun topBarButtonColors(
     focusColor: Color,
     focusContent: Color
 ) = ButtonDefaults.colors(
-    containerColor = if (isActive) (if (isMonochrome) Color(0x24FFFFFF) else focusColor.copy(alpha = 0.20f)) else (if (isMonochrome) Color(0x0AFFFFFF) else focusColor.copy(alpha = 0.08f)),
-    contentColor = if (isActive) (if (isMonochrome) Color.White else focusColor) else (if (isMonochrome) Color(0xFFCBD5E1) else Color(0xFF7DD3FC).copy(alpha = 0.85f)),
+    containerColor = if (isActive) (if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.20f)) else Color.Transparent,
+    contentColor = if (isActive) (if (isMonochrome) Color.White else focusColor) else Color(0xFF94A3B8),
     focusedContainerColor = focusColor,
     focusedContentColor = focusContent
 )
@@ -401,17 +421,7 @@ private fun topBarButtonBorder(
     isActive: Boolean,
     isMonochrome: Boolean,
     focusColor: Color
-) = if (isActive) {
-    ButtonDefaults.border(
-        border = Border(
-            border = BorderStroke(1.dp, if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.40f)),
-            shape = CircleShape
-        ),
-        focusedBorder = Border.None
-    )
-} else {
-    ButtonDefaults.border(
-        border = if (isMonochrome) Border.None else Border(BorderStroke(0.5.dp, focusColor.copy(alpha = 0.20f)), shape = CircleShape),
-        focusedBorder = Border.None
-    )
-}
+) = ButtonDefaults.border(
+    border = Border.None,
+    focusedBorder = Border.None
+)

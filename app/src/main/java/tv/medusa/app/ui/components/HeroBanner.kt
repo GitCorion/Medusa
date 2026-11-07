@@ -115,7 +115,9 @@ fun HeroBanner(
     seasonalEvent: SeasonalEvent? = null,
     onExploreSeasonal: (() -> Unit)? = null,
     onActiveHeroChanged: ((MediaItem) -> Unit)? = null,
-    seasonalAudioEnabled: Boolean = true
+    seasonalAudioEnabled: Boolean = true,
+    actionFocusRequester: FocusRequester? = null,
+    onUpFromHero: (() -> Unit)? = null
 ) {
     val indicatorTheme = LocalIndicatorTheme.current
     val isMonochrome = LocalIsMonochromeTheme.current ||
@@ -125,7 +127,8 @@ fun HeroBanner(
     val cleanFeatured = remember(featuredItems) { featuredItems.take(6) }
     var carouselIndex by remember { mutableIntStateOf(0) }
     var isHeroFocused by remember { mutableStateOf(false) }
-    val actionButtonFocusRequester = remember { FocusRequester() }
+    val internalActionButtonFocusRequester = remember { FocusRequester() }
+    val effectiveActionFocusRequester = actionFocusRequester ?: internalActionButtonFocusRequester
 
     val hasSeasonalSlide = seasonalEvent != null
     val totalSlides = cleanFeatured.size + (if (hasSeasonalSlide) 1 else 0)
@@ -158,19 +161,19 @@ fun HeroBanner(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(360.dp)
+            .height(390.dp)
             .onFocusChanged { isHeroFocused = it.hasFocus }
             .onPreviewKeyEvent { keyEvent ->
                 if (keyEvent.type == KeyEventType.KeyDown && totalSlides > 1) {
                     when (keyEvent.key) {
                         Key.DirectionLeft -> {
                             carouselIndex = if (carouselIndex > 0) carouselIndex - 1 else totalSlides - 1
-                            actionButtonFocusRequester.requestFocus()
+                            effectiveActionFocusRequester.requestFocus()
                             true
                         }
                         Key.DirectionRight -> {
                             carouselIndex = (carouselIndex + 1) % totalSlides
-                            actionButtonFocusRequester.requestFocus()
+                            effectiveActionFocusRequester.requestFocus()
                             true
                         }
                         else -> false
@@ -351,7 +354,7 @@ fun HeroBanner(
             Column(
                 modifier = Modifier
                     .align(Alignment.TopStart)
-                    .padding(start = 48.dp, end = 24.dp, top = 24.dp, bottom = 14.dp)
+                    .padding(start = 48.dp, end = 24.dp, top = 68.dp, bottom = 14.dp)
                     .fillMaxWidth(0.55f)
             ) {
 
@@ -508,32 +511,28 @@ fun HeroBanner(
                                 TvPill(
                                     text = progressText,
                                     containerColor = Color(0x2238BDF8),
-                                    textColor = if (isMonochrome) Color.White else Color(0xFF38BDF8),
-                                    borderColor = if (isMonochrome) Color(0x33FFFFFF) else Color(0x5500A4DC)
+                                    textColor = if (isMonochrome) Color.White else Color(0xFF38BDF8)
                                 )
                             } else if (hasMovieProgress) {
                                 Spacer(modifier = Modifier.width(10.dp))
                                 TvPill(
                                     text = stringResource(R.string.badge_in_progress),
                                     containerColor = Color(0x2238BDF8),
-                                    textColor = if (isMonochrome) Color.White else Color(0xFF38BDF8),
-                                    borderColor = if (isMonochrome) Color(0x33FFFFFF) else Color(0x5500A4DC)
+                                    textColor = if (isMonochrome) Color.White else Color(0xFF38BDF8)
                                 )
                             } else if (effectiveItem.isPlayed) {
                                 Spacer(modifier = Modifier.width(10.dp))
                                 TvPill(
                                     text = stringResource(R.string.badge_watched),
                                     containerColor = Color(0x2210B981),
-                                    textColor = if (isMonochrome) Color.White else Color(0xFF6EE7B7),
-                                    borderColor = if (isMonochrome) Color(0x33FFFFFF) else Color(0x3310B981)
+                                    textColor = if (isMonochrome) Color.White else Color(0xFF6EE7B7)
                                 )
                             } else if (effectiveItem.isFavorite) {
                                 Spacer(modifier = Modifier.width(10.dp))
                                 TvPill(
                                     text = stringResource(R.string.badge_favorite),
                                     containerColor = Color(0x22EF4444),
-                                    textColor = if (isMonochrome) Color.White else Color(0xFFF87171),
-                                    borderColor = if (isMonochrome) Color(0x33FFFFFF) else Color(0x55EF4444)
+                                    textColor = if (isMonochrome) Color.White else Color(0xFFF87171)
                                 )
                             }
                         }
@@ -569,7 +568,6 @@ fun HeroBanner(
                 val buttonFocusedContainerColor = if (isMonochrome) Color.White else focusColor
                 val buttonContentColor = if (isMonochrome) Color.White else Color(0xFFE0F2FE)
                 val buttonFocusedContentColor = if (isMonochrome) Color(0xFF0F172A) else focusContent
-                val buttonBorderColor = if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.45f)
 
                 val buttonPadding = if (!showText) {
                     PaddingValues(horizontal = 14.dp, vertical = 10.dp)
@@ -587,7 +585,7 @@ fun HeroBanner(
                             }
                         },
                         contentPadding = buttonPadding,
-                        scale = ButtonDefaults.scale(focusedScale = 1.05f),
+                        scale = ButtonDefaults.scale(focusedScale = 1.08f),
                         modifier = Modifier
                             .handleTouchClick {
                                 when (currentSlideState) {
@@ -596,27 +594,30 @@ fun HeroBanner(
                                     HeroSlideState.Empty -> {}
                                 }
                             }
-                            .focusRequester(actionButtonFocusRequester)
+                            .focusRequester(effectiveActionFocusRequester)
                             .focusProperties {
                                 left = FocusRequester.Cancel
                                 right = FocusRequester.Cancel
                             }
                             .onPreviewKeyEvent { keyEvent ->
-                                if (keyEvent.type == KeyEventType.KeyDown && totalSlides > 1) {
-                                    when (keyEvent.key) {
-                                        Key.DirectionLeft -> {
-                                            carouselIndex = if (carouselIndex > 0) carouselIndex - 1 else totalSlides - 1
-                                            true
+                                if (keyEvent.type == KeyEventType.KeyDown) {
+                                    if (keyEvent.key == Key.DirectionUp && onUpFromHero != null) {
+                                        onUpFromHero()
+                                        true
+                                    } else if (totalSlides > 1) {
+                                        when (keyEvent.key) {
+                                            Key.DirectionLeft -> {
+                                                carouselIndex = if (carouselIndex > 0) carouselIndex - 1 else totalSlides - 1
+                                                true
+                                            }
+                                            Key.DirectionRight -> {
+                                                carouselIndex = (carouselIndex + 1) % totalSlides
+                                                true
+                                            }
+                                            else -> false
                                         }
-                                        Key.DirectionRight -> {
-                                            carouselIndex = (carouselIndex + 1) % totalSlides
-                                            true
-                                        }
-                                        else -> false
-                                    }
-                                } else {
-                                    false
-                                }
+                                    } else false
+                                } else false
                             },
                         colors = ButtonDefaults.colors(
                             containerColor = buttonContainerColor,
@@ -626,10 +627,7 @@ fun HeroBanner(
                         ),
                         shape = ButtonDefaults.shape(shape = RoundedCornerShape(10.dp)),
                         border = ButtonDefaults.border(
-                            border = Border(
-                                border = BorderStroke(1.dp, buttonBorderColor),
-                                shape = RoundedCornerShape(10.dp)
-                            ),
+                            border = Border.None,
                             focusedBorder = Border.None
                         )
                     ) {
@@ -692,7 +690,7 @@ fun HeroBanner(
                             indication = null
                         ) {
                             carouselIndex = if (carouselIndex > 0) carouselIndex - 1 else totalSlides - 1
-                            actionButtonFocusRequester.requestFocus()
+                            effectiveActionFocusRequester.requestFocus()
                         }
                 )
 
@@ -724,7 +722,7 @@ fun HeroBanner(
                                 indication = null
                             ) {
                                 carouselIndex = idx
-                                actionButtonFocusRequester.requestFocus()
+                                effectiveActionFocusRequester.requestFocus()
                             }
                     )
                 }
@@ -742,7 +740,7 @@ fun HeroBanner(
                             indication = null
                         ) {
                             carouselIndex = (carouselIndex + 1) % totalSlides
-                            actionButtonFocusRequester.requestFocus()
+                            effectiveActionFocusRequester.requestFocus()
                         }
                 )
             }
