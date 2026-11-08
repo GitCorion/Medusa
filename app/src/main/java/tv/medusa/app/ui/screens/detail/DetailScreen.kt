@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -438,7 +439,9 @@ fun DetailScreen(
                             val actionButtonPadding = if (!showText) {
                                 PaddingValues(horizontal = 14.dp, vertical = 10.dp)
                             } else {
-                                PaddingValues(horizontal = 18.dp, vertical = 10.dp)
+                                // Balance óptico: lado del icono con 2-4dp menos de padding que el lado del texto
+                                if (showIcons) PaddingValues(start = 14.dp, end = 18.dp, top = 10.dp, bottom = 10.dp)
+                                else PaddingValues(horizontal = 18.dp, vertical = 10.dp)
                             }
 
                             // Action Buttons Row (Adapts dynamically to buttonStyle)
@@ -496,7 +499,9 @@ fun DetailScreen(
                                             Icon(
                                                 imageVector = playIcon,
                                                 contentDescription = playLabel,
-                                                modifier = Modifier.size(18.dp)
+                                                modifier = Modifier
+                                                    .size(18.dp)
+                                                    .offset(x = if (!showText) 1.5.dp else 0.5.dp) // Compensación óptica del centro visual del triángulo
                                             )
                                         }
                                         if (showText) {

@@ -601,7 +601,9 @@ fun HeroBanner(
                 val buttonPadding = if (!showText) {
                     PaddingValues(horizontal = 14.dp, vertical = 10.dp)
                 } else {
-                    PaddingValues(horizontal = 20.dp, vertical = 10.dp)
+                    // Balance óptico de icono + texto según better-ui
+                    if (showIcons) PaddingValues(start = 14.dp, end = 18.dp, top = 10.dp, bottom = 10.dp)
+                    else PaddingValues(horizontal = 20.dp, vertical = 10.dp)
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
