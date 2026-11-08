@@ -23,13 +23,13 @@ fun envOr(key: String, default: String): String =
 
 android {
     namespace = "tv.medusa.app"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         minSdk = 26
-        targetSdk = 35
-        versionCode = 135
-        versionName = "2.2.88"
+        targetSdk = 36
+        versionCode = 136
+        versionName = "2.2.89"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -52,7 +52,7 @@ android {
             // con datos, firma y actualizaciones independientes.
             applicationIdSuffix = ".beta"
             // Offset de 1.000.000 para distinguir el canal en soporte/Crashlytics.
-            versionCode = 1_000_135
+            versionCode = 1_000_136
             versionNameSuffix = "-beta"
             buildConfigField("boolean", "ENABLE_IN_APP_UPDATER", "true")
         }
@@ -195,7 +195,13 @@ dependencies {
 // Evita que un `assembleRelease`/`bundleRelease` se firme silenciosamente con una
 // clave incorrecta cuando falta keystore.properties. Se comprueba en configuración
 // a partir de los nombres de tarea solicitados; los builds de debug no se ven afectados.
-val buildingRelease = gradle.startParameter.taskNames.any { it.contains("Release", ignoreCase = true) }
+// Solo las tareas que realmente firman/empaquetan necesitan keystore. `lintPlayRelease`
+// o `testPlayReleaseUnitTest` no deben fallar por configuración de firma.
+val signingTaskPrefixes = listOf("assemble", "bundle", "package", "install")
+val buildingRelease = gradle.startParameter.taskNames.any { task ->
+    task.contains("Release", ignoreCase = true) &&
+        signingTaskPrefixes.any { prefix -> task.contains(prefix, ignoreCase = true) }
+}
 if (buildingRelease && envOr("KEYSTORE_PATH", "").isBlank()) {
     throw GradleException(
         "Firma de release no configurada. Añade KEYSTORE_PATH, KEYSTORE_PASSWORD, " +

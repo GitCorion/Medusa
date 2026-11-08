@@ -1,12 +1,12 @@
 {
-  "versionCode": 1000135,
-  "versionName": "2.2.88-beta",
+  "versionCode": 1000136,
+  "versionName": "2.2.89-beta",
   "minSupportedVersionCode": 1000105,
   "forceUpdate": true,
   "killSwitch": false,
-  "releaseNotes": "Blindaje de estabilidad en reproducción: eliminado LoudnessEnhancer HAL para evitar conflictos de AudioTrack en TV Boxes con modo nocturno o streams .strm, optimizado el limitador de audio a cero coste de CPU y eliminado escalado en SurfaceView.",
+  "releaseNotes": "Rediseño visual inspirado en Apple TV: elevación y foco sutiles al 2% sin recortes de bordes ni laterales, alineación de interfaz a márgenes seguros de 60dp, descripciones de episodios estables en 2 líneas completas y optimización de microinteracciones.",
   "apkUrl": "https://medusa-fd388.web.app/Medusa.apk",
-  "apkSha256": "347aeecd611057ef580a71b8f966d04648e5e0529aec7ce8d0b186a894f9e34d",
+  "apkSha256": "6d5ce7fd1caf207b09fc0dcd658dbdd60e607c485815dd9a1f70b1b09c595963",
   "signatures": [
     "26bccb39ed122a69ecf7a8d0b50deeabeb15bc1a4b2a8b77941b47a96fdd3fea",
     "78a588afcc90d8ea59e008c9cbd1e8bbed3b2831518184d5a9935948b9d245ac"
