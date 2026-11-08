@@ -4,81 +4,243 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import tv.medusa.app.data.remote.jellyfin.JellyfinMediaSourceDto
+import tv.medusa.app.data.remote.jellyfin.JellyfinMediaStreamDto
+import tv.medusa.app.data.remote.jellyfin.JellyfinPlaybackSourceResolver
 
+/**
+ * Tests reales del resolvedor usado por PlayerViewModel. No duplican la lógica: llaman al
+ * código de producción que construye los candidatos y las URLs de subtítulos.
+ */
 class PlayerResolutionTest {
 
-    private fun isDockerOrLocalhostHost(host: String?): Boolean {
-        if (host.isNullOrBlank()) return false
-        if (host.equals("localhost", ignoreCase = true) || host == "127.0.0.1") return true
-        val parts = host.split(".")
-        if (parts.size == 4) {
-            val p0 = parts[0].toIntOrNull() ?: return false
-            val p1 = parts[1].toIntOrNull() ?: return false
-            if (p0 == 172 && p1 in 16..31) return true
-            if (p0 == 10 && p1 in 0..1) return true
-        }
-        return false
-    }
+    private val baseUrl = "http://192.168.0.100:8096"
+    private val playableId = "12345"
+    private val token = "mytoken"
+    private val playSessionId = "session123"
+
+    private fun source(
+        id: String = "ms-abc",
+        container: String? = "mkv",
+        path: String? = null,
+        protocol: String? = "File",
+        directStreamUrl: String? = null,
+        transcodingUrl: String? = null,
+        supportsDirectPlay: Boolean = true
+    ) = JellyfinMediaSourceDto(
+        id = id,
+        path = path,
+        protocol = protocol,
+        container = container,
+        directStreamUrl = directStreamUrl,
+        transcodingUrl = transcodingUrl,
+        supportsDirectPlay = supportsDirectPlay,
+        supportsDirectStream = true,
+        supportsTranscoding = true
+    )
+
+    private fun candidates(
+        source: JellyfinMediaSourceDto,
+        alternatives: List<JellyfinMediaSourceDto> = emptyList(),
+        urlBase: String = baseUrl
+    ) = JellyfinPlaybackSourceResolver.buildCandidates(
+        baseUrl = urlBase,
+        playableId = playableId,
+        token = token,
+        playSessionId = playSessionId,
+        audioStreamIndex = 2,
+        mediaSource = source,
+        alternativeMediaSources = alternatives
+    )
 
     @Test
-    fun testMascotas2StrmUrl_DetectedAsDockerInternal() {
-        val host = "172.21.0.2"
+    fun strmWithoutServerUrls_usesStaticProxyFirst() {
+        val result = candidates(
+            source = source(
+                container = "strm",
+                path = "http://172.21.0.2:8765/play?ids=abc",
+                protocol = "Http"
+            )
+        )
 
-        // 1. Debe detectar que 172.21.0.2 es una subred interna de Docker
-        assertTrue("172.21.0.2 debe ser detectada como IP interna de Docker", isDockerOrLocalhostHost(host))
-
-        // 2. Una IP normal de LAN NO debe ser detectada como Docker
-        assertFalse("192.168.1.100 no es Docker", isDockerOrLocalhostHost("192.168.1.100"))
-        assertFalse("192.168.0.50 no es Docker", isDockerOrLocalhostHost("192.168.0.50"))
-    }
-
-    @Test
-    fun testMascotas2UrlTransformation_ToJellyfinServerHost() {
-        val rawStrmUrl = "http://172.21.0.2:8765/play?ids=btofTJDt8URHdmR6oLhCjgvRyQTW5XQyNJNhFgzZci2sqsFmKkESlfi1"
-        val jellyfinServerHost = "192.168.0.100"
-
-        val transformed = rawStrmUrl.replaceFirst("172.21.0.2", jellyfinServerHost)
-
-        assertEquals(
-            "http://192.168.0.100:8765/play?ids=btofTJDt8URHdmR6oLhCjgvRyQTW5XQyNJNhFgzZci2sqsFmKkESlfi1",
-            transformed
+        assertTrue(
+            "El primer candidato debe ser el proxy static de Jellyfin",
+            result.first().startsWith("$baseUrl/Videos/$playableId/stream?static=true")
+        )
+        assertTrue(result.any { it.contains("PlaySessionId=$playSessionId") })
+        assertTrue(result.any { it.contains("api_key=$token") })
+        assertFalse(
+            "Una IP interna de Docker no debe llegar nunca al TV",
+            result.any { it.contains("172.21.0.2") }
+        )
+        assertFalse(
+            "No se deben construir HLS a mano",
+            result.any { it.contains("master.m3u8") || it.contains("main.m3u8") }
         )
     }
 
     @Test
-    fun testCandidateGeneration_StrmDoesNotContainStaticTrue() {
-        val isStrm = true
-        val baseUrl = "http://192.168.0.100:8096"
-        val playableId = "12345"
-        val mediaSourceId = "ms-abc"
-        val token = "mytoken"
+    fun rcloneDirectPlayWithoutServerUrls_usesStaticStream() {
+        val result = candidates(
+            source = source(
+                container = "mkv",
+                path = "/mnt/rclone/pelicula.mkv"
+            )
+        )
 
-        val candidateUrls = mutableListOf<String>()
+        assertTrue(result.first().contains("stream?static=true", ignoreCase = true))
+        assertTrue(result.first().contains("MediaSourceId=ms-abc"))
+    }
 
-        val extractedStrmUrl = "http://172.21.0.2:8765/play?ids=abc"
-        val strmHost = "172.21.0.2"
-        val serverHost = "192.168.0.100"
+    @Test
+    fun normalMedia_prefersTranscodingUrlFromServer() {
+        val result = candidates(
+            source = source(
+                container = "mkv",
+                transcodingUrl = "/Videos/12345/master.m3u8?Transcode=true"
+            )
+        )
 
-        if (isStrm) {
-            val dynamicJellyfin = "$baseUrl/Videos/$playableId/stream?MediaSourceId=$mediaSourceId&api_key=$token"
-            candidateUrls.add(dynamicJellyfin)
+        assertTrue(result.first().contains("Transcode=true"))
+        assertTrue(result.first().contains("master.m3u8"))
+    }
+
+    @Test
+    fun normalMedia_neverUsesMediaSourcePathDirectly() {
+        val result = candidates(
+            source = source(
+                container = "mkv",
+                path = "https://cdn.example.com/pelicula.mkv"
+            )
+        )
+
+        assertFalse(result.any { it.contains("cdn.example.com") })
+    }
+
+    @Test
+    fun candidates_carrySessionTokenMediaSourceAndAudioIndex() {
+        val result = candidates(source = source(container = "mkv"))
+
+        result.forEach { url ->
+            assertTrue(url, url.contains("PlaySessionId=$playSessionId"))
+            assertTrue(url, url.contains("api_key=$token"))
+            assertTrue(url, url.contains("MediaSourceId=ms-abc"))
+            assertTrue(url, url.contains("AudioStreamIndex=2"))
         }
+    }
 
-        if (isDockerOrLocalhostHost(strmHost)) {
-            val transformed = extractedStrmUrl.replaceFirst(strmHost, serverHost)
-            candidateUrls.add(transformed)
-        }
+    @Test
+    fun candidates_areDeduplicated() {
+        val result = candidates(
+            source = source(
+                container = "mkv",
+                transcodingUrl = "/Videos/12345/master.m3u8"
+            )
+        )
 
-        assertEquals(
-            "http://192.168.0.100:8096/Videos/12345/stream?MediaSourceId=ms-abc&api_key=mytoken",
-            candidateUrls[0]
+        assertEquals(result.size, result.toSet().size)
+    }
+
+    @Test
+    fun serverWithSubpath_keepsSubpathInCandidates() {
+        val result = candidates(
+            source = source(container = "strm", protocol = "Http"),
+            urlBase = "https://example.com/jellyfin"
+        )
+
+        assertTrue(result.first().startsWith("https://example.com/jellyfin/Videos/$playableId/stream?static=true"))
+        assertFalse(result.any { it.contains("/jellyfin/jellyfin/") })
+    }
+
+    @Test
+    fun forcedTranscode_usesOnlyServerTranscodingUrl() {
+        val result = JellyfinPlaybackSourceResolver.buildTranscodeOnlyCandidates(
+            baseUrl = baseUrl,
+            playableId = playableId,
+            token = token,
+            playSessionId = playSessionId,
+            audioStreamIndex = 2,
+            mediaSource = source(
+                container = "mkv",
+                directStreamUrl = "/Videos/12345/stream?static=true",
+                transcodingUrl = "/Videos/12345/master.m3u8?Transcode=true"
+            )
+        )
+
+        assertEquals(1, result.size)
+        assertTrue(result.first().contains("Transcode=true"))
+        assertFalse(result.any { it.contains("static=true", ignoreCase = true) })
+    }
+
+    @Test
+    fun forcedTranscode_withoutTranscodingUrl_returnsEmpty() {
+        val result = JellyfinPlaybackSourceResolver.buildTranscodeOnlyCandidates(
+            baseUrl = baseUrl,
+            playableId = playableId,
+            token = token,
+            playSessionId = playSessionId,
+            audioStreamIndex = null,
+            mediaSource = source(container = "mkv")
+        )
+
+        assertTrue(result.isEmpty())
+    }
+
+    @Test
+    fun strmDetection_coversContainerPathAndProtocol() {
+        assertTrue(JellyfinPlaybackSourceResolver.isStrm(source(container = "strm")))
+        assertTrue(JellyfinPlaybackSourceResolver.isStrm(source(container = null, path = "/media/x.STRM")))
+        assertTrue(JellyfinPlaybackSourceResolver.isStrm(source(container = null, protocol = "Http")))
+        assertFalse(JellyfinPlaybackSourceResolver.isStrm(source(container = "mkv", path = "/media/x.mkv")))
+    }
+
+    @Test
+    fun subtitleWithoutDeliveryUrl_usesOfficialStreamCodecEndpoint() {
+        val url = JellyfinPlaybackSourceResolver.buildSubtitleUrl(
+            baseUrl = baseUrl,
+            playableId = playableId,
+            mediaSourceId = "ms-abc",
+            stream = JellyfinMediaStreamDto(
+                type = "Subtitle",
+                index = 3,
+                codec = "ass",
+                deliveryUrl = null
+            ),
+            token = token
         )
 
         assertEquals(
-            "http://192.168.0.100:8765/play?ids=abc",
-            candidateUrls[1]
+            "$baseUrl/Videos/$playableId/ms-abc/Subtitles/3/Stream.ass?api_key=$token",
+            url
+        )
+    }
+
+    @Test
+    fun subtitleWithDeliveryUrl_usesIt() {
+        val url = JellyfinPlaybackSourceResolver.buildSubtitleUrl(
+            baseUrl = baseUrl,
+            playableId = playableId,
+            mediaSourceId = "ms-abc",
+            stream = JellyfinMediaStreamDto(
+                type = "Subtitle",
+                index = 3,
+                codec = "srt",
+                deliveryUrl = "/Videos/$playableId/ms-abc/Subtitles/3/Stream.srt"
+            ),
+            token = token
         )
 
-        assertTrue(candidateUrls.none { it.contains("static=true", ignoreCase = true) })
+        assertTrue(url.startsWith("$baseUrl/Videos/$playableId/ms-abc/Subtitles/3/Stream.srt"))
+        assertTrue(url.contains("api_key=$token"))
+    }
+
+    @Test
+    fun deviceProfileDeclaresStrmAndSupportedContainersButNotAvi() {
+        val containers = JellyfinPlaybackSourceResolver.DIRECT_PLAY_CONTAINERS
+        assertTrue("strm debe estar declarado para Docker/rclone", containers.contains("strm"))
+        assertTrue(containers.contains("mkv"))
+        assertTrue(containers.contains("mp4"))
+        assertTrue(containers.contains("ts"))
+        assertFalse("Media3 no tiene extractor AVI: debe transcodificarlo el servidor", containers.contains("avi"))
     }
 }
