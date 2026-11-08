@@ -1,12 +1,12 @@
 {
-  "versionCode": 1000132,
-  "versionName": "2.2.85-beta",
+  "versionCode": 1000133,
+  "versionName": "2.2.86-beta",
   "minSupportedVersionCode": 1000105,
   "forceUpdate": true,
   "killSwitch": false,
-  "releaseNotes": "Mejoras de interfaz en Favoritos: contraste optimizado para TV a 3 metros (WCAG AA), soporte TalkBack en filtros y toggle de vistos, alineación simétrica y animación en carga.",
+  "releaseNotes": "Ordenación correcta en Continuar Viendo (prioridad por fecha real de reproducción entre series y películas), rediseño estático y multilínea de sinopsis en HeroBanner sin ticker deslizante, y consolidación completa de mejoras visuales y de rendimiento.",
   "apkUrl": "https://medusa-fd388.web.app/Medusa.apk",
-  "apkSha256": "6fc29baa42d7a603fb9a6b45d1545b031ab760cfa8023ba654b784bc44e02539",
+  "apkSha256": "ade6667e5d480a7555b727def985f4a41114bb010c4b00797fc69597ea4f4c03",
   "signatures": [
     "26bccb39ed122a69ecf7a8d0b50deeabeb15bc1a4b2a8b77941b47a96fdd3fea",
     "78a588afcc90d8ea59e008c9cbd1e8bbed3b2831518184d5a9935948b9d245ac"
