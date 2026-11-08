@@ -61,6 +61,8 @@ import tv.medusa.app.ui.theme.LocalAccentColor
 import tv.medusa.app.ui.theme.LocalIndicatorTheme
 import tv.medusa.app.ui.theme.LocalIsMonochromeTheme
 import tv.medusa.app.ui.theme.TvAccent
+import tv.medusa.app.ui.theme.TvCornerRadius
+import tv.medusa.app.ui.theme.TvMotion
 import tv.medusa.app.ui.theme.TvRatingBadge
 import tv.medusa.app.ui.util.handleTouchClick
 
@@ -115,22 +117,22 @@ fun MediaCard(
         }
     }
 
-    // Animaciones de foco y Spotlight
+    // Animaciones de foco y Spotlight (escala sutil 1.02f para evitar recortes laterales)
     val scale by animateFloatAsState(
-        targetValue = if (isFocused) 1.08f else 1.0f,
-        animationSpec = spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMediumLow),
+        targetValue = if (isFocused) 1.02f else 1.0f,
+        animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow),
         label = "mediaCardScale"
     )
 
     val spotlightAlpha by animateFloatAsState(
         targetValue = if (isRowFocused && !isFocused) 0.65f else 1.0f,
-        animationSpec = tween(durationMillis = 220),
+        animationSpec = tween(durationMillis = TvMotion.DurationFadeMs),
         label = "spotlightAlpha"
     )
 
     val textAlpha by animateFloatAsState(
         targetValue = if (isFocused) 1.0f else 0.75f,
-        animationSpec = tween(durationMillis = 200),
+        animationSpec = tween(durationMillis = TvMotion.DurationFadeMs),
         label = "textAlpha"
     )
 
@@ -169,11 +171,11 @@ fun MediaCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(2f / 3f)
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(TvCornerRadius.Card))
                     .background(Color(0xFF0C1017))
                     .then(
                         if (isFocused) {
-                            Modifier.border(2.dp, focusColor, RoundedCornerShape(12.dp))
+                            Modifier.border(2.dp, focusColor, RoundedCornerShape(TvCornerRadius.Card))
                         } else Modifier
                     )
             ) {

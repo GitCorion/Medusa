@@ -120,8 +120,8 @@ fun RankedMediaCard(
     }
 
     val scale by animateFloatAsState(
-        targetValue = if (isFocused) 1.08f else 1.0f,
-        animationSpec = spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMediumLow),
+        targetValue = if (isFocused) 1.02f else 1.0f,
+        animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow),
         label = "rankedCardScale"
     )
 

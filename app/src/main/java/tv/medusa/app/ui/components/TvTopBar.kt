@@ -65,6 +65,7 @@ import tv.medusa.app.data.local.BUTTON_STYLE_ICONS_ONLY
 import tv.medusa.app.data.local.BUTTON_STYLE_TEXT_ONLY
 import tv.medusa.app.data.repository.SyncProgress
 import tv.medusa.app.ui.theme.TvAccent
+import tv.medusa.app.ui.theme.TvSpacing
 
 enum class TvNavTab {
     HOME,
@@ -121,7 +122,7 @@ fun TvTopBar(
             .statusBarsPadding()
             .fillMaxWidth()
             .height(76.dp)
-            .padding(horizontal = 48.dp),
+            .padding(horizontal = TvSpacing.ScreenSafeHorizontal),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {

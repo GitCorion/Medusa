@@ -46,6 +46,43 @@ object TvColors {
     val BorderFocused = CyanBioluminescent
 }
 
+/**
+ * Tokens de espaciado y métricas de diseño para Android TV (10-foot experience),
+ * calibrados a partir de la ingeniería inversa de Apple TV (1080p reference screen model).
+ */
+object TvSpacing {
+    val ScreenSafeHorizontal = 60.dp       // Margen lateral seguro de pantalla (PostPlay/Shelf safe horizontal)
+    val TitleToShelfItems = 24.dp          // TitleToShelfItemsSpacing exacto de Apple TV
+    val RaisedTitleToShelfItems = 18.dp    // RaisedTitleToShelfItemsSpacing para carrusel enfocado
+    val ShelfBottomPadding = 24.dp         // Ritmo vertical inferior entre filas de contenido
+    val ShelfTopPaddingBase = 94.dp        // Altura de cabecera base
+    val ShelfItemSpacing = 16.dp           // Separación horizontal entre tarjetas de un carrusel
+    val HeroHeight = 260.dp                // Altura de hero banner compacto (Epic short height)
+    val BadgeHorizontalPad = 7.dp
+    val BadgeVerticalPad = 3.dp
+}
+
+/**
+ * Tokens de radio de esquina (Corner Radius) extraídos de ShadowLayer y Artwork styles.
+ */
+object TvCornerRadius {
+    val Card = 12.dp                       // Artwork & ShadowLayer default corner radius
+    val Hero = 12.dp                       // Contenedores principales
+    val Dialog = 24.dp                     // Toast/panel corner radius
+    val Modal = 29.dp                      // PostPlay outer radius
+    val BadgeSmall = 6.dp                  // Small badge medium radius
+    val BadgeMedium = 8.dp                 // Small badge large radius
+    val BadgeLarge = 9.dp                  // Small badge xlarge radius
+}
+
+/**
+ * Constantes de animación y microinteracciones (Motion).
+ */
+object TvMotion {
+    const val DurationFadeMs: Int = 240    // Apple TV artwork & content fade duration
+    const val DurationScaleMs: Int = 240   // Card scale & focus transition duration
+}
+
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 fun TvRatingBadge(
@@ -63,10 +100,10 @@ fun TvRatingBadge(
 
     Box(
         modifier = modifier
-            .background(badgeBg, RoundedCornerShape(4.dp))
+            .background(badgeBg, RoundedCornerShape(TvCornerRadius.BadgeSmall))
             .padding(
-                horizontal = if (compact) 5.dp else 7.dp,
-                vertical = if (compact) 2.dp else 3.dp
+                horizontal = if (compact) 5.dp else TvSpacing.BadgeHorizontalPad,
+                vertical = if (compact) 2.dp else TvSpacing.BadgeVerticalPad
             )
     ) {
         Row(
@@ -99,15 +136,15 @@ fun TvPill(
     textColor: Color = Color(0xFFE2E8F0),
     borderColor: Color? = null,
     fontSizeSp: Int = 10,
-    horizontalPadDp: Dp = 7.dp,
-    verticalPadDp: Dp = 3.dp
+    horizontalPadDp: Dp = TvSpacing.BadgeHorizontalPad,
+    verticalPadDp: Dp = TvSpacing.BadgeVerticalPad
 ) {
     Box(
         modifier = modifier
-            .background(containerColor, RoundedCornerShape(4.dp))
+            .background(containerColor, RoundedCornerShape(TvCornerRadius.BadgeSmall))
             .then(
                 if (borderColor != null && borderColor != Color.Transparent) {
-                    Modifier.border(0.5.dp, borderColor, RoundedCornerShape(4.dp))
+                    Modifier.border(0.5.dp, borderColor, RoundedCornerShape(TvCornerRadius.BadgeSmall))
                 } else Modifier
             )
             .padding(horizontal = horizontalPadDp, vertical = verticalPadDp)

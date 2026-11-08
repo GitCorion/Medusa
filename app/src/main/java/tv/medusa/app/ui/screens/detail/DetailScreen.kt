@@ -93,6 +93,7 @@ import tv.medusa.app.ui.components.TvBackButton
 import tv.medusa.app.ui.theme.TvAccent
 import tv.medusa.app.ui.theme.TvPill
 import tv.medusa.app.ui.theme.TvRatingBadge
+import tv.medusa.app.ui.theme.TvSpacing
 import tv.medusa.app.util.DeviceUtils
 
 @OptIn(ExperimentalTvMaterial3Api::class)
@@ -242,7 +243,7 @@ fun DetailScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 48.dp),
+                            .padding(horizontal = TvSpacing.ScreenSafeHorizontal),
                         verticalAlignment = Alignment.Top
                     ) {
                         // Poster Card
@@ -475,7 +476,7 @@ fun DetailScreen(
                                         onPlay(playTargetId)
                                     },
                                     contentPadding = actionButtonPadding,
-                                    scale = ButtonDefaults.scale(focusedScale = 1.06f),
+                                    scale = ButtonDefaults.scale(scale = 1.0f, focusedScale = 1.03f),
                                     colors = ButtonDefaults.colors(
                                         containerColor = if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.20f),
                                         contentColor = if (isMonochrome) Color.White else Color(0xFFE0F2FE),
@@ -518,7 +519,7 @@ fun DetailScreen(
                                             onNavigateToDetail(entity.seriesId)
                                         },
                                         contentPadding = actionButtonPadding,
-                                        scale = ButtonDefaults.scale(focusedScale = 1.06f),
+                                        scale = ButtonDefaults.scale(scale = 1.0f, focusedScale = 1.03f),
                                         shape = ButtonDefaults.shape(shape = RoundedCornerShape(10.dp)),
                                         border = ButtonDefaults.border(
                                             border = Border.None,
@@ -557,7 +558,7 @@ fun DetailScreen(
                                 Button(
                                     onClick = { viewModel.toggleFavorite() },
                                     contentPadding = actionButtonPadding,
-                                    scale = ButtonDefaults.scale(focusedScale = 1.06f),
+                                    scale = ButtonDefaults.scale(scale = 1.0f, focusedScale = 1.03f),
                                     shape = ButtonDefaults.shape(shape = RoundedCornerShape(10.dp)),
                                     border = ButtonDefaults.border(
                                         border = Border.None,
@@ -603,7 +604,7 @@ fun DetailScreen(
                                     Button(
                                         onClick = { isShowingTrailer = true },
                                         contentPadding = actionButtonPadding,
-                                        scale = ButtonDefaults.scale(focusedScale = 1.06f),
+                                        scale = ButtonDefaults.scale(scale = 1.0f, focusedScale = 1.03f),
                                         shape = ButtonDefaults.shape(shape = RoundedCornerShape(10.dp)),
                                         border = ButtonDefaults.border(
                                             border = Border.None,
@@ -638,7 +639,7 @@ fun DetailScreen(
                                 Button(
                                     onClick = { viewModel.togglePlayed() },
                                     contentPadding = actionButtonPadding,
-                                    scale = ButtonDefaults.scale(focusedScale = 1.06f),
+                                    scale = ButtonDefaults.scale(scale = 1.0f, focusedScale = 1.03f),
                                     shape = ButtonDefaults.shape(shape = RoundedCornerShape(10.dp)),
                                     border = ButtonDefaults.border(
                                         border = Border.None,
@@ -703,7 +704,7 @@ fun DetailScreen(
                             Spacer(modifier = Modifier.height(36.dp))
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(horizontal = 48.dp)
+                                modifier = Modifier.padding(horizontal = TvSpacing.ScreenSafeHorizontal)
                             ) {
                                 if (!isMonochrome) {
                                     Box(
@@ -725,7 +726,7 @@ fun DetailScreen(
                             Spacer(modifier = Modifier.height(12.dp))
                             LazyRow(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                contentPadding = PaddingValues(horizontal = 48.dp, vertical = 6.dp),
+                                contentPadding = PaddingValues(horizontal = TvSpacing.ScreenSafeHorizontal, vertical = 6.dp),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 items(
@@ -762,7 +763,7 @@ fun DetailScreen(
                         Spacer(modifier = Modifier.height(32.dp))
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 48.dp)
+                            modifier = Modifier.padding(horizontal = TvSpacing.ScreenSafeHorizontal)
                         ) {
                             if (!isMonochrome) {
                                 Box(
@@ -801,12 +802,17 @@ fun DetailScreen(
                                 text = stringResource(R.string.detail_no_episodes),
                                 color = Color(0xFF64748B),
                                 fontSize = 13.sp,
-                                modifier = Modifier.padding(horizontal = 48.dp)
+                                modifier = Modifier.padding(horizontal = TvSpacing.ScreenSafeHorizontal)
                             )
                         } else {
                             LazyRow(
                                 horizontalArrangement = Arrangement.spacedBy(16.dp),
-                                contentPadding = PaddingValues(start = 48.dp, end = 48.dp, top = 16.dp, bottom = 20.dp),
+                                contentPadding = PaddingValues(
+                                    start = TvSpacing.ScreenSafeHorizontal,
+                                    end = TvSpacing.ScreenSafeHorizontal,
+                                    top = 16.dp,
+                                    bottom = 24.dp
+                                ),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 items(
@@ -832,7 +838,7 @@ fun DetailScreen(
                         Spacer(modifier = Modifier.height(36.dp))
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(horizontal = 48.dp)
+                            modifier = Modifier.padding(horizontal = TvSpacing.ScreenSafeHorizontal)
                         ) {
                             if (!isMonochrome) {
                                 Box(
@@ -854,7 +860,12 @@ fun DetailScreen(
                         Spacer(modifier = Modifier.height(12.dp))
                         LazyRow(
                             horizontalArrangement = Arrangement.spacedBy(16.dp),
-                            contentPadding = PaddingValues(start = 48.dp, end = 48.dp, top = 18.dp, bottom = 24.dp),
+                            contentPadding = PaddingValues(
+                                start = TvSpacing.ScreenSafeHorizontal,
+                                end = TvSpacing.ScreenSafeHorizontal,
+                                top = 18.dp,
+                                bottom = 24.dp
+                            ),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             items(
@@ -878,7 +889,7 @@ fun DetailScreen(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 48.dp)
+                                .padding(horizontal = TvSpacing.ScreenSafeHorizontal)
                                 .height(1.dp)
                                 .background(Color(0x18FFFFFF))
                         )
@@ -887,7 +898,7 @@ fun DetailScreen(
                         if (state.similarItems.isNotEmpty()) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(horizontal = 48.dp)
+                                modifier = Modifier.padding(horizontal = TvSpacing.ScreenSafeHorizontal)
                             ) {
                                 if (!isMonochrome) {
                                     Box(
@@ -909,7 +920,12 @@ fun DetailScreen(
                             Spacer(modifier = Modifier.height(12.dp))
                             LazyRow(
                                 horizontalArrangement = Arrangement.spacedBy(16.dp),
-                                contentPadding = PaddingValues(start = 48.dp, end = 48.dp, top = 18.dp, bottom = 24.dp),
+                                contentPadding = PaddingValues(
+                                    start = TvSpacing.ScreenSafeHorizontal,
+                                    end = TvSpacing.ScreenSafeHorizontal,
+                                    top = 18.dp,
+                                    bottom = 24.dp
+                                ),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 items(
@@ -931,7 +947,7 @@ fun DetailScreen(
                             Spacer(modifier = Modifier.height(36.dp))
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(horizontal = 48.dp)
+                                modifier = Modifier.padding(horizontal = TvSpacing.ScreenSafeHorizontal)
                             ) {
                                 if (!isMonochrome) {
                                     Box(
@@ -953,7 +969,12 @@ fun DetailScreen(
                             Spacer(modifier = Modifier.height(12.dp))
                             LazyRow(
                                 horizontalArrangement = Arrangement.spacedBy(16.dp),
-                                contentPadding = PaddingValues(start = 48.dp, end = 48.dp, top = 18.dp, bottom = 24.dp),
+                                contentPadding = PaddingValues(
+                                    start = TvSpacing.ScreenSafeHorizontal,
+                                    end = TvSpacing.ScreenSafeHorizontal,
+                                    top = 18.dp,
+                                    bottom = 24.dp
+                                ),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 items(

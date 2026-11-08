@@ -11,6 +11,7 @@ import tv.medusa.app.ui.theme.LocalIndicatorTheme
 import tv.medusa.app.ui.theme.LocalIsMonochromeTheme
 import tv.medusa.app.ui.theme.LocalPlatformLogoStyle
 import tv.medusa.app.ui.theme.TvAccent
+import tv.medusa.app.ui.theme.TvSpacing
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -73,7 +74,7 @@ fun BrandTileRow(
     ) {
         LazyRow(
             modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(horizontal = 48.dp),
+            contentPadding = PaddingValues(horizontal = TvSpacing.ScreenSafeHorizontal),
             horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally)
         ) {
             items(
@@ -118,7 +119,7 @@ private fun BrandCard(
             containerColor = Color(0xFF0C1017),
             focusedContainerColor = Color(0xFF141B26)
         ),
-        scale = CardDefaults.scale(focusedScale = 1.08f),
+        scale = CardDefaults.scale(scale = 1.0f, focusedScale = 1.02f),
         modifier = modifier
             .handleTouchClick { onClick() }
             .width(132.dp)

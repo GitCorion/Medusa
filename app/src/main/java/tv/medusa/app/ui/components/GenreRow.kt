@@ -4,6 +4,8 @@ import androidx.compose.ui.graphics.Brush
 import tv.medusa.app.ui.theme.LocalAccentColor
 import tv.medusa.app.ui.theme.LocalIsMonochromeTheme
 import tv.medusa.app.ui.theme.TvAccent
+import tv.medusa.app.ui.theme.TvCornerRadius
+import tv.medusa.app.ui.theme.TvSpacing
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -62,7 +64,7 @@ fun GenreRow(
 
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 48.dp, vertical = 6.dp)
+            modifier = Modifier.padding(horizontal = TvSpacing.ScreenSafeHorizontal, vertical = 6.dp)
         ) {
             Text(
                 text = stringResource(R.string.genre_favorites_title),
@@ -73,7 +75,7 @@ fun GenreRow(
         }
 
         LazyRow(
-            contentPadding = PaddingValues(horizontal = 48.dp, vertical = 6.dp),
+            contentPadding = PaddingValues(horizontal = TvSpacing.ScreenSafeHorizontal, vertical = 6.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(
@@ -107,7 +109,7 @@ private fun GenreChip(
         modifier = Modifier
             .onFocusChanged { isFocused = it.isFocused }
             .handleTouchClick { onClick() },
-        shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(10.dp)),
+        shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(TvCornerRadius.Card)),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = Color(0x14FFFFFF),
             focusedContainerColor = focusColor,
@@ -118,7 +120,7 @@ private fun GenreChip(
             border = Border.None,
             focusedBorder = Border.None
         ),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.08f)
+        scale = ClickableSurfaceDefaults.scale(scale = 1.0f, focusedScale = 1.02f)
     ) {
         Box(
             modifier = Modifier.padding(horizontal = 22.dp, vertical = 12.dp),

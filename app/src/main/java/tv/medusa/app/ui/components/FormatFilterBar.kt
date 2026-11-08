@@ -42,6 +42,7 @@ import tv.medusa.app.data.local.BUTTON_STYLE_ICONS_ONLY
 import tv.medusa.app.data.local.BUTTON_STYLE_TEXT_ONLY
 import tv.medusa.app.domain.model.MediaFormatFilter
 import tv.medusa.app.ui.theme.TvAccent
+import tv.medusa.app.ui.theme.TvSpacing
 import tv.medusa.app.ui.util.handleTouchClick
 
 /**
@@ -77,7 +78,7 @@ fun FormatFilterBar(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 48.dp, vertical = 8.dp),
+            .padding(horizontal = TvSpacing.ScreenSafeHorizontal, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.Start),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -86,7 +87,7 @@ fun FormatFilterBar(
             Button(
                 onClick = { onToggleHideWatched() },
                 contentPadding = buttonPadding,
-                scale = ButtonDefaults.scale(focusedScale = 1.08f),
+                scale = ButtonDefaults.scale(scale = 1.0f, focusedScale = 1.03f),
                 colors = ButtonDefaults.colors(
                     containerColor = if (hideWatched) (if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.20f)) else Color(0x12FFFFFF),
                     contentColor = if (hideWatched) (if (isMonochrome) Color.White else focusColor) else Color(0xFF94A3B8),
@@ -142,7 +143,7 @@ fun FormatFilterBar(
             Button(
                 onClick = { onSelect(format) },
                 contentPadding = buttonPadding,
-                scale = ButtonDefaults.scale(focusedScale = 1.08f),
+                scale = ButtonDefaults.scale(scale = 1.0f, focusedScale = 1.03f),
                 colors = ButtonDefaults.colors(
                     containerColor = if (isSelected) (if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.20f)) else Color(0x12FFFFFF),
                     contentColor = if (isSelected) (if (isMonochrome) Color.White else focusColor) else Color(0xFF94A3B8),

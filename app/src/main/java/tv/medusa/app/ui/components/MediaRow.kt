@@ -33,6 +33,7 @@ import tv.medusa.app.ui.theme.LocalAccentColor
 import tv.medusa.app.ui.theme.LocalIsMonochromeTheme
 import tv.medusa.app.ui.theme.TvAccent
 import tv.medusa.app.ui.theme.TvPill
+import tv.medusa.app.ui.theme.TvSpacing
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
@@ -48,7 +49,7 @@ fun MediaRow(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 12.dp)
+            .padding(bottom = TvSpacing.ShelfBottomPadding)
     ) {
         val isMonochrome = LocalIsMonochromeTheme.current
         val accentKey = LocalAccentColor.current
@@ -56,7 +57,7 @@ fun MediaRow(
 
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 48.dp, vertical = 8.dp)
+            modifier = Modifier.padding(horizontal = TvSpacing.ScreenSafeHorizontal)
         ) {
             val badgeText = localizedSectionBadge(section.badge)
             if (!badgeText.isNullOrBlank()) {
@@ -98,8 +99,13 @@ fun MediaRow(
                 section.title.contains("Coleccion", ignoreCase = true)
 
         LazyRow(
-            contentPadding = PaddingValues(start = 48.dp, end = 48.dp, top = 18.dp, bottom = 24.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = PaddingValues(
+                start = TvSpacing.ScreenSafeHorizontal,
+                end = TvSpacing.ScreenSafeHorizontal,
+                top = TvSpacing.TitleToShelfItems,
+                bottom = 24.dp
+            ),
+            horizontalArrangement = Arrangement.spacedBy(TvSpacing.ShelfItemSpacing),
             modifier = Modifier
                 .fillMaxWidth()
                 .onFocusChanged { isRowFocused = it.hasFocus }

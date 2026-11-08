@@ -27,6 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.focus.onFocusChanged
@@ -38,6 +39,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.tv.material3.Border
 import androidx.tv.material3.Card
 import androidx.tv.material3.CardDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
@@ -48,10 +50,11 @@ import tv.medusa.app.ui.util.handleTouchClick
 import coil.compose.AsyncImage
 import tv.medusa.app.R
 import tv.medusa.app.domain.model.EpisodeItem
-import tv.medusa.app.ui.theme.TvPill
-import tv.medusa.app.ui.theme.TvAccent
-import tv.medusa.app.ui.theme.LocalIsMonochromeTheme
 import tv.medusa.app.ui.theme.LocalAccentColor
+import tv.medusa.app.ui.theme.LocalIsMonochromeTheme
+import tv.medusa.app.ui.theme.TvAccent
+import tv.medusa.app.ui.theme.TvCornerRadius
+import tv.medusa.app.ui.theme.TvPill
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
@@ -73,18 +76,20 @@ fun EpisodeCard(
             containerColor = Color(0xFF0C1017),
             focusedContainerColor = Color(0xFF141B26)
         ),
-        scale = CardDefaults.scale(focusedScale = 1.08f),
+        scale = CardDefaults.scale(scale = 1.0f, focusedScale = 1.02f),
+        shape = CardDefaults.shape(shape = RoundedCornerShape(TvCornerRadius.Card)),
+        border = CardDefaults.border(
+            border = Border.None,
+            focusedBorder = Border(
+                border = BorderStroke(2.dp, focusColor),
+                shape = RoundedCornerShape(TvCornerRadius.Card)
+            )
+        ),
         modifier = modifier
             .handleTouchClick { onClick() }
-            .width(220.dp)
+            .width(230.dp)
             .zIndex(if (isFocused) 10f else 0f)
             .onFocusChanged { isFocused = it.isFocused }
-            .clip(RoundedCornerShape(10.dp))
-            .then(
-                if (isFocused) {
-                    Modifier.border(2.dp, focusColor, RoundedCornerShape(10.dp))
-                } else Modifier
-            )
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             // Thumbnail
@@ -92,6 +97,7 @@ fun EpisodeCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(16f / 9f)
+                    .clip(RoundedCornerShape(topStart = TvCornerRadius.Card, topEnd = TvCornerRadius.Card))
                     .background(Color(0xFF1A1C24))
             ) {
                 var isImageError by remember(episode.id, episode.imageUrl) { mutableStateOf(false) }
@@ -225,7 +231,7 @@ fun EpisodeCard(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(10.dp)
+                    .padding(horizontal = 12.dp, vertical = 10.dp)
             ) {
                 Text(
                     text = "${episode.episodeNumber}. ${episode.name}",
@@ -233,17 +239,7 @@ fun EpisodeCard(
                     fontWeight = FontWeight.SemiBold,
                     color = if (isFocused) Color.White else Color(0xFFE2E8F0),
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.then(
-                        if (isFocused) {
-                            Modifier.basicMarquee(
-                                iterations = Int.MAX_VALUE,
-                                initialDelayMillis = 1000,
-                                repeatDelayMillis = 1500,
-                                velocity = 35.dp
-                            )
-                        } else Modifier
-                    )
+                    overflow = TextOverflow.Ellipsis
                 )
 
                 if (!episode.overview.isNullOrBlank()) {
@@ -252,19 +248,9 @@ fun EpisodeCard(
                         text = episode.overview,
                         style = MaterialTheme.typography.bodySmall,
                         color = Color(0xFF94A3B8),
-                        maxLines = if (isFocused) 1 else 2,
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
-                        lineHeight = 14.sp,
-                        modifier = Modifier.then(
-                            if (isFocused) {
-                                Modifier.basicMarquee(
-                                    iterations = Int.MAX_VALUE,
-                                    initialDelayMillis = 1500,
-                                    repeatDelayMillis = 1500,
-                                    velocity = 30.dp
-                                )
-                            } else Modifier
-                        )
+                        lineHeight = 16.sp
                     )
                 }
             }

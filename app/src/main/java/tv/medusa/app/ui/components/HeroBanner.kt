@@ -93,8 +93,10 @@ import tv.medusa.app.domain.model.MediaItem
 import tv.medusa.app.domain.model.MediaSource
 import tv.medusa.app.domain.model.SeasonalEvent
 import tv.medusa.app.ui.theme.TvAccent
+import tv.medusa.app.ui.theme.TvCornerRadius
 import tv.medusa.app.ui.theme.TvPill
 import tv.medusa.app.ui.theme.TvRatingBadge
+import tv.medusa.app.ui.theme.TvSpacing
 import kotlinx.coroutines.delay
 
 private sealed interface HeroSlideState {
@@ -356,7 +358,7 @@ fun HeroBanner(
             Column(
                 modifier = Modifier
                     .align(Alignment.TopStart)
-                    .padding(start = 48.dp, end = 24.dp, top = 68.dp, bottom = 14.dp)
+                    .padding(start = TvSpacing.ScreenSafeHorizontal, end = 24.dp, top = 68.dp, bottom = 14.dp)
                     .fillMaxWidth(0.55f)
             ) {
 
@@ -597,7 +599,7 @@ fun HeroBanner(
                             }
                         },
                         contentPadding = buttonPadding,
-                        scale = ButtonDefaults.scale(focusedScale = 1.08f),
+                        scale = ButtonDefaults.scale(scale = 1.0f, focusedScale = 1.03f),
                         modifier = Modifier
                             .handleTouchClick {
                                 when (currentSlideState) {
@@ -637,7 +639,7 @@ fun HeroBanner(
                             focusedContainerColor = buttonFocusedContainerColor,
                             focusedContentColor = buttonFocusedContentColor
                         ),
-                        shape = ButtonDefaults.shape(shape = RoundedCornerShape(10.dp)),
+                        shape = ButtonDefaults.shape(shape = RoundedCornerShape(TvCornerRadius.Card)),
                         border = ButtonDefaults.border(
                             border = Border.None,
                             focusedBorder = Border.None
@@ -685,7 +687,7 @@ fun HeroBanner(
             Row(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(end = 48.dp, bottom = 24.dp),
+                    .padding(end = TvSpacing.ScreenSafeHorizontal, bottom = 24.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
