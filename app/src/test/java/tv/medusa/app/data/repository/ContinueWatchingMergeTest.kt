@@ -186,4 +186,47 @@ class ContinueWatchingMergeTest {
         assertEquals(9_000L, seriesDates["SerieReciente"])
         assertEquals(listOf("cap-siguiente", "peli-vieja"), merged.map { it.id })
     }
+
+    @Test
+    fun `pelicula pausada recientemente se coloca por delante de series vistas antes`() {
+        val resumeMovie = movie("peli-reciente", lastPlayed = 10_000L)
+        val nextUpEp = episode("cap-siguiente", seriesId = "SerieVieja")
+        val finishedEp = episode("cap-terminado", seriesId = "SerieVieja", lastPlayed = 2_000L)
+
+        val seriesDates = seriesLastPlayedDates(
+            resume = listOf(resumeMovie),
+            nextUp = listOf(nextUpEp),
+            recentlyPlayed = listOf(finishedEp)
+        )
+
+        val merged = mergeContinueWatching(
+            resume = listOf(resumeMovie),
+            nextUp = listOf(nextUpEp),
+            seriesDates = seriesDates
+        )
+
+        assertEquals(listOf("peli-reciente", "cap-siguiente"), merged.map { it.id })
+    }
+
+    @Test
+    fun `pelicula pausada hoy se coloca por delante de series de NextUp sin fecha de reproduccion`() {
+        val resumeMovie = movie("peli-hoy", lastPlayed = 100_000L)
+        val nextUpEp1 = episode("cap-siguiente-1", seriesId = "SerieA")
+        val nextUpEp2 = episode("cap-siguiente-2", seriesId = "SerieB")
+
+        val seriesDates = seriesLastPlayedDates(
+            resume = listOf(resumeMovie),
+            nextUp = listOf(nextUpEp1, nextUpEp2)
+        )
+
+        val merged = mergeContinueWatching(
+            resume = listOf(resumeMovie),
+            nextUp = listOf(nextUpEp1, nextUpEp2),
+            seriesDates = seriesDates
+        )
+
+        assertEquals("peli-hoy", merged.first().id)
+        assertTrue(seriesDates["SerieA"]!! < 100_000L)
+        assertTrue(seriesDates["SerieB"]!! < seriesDates["SerieA"]!!)
+    }
 }

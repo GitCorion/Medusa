@@ -118,39 +118,42 @@ internal fun seriesLastPlayedDates(
     val seriesList = nextUp.mapNotNull { it.seriesId }.distinct()
     if (seriesList.isEmpty()) return dates
 
-    val maxResume = resume.maxOfOrNull { it.lastPlayedTicks } ?: 0L
-    val maxRecent = recentlyPlayed.maxOfOrNull { it.lastPlayedTicks } ?: 0L
-    val maxKnown = dates.values.maxOrNull() ?: 0L
-    val baseTime = listOf(maxResume, maxRecent, maxKnown).filter { it > 0L }.maxOrNull()
-        ?: (System.currentTimeMillis() - 3600_000L)
-
-    // Si la primera serie de NextUp (la más reciente del servidor) no tiene fecha, asignarle baseTime
-    val topSeries = seriesList[0]
-    if ((dates[topSeries] ?: 0L) <= 0L) {
-        dates[topSeries] = baseTime
-    }
-
-    // Paso 1: Pasada hacia atrás. Si la serie N tiene fecha de reproducción más reciente que la serie N-1,
-    // significa que la serie N-1 (que el servidor colocó por delante) se vio aún más recientemente
-    // (p. ej. vista en otro dispositivo sin haber guardado todavía la fecha en Room).
+    // Paso 1: Pasada hacia atrás. Si la serie N tiene fecha conocida y la serie N-1 tiene fecha conocida menor,
+    // ajustar de forma monótona para respetar el orden de recencia del servidor.
     for (i in seriesList.size - 1 downTo 1) {
         val currentSeries = seriesList[i]
         val prevSeries = seriesList[i - 1]
         val currentDate = dates[currentSeries] ?: 0L
         val prevDate = dates[prevSeries] ?: 0L
 
-        if (currentDate > 0L && prevDate <= currentDate) {
+        if (currentDate > 0L && prevDate in 1L..currentDate) {
             dates[prevSeries] = currentDate + 1000L
         }
     }
 
-    // Paso 2: Pasada hacia adelante. Garantizar que cada serie siguiente en NextUp sea monótonamente
-    // menor a la serie anterior (respetando la precedencia de recencia del servidor) y que ninguna
-    // serie en NextUp quede con fecha 0.
+    // Paso 2: Series sin fecha conocida.
+    // Deben recibir fechas sintéticas en el PASADO, SIEMPRE por debajo de cualquier fecha
+    // conocida de reproducción (de Resume, RecentlyPlayed o Room), para JAMÁS adelantarse
+    // a películas o capítulos que el usuario ha reproducido recientemente.
+    val minKnownDate = (dates.values + resume.map { it.lastPlayedTicks } + recentlyPlayed.map { it.lastPlayedTicks })
+        .filter { it > 0L }
+        .minOrNull()
+        ?: (System.currentTimeMillis() - 30L * 86400_000L)
+
+    var fallbackBase = maxOf(1L, minKnownDate - 1000L)
+
+    // Si la primera serie no tiene fecha, asignarle fallbackBase (en el pasado seguro)
+    val topSeries = seriesList[0]
+    if ((dates[topSeries] ?: 0L) <= 0L) {
+        dates[topSeries] = fallbackBase
+    }
+
+    // Pasada hacia adelante: asegurar que las series siguientes sin fecha o desordenadas
+    // mantengan un orden monótono decreciente sin pisar fechas reales mayores.
     for (i in 0 until seriesList.size - 1) {
         val currentSeries = seriesList[i]
         val nextSeries = seriesList[i + 1]
-        val currentDate = dates[currentSeries] ?: baseTime
+        val currentDate = dates[currentSeries] ?: fallbackBase
         val nextDate = dates[nextSeries] ?: 0L
 
         if (nextDate <= 0L || nextDate >= currentDate) {

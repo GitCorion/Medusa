@@ -140,14 +140,10 @@ fun ContinueWatchingCard(
 
     val isEpisode = item.type.equals("Episode", ignoreCase = true) || !item.seriesId.isNullOrEmpty()
 
-    // Para capítulos de series, el usuario requiere mantener la imagen oficial de la serie (posterUrl),
-    // con fallback al backdrop si fuera necesario.
-    // Para películas, se prioriza el backdrop panorámico 16:9 con fallback al póster.
-    val preferredImage = if (isEpisode) {
-        item.posterUrl ?: item.backdropUrl
-    } else {
-        item.backdropUrl ?: item.posterUrl
-    }
+    // Para la fila panorámica 16:9 de Continuar Viendo, priorizamos la imagen panorámica (backdrop / still del episodio)
+    // para que encaje de forma natural en el formato 16:9 sin recortar verticalmente el póster de la serie.
+    // Si no dispone de backdrop, se utiliza el póster como fallback.
+    val preferredImage = item.backdropUrl ?: item.posterUrl
 
     var currentImageModel by remember(item.id, preferredImage) { mutableStateOf(preferredImage) }
     var isFallbackAttempted by remember(item.id) { mutableStateOf(false) }
@@ -198,7 +194,7 @@ fun ContinueWatchingCard(
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize(),
                     onError = {
-                        val alternateImage = if (isEpisode) item.backdropUrl else item.posterUrl
+                        val alternateImage = if (currentImageModel == item.backdropUrl) item.posterUrl else item.backdropUrl
                         if (!isFallbackAttempted && !alternateImage.isNullOrBlank() && alternateImage != currentImageModel) {
                             isFallbackAttempted = true
                             currentImageModel = alternateImage
