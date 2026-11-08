@@ -60,6 +60,7 @@ import tv.medusa.app.ui.components.FormatFilterBar
 import tv.medusa.app.ui.components.JellyLoadingIndicator
 import tv.medusa.app.ui.components.MediaCard
 import tv.medusa.app.ui.components.MediaRow
+import tv.medusa.app.ui.components.TvBackButton
 import tv.medusa.app.ui.components.SeasonalParticles
 import tv.medusa.app.ui.components.TvNavTab
 import tv.medusa.app.ui.components.TvTopBar
@@ -336,10 +337,7 @@ private fun SeasonalLanding(
                     ),
                     shape = ButtonDefaults.shape(RoundedCornerShape(10.dp)),
                     border = ButtonDefaults.border(
-                        border = Border(
-                            border = androidx.compose.foundation.BorderStroke(1.dp, eventAccent.copy(alpha = 0.35f)),
-                            shape = RoundedCornerShape(10.dp)
-                        ),
+                        border = Border.None,
                         focusedBorder = Border.None
                     )
                 ) {
@@ -411,26 +409,10 @@ private fun SeasonalAllGrid(
                     onToggleHideWatched = onToggleHideWatched,
                     modifier = Modifier.weight(1f)
                 )
-                Button(
+                TvBackButton(
                     onClick = onBackToLanding,
-                    scale = ButtonDefaults.scale(focusedScale = 1.05f),
-                    colors = ButtonDefaults.colors(
-                        containerColor = Color(0x22FFFFFF),
-                        contentColor = Color.White,
-                        focusedContainerColor = if (isMonochrome) Color.White else eventAccent,
-                        focusedContentColor = Color(0xFF0F172A)
-                    ),
-                    shape = ButtonDefaults.shape(RoundedCornerShape(10.dp)),
-                    border = ButtonDefaults.border(
-                        border = Border(
-                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0x25FFFFFF)),
-                            shape = RoundedCornerShape(10.dp)
-                        ),
-                        focusedBorder = Border.None
-                    )
-                ) {
-                    Text(text = stringResource(R.string.common_back), fontWeight = FontWeight.Bold)
-                }
+                    isMonochrome = isMonochrome
+                )
             }
         }
 

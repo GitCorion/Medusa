@@ -88,6 +88,7 @@ import tv.medusa.app.domain.model.SeriesStatusType
 import tv.medusa.app.ui.components.EpisodeCard
 import tv.medusa.app.ui.components.InAppTrailerPlayer
 import tv.medusa.app.ui.components.MediaCard
+import tv.medusa.app.ui.components.TvBackButton
 import tv.medusa.app.ui.theme.TvAccent
 import tv.medusa.app.ui.theme.TvPill
 import tv.medusa.app.ui.theme.TvRatingBadge
@@ -232,8 +233,25 @@ fun DetailScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .verticalScroll(detailScrollState)
-                        .padding(top = 76.dp, bottom = 64.dp)
+                        .padding(top = 32.dp, bottom = 64.dp)
                 ) {
+                    // Top Bar: Botón Volver cinemático integrado
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 48.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        TvBackButton(
+                            onClick = onBack,
+                            accentColorKey = state.accentColor,
+                            isMonochrome = isMonochrome,
+                            showLabel = true
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
                     // Hero Section: Poster + Metadata + Action Buttons + Synopsis
                     Row(
                         modifier = Modifier
@@ -982,26 +1000,6 @@ fun DetailScreen(
                         )
                 )
 
-                // Botón Volver táctil / puntero (sin foco D-pad para no crear trampas de foco en TV)
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .statusBarsPadding()
-                        .padding(start = 24.dp, top = 18.dp)
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .background(Color(0x33000000))
-                        .border(1.dp, Color(0x22FFFFFF), CircleShape)
-                        .handleTouchClick { onBack() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
-                        contentDescription = stringResource(R.string.common_back),
-                        tint = Color.White.copy(alpha = 0.85f),
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
 
                 if (isShowingTrailer && state.trailerUrl != null) {
                     InAppTrailerPlayer(
