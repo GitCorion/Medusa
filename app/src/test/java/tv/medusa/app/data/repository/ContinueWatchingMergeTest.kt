@@ -21,14 +21,20 @@ class ContinueWatchingMergeTest {
         id: String,
         seriesId: String,
         lastPlayed: Long = 0L,
-        positionTicks: Long = 0L
+        positionTicks: Long = 0L,
+        seasonNumber: Int? = null,
+        episodeNumber: Int? = null,
+        premiereDateMs: Long? = null
     ) = JellyfinMediaEntity(
         id = id,
         title = id,
         type = "Episode",
         seriesId = seriesId,
         lastPlayedTicks = lastPlayed,
-        playbackPositionTicks = positionTicks
+        playbackPositionTicks = positionTicks,
+        seasonNumber = seasonNumber,
+        episodeNumber = episodeNumber,
+        premiereDateMs = premiereDateMs
     )
 
     @Test
@@ -151,18 +157,75 @@ class ContinueWatchingMergeTest {
     }
 
     @Test
-    fun `nextUp recalcula fechas monotonamente si el orden del servidor es mas reciente`() {
+    fun `series mid-season miran la fecha real del ultimo reproducido en el pasado sin adivinar el futuro`() {
         val dates = seriesLastPlayedDates(
             resume = emptyList(),
             nextUp = listOf(
-                episode("cap-a", seriesId = "A"),
-                episode("cap-b", seriesId = "B")
+                episode("cap-a", seriesId = "A", seasonNumber = 1, episodeNumber = 5),
+                episode("cap-b", seriesId = "B", seasonNumber = 1, episodeNumber = 3)
             ),
-            knownFromDb = mapOf("A" to 100L, "B" to 500L) // A vista más recientemente en el servidor pero B con fecha más vieja guardada
+            knownFromDb = mapOf("A" to 100L, "B" to 500L)
         )
 
-        assertTrue("A debe ser mayor que B para respetar el orden del servidor", dates["A"]!! > dates["B"]!!)
+        // B se reprodujo en 500L (más reciente en el pasado que A en 100L)
         assertEquals(500L, dates["B"])
+        assertEquals(100L, dates["A"])
+        assertTrue("B debe ser mayor que A según su fecha real pasada", dates["B"]!! > dates["A"]!!)
+    }
+
+    @Test
+    fun `nueva temporada en NextUp se prioriza al frente para no perderla`() {
+        val pausedMovie = movie("peli-hoy", lastPlayed = 100_000L)
+        val newSeasonEp = episode("cap-s2e1", seriesId = "SerieNuevaTemporada", seasonNumber = 2, episodeNumber = 1)
+        val regularEp = episode("cap-s1e5", seriesId = "SerieNormal", seasonNumber = 1, episodeNumber = 5)
+
+        val seriesDates = seriesLastPlayedDates(
+            resume = listOf(pausedMovie),
+            nextUp = listOf(newSeasonEp, regularEp),
+            knownFromDb = mapOf("SerieNuevaTemporada" to 10_000L, "SerieNormal" to 50_000L),
+            nowMs = 200_000L
+        )
+
+        val merged = mergeContinueWatching(
+            resume = listOf(pausedMovie),
+            nextUp = listOf(newSeasonEp, regularEp),
+            seriesDates = seriesDates
+        )
+
+        // La nueva temporada se prioriza la primera
+        assertEquals("cap-s2e1", merged[0].id)
+        // La película que el usuario dejó a medias hoy va en su posición real (segunda)
+        assertEquals("peli-hoy", merged[1].id)
+        // La serie regular que no tiene nueva temporada va tercera según su última reproducción
+        assertEquals("cap-s1e5", merged[2].id)
+    }
+
+    @Test
+    fun `capitulo nuevo estrenado recientemente posterior a la reproduccion se prioriza al frente`() {
+        val pausedMovie = movie("peli-hoy", lastPlayed = 100_000L)
+        val newPremieredEp = episode(
+            "cap-nuevo-estreno",
+            seriesId = "SerieSemanal",
+            seasonNumber = 1,
+            episodeNumber = 6,
+            premiereDateMs = 150_000L // Estrenado posterior a cuando se vio la serie y la peli
+        )
+
+        val seriesDates = seriesLastPlayedDates(
+            resume = listOf(pausedMovie),
+            nextUp = listOf(newPremieredEp),
+            knownFromDb = mapOf("SerieSemanal" to 20_000L),
+            nowMs = 200_000L
+        )
+
+        val merged = mergeContinueWatching(
+            resume = listOf(pausedMovie),
+            nextUp = listOf(newPremieredEp),
+            seriesDates = seriesDates
+        )
+
+        assertEquals("cap-nuevo-estreno", merged[0].id)
+        assertEquals("peli-hoy", merged[1].id)
     }
 
     @Test

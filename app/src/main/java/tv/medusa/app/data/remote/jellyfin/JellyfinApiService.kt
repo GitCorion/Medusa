@@ -87,7 +87,7 @@ interface JellyfinApiService {
         @Header("Authorization") authHeader: String,
         @Path("userId") userId: String,
         @Query("Limit") limit: Int = 20,
-        @Query("Fields") fields: String = "ProviderIds,Overview,PrimaryImageTag,BackdropImageTags,CommunityRating,UserData,SeriesPrimaryImageTag"
+        @Query("Fields") fields: String = "ProviderIds,Overview,PrimaryImageTag,BackdropImageTags,CommunityRating,UserData,SeriesPrimaryImageTag,PremiereDate,DateCreated"
     ): JellyfinItemsResponse
 
     @GET("Shows/NextUp")
@@ -96,7 +96,7 @@ interface JellyfinApiService {
         @Query("UserId") userId: String,
         @Query("SeriesId") seriesId: String? = null,
         @Query("Limit") limit: Int = 20,
-        @Query("Fields") fields: String = "ProviderIds,Overview,PrimaryImageTag,BackdropImageTags,CommunityRating,UserData,SeriesPrimaryImageTag"
+        @Query("Fields") fields: String = "ProviderIds,Overview,PrimaryImageTag,BackdropImageTags,CommunityRating,UserData,SeriesPrimaryImageTag,PremiereDate,DateCreated"
     ): JellyfinItemsResponse
 
     @GET("Shows/{seriesId}/Seasons")

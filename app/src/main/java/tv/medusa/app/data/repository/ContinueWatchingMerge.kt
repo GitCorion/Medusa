@@ -83,11 +83,12 @@ internal fun seriesLastPlayedDates(
     resume: List<JellyfinMediaEntity>,
     nextUp: List<JellyfinMediaEntity>,
     knownFromDb: Map<String, Long> = emptyMap(),
-    recentlyPlayed: List<JellyfinMediaEntity> = emptyList()
+    recentlyPlayed: List<JellyfinMediaEntity> = emptyList(),
+    nowMs: Long = System.currentTimeMillis()
 ): Map<String, Long> {
     val dates = HashMap<String, Long>()
 
-    // 1. Fechas reales desde los ítems recientemente reproducidos en Jellyfin (episodios terminados)
+    // 1. Fechas reales desde el pasado: episodios terminados en Jellyfin
     recentlyPlayed.forEach { item ->
         val seriesId = item.seriesId ?: if (item.type.equals("Series", ignoreCase = true)) item.id else null
         if (seriesId != null && item.lastPlayedTicks > 0L) {
@@ -95,7 +96,7 @@ internal fun seriesLastPlayedDates(
         }
     }
 
-    // 2. Fechas desde el Resume (lo que el usuario dejó a medias en el servidor)
+    // 2. Fechas reales desde el pasado: episodios a medias en Resume
     resume.forEach { item ->
         val seriesId = item.seriesId ?: return@forEach
         if (item.lastPlayedTicks > 0L) {
@@ -103,7 +104,7 @@ internal fun seriesLastPlayedDates(
         }
     }
 
-    // 3. Fechas desde NextUp e historia en Room
+    // 3. Fechas reales desde el pasado: guardadas en Room
     nextUp.forEach { item ->
         val seriesId = item.seriesId ?: return@forEach
         if (!dates.containsKey(seriesId)) {
@@ -114,54 +115,67 @@ internal fun seriesLastPlayedDates(
         }
     }
 
-    // Lista de series de NextUp en el orden exacto de recencia del servidor
-    val seriesList = nextUp.mapNotNull { it.seriesId }.distinct()
-    if (seriesList.isEmpty()) return dates
+    // 4. Si el episodio de NextUp es un CAPÍTULO NUEVO o TEMPORADA NUEVA:
+    // (p. ej. Season > 1 y Episode == 1, o fecha de estreno posterior a la última reproducción):
+    // Se prioriza al frente para que el usuario no se pierda la nueva temporada ni un capítulo nuevo.
+    val maxResumeTime = resume.maxOfOrNull { it.lastPlayedTicks } ?: 0L
+    val priorityTopTime = maxOf(nowMs, maxResumeTime + 1000L)
 
-    // Paso 1: Pasada hacia atrás. Si la serie N tiene fecha conocida y la serie N-1 tiene fecha conocida menor,
-    // ajustar de forma monótona para respetar el orden de recencia del servidor.
-    for (i in seriesList.size - 1 downTo 1) {
-        val currentSeries = seriesList[i]
-        val prevSeries = seriesList[i - 1]
-        val currentDate = dates[currentSeries] ?: 0L
-        val prevDate = dates[prevSeries] ?: 0L
-
-        if (currentDate > 0L && prevDate in 1L..currentDate) {
-            dates[prevSeries] = currentDate + 1000L
+    nextUp.forEach { item ->
+        val seriesId = item.seriesId ?: return@forEach
+        val lastPlayed = dates[seriesId] ?: 0L
+        if (item.isNewSeasonOrPremiere(lastPlayed, nowMs)) {
+            val epPremiere = item.premiereDateMs?.takeIf { it in (lastPlayed + 1)..nowMs }
+            val resolvedDate = epPremiere ?: priorityTopTime
+            dates[seriesId] = maxOf(dates[seriesId] ?: 0L, resolvedDate)
         }
     }
 
-    // Paso 2: Series sin fecha conocida.
-    // Deben recibir fechas sintéticas en el PASADO, SIEMPRE por debajo de cualquier fecha
-    // conocida de reproducción (de Resume, RecentlyPlayed o Room), para JAMÁS adelantarse
-    // a películas o capítulos que el usuario ha reproducido recientemente.
+    // 5. Para series en NextUp que no tienen fecha conocida y no son capítulos nuevos:
+    // Se ordenan en el PASADO (por debajo de cualquier reproducción real conocida)
+    val seriesList = nextUp.mapNotNull { it.seriesId }.distinct()
+    if (seriesList.isEmpty()) return dates
+
     val minKnownDate = (dates.values + resume.map { it.lastPlayedTicks } + recentlyPlayed.map { it.lastPlayedTicks })
         .filter { it > 0L }
         .minOrNull()
-        ?: (System.currentTimeMillis() - 30L * 86400_000L)
+        ?: (nowMs - 30L * 86400_000L)
 
     var fallbackBase = maxOf(1L, minKnownDate - 1000L)
 
-    // Si la primera serie no tiene fecha, asignarle fallbackBase (en el pasado seguro)
-    val topSeries = seriesList[0]
-    if ((dates[topSeries] ?: 0L) <= 0L) {
-        dates[topSeries] = fallbackBase
-    }
-
-    // Pasada hacia adelante: asegurar que las series siguientes sin fecha o desordenadas
-    // mantengan un orden monótono decreciente sin pisar fechas reales mayores.
-    for (i in 0 until seriesList.size - 1) {
-        val currentSeries = seriesList[i]
-        val nextSeries = seriesList[i + 1]
-        val currentDate = dates[currentSeries] ?: fallbackBase
-        val nextDate = dates[nextSeries] ?: 0L
-
-        if (nextDate <= 0L || nextDate >= currentDate) {
-            dates[nextSeries] = maxOf(1L, currentDate - 1000L)
+    for (seriesId in seriesList) {
+        if ((dates[seriesId] ?: 0L) <= 0L) {
+            dates[seriesId] = fallbackBase
+            fallbackBase = maxOf(1L, fallbackBase - 1000L)
         }
     }
 
     return dates
+}
+
+/**
+ * Determina si este episodio de NextUp representa una novedad relevante (nueva temporada o
+ * capítulo recién emitido/añadido) que deba priorizarse al frente de la fila para no perderla.
+ */
+internal fun JellyfinMediaEntity.isNewSeasonOrPremiere(lastPlayedDate: Long, nowMs: Long = System.currentTimeMillis()): Boolean {
+    if (!type.equals("Episode", ignoreCase = true)) return false
+
+    // 1. Temporada nueva: Season > 1 y Episode == 1 (ej: T2:E1 de una serie terminada antes)
+    val isNewSeason = (seasonNumber ?: 1) > 1 && (episodeNumber == null || episodeNumber <= 1)
+    if (isNewSeason) return true
+
+    // 2. Episodio emitido o añadido posteriormente a la última reproducción de la serie
+    if (premiereDateMs != null && lastPlayedDate > 0L && premiereDateMs > lastPlayedDate) {
+        return true
+    }
+
+    // 3. Estreno muy reciente (últimos 14 días)
+    val fourteenDaysAgo = nowMs - 14L * 86_400_000L
+    if (premiereDateMs != null && premiereDateMs > fourteenDaysAgo) {
+        return true
+    }
+
+    return false
 }
 
 /** Fecha real de última reproducción del ítem, o la heredada de su serie, o 0 si no se sabe. */

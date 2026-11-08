@@ -777,6 +777,7 @@ internal fun JellyfinItemDto.toEntity(): JellyfinMediaEntity {
     val playedStatus = userData?.isPlayedForType(itemType) ?: false
     val lastPlayedMs = parseIsoToEpochMs(userData?.effectiveLastPlayedDate)
     val premiereMs = parseIsoToEpochMs(premiereDate).takeIf { it > 0L }
+        ?: parseIsoToEpochMs(dateCreated).takeIf { it > 0L }
 
     return JellyfinMediaEntity(
         id = id,
