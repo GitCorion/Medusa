@@ -441,7 +441,7 @@
     <string name="format_all">Todo</string>
     <string name="format_movies">Películas</string>
     <string name="format_series">Series</string>
-    <string name="filter_hide_watched">Vistos</string>
+    <string name="filter_hide_watched">Ocultar vistos</string>
 
     <!-- Búsqueda (cabecera de resultados) -->
     <string name="search_counter_searching">Buscando en tu servidor Jellyfin...</string>
@@ -465,6 +465,11 @@
     <string name="player_playing">Reproduciendo</string>
     <string name="player_next_in">Siguiente en %1$ds</string>
     <string name="player_next_episode">Siguiente episodio</string>
+    <string name="player_next_movie">Siguiente película</string>
+    <string name="player_recommended_movie">Película recomendada</string>
+    <string name="player_more_like_this">También te podría gustar</string>
+    <string name="player_auto_exit_in">Saliendo en %1$ds</string>
+    <string name="player_watch_credits">Ver créditos</string>
     <string name="player_tab_audio">Audio y Sonido</string>
     <string name="player_audio_tracks">Pistas de audio</string>
     <string name="player_night_mode">Modo Nocturno</string>

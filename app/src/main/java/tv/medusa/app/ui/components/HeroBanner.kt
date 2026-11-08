@@ -337,13 +337,14 @@ fun HeroBanner(
         Box(
             modifier = Modifier
                 .fillMaxHeight()
-                .fillMaxWidth(0.55f)
+                .fillMaxWidth(0.60f)
                 .background(
                     Brush.horizontalGradient(
                         colors = listOf(
                             Color(0xF607070B),
                             Color(0xEE07070B),
-                            Color(0x6607070B),
+                            Color(0x9907070B),
+                            Color(0x3307070B),
                             Color.Transparent
                         )
                     )
@@ -418,6 +419,8 @@ fun HeroBanner(
                                         text = effectiveItem.title,
                                         style = MaterialTheme.typography.headlineLarge.copy(
                                             fontWeight = FontWeight.ExtraBold,
+                                            fontSize = 32.sp,
+                                            lineHeight = 38.sp,
                                             shadow = Shadow(
                                                 color = Color.Black,
                                                 blurRadius = 18f,
@@ -425,14 +428,8 @@ fun HeroBanner(
                                             )
                                         ),
                                         color = Color.White,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        modifier = Modifier.basicMarquee(
-                                            iterations = Int.MAX_VALUE,
-                                            initialDelayMillis = 1500,
-                                            repeatDelayMillis = 2000,
-                                            velocity = 35.dp
-                                        )
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis
                                     )
                                 }
                             }
@@ -441,6 +438,8 @@ fun HeroBanner(
                                 text = effectiveItem.title,
                                 style = MaterialTheme.typography.headlineLarge.copy(
                                     fontWeight = FontWeight.ExtraBold,
+                                    fontSize = 32.sp,
+                                    lineHeight = 38.sp,
                                     shadow = Shadow(
                                         color = Color.Black,
                                         blurRadius = 18f,
@@ -448,14 +447,8 @@ fun HeroBanner(
                                     )
                                 ),
                                 color = Color.White,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.basicMarquee(
-                                    iterations = Int.MAX_VALUE,
-                                    initialDelayMillis = 1500,
-                                    repeatDelayMillis = 2000,
-                                    velocity = 35.dp
-                                )
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                     }
@@ -471,20 +464,14 @@ fun HeroBanner(
                         Text(
                             text = event.subtitle,
                             style = MaterialTheme.typography.bodyMedium.copy(
-                                lineHeight = 20.sp,
+                                fontSize = 14.sp,
+                                lineHeight = 21.sp,
                                 letterSpacing = 0.2.sp
                             ),
                             color = Color(0xFFCBD5E1),
-                            maxLines = 1,
+                            maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier
-                                .fillMaxWidth(0.65f)
-                                .basicMarquee(
-                                    iterations = Int.MAX_VALUE,
-                                    initialDelayMillis = 2000,
-                                    repeatDelayMillis = 2000,
-                                    velocity = 30.dp
-                                )
+                            modifier = Modifier.fillMaxWidth()
                         )
                     }
                     is HeroSlideState.Movie -> {
@@ -564,19 +551,13 @@ fun HeroBanner(
                             Text(
                                 text = effectiveItem.overview,
                                 style = MaterialTheme.typography.bodyMedium.copy(
-                                    lineHeight = 20.sp
+                                    fontSize = 14.sp,
+                                    lineHeight = 22.sp
                                 ),
                                 color = Color(0xFFCBD5E1),
-                                maxLines = 1,
+                                maxLines = 3,
                                 overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier
-                                    .fillMaxWidth(0.65f)
-                                    .basicMarquee(
-                                        iterations = Int.MAX_VALUE,
-                                        initialDelayMillis = 2000,
-                                        repeatDelayMillis = 2000,
-                                        velocity = 30.dp
-                                    )
+                                modifier = Modifier.fillMaxWidth()
                             )
                         }
                     }

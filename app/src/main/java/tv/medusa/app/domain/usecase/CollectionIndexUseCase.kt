@@ -43,7 +43,7 @@ class CollectionIndexUseCase @Inject constructor(
         const val POPULAR_PREFIX = "popular:"
         private const val TTL_MS = 24L * 60 * 60 * 1000
         // Súbela cuando cambie el algoritmo de matching/orden: invalida los índices existentes.
-        private const val INDEX_VERSION = 4
+        private const val INDEX_VERSION = 5
         private val INDEX_MUTEX = Mutex()
 
         fun platformKey(platformId: String): String = PLATFORM_PREFIX + platformId.lowercase()

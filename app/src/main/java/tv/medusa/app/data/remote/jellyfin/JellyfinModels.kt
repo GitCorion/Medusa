@@ -304,13 +304,18 @@ data class JellyfinMediaSegmentsResponse(
     @SerialName("TotalRecordCount") val totalRecordCount: Int = 0
 )
 
-// ─── Next Episode Info (para overlay "Siguiente episodio") ───────────────────
+// ─── Next Episode / Media Info (para overlay "Siguiente episodio / película") ─
 data class NextEpisodeInfo(
     val itemId: String,
     val title: String,
-    val episodeCode: String, // e.g. "T1 E5"
-    val thumbUrl: String? = null
+    val episodeCode: String, // e.g. "T1 E5" or "Secuela • 2002"
+    val thumbUrl: String? = null,
+    val overview: String? = null,
+    val isMovie: Boolean = false,
+    val backdropUrl: String? = null
 )
+
+typealias NextMediaInfo = NextEpisodeInfo
 
 // ─── SkipMarker: refleja fielmente lo que el plugin/API ya proporciona ────────
 // Intro Skipper: ShowSkipPromptAt, HideSkipPromptAt, IntroEnd

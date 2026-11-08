@@ -104,7 +104,9 @@ data class UserPreferences(
     val seasonalAudioEnabled: Boolean = true,
     val navigationSoundEnabled: Boolean = true,
     val audioPassthroughMode: Int = AUDIO_PASSTHROUGH_OFF,
-    val hideWatched: Boolean = false
+    val hideWatched: Boolean = false,
+    val autoPlayNextMovieEnabled: Boolean = true,
+    val autoPlayNextEpisodeEnabled: Boolean = true
 ) {
     val isMonochrome: Boolean
         get() = indicatorTheme == INDICATOR_THEME_MONOCHROME || accentColor == ACCENT_WHITE
@@ -188,6 +190,8 @@ class UserPreferencesRepository(context: Context) {
         val NAVIGATION_SOUND_ENABLED = stringPreferencesKey("navigation_sound_enabled")
         val AUDIO_PASSTHROUGH_MODE = intPreferencesKey("audio_passthrough_mode")
         val HIDE_WATCHED = stringPreferencesKey("hide_watched")
+        val AUTO_PLAY_NEXT_MOVIE = stringPreferencesKey("auto_play_next_movie")
+        val AUTO_PLAY_NEXT_EPISODE = stringPreferencesKey("auto_play_next_episode")
         // Versión del algoritmo de sincronización aplicada. Si la almacenada es menor que la
         // actual, se fuerza un sync completo para reconstruir catálogos truncados por versiones
         // anteriores (p. ej. paginación que cortaba al recibir páginas más cortas que el límite).
@@ -674,7 +678,9 @@ class UserPreferencesRepository(context: Context) {
                 seasonalAudioEnabled = (this[Keys.SEASONAL_AUDIO_ENABLED] ?: "true") != "false",
                 navigationSoundEnabled = (this[Keys.NAVIGATION_SOUND_ENABLED] ?: "true") != "false",
                 audioPassthroughMode = this[Keys.AUDIO_PASSTHROUGH_MODE] ?: AUDIO_PASSTHROUGH_OFF,
-                hideWatched = this[Keys.HIDE_WATCHED] == "true"
+                hideWatched = this[Keys.HIDE_WATCHED] == "true",
+                autoPlayNextMovieEnabled = (this[Keys.AUTO_PLAY_NEXT_MOVIE] ?: "true") != "false",
+                autoPlayNextEpisodeEnabled = (this[Keys.AUTO_PLAY_NEXT_EPISODE] ?: "true") != "false"
             )
         }
     }

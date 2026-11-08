@@ -60,6 +60,9 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -274,10 +277,27 @@ private fun getLanguageFlag(language: String?): String? {
 }
 
 private fun getLanguageDisplayName(langCode: String?, rawLabel: String?): String {
-    if (!rawLabel.isNullOrBlank() && !rawLabel.startsWith("Track", ignoreCase = true) && !rawLabel.startsWith("Pista", ignoreCase = true)) {
-        val cleaned = rawLabel.replace(Regex("\\s*\\([^)]*\\)"), "").trim()
-        if (cleaned.isNotBlank()) return cleaned
+    val rawLower = rawLabel?.lowercase() ?: ""
+    if (rawLower.isNotBlank()) {
+        when {
+            rawLower.contains("castellano") || rawLower.contains("es-es") -> return "Castellano"
+            rawLower.contains("latino") || rawLower.contains("es-419") || rawLower.contains("es-la") || rawLower.contains("es-mx") -> return "Español Latino"
+            rawLower.contains("español") || rawLower.contains("espanol") || rawLower.contains("spanish") -> return "Español"
+            rawLower.contains("inglés") || rawLower.contains("ingles") || rawLower.contains("english") -> return "Inglés"
+            rawLower.contains("francés") || rawLower.contains("frances") || rawLower.contains("french") -> return "Francés"
+            rawLower.contains("alemán") || rawLower.contains("aleman") || rawLower.contains("german") -> return "Alemán"
+            rawLower.contains("italiano") || rawLower.contains("italian") -> return "Italiano"
+            rawLower.contains("japonés") || rawLower.contains("japones") || rawLower.contains("japanese") -> return "Japonés"
+            rawLower.contains("coreano") || rawLower.contains("korean") -> return "Coreano"
+            rawLower.contains("chino") || rawLower.contains("chinese") -> return "Chino"
+            rawLower.contains("ruso") || rawLower.contains("russian") -> return "Ruso"
+            rawLower.contains("portugués") || rawLower.contains("portugues") || rawLower.contains("portuguese") -> return "Portugués"
+            rawLower.contains("catalán") || rawLower.contains("catalan") -> return "Catalán"
+            rawLower.contains("gallego") || rawLower.contains("galician") -> return "Gallego"
+            rawLower.contains("vasco") || rawLower.contains("euskera") -> return "Vasco"
+        }
     }
+
     if (langCode.isNullOrBlank() || langCode.equals("und", ignoreCase = true)) {
         return "Desconocido"
     }
@@ -458,13 +478,38 @@ private fun PlayerContent(
     var showSkipIntroBanner by remember { mutableStateOf(false) }
     var showSkipCreditsBanner by remember { mutableStateOf(false) }
 
-    // Next-episode overlay
+    // Next-episode / movie overlay & auto exit state
     var showNextEpisodeOverlay by remember { mutableStateOf(false) }
-    // countdown calculado en vivo desde la posición del reproductor, no un timer fijo
-    // -1 = sin cuenta atrás (episodio terminó, mostrar sin contador)
     var nextEpisodeCountdown by remember { mutableIntStateOf(-1) }
+    var autoExitCountdown by remember { mutableIntStateOf(-1) }
     var playbackEnded by remember { mutableStateOf(false) }
     var nextEpisodeTriggered by remember { mutableStateOf(false) }
+
+    val recommendedList by viewModel.recommendedList.collectAsStateWithLifecycle()
+
+    // Ocultar controles inferiores cuando el overlay post-créditos está activo para no interferir con el foco
+    LaunchedEffect(showNextEpisodeOverlay) {
+        if (showNextEpisodeOverlay) {
+            showOverlayControls = false
+        }
+    }
+
+    // Visual shrink animation when post-credits recommendation card is visible
+    val videoScale by animateFloatAsState(
+        targetValue = if (showNextEpisodeOverlay && !isScrubbing) 0.54f else 1.0f,
+        animationSpec = tween(durationMillis = 350),
+        label = "videoScale"
+    )
+    val videoTranslationX by animateDpAsState(
+        targetValue = if (showNextEpisodeOverlay && !isScrubbing) (-180).dp else 0.dp,
+        animationSpec = tween(durationMillis = 350),
+        label = "videoTranslationX"
+    )
+    val videoTranslationY by animateDpAsState(
+        targetValue = if (showNextEpisodeOverlay && !isScrubbing) (-110).dp else 0.dp,
+        animationSpec = tween(durationMillis = 350),
+        label = "videoTranslationY"
+    )
 
     // Resume dialog state: null = not yet decided, true = show dialog, false = decision made
     var showResumeDialog by remember { mutableStateOf(false) }
@@ -1128,7 +1173,6 @@ private fun PlayerContent(
     // Valores actualizados para el listener: nextEpisode/creditsMarker llegan después de crear
     // el player; sin rememberUpdatedState la lambda capturaría valores obsoletos.
     val latestNextEpisode by rememberUpdatedState(nextEpisode)
-    val latestCreditsMarker by rememberUpdatedState(creditsMarker)
     val latestOnBack by rememberUpdatedState(onBack)
     val latestOnPlayNextEpisode by rememberUpdatedState(onPlayNextEpisode)
 
@@ -1192,8 +1236,7 @@ private fun PlayerContent(
 
         var next = latestNextEpisode
         if (next == null) {
-            // La carga inicial de NextUp pudo fallar o seguir en curso: reintentar al terminar.
-            Log.i("PlayerScreen", "Playback ended without next episode cached; refreshing NextUp…")
+            Log.i("PlayerScreen", "Playback ended without next media cached; refreshing…")
             isBuffering = true
             next = runCatching {
                 viewModel.refreshNextEpisode(info.playableId, info.seriesId)
@@ -1201,11 +1244,11 @@ private fun PlayerContent(
             isBuffering = false
         }
 
-        Log.i("PlayerScreen", "Playback ended. nextEpisode=${next?.itemId ?: "none"}")
+        Log.i("PlayerScreen", "Playback ended. nextMedia=${next?.itemId ?: "none"}")
         if (next != null) {
             showOverlayControls = false
             showNextEpisodeOverlay = true
-            for (sec in 5 downTo 1) {
+            for (sec in 10 downTo 1) {
                 if (!isActive || !showNextEpisodeOverlay || nextEpisodeTriggered) break
                 nextEpisodeCountdown = sec
                 delay(1000L)
@@ -1213,11 +1256,23 @@ private fun PlayerContent(
             if (isActive && showNextEpisodeOverlay && !nextEpisodeTriggered) {
                 nextEpisodeCountdown = 0
                 playNext(next)
+            } else if (isActive && !nextEpisodeTriggered) {
+                // Si la sugerencia se canceló/descartó al finalizar -> auto-salir
+                latestOnBack()
             }
         } else {
-            // Último episodio o sin siguiente: dejar los controles visibles para que el usuario decida.
+            // Sin siguiente película o episodio: iniciar temporizador de salida automática (10s)
             nextEpisodeCountdown = -1
             showOverlayControls = true
+            showNextEpisodeOverlay = false
+            for (sec in 10 downTo 1) {
+                if (!isActive) break
+                autoExitCountdown = sec
+                delay(1000L)
+            }
+            if (isActive) {
+                latestOnBack()
+            }
         }
     }
 
@@ -1279,10 +1334,11 @@ private fun PlayerContent(
         }
     }
 
-    // Cuando el countdown llega a 0 (caso A: créditos terminaron), lanzar siguiente episodio
+    // Cuando el countdown llega a 0 (caso A: créditos terminaron), lanzar siguiente episodio/película
     LaunchedEffect(nextEpisodeCountdown, isProUser) {
-        if (isProUser && nextEpisodeCountdown == 0 && showNextEpisodeOverlay && nextEpisode != null) {
-            playNext(nextEpisode!!)
+        val next = nextEpisode
+        if (isProUser && nextEpisodeCountdown == 0 && showNextEpisodeOverlay && next != null) {
+            playNext(next)
         }
     }
 
@@ -1459,7 +1515,14 @@ private fun PlayerContent(
                 }
                 playerView.subtitleView?.setStyle(subStyle)
             },
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    scaleX = videoScale
+                    scaleY = videoScale
+                    translationX = videoTranslationX.toPx()
+                    translationY = videoTranslationY.toPx()
+                }
         )
 
         // Resume Playback Dialog Overlay (Netflix-style)
@@ -1648,7 +1711,7 @@ private fun PlayerContent(
                 } else {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Tune,
@@ -1661,18 +1724,6 @@ private fun PlayerContent(
                             color = if (isMonochrome) Color.White else focusColor,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Bold
-                        )
-                        Box(
-                            modifier = Modifier
-                                .width(1.dp)
-                                .height(14.dp)
-                                .background(Color(0x33FFFFFF))
-                        )
-                        Text(
-                            text = stringResource(R.string.player_timeline_hint),
-                            color = Color.White,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Medium
                         )
                     }
                 }
@@ -2103,24 +2154,50 @@ private fun PlayerContent(
             )
         }
 
-        // ─── Next Episode Overlay (Apple TV+ style, bottom-right) ────────────
+        // ─── Auto Exit Overlay (Bottom-Center) ──────────────────────────────
+        AnimatedVisibility(
+            visible = autoExitCountdown > 0 && playbackEnded && !showNextEpisodeOverlay,
+            enter = fadeIn() + scaleIn(initialScale = 0.95f),
+            exit = fadeOut() + scaleOut(targetScale = 0.95f),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 56.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color(0xEE111422))
+                    .border(1.5.dp, if (isMonochrome) Color(0x66FFFFFF) else focusColor.copy(alpha = 0.6f), RoundedCornerShape(16.dp))
+                    .padding(horizontal = 24.dp, vertical = 12.dp)
+            ) {
+                Text(
+                    text = stringResource(R.string.player_auto_exit_in, autoExitCountdown),
+                    color = Color.White,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
+
+        // ─── Next Episode / Movie Overlay (Disney+ / Netflix PIP & Recommendations) ─
         AnimatedVisibility(
             visible = showNextEpisodeOverlay && !showResumeDialog && nextEpisode != null,
             enter = fadeIn() + scaleIn(initialScale = 0.92f),
             exit = fadeOut() + scaleOut(targetScale = 0.92f),
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(end = 48.dp, bottom = 120.dp)
+                .fillMaxWidth()
         ) {
             nextEpisode?.let { ep ->
-                NextEpisodeCard(
+                PostCreditsBoard(
                     nextEpisode = ep,
+                    recommendedList = recommendedList,
                     countdown = nextEpisodeCountdown,
                     isMonochrome = isMonochrome,
                     focusColor = focusColor,
                     focusContent = focusContent,
-                    onPlayNow = {
-                        playNext(ep)
+                    onPlayNow = { targetItem ->
+                        playNext(targetItem)
                     },
                     onDismiss = {
                         showNextEpisodeOverlay = false
@@ -2194,13 +2271,14 @@ private fun SkipIntroBanner(
 
 @ExperimentalTvMaterial3Api
 @Composable
-private fun NextEpisodeCard(
+private fun PostCreditsBoard(
     nextEpisode: NextEpisodeInfo,
+    recommendedList: List<NextEpisodeInfo>,
     countdown: Int,
     isMonochrome: Boolean = false,
     focusColor: Color = Color.White,
     focusContent: Color = Color(0xFF0F172A),
-    onPlayNow: () -> Unit,
+    onPlayNow: (NextEpisodeInfo) -> Unit,
     onDismiss: () -> Unit
 ) {
     val playFocusRequester = remember { FocusRequester() }
@@ -2209,134 +2287,257 @@ private fun NextEpisodeCard(
         runCatching { playFocusRequester.requestFocus() }
     }
 
-    Box(
+    Column(
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalAlignment = Alignment.End,
         modifier = Modifier
-            .width(360.dp)
-            .clip(RoundedCornerShape(20.dp))
-            .background(Color(0xF0111422))
-            .border(1.5.dp, if (isMonochrome) Color(0x33FFFFFF) else focusColor.copy(alpha = 0.5f), RoundedCornerShape(20.dp))
-            .padding(18.dp)
+            .fillMaxWidth()
+            .padding(end = 32.dp, bottom = 32.dp)
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            // Header
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    // Si hay countdown activo: "Siguiente en Xs" · Si no (STATE_ENDED): "Siguiente episodio"
-                    text = if (countdown > 0) stringResource(R.string.player_next_in, countdown) else stringResource(R.string.player_next_episode),
-                    color = if (isMonochrome) Color.White else focusColor,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    letterSpacing = 1.2.sp
-                )
-                // Círculo de countdown sólo cuando hay créditos con tiempo restante real
-                if (countdown > 0) {
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .background(if (isMonochrome) Color(0x22FFFFFF) else focusColor.copy(alpha = 0.18f))
-                            .border(1.5.dp, if (isMonochrome) Color.White else focusColor, CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "$countdown",
-                            color = Color.White,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-            }
-
-            // Episode info row
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // Episode code badge
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(if (isMonochrome) Color(0x22FFFFFF) else focusColor.copy(alpha = 0.15f))
-                        .padding(horizontal = 10.dp, vertical = 5.dp)
+        // Hero Main Recommendation Card (Top-Right)
+        Box(
+            modifier = Modifier
+                .width(420.dp)
+                .clip(RoundedCornerShape(22.dp))
+                .background(Color(0xF00D0F1D))
+                .border(1.5.dp, if (isMonochrome) Color(0x33FFFFFF) else focusColor.copy(alpha = 0.5f), RoundedCornerShape(22.dp))
+                .padding(20.dp)
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                // Header row
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
+                    val headerTitle = when {
+                        countdown > 0 -> stringResource(R.string.player_next_in, countdown)
+                        nextEpisode.isMovie -> stringResource(R.string.player_next_movie)
+                        else -> stringResource(R.string.player_next_episode)
+                    }
+
                     Text(
-                        text = nextEpisode.episodeCode,
+                        text = headerTitle,
                         color = if (isMonochrome) Color.White else focusColor,
                         fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.2.sp
                     )
+                    if (countdown > 0) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(if (isMonochrome) Color(0x22FFFFFF) else focusColor.copy(alpha = 0.2f))
+                                .border(1.5.dp, if (isMonochrome) Color.White else focusColor, CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "$countdown",
+                                color = Color.White,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
                 }
-                Text(
-                    text = nextEpisode.title,
-                    color = Color.White,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
-                )
-            }
 
-            // Action buttons
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                // Play now (primary, focused by default)
-                Surface(
-                    onClick = onPlayNow,
-                    shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(10.dp)),
-                    colors = ClickableSurfaceDefaults.colors(
-                        containerColor = if (isMonochrome) Color.White else focusColor,
-                        focusedContainerColor = if (isMonochrome) Color(0xFFE0E7FF) else focusColor,
-                        contentColor = if (isMonochrome) Color(0xFF0F172A) else focusContent,
-                        focusedContentColor = if (isMonochrome) Color(0xFF0F172A) else focusContent
-                    ),
-                    modifier = Modifier
-                        .focusRequester(playFocusRequester)
-                        .weight(1f)
+                // Main Info Row: Backdrop/Poster + Title/Badge
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.PlayArrow,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp)
+                    val imageUrl = nextEpisode.backdropUrl ?: nextEpisode.thumbUrl
+                    if (!imageUrl.isNullOrBlank()) {
+                        Box(
+                            modifier = Modifier
+                                .size(width = 110.dp, height = 66.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color(0x33FFFFFF))
+                        ) {
+                            AsyncImage(
+                                model = imageUrl,
+                                contentDescription = nextEpisode.title,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                    }
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = nextEpisode.episodeCode,
+                            color = if (isMonochrome) Color.White.copy(alpha = 0.7f) else focusColor.copy(alpha = 0.85f),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold
                         )
                         Text(
-                            text = stringResource(R.string.player_play_now),
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold
+                            text = nextEpisode.title,
+                            color = Color.White,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
 
-                // Dismiss
-                Surface(
-                    onClick = onDismiss,
-                    shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(10.dp)),
-                    colors = ClickableSurfaceDefaults.colors(
-                        containerColor = Color(0x22FFFFFF),
-                        focusedContainerColor = Color(0x44FFFFFF),
-                        contentColor = Color.White,
-                        focusedContentColor = Color.White
+                if (!nextEpisode.overview.isNullOrBlank()) {
+                    Text(
+                        text = nextEpisode.overview,
+                        color = Color.White.copy(alpha = 0.75f),
+                        fontSize = 11.sp,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        lineHeight = 15.sp
                     )
+                }
+
+                // Action Buttons
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Box(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
-                        Text(
-                            text = stringResource(R.string.common_cancel),
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = Color.White
+                    // Play now
+                    Surface(
+                        onClick = { onPlayNow(nextEpisode) },
+                        shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(12.dp)),
+                        colors = ClickableSurfaceDefaults.colors(
+                            containerColor = if (isMonochrome) Color.White else focusColor,
+                            focusedContainerColor = if (isMonochrome) Color(0xFFE0E7FF) else focusColor,
+                            contentColor = if (isMonochrome) Color(0xFF0F172A) else focusContent,
+                            focusedContentColor = if (isMonochrome) Color(0xFF0F172A) else focusContent
+                        ),
+                        modifier = Modifier
+                            .focusRequester(playFocusRequester)
+                            .weight(1f)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.PlayArrow,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Text(
+                                text = stringResource(R.string.player_play_now),
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+
+                    // Dismiss / Watch credits
+                    Surface(
+                        onClick = onDismiss,
+                        shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(12.dp)),
+                        colors = ClickableSurfaceDefaults.colors(
+                            containerColor = Color(0x22FFFFFF),
+                            focusedContainerColor = Color(0x44FFFFFF),
+                            contentColor = Color.White,
+                            focusedContentColor = Color.White
                         )
+                    ) {
+                        Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
+                            Text(
+                                text = stringResource(R.string.player_watch_credits),
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color.White
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // Alternative Recommendations Carousel ("También te podría gustar")
+        val alternatives = recommendedList.filter { it.itemId != nextEpisode.itemId }.take(4)
+        if (alternatives.isNotEmpty()) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalAlignment = Alignment.Start,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 24.dp)
+            ) {
+                Text(
+                    text = stringResource(R.string.player_more_like_this),
+                    color = Color.White.copy(alpha = 0.9f),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.8.sp
+                )
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    alternatives.forEach { altItem ->
+                        Surface(
+                            onClick = { onPlayNow(altItem) },
+                            shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(14.dp)),
+                            scale = ClickableSurfaceDefaults.scale(focusedScale = 1.06f),
+                            colors = ClickableSurfaceDefaults.colors(
+                                containerColor = Color(0xF0111422),
+                                focusedContainerColor = if (isMonochrome) Color.White else focusColor,
+                                contentColor = Color.White,
+                                focusedContentColor = if (isMonochrome) Color(0xFF0F172A) else focusContent
+                            ),
+                            border = ClickableSurfaceDefaults.border(
+                                border = Border(
+                                    border = BorderStroke(1.dp, Color(0x33FFFFFF)),
+                                    shape = RoundedCornerShape(14.dp)
+                                ),
+                                focusedBorder = Border(
+                                    border = BorderStroke(2.dp, if (isMonochrome) Color.White else focusColor),
+                                    shape = RoundedCornerShape(14.dp)
+                                )
+                            ),
+                            modifier = Modifier.width(180.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                val altImage = altItem.thumbUrl ?: altItem.backdropUrl
+                                if (!altImage.isNullOrBlank()) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(width = 48.dp, height = 48.dp)
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(Color(0x33FFFFFF))
+                                    ) {
+                                        AsyncImage(
+                                            model = altImage,
+                                            contentDescription = altItem.title,
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    }
+                                }
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = altItem.title,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Text(
+                                        text = altItem.episodeCode,
+                                        fontSize = 10.sp,
+                                        color = Color.White.copy(alpha = 0.7f),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -3762,8 +3963,24 @@ private fun extractTracksFromExoPlayer(exoPlayer: ExoPlayer, context: Context): 
             if (trackType == C.TRACK_TYPE_AUDIO) {
                 val flag = getLanguageFlag(lang)
                 val langName = getLanguageDisplayName(lang, format.label)
-                val codec = format.sampleMimeType?.substringAfter("/")?.uppercase() ?: ""
-                val channels = if (format.channelCount > 0) "${format.channelCount} ch" else ""
+                val rawMime = format.sampleMimeType?.lowercase() ?: ""
+                val codec = when {
+                    rawMime.contains("eac3") || rawMime.contains("e-ac3") -> "E-AC3"
+                    rawMime.contains("ac3") -> "AC3"
+                    rawMime.contains("dts") -> "DTS"
+                    rawMime.contains("truehd") -> "TrueHD"
+                    rawMime.contains("flac") -> "FLAC"
+                    rawMime.contains("aac") || rawMime.contains("mp4a") -> "AAC"
+                    rawMime.contains("opus") -> "OPUS"
+                    else -> format.sampleMimeType?.substringAfter("/")?.uppercase() ?: ""
+                }
+                val channels = when (format.channelCount) {
+                    6 -> "5.1"
+                    8 -> "7.1"
+                    2 -> "2.0"
+                    1 -> "1.0"
+                    else -> if (format.channelCount > 0) "${format.channelCount} ch" else ""
+                }
                 val displayParts = listOfNotNull(
                     langName.ifBlank { null },
                     codec.ifBlank { null },

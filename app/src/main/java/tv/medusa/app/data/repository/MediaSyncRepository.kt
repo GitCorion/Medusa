@@ -566,7 +566,7 @@ class MediaSyncRepository(
                                         entity
                                     }
                                 }
-                                jellyfinDao.insertOrUpdateAll(entities)
+                                jellyfinDao.insertOrUpdateAll(jellyfinDao.preserveKnownLastPlayedDates(entities))
 
                                 deltaCount += entities.size
                                 deltaOffset += deltaItems.size
@@ -736,7 +736,7 @@ class MediaSyncRepository(
 
                         if (items.isEmpty()) break
 
-                        val entities = items.map { it.toEntity() }
+                        val entities = jellyfinDao.preserveKnownLastPlayedDates(items.map { it.toEntity() })
                         jellyfinDao.insertOrUpdateAll(entities)
 
                         startIndex += items.size

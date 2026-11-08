@@ -144,25 +144,36 @@ class JellyfinMediaRemoteRepository(
                         api.getNextUpItems(authHeader = authHeader, userId = userId).items.map { it.toEntity() }
                     }.getOrDefault(emptyList())
                 }
+                val recentlyPlayedDeferred = async {
+                    runCatching {
+                        api.getRecentlyPlayedItems(authHeader = authHeader, userId = userId, limit = 50).items.map { it.toEntity() }
+                    }.getOrDefault(emptyList())
+                }
 
                 val resumeEntities = resumeDeferred.await()
                 val nextUpEntities = nextUpDeferred.await()
+                val recentlyPlayedEntities = recentlyPlayedDeferred.await()
 
-                // Fechas reales por serie: las que traen los propios "Continuar viendo" (Resume) y,
-                // para las series que solo salen en NextUp (su episodio aún no se ha reproducido y no
-                // trae fecha propia), la deducida del máximo de sus capítulos ya vistos, que están en
-                // Room. Jellyfin no fecha las series (`LastPlayedDate` viene null), así que mirar solo
-                // su fila nunca daría fecha y el ítem caería al final de la fila.
+                // Fechas reales por serie: las que traen los propios "Continuar viendo" (Resume),
+                // las de los capítulos recién terminados (RecentlyPlayed) y las guardadas en Room.
                 val seriesMissingDate = nextUpEntities
                     .mapNotNull { it.seriesId }
                     .distinct()
-                    .filter { seriesId -> resumeEntities.none { it.seriesId == seriesId && it.lastPlayedTicks > 0L } }
+                    .filter { seriesId ->
+                        resumeEntities.none { it.seriesId == seriesId && it.lastPlayedTicks > 0L } &&
+                        recentlyPlayedEntities.none { (it.seriesId ?: it.id) == seriesId && it.lastPlayedTicks > 0L }
+                    }
                 val knownFromDb = if (seriesMissingDate.isEmpty()) {
                     emptyMap()
                 } else {
                     jellyfinDao.getKnownSeriesLastPlayedTicks(seriesMissingDate).associate { it.id to it.lastPlayedTicks }
                 }
-                val seriesDates = seriesLastPlayedDates(resumeEntities, nextUpEntities, knownFromDb)
+                val seriesDates = seriesLastPlayedDates(
+                    resume = resumeEntities,
+                    nextUp = nextUpEntities,
+                    recentlyPlayed = recentlyPlayedEntities,
+                    knownFromDb = knownFromDb
+                )
 
                 // Guardar en Room con la fecha real (propia o heredada de la serie) y sin pisar con un
                 // 0 la que ya hubiera: `insertOrUpdateAll` es un REPLACE.
@@ -748,6 +759,17 @@ fun buildJellyfinAuthHeader(
             if (token.isNotEmpty()) ", Token=\"$token\"" else ""
 }
 
+private fun extractProviderId(providerIds: Map<String, String>?, vararg keys: String): String? {
+    if (providerIds.isNullOrEmpty()) return null
+    for (key in keys) {
+        val exact = providerIds[key]
+        if (!exact.isNullOrBlank()) return exact.trim()
+    }
+    return providerIds.entries.firstOrNull { entry ->
+        keys.any { k -> entry.key.equals(k, ignoreCase = true) }
+    }?.value?.trim()?.takeIf { it.isNotBlank() }
+}
+
 internal fun JellyfinItemDto.toEntity(): JellyfinMediaEntity {
     val totalCount = effectiveItemCount
     val unplayedCount = userData?.unplayedItemCount
@@ -761,9 +783,9 @@ internal fun JellyfinItemDto.toEntity(): JellyfinMediaEntity {
         title = name ?: "",
         originalTitle = originalTitle,
         type = itemType,
-        tmdbId = providerIds?.get("Tmdb") ?: providerIds?.get("tmdb"),
-        imdbId = providerIds?.get("Imdb") ?: providerIds?.get("imdb"),
-        tvdbId = providerIds?.get("Tvdb") ?: providerIds?.get("tvdb"),
+        tmdbId = extractProviderId(providerIds, "Tmdb", "TheMovieDb", "tmdb", "themoviedb"),
+        imdbId = extractProviderId(providerIds, "Imdb", "imdb"),
+        tvdbId = extractProviderId(providerIds, "Tvdb", "tvdb"),
         overview = overview,
         primaryImageTag = primaryImageTag ?: imageTags?.get("Primary"),
         backdropImageTag = backdropImageTags?.firstOrNull(),

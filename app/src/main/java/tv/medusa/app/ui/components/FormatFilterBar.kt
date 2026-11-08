@@ -22,6 +22,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.toggleableState
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -94,6 +100,10 @@ fun FormatFilterBar(
                 ),
                 modifier = Modifier
                     .handleTouchClick { onToggleHideWatched() }
+                    .semantics {
+                        role = Role.Switch
+                        toggleableState = ToggleableState(hideWatched)
+                    }
                     .height(34.dp)
                     .then(if (!showText) Modifier.width(38.dp) else Modifier)
             ) {
@@ -114,7 +124,7 @@ fun FormatFilterBar(
                         if (showIcons) Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = hideWatchedLabel,
-                            fontSize = 12.5.sp,
+                            fontSize = 12.sp,
                             fontWeight = if (hideWatched) FontWeight.Bold else FontWeight.Medium
                         )
                     }
@@ -146,6 +156,10 @@ fun FormatFilterBar(
                 ),
                 modifier = Modifier
                     .handleTouchClick { onSelect(format) }
+                    .semantics {
+                        role = Role.Tab
+                        this.selected = isSelected
+                    }
                     .height(34.dp)
                     .then(if (!showText) Modifier.width(38.dp) else Modifier)
             ) {
@@ -170,7 +184,7 @@ fun FormatFilterBar(
                         if (showIcons) Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = formatLabel,
-                            fontSize = 12.5.sp,
+                            fontSize = 12.sp,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
                         )
                     }

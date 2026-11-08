@@ -615,6 +615,85 @@ class FilterToLibraryUseCaseTest {
     }
 
     @Test
+    fun `filterTmdbItems does not match a candidate with same title when it has a conflicting tmdbId`() = runTest {
+        val fakeDao = FakeJellyfinDao()
+        // Versión antigua o diferente de "La Odisea" en la biblioteca con su propio tmdbId (ej. 1954 con ID 23075)
+        val oldOdyssey = JellyfinMediaEntity(
+            id = "jf-odisea-1954",
+            title = "La Odisea",
+            type = "Movie",
+            tmdbId = "23075",
+            productionYear = 1954
+        )
+        fakeDao.setLocalItems(listOf(oldOdyssey))
+
+        val repo = MediaRepository(fakeDao)
+        val useCase = FilterToLibraryUseCase(repo)
+
+        // Superproducción de 2026 en Top 1 de TMDB (ID 1368337)
+        val trendingTmdb = listOf(
+            TmdbItemDto(id = 1_368_337, title = "La Odisea", releaseDate = "2026-07-15")
+        )
+
+        val filtered = useCase.filterTmdbItems(trendingTmdb, maxCandidates = 10)
+
+        assertTrue("Un estreno no debe emparejarse con otra versión que ya tiene un tmdbId diferente", filtered.isEmpty())
+    }
+
+    @Test
+    fun `filterTmdbItems matches by tmdbId even when localized title in library is in English and TMDB is in Spanish`() = runTest {
+        val fakeDao = FakeJellyfinDao()
+        // La biblioteca tiene la película nombrada en inglés "The Odyssey" con el TMDB ID 1368337
+        val famousOdyssey = JellyfinMediaEntity(
+            id = "jf-odyssey-2026",
+            title = "The Odyssey",
+            originalTitle = "The Odyssey",
+            type = "Movie",
+            tmdbId = "1368337",
+            productionYear = 2026
+        )
+        fakeDao.setLocalItems(listOf(famousOdyssey))
+
+        val repo = MediaRepository(fakeDao)
+        val useCase = FilterToLibraryUseCase(repo)
+
+        // TMDB devuelve el título traducido al español "La Odisea"
+        val tmdbItem = listOf(
+            TmdbItemDto(id = 1_368_337, title = "La Odisea", originalTitle = "The Odyssey", releaseDate = "2026-07-15")
+        )
+
+        val filtered = useCase.filterTmdbItems(tmdbItem, maxCandidates = 10)
+
+        assertEquals(1, filtered.size)
+        assertEquals("jf-odyssey-2026", filtered[0].id)
+    }
+
+    @Test
+    fun `filterTmdbItems matches by title fallback only when candidate has no tmdbId and year is compatible`() = runTest {
+        val fakeDao = FakeJellyfinDao()
+        val localUntagged = JellyfinMediaEntity(
+            id = "jf-untagged-2024",
+            title = "Película Sin Tag",
+            type = "Movie",
+            tmdbId = null,
+            productionYear = 2024
+        )
+        fakeDao.setLocalItems(listOf(localUntagged))
+
+        val repo = MediaRepository(fakeDao)
+        val useCase = FilterToLibraryUseCase(repo)
+
+        val tmdbItem = listOf(
+            TmdbItemDto(id = 888_999, title = "Película Sin Tag", releaseDate = "2024-03-01")
+        )
+
+        val filtered = useCase.filterTmdbItems(tmdbItem, maxCandidates = 10)
+
+        assertEquals(1, filtered.size)
+        assertEquals("jf-untagged-2024", filtered[0].id)
+    }
+
+    @Test
     fun `deduplicateMediaEntities merges duplicate versions of same movie without merging sequels`() {
         val movie1080p = JellyfinMediaEntity(
             id = "m1-1080p",

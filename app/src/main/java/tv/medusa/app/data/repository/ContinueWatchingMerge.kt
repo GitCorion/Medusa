@@ -39,12 +39,11 @@ internal fun mergeContinueWatching(
         .filter { it.date > 0L }
         .sortedWith(
             compareByDescending<RankedContinueWatchingItem> { it.date }
-                .thenBy { it.source }
                 .thenBy { it.position }
         )
     val undated = ranked
         .filter { it.date <= 0L }
-        .sortedWith(compareBy<RankedContinueWatchingItem> { it.source }.thenBy { it.position })
+        .sortedWith(compareBy<RankedContinueWatchingItem> { it.position })
 
     val seenKeys = HashSet<String>(dated.size + undated.size)
     return (dated + undated)
@@ -83,11 +82,20 @@ internal fun continueWatchingEntitiesToPersist(
 internal fun seriesLastPlayedDates(
     resume: List<JellyfinMediaEntity>,
     nextUp: List<JellyfinMediaEntity>,
-    knownFromDb: Map<String, Long> = emptyMap()
+    knownFromDb: Map<String, Long> = emptyMap(),
+    recentlyPlayed: List<JellyfinMediaEntity> = emptyList()
 ): Map<String, Long> {
     val dates = HashMap<String, Long>()
 
-    // 1. Fechas desde el Resume (lo que el usuario dejó a medias en el servidor)
+    // 1. Fechas reales desde los ítems recientemente reproducidos en Jellyfin (episodios terminados)
+    recentlyPlayed.forEach { item ->
+        val seriesId = item.seriesId ?: if (item.type.equals("Series", ignoreCase = true)) item.id else null
+        if (seriesId != null && item.lastPlayedTicks > 0L) {
+            dates[seriesId] = maxOf(dates[seriesId] ?: 0L, item.lastPlayedTicks)
+        }
+    }
+
+    // 2. Fechas desde el Resume (lo que el usuario dejó a medias en el servidor)
     resume.forEach { item ->
         val seriesId = item.seriesId ?: return@forEach
         if (item.lastPlayedTicks > 0L) {
@@ -95,7 +103,7 @@ internal fun seriesLastPlayedDates(
         }
     }
 
-    // 2. Fechas desde NextUp e historia en Room
+    // 3. Fechas desde NextUp e historia en Room
     nextUp.forEach { item ->
         val seriesId = item.seriesId ?: return@forEach
         if (!dates.containsKey(seriesId)) {
@@ -111,8 +119,10 @@ internal fun seriesLastPlayedDates(
     if (seriesList.isEmpty()) return dates
 
     val maxResume = resume.maxOfOrNull { it.lastPlayedTicks } ?: 0L
+    val maxRecent = recentlyPlayed.maxOfOrNull { it.lastPlayedTicks } ?: 0L
     val maxKnown = dates.values.maxOrNull() ?: 0L
-    val baseTime = if (maxResume > 0L || maxKnown > 0L) maxOf(maxResume, maxKnown) else System.currentTimeMillis() - 3600_000L
+    val baseTime = listOf(maxResume, maxRecent, maxKnown).filter { it > 0L }.maxOrNull()
+        ?: (System.currentTimeMillis() - 3600_000L)
 
     // Si la primera serie de NextUp (la más reciente del servidor) no tiene fecha, asignarle baseTime
     val topSeries = seriesList[0]

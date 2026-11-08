@@ -164,4 +164,26 @@ class ContinueWatchingMergeTest {
         assertTrue("A debe ser mayor que B para respetar el orden del servidor", dates["A"]!! > dates["B"]!!)
         assertEquals(500L, dates["B"])
     }
+
+    @Test
+    fun `series recientemente vistas en recentlyPlayed se colocan por delante de pelicula pausada mas vieja`() {
+        val resumeMovie = movie("peli-vieja", lastPlayed = 1_000L)
+        val nextUpEp = episode("cap-siguiente", seriesId = "SerieReciente")
+        val finishedEp = episode("cap-terminado", seriesId = "SerieReciente", lastPlayed = 9_000L)
+
+        val seriesDates = seriesLastPlayedDates(
+            resume = listOf(resumeMovie),
+            nextUp = listOf(nextUpEp),
+            recentlyPlayed = listOf(finishedEp)
+        )
+
+        val merged = mergeContinueWatching(
+            resume = listOf(resumeMovie),
+            nextUp = listOf(nextUpEp),
+            seriesDates = seriesDates
+        )
+
+        assertEquals(9_000L, seriesDates["SerieReciente"])
+        assertEquals(listOf("cap-siguiente", "peli-vieja"), merged.map { it.id })
+    }
 }

@@ -4,6 +4,12 @@ import tv.medusa.app.ui.components.FormatFilterBar
 import tv.medusa.app.ui.components.TvNavTab
 import tv.medusa.app.ui.components.TvTopBar
 import tv.medusa.app.ui.theme.LocalIsMonochromeTheme
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -86,12 +92,22 @@ fun FavoritesScreen(
     ) {
         when (val state = uiState) {
             is FavoritesUiState.Loading -> {
+                val infiniteTransition = rememberInfiniteTransition(label = "favoritesLoadingPulse")
+                val pulseAlpha by infiniteTransition.animateFloat(
+                    initialValue = 0.45f,
+                    targetValue = 1.0f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(800, easing = LinearEasing),
+                        repeatMode = RepeatMode.Reverse
+                    ),
+                    label = "pulseAlpha"
+                )
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(
                             imageVector = Icons.Rounded.Favorite,
                             contentDescription = null,
-                            tint = Color.White,
+                            tint = focusColor.copy(alpha = pulseAlpha),
                             modifier = Modifier.size(44.dp)
                         )
                         Spacer(modifier = Modifier.height(16.dp))
@@ -222,7 +238,7 @@ fun FavoritesScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .weight(1f),
-                                contentPadding = PaddingValues(start = 12.dp, end = 16.dp, top = 18.dp, bottom = 48.dp)
+                                contentPadding = PaddingValues(top = 16.dp, bottom = 48.dp)
                             ) {
                                 items(
                                     items = state.filteredItems,

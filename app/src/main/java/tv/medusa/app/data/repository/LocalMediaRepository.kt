@@ -345,7 +345,8 @@ class LocalMediaRepository(
     }
 
     private suspend fun findLocalInternal(tmdbId: String?, imdbId: String?, title: String? = null, year: Int? = null, isTv: Boolean? = null): JellyfinMediaEntity? {
-        // 1. Try matching by TMDB or IMDB ID (con verificación estricta de tipo Movie/Series para evitar colisiones de IDs entre películas y series)
+        // 1. Try matching by TMDB or IMDB ID (con verificación estricta de tipo Movie/Series para evitar colisiones de IDs entre películas y series).
+        // Si el ID coincide con el tipo, la obra es certera: no se descarta por divergencias de idioma del título.
         if (tmdbId != null || imdbId != null) {
             val matchedById = when (isTv) {
                 true -> jellyfinDao.findTvByTmdbOrImdb(tmdbId, imdbId)
@@ -353,16 +354,7 @@ class LocalMediaRepository(
                 null -> jellyfinDao.findByTmdbOrImdb(tmdbId, imdbId)
             }
             if (matchedById != null) {
-                if (title != null) {
-                    val cleanQuery = title.trim().lowercase().replace(Regex("[^a-z0-9]"), "")
-                    val cleanMatched = matchedById.title.trim().lowercase().replace(Regex("[^a-z0-9]"), "")
-                    val cleanOrig = (matchedById.originalTitle ?: "").trim().lowercase().replace(Regex("[^a-z0-9]"), "")
-                    val isPlausible = cleanQuery.isEmpty() || cleanMatched.contains(cleanQuery) || cleanQuery.contains(cleanMatched) ||
-                            (cleanOrig.isNotEmpty() && (cleanOrig.contains(cleanQuery) || cleanQuery.contains(cleanOrig)))
-                    if (isPlausible) return matchedById
-                } else {
-                    return matchedById
-                }
+                return matchedById
             }
         }
 
@@ -372,15 +364,36 @@ class LocalMediaRepository(
             val cleanTitle = trimmedTitle.substringBefore(":").substringBefore("-").trim()
             // Evita repetir el mismo escaneo cuando colon/guion no cambian el título.
             val titleVariants = if (cleanTitle == trimmedTitle) listOf(cleanTitle) else listOf(cleanTitle, trimmedTitle)
+
+            fun isCandidateAcceptable(candidate: JellyfinMediaEntity?): Boolean {
+                if (candidate == null) return false
+                if (isTv != null) {
+                    val matchesType = when (isTv) {
+                        true -> candidate.type.equals("Series", ignoreCase = true) || candidate.type.equals("Episode", ignoreCase = true)
+                        false -> candidate.type.equals("Movie", ignoreCase = true) || candidate.type.equals("BoxSet", ignoreCase = true)
+                    }
+                    if (!matchesType) return false
+                }
+                // Si el llamador buscaba un tmdbId/imdbId y el candidato local ya tiene uno DIFERENTE,
+                // es una obra distinta en TMDB/IMDB: no aceptar este falso positivo.
+                if (!tmdbId.isNullOrBlank() && !candidate.tmdbId.isNullOrBlank() && candidate.tmdbId != tmdbId) return false
+                if (!imdbId.isNullOrBlank() && !candidate.imdbId.isNullOrBlank() && candidate.imdbId != imdbId) return false
+                // Si el llamador especificó un año válido y el candidato tiene año, deben ser compatibles (±1 año)
+                if (year != null && year > 1900 && candidate.productionYear != null && candidate.productionYear > 1900) {
+                    if (kotlin.math.abs(candidate.productionYear - year) > 1) return false
+                }
+                return true
+            }
+
             if (year != null && year > 1900) {
                 for (candidate in titleVariants) {
                     val matchedByTitleAndYear = jellyfinDao.findByTitleAndYear(candidate, year)
-                    if (matchedByTitleAndYear != null) return matchedByTitleAndYear
+                    if (isCandidateAcceptable(matchedByTitleAndYear)) return matchedByTitleAndYear
                 }
             }
             for (candidate in titleVariants) {
                 val matchedByTitle = jellyfinDao.findByTitle(candidate)
-                if (matchedByTitle != null) return matchedByTitle
+                if (isCandidateAcceptable(matchedByTitle)) return matchedByTitle
             }
             // Fuzzy SOLO como último recurso y con señal suficiente: títulos muy cortos ("Up",
             // "It") o de menos de 4 caracteres producen coincidencias por subcadena con cualquier
@@ -389,7 +402,7 @@ class LocalMediaRepository(
             val fuzzyCandidate = titleVariants.firstOrNull { it.length >= 4 }
             if (fuzzyCandidate != null) {
                 val matchedByFuzzy = jellyfinDao.findByFuzzyTitle(fuzzyCandidate, year)
-                if (matchedByFuzzy != null) return matchedByFuzzy
+                if (isCandidateAcceptable(matchedByFuzzy)) return matchedByFuzzy
             }
         }
 

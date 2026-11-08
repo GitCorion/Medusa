@@ -104,13 +104,12 @@ class FilterToLibraryUseCase(
         // 2. Fallback por título también por lotes: cubre bibliotecas sin TMDB ID sin hacer
         //    una consulta por título (lo que haría inviable indexar miles de candidatos).
         val unmatchedForTitle = parsed.filter { p ->
-            byTmdbId[p.tmdbId].isNullOrEmpty() && !p.title.isNullOrBlank()
+            byTmdbId[p.tmdbId].isNullOrEmpty() && (!p.title.isNullOrBlank() || !p.originalTitle.isNullOrBlank())
         }
-        val byTitle: Map<String, List<JellyfinMediaEntity>> = if (unmatchedForTitle.isNotEmpty()) {
+        val titlesToQuery = unmatchedForTitle.flatMap { listOfNotNull(it.title, it.originalTitle) }.distinct()
+        val byTitle: Map<String, List<JellyfinMediaEntity>> = if (titlesToQuery.isNotEmpty()) {
             runCatching {
-                mediaRepository.findLocalByTitles(
-                    unmatchedForTitle.mapNotNull { it.title }.distinct()
-                )
+                mediaRepository.findLocalByTitles(titlesToQuery)
             }.getOrDefault(emptyList()).groupBy { normalizeTitle(it.title) }
         } else {
             emptyMap()
@@ -127,32 +126,36 @@ class FilterToLibraryUseCase(
             if (results.size >= maxCandidates) break
 
             // 2a. Match directo por ID, respetando el tipo (Movie/BoxSet vs Series/Episode).
+            // Si el TMDB ID coincide y el tipo coincide, la correspondencia es inequívoca:
+            // NO se descarta por discrepancia de texto del título para no romper títulos traducidos
+            // (ej. "The Odyssey" en Jellyfin vs "La Odisea" en TMDB).
             val typed = byTmdbId[p.tmdbId]
                 ?.firstOrNull { matchesType(it, p.isTv) }
-                ?.takeIf { p.title.isNullOrBlank() || isPlausibleTitle(p.title, it) }
             var entity = typed
+
+            // Helper para validar si un candidato de fallback por título es admisible:
+            // Si el candidato local ya tiene un tmdbId asignado y este difiere del que buscamos,
+            // es una obra distinta en TMDB y NO debe emparejarse jamás.
+            fun isFallbackCandidateValid(candidate: JellyfinMediaEntity, queryTitle: String): Boolean {
+                if (!matchesType(candidate, p.isTv)) return false
+                val hasConflictingTmdb = !candidate.tmdbId.isNullOrBlank() && candidate.tmdbId != p.tmdbId
+                if (hasConflictingTmdb) return false
+                if (!isYearCompatible(candidate, p.year)) return false
+                return isPlausibleTitle(queryTitle, candidate)
+            }
 
             // 2b. Match por título por lotes (sin queries individuales).
             if (entity == null && !p.title.isNullOrBlank()) {
                 entity = byTitle[normalizeTitle(p.title)]
-                    ?.firstOrNull { candidate ->
-                        matchesType(candidate, p.isTv) &&
-                            isYearCompatible(candidate, p.year) &&
-                            isPlausibleTitle(p.title, candidate)
-                    }
+                    ?.firstOrNull { isFallbackCandidateValid(it, p.title) }
             }
             if (entity == null && !p.originalTitle.isNullOrBlank()) {
                 entity = byTitle[normalizeTitle(p.originalTitle)]
-                    ?.firstOrNull { candidate ->
-                        matchesType(candidate, p.isTv) &&
-                            isYearCompatible(candidate, p.year) &&
-                            isPlausibleTitle(p.originalTitle, candidate)
-                    }
+                    ?.firstOrNull { isFallbackCandidateValid(it, p.originalTitle) }
             }
 
             // 2c. Último recurso individual: título exacto + año, título y fuzzy.
-            //     Se exige compatibilidad de tipo: una película de TMDB no puede emparejar con
-            //     una serie de la biblioteca solo porque compartan título (caso "Resident Evil").
+            //     Se exige compatibilidad de tipo y que no haya conflicto de ID TMDB.
             if (entity == null && allowPerItemFallback && !p.title.isNullOrBlank()) {
                 val found = mediaRepository.findLocal(
                     tmdbId = p.tmdbId,
@@ -161,7 +164,7 @@ class FilterToLibraryUseCase(
                     year = p.year,
                     isTv = p.isTv
                 )
-                if (found != null && matchesType(found, p.isTv)) {
+                if (found != null && isFallbackCandidateValid(found, p.title)) {
                     entity = found
                 }
                 if (entity == null && !p.originalTitle.isNullOrBlank() && p.originalTitle != p.title) {
@@ -172,7 +175,7 @@ class FilterToLibraryUseCase(
                         year = p.year,
                         isTv = p.isTv
                     )
-                    if (foundOriginal != null && matchesType(foundOriginal, p.isTv)) {
+                    if (foundOriginal != null && isFallbackCandidateValid(foundOriginal, p.originalTitle)) {
                         entity = foundOriginal
                     }
                 }
@@ -193,6 +196,9 @@ class FilterToLibraryUseCase(
             if (!seenIds.add(entity.id)) continue
 
             var updated = entity
+            if (updated.tmdbId.isNullOrBlank()) {
+                updated = updated.copy(tmdbId = p.tmdbId)
+            }
             if (p.item.voteAverage != null && p.item.voteAverage > 0f) {
                 updated = updated.copy(communityRating = p.item.voteAverage)
             }

@@ -441,7 +441,7 @@
     <string name="format_all">All</string>
     <string name="format_movies">Movies</string>
     <string name="format_series">Series</string>
-    <string name="filter_hide_watched">Watched</string>
+    <string name="filter_hide_watched">Hide watched</string>
 
     <!-- Search results header -->
     <string name="search_counter_searching">Searching your Jellyfin server...</string>
@@ -465,6 +465,11 @@
     <string name="player_playing">Now playing</string>
     <string name="player_next_in">Next in %1$ds</string>
     <string name="player_next_episode">Next episode</string>
+    <string name="player_next_movie">Next movie</string>
+    <string name="player_recommended_movie">Recommended movie</string>
+    <string name="player_more_like_this">More Like This</string>
+    <string name="player_auto_exit_in">Exiting in %1$ds</string>
+    <string name="player_watch_credits">Watch credits</string>
     <string name="player_tab_audio">Audio Tracks</string>
     <string name="player_tab_subtitles">Subtitles</string>
     <string name="player_tab_settings">Playback Settings</string>

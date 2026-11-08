@@ -182,9 +182,12 @@ class PlayerViewModel @Inject constructor(
     private val _creditsMarker = MutableStateFlow<SkipMarker?>(null)
     val creditsMarker: StateFlow<SkipMarker?> = _creditsMarker.asStateFlow()
 
-    // ─── Next episode info ────────────────────────────────────────────────
+    // ─── Next episode / media info & recommended list ────────────────────
     private val _nextEpisode = MutableStateFlow<NextEpisodeInfo?>(null)
     val nextEpisode: StateFlow<NextEpisodeInfo?> = _nextEpisode.asStateFlow()
+
+    private val _recommendedList = MutableStateFlow<List<NextEpisodeInfo>>(emptyList())
+    val recommendedList: StateFlow<List<NextEpisodeInfo>> = _recommendedList.asStateFlow()
 
     private suspend fun resolveStrmTargetUrl(
         baseUrl: String,
@@ -995,6 +998,7 @@ class PlayerViewModel @Inject constructor(
             _introMarker.value = null
             _creditsMarker.value = null
             _nextEpisode.value = null
+            _recommendedList.value = emptyList()
 
             // 1️⃣ Try native MediaSegments (Jellyfin 10.10+) — covers Intro, Outro, Recap, etc.
             var nativeSegmentsLoaded = false
@@ -1072,7 +1076,7 @@ class PlayerViewModel @Inject constructor(
                 }
             }
 
-            // 3️⃣ Next episode via NextUp (only for series episodes)
+            // 3️⃣ Next episode via NextUp (series) OR Next movie recommendation (movies)
             if (!seriesId.isNullOrBlank()) {
                 fetchNextEpisode(
                     api = api,
@@ -1082,6 +1086,27 @@ class PlayerViewModel @Inject constructor(
                     currentItemId = itemId,
                     logLabel = "NextEpisode loaded"
                 )
+            } else {
+                fetchNextMovieSuggestion(
+                    api = api,
+                    authHeader = jellyfinAuthHeader,
+                    userId = userId,
+                    currentItemId = itemId
+                )
+            }
+
+            // 4️⃣ Fallback Credits Marker si el servidor no tiene intro/outro markers cargados
+            if (_creditsMarker.value == null) {
+                val dur = _streamInfo.value?.durationMs ?: 0L
+                if (dur > 180_000L) { // Películas o contenidos > 3 minutos
+                    val showAt = (dur * 0.94f).toLong().coerceAtLeast(dur - 150_000L)
+                    _creditsMarker.value = SkipMarker(
+                        showAtMs = showAt,
+                        hideAtMs = dur,
+                        skipToMs = dur
+                    )
+                    Log.i("PlayerViewModel", "Fallback Credits Marker calculated: ${showAt}ms → ${dur}ms")
+                }
             }
         }
     }
@@ -1099,7 +1124,9 @@ class PlayerViewModel @Inject constructor(
             itemId = nextDto.id,
             title = nextDto.name ?: appContext.getString(R.string.player_next_episode),
             episodeCode = "T$season E$episode",
-            thumbUrl = thumbUrl
+            thumbUrl = thumbUrl,
+            overview = nextDto.overview,
+            isMovie = false
         )
     }
 
@@ -1129,23 +1156,108 @@ class PlayerViewModel @Inject constructor(
         }.getOrNull()
     }
 
+    private suspend fun fetchNextMovieSuggestion(
+        api: JellyfinApiService,
+        authHeader: String,
+        userId: String,
+        currentItemId: String
+    ): NextEpisodeInfo? {
+        return runCatching {
+            val candidateDtos = mutableListOf<JellyfinItemDto>()
+            val codeText = appContext.getString(R.string.player_recommended_movie)
+
+            // A) Consultar películas similares vía API
+            val similarRes = runCatching {
+                api.getSimilarItems(
+                    authHeader = authHeader,
+                    itemId = currentItemId,
+                    userId = userId,
+                    limit = 10
+                )
+            }.getOrNull()
+
+            if (similarRes?.items != null) {
+                candidateDtos.addAll(similarRes.items.filter { it.id != currentItemId })
+            }
+
+            // B) Fallback / complemento: buscar películas de la biblioteca
+            if (candidateDtos.size < 5) {
+                val libraryRes = runCatching {
+                    api.getLibraryItems(
+                        authHeader = authHeader,
+                        userId = userId,
+                        includeItemTypes = "Movie",
+                        filters = "IsUnplayed",
+                        limit = 10,
+                        sortBy = "DateCreated",
+                        sortOrder = "Descending"
+                    )
+                }.getOrNull()
+
+                libraryRes?.items?.filter { it.id != currentItemId }?.let { items ->
+                    for (item in items) {
+                        if (candidateDtos.none { it.id == item.id }) {
+                            candidateDtos.add(item)
+                        }
+                    }
+                }
+            }
+
+            val mappedInfoList = candidateDtos.take(5).map { dto ->
+                val year = dto.productionYear?.let { " • $it" } ?: ""
+                val thumbUrl = if (dto.imageTags?.containsKey("Primary") == true) {
+                    "$jellyfinBaseUrl/Items/${dto.id}/Images/Primary?fillWidth=400"
+                } else null
+
+                val backdropUrl = if (!dto.backdropImageTags.isNullOrEmpty()) {
+                    "$jellyfinBaseUrl/Items/${dto.id}/Images/Backdrop/0?fillWidth=800"
+                } else null
+
+                NextEpisodeInfo(
+                    itemId = dto.id,
+                    title = dto.name ?: appContext.getString(R.string.player_next_movie),
+                    episodeCode = "$codeText$year",
+                    thumbUrl = thumbUrl,
+                    overview = dto.overview,
+                    isMovie = true,
+                    backdropUrl = backdropUrl
+                )
+            }
+
+            _recommendedList.value = mappedInfoList
+            val primary = mappedInfoList.firstOrNull()
+            if (primary != null) {
+                _nextEpisode.value = primary
+                Log.i("PlayerViewModel", "NextMovie suggestions loaded: ${mappedInfoList.size} items (primary=${primary.title})")
+            }
+            primary
+        }.getOrNull()
+    }
+
     /**
-     * Reintenta resolver el siguiente episodio al terminar la reproducción.
-     * Cubre el caso en que la carga inicial de NextUp falló, seguía en curso
-     * o devolvió el episodio actual en lugar del siguiente.
+     * Reintenta resolver el siguiente episodio/película al terminar la reproducción.
      */
     suspend fun refreshNextEpisode(itemId: String, seriesId: String?): NextEpisodeInfo? {
-        if (jellyfinBaseUrl.isBlank() || jellyfinAuthHeader.isBlank() || seriesId.isNullOrBlank()) return null
+        if (jellyfinBaseUrl.isBlank() || jellyfinAuthHeader.isBlank()) return null
         val prefs = userPreferencesRepository.userPreferencesFlow.first()
         val api = NetworkClientFactory.createService(jellyfinBaseUrl, JellyfinApiService::class.java)
-        return fetchNextEpisode(
-            api = api,
-            authHeader = jellyfinAuthHeader,
-            userId = prefs.jellyfinUserId,
-            seriesId = seriesId,
-            currentItemId = itemId,
-            logLabel = "NextEpisode refreshed"
-        )
+        return if (!seriesId.isNullOrBlank()) {
+            fetchNextEpisode(
+                api = api,
+                authHeader = jellyfinAuthHeader,
+                userId = prefs.jellyfinUserId,
+                seriesId = seriesId,
+                currentItemId = itemId,
+                logLabel = "NextEpisode refreshed"
+            )
+        } else {
+            fetchNextMovieSuggestion(
+                api = api,
+                authHeader = jellyfinAuthHeader,
+                userId = prefs.jellyfinUserId,
+                currentItemId = itemId
+            )
+        }
     }
 
     /** Seek the current player to [positionMs]. Used for Skip Intro / Skip Credits. */

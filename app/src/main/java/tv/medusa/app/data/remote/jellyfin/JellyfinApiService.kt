@@ -146,6 +146,15 @@ interface JellyfinApiService {
         @Path("itemId") itemId: String
     ): JellyfinItemDto
 
+    @GET("Items/{itemId}/Similar")
+    suspend fun getSimilarItems(
+        @Header("Authorization") authHeader: String,
+        @Path("itemId") itemId: String,
+        @Query("UserId") userId: String,
+        @Query("Limit") limit: Int = 12,
+        @Query("Fields") fields: String = "Overview,ProviderIds,PrimaryImageTag,BackdropImageTags,CommunityRating,OfficialRating,UserData,Genres,ProductionYear"
+    ): JellyfinItemsResponse
+
     @POST("Items/{itemId}/PlaybackInfo")
     suspend fun getPlaybackInfo(
         @Header("Authorization") authHeader: String,

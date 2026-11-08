@@ -68,3 +68,4 @@ Unlike sluggish web-based Jellyfin wrappers, Medusa TV is built 100% natively in
 2. **Inescapable 10-Foot Focus:** At any microsecond, the user knows exactly where the remote control is pointing from 3 meters away.
 3. **Hardware-Friendly Fluidity:** Rock-solid 60 FPS achieved through native alpha channels and compiled gradients instead of heavy post-processing.
 4. **Remote-First Architecture:** Respect TV platform standards. Trust the remote control's physical keys rather than cluttering screens with mobile-oriented back buttons.
+

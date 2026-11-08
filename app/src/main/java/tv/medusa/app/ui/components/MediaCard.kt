@@ -39,6 +39,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -128,7 +129,7 @@ fun MediaCard(
     )
 
     val textAlpha by animateFloatAsState(
-        targetValue = if (isFocused) 1.0f else 0.40f,
+        targetValue = if (isFocused) 1.0f else 0.75f,
         animationSpec = tween(durationMillis = 200),
         label = "textAlpha"
     )
@@ -181,7 +182,7 @@ fun MediaCard(
                 if (!isImageError && !item.posterUrl.isNullOrBlank()) {
                     AsyncImage(
                         model = item.posterUrl,
-                        contentDescription = item.title,
+                        contentDescription = null,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize(),
                         onError = { isImageError = true }
@@ -364,7 +365,8 @@ fun MediaCard(
                             text = " • ",
                             style = MaterialTheme.typography.bodySmall,
                             color = Color(0xFF64748B),
-                            fontSize = 10.sp
+                            fontSize = 10.sp,
+                            modifier = Modifier.clearAndSetSemantics { }
                         )
                     }
                     val isTv = item.type.equals("Series", ignoreCase = true) ||
