@@ -20,6 +20,8 @@ class MedusaApplication : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
+        tv.medusa.app.util.DeviceUtils.getStableDeviceId(this)
+        tv.medusa.app.data.remote.NetworkClientFactory.initCache(this)
         // Índice de descubrimiento: refresco diario + pasada al arrancar (con TTL interno).
         CollectionIndexScheduler.scheduleDaily(this)
         CollectionIndexScheduler.enqueueNow(this)

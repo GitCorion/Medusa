@@ -26,3 +26,5 @@ MEMORIA_INSTRUCCIONES.md
 # Catálogos de descubrimiento generados (se publican en Firebase Hosting, no se versionan)
 docs/catalogs/
 .agents/
+apple_tv_ref/
+

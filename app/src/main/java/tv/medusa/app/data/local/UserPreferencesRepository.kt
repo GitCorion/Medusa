@@ -8,6 +8,7 @@ import tv.medusa.app.util.ServerVerificationUtils
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
@@ -77,6 +78,12 @@ data class UserPreferences(
     val jellyfinUsername: String = "",
     val jellyfinPassword: String = "",
     val jellyfinAccessToken: String = "",
+    val jellyfinServerId: String = "",
+    val jellyfinServerVersion: String = "",
+    /** Opt-in explícito para aceptar el certificado autofirmado del servidor configurado. */
+    val jellyfinAllowSelfSigned: Boolean = false,
+    /** Fingerprint SHA-256 fijado del certificado autofirmado (vacío si no hay pin). */
+    val jellyfinCertificateFingerprint: String = "",
     val traktAccessToken: String = "",
     val traktClientId: String = DEFAULT_TRAKT_CLIENT_ID,
     val traktClientSecret: String = DEFAULT_TRAKT_CLIENT_SECRET,
@@ -132,19 +139,6 @@ class UserPreferencesRepository(context: Context) {
 
     private val appContext = context.applicationContext
 
-    init {
-        appScope.launch {
-            appContext.dataStore.edit { prefs ->
-                if ((prefs[Keys.FIRST_INSTALL_TIME] ?: 0L) <= 0L) {
-                    val osTime = runCatching {
-                        appContext.packageManager.getPackageInfo(appContext.packageName, 0).firstInstallTime
-                    }.getOrDefault(System.currentTimeMillis())
-                    prefs[Keys.FIRST_INSTALL_TIME] = if (osTime > 0L) osTime else System.currentTimeMillis()
-                }
-            }
-        }
-    }
-
     /** Contexto de aplicación (sin riesgo de leak) para acceder a ficheros, etc. */
     val applicationContext: Context get() = appContext
 
@@ -155,6 +149,10 @@ class UserPreferencesRepository(context: Context) {
         val JELLYFIN_USERNAME = stringPreferencesKey("jellyfin_username")
         val JELLYFIN_PASSWORD = stringPreferencesKey("jellyfin_password")
         val JELLYFIN_ACCESS_TOKEN = stringPreferencesKey("jellyfin_access_token")
+        val JELLYFIN_SERVER_ID = stringPreferencesKey("jellyfin_server_id")
+        val JELLYFIN_SERVER_VERSION = stringPreferencesKey("jellyfin_server_version")
+        val JELLYFIN_ALLOW_SELF_SIGNED = booleanPreferencesKey("jellyfin_allow_self_signed")
+        val JELLYFIN_CERT_FINGERPRINT = stringPreferencesKey("jellyfin_cert_fingerprint")
         val TRAKT_ACCESS_TOKEN = stringPreferencesKey("trakt_access_token")
         val TRAKT_CLIENT_ID = stringPreferencesKey("trakt_client_id")
         val TRAKT_CLIENT_SECRET = stringPreferencesKey("trakt_client_secret")
@@ -208,6 +206,28 @@ class UserPreferencesRepository(context: Context) {
 
     /** Alias de compatibilidad: mismo [StateFlow] compartido, expuesto como [Flow]. */
     val userPreferencesFlow: Flow<UserPreferences> = userPreferences
+
+    init {
+        appScope.launch {
+            appContext.dataStore.edit { prefs ->
+                if ((prefs[Keys.FIRST_INSTALL_TIME] ?: 0L) <= 0L) {
+                    val osTime = runCatching {
+                        appContext.packageManager.getPackageInfo(appContext.packageName, 0).firstInstallTime
+                    }.getOrDefault(System.currentTimeMillis())
+                    prefs[Keys.FIRST_INSTALL_TIME] = if (osTime > 0L) osTime else System.currentTimeMillis()
+                }
+            }
+        }
+        appScope.launch {
+            userPreferences.collect { prefs ->
+                tv.medusa.app.data.remote.NetworkClientFactory.setTrustedServer(
+                    serverUrl = prefs.jellyfinServerUrl,
+                    allowSelfSigned = prefs.jellyfinAllowSelfSigned,
+                    certificateFingerprintSha256 = prefs.jellyfinCertificateFingerprint
+                )
+            }
+        }
+    }
 
     val isProUser: StateFlow<Boolean> =
         userPreferences.map { it.isProUser }.stateIn(appScope, SharingStarted.Eagerly, false)
@@ -305,9 +325,37 @@ class UserPreferencesRepository(context: Context) {
         }
     }
 
+    /**
+     * Fija o retira el opt-in de certificado autofirmado para el servidor configurado.
+     * Un pin vacío equivale a retirar la confianza.
+     */
+    suspend fun setJellyfinSelfSigned(allowed: Boolean, fingerprintSha256: String) {
+        val hasValidPin = allowed && fingerprintSha256.isNotBlank()
+        appContext.dataStore.edit { prefs ->
+            prefs[Keys.JELLYFIN_ALLOW_SELF_SIGNED] = hasValidPin
+            prefs[Keys.JELLYFIN_CERT_FINGERPRINT] = if (hasValidPin) fingerprintSha256.trim() else ""
+        }
+    }
+
+    private fun normalizedHost(url: String): String? =
+        url.takeIf { it.isNotBlank() }
+            ?.let {
+                runCatching {
+                    java.net.URI(tv.medusa.app.data.remote.NetworkClientFactory.normalizeUrl(it))
+                }.getOrNull()?.host?.lowercase()
+            }
+
     suspend fun updateJellyfinServerUrl(serverUrl: String) {
         val cleanUrl = serverUrl.trimEnd('/')
         appContext.dataStore.edit { prefs ->
+            val previous = prefs[Keys.JELLYFIN_SERVER_URL] ?: ""
+            // Solo se invalida el pin si ya había un host guardado y cambia. Si no había
+            // host (pin fijado antes de guardar la URL), se conserva para la conexión nueva.
+            val previousHost = normalizedHost(previous)
+            if (previousHost != null && previousHost != normalizedHost(cleanUrl)) {
+                prefs[Keys.JELLYFIN_ALLOW_SELF_SIGNED] = false
+                prefs[Keys.JELLYFIN_CERT_FINGERPRINT] = ""
+            }
             prefs[Keys.JELLYFIN_SERVER_URL] = cleanUrl
         }
     }
@@ -324,9 +372,25 @@ class UserPreferencesRepository(context: Context) {
         }
     }
 
-    suspend fun updateJellyfinConfig(serverUrl: String, userId: String, accessToken: String, username: String = "", password: String = "") {
+    suspend fun updateJellyfinConfig(
+        serverUrl: String,
+        userId: String,
+        accessToken: String,
+        username: String = "",
+        password: String = "",
+        serverId: String = "",
+        serverVersion: String = ""
+    ) {
         val cleanUrl = serverUrl.trimEnd('/')
         appContext.dataStore.edit { prefs ->
+            val previous = prefs[Keys.JELLYFIN_SERVER_URL] ?: ""
+            // Solo se invalida el pin si ya había un host guardado y cambia. Si no había
+            // host (pin fijado antes de guardar la URL), se conserva para la conexión nueva.
+            val previousHost = normalizedHost(previous)
+            if (previousHost != null && previousHost != normalizedHost(cleanUrl)) {
+                prefs[Keys.JELLYFIN_ALLOW_SELF_SIGNED] = false
+                prefs[Keys.JELLYFIN_CERT_FINGERPRINT] = ""
+            }
             prefs[Keys.JELLYFIN_SERVER_URL] = cleanUrl
             prefs[Keys.JELLYFIN_USER_ID] = userId
             prefs[Keys.JELLYFIN_ACCESS_TOKEN] = CryptoUtils.encrypt(accessToken)
@@ -335,6 +399,12 @@ class UserPreferencesRepository(context: Context) {
             }
             if (password.isNotBlank()) {
                 prefs[Keys.JELLYFIN_PASSWORD] = CryptoUtils.encrypt(password)
+            }
+            if (serverId.isNotBlank()) {
+                prefs[Keys.JELLYFIN_SERVER_ID] = serverId
+            }
+            if (serverVersion.isNotBlank()) {
+                prefs[Keys.JELLYFIN_SERVER_VERSION] = serverVersion
             }
         }
     }
@@ -512,6 +582,8 @@ class UserPreferencesRepository(context: Context) {
         accessToken: String,
         username: String = "",
         password: String = "",
+        serverId: String = "",
+        serverVersion: String = "",
         traktToken: String,
         traktClientId: String,
         traktClientSecret: String = "",
@@ -520,11 +592,21 @@ class UserPreferencesRepository(context: Context) {
     ) {
         val cleanUrl = serverUrl.trimEnd('/')
         appContext.dataStore.edit { prefs ->
+            val previous = prefs[Keys.JELLYFIN_SERVER_URL] ?: ""
+            // Solo se invalida el pin si ya había un host guardado y cambia. Si no había
+            // host (pin fijado antes de guardar la URL), se conserva para la conexión nueva.
+            val previousHost = normalizedHost(previous)
+            if (previousHost != null && previousHost != normalizedHost(cleanUrl)) {
+                prefs[Keys.JELLYFIN_ALLOW_SELF_SIGNED] = false
+                prefs[Keys.JELLYFIN_CERT_FINGERPRINT] = ""
+            }
             prefs[Keys.JELLYFIN_SERVER_URL] = cleanUrl
             prefs[Keys.JELLYFIN_USER_ID] = userId
             prefs[Keys.JELLYFIN_ACCESS_TOKEN] = CryptoUtils.encrypt(accessToken)
             if (username.isNotBlank()) prefs[Keys.JELLYFIN_USERNAME] = username
             if (password.isNotBlank()) prefs[Keys.JELLYFIN_PASSWORD] = CryptoUtils.encrypt(password)
+            if (serverId.isNotBlank()) prefs[Keys.JELLYFIN_SERVER_ID] = serverId
+            if (serverVersion.isNotBlank()) prefs[Keys.JELLYFIN_SERVER_VERSION] = serverVersion
             prefs[Keys.TRAKT_ACCESS_TOKEN] = CryptoUtils.encrypt(traktToken)
             prefs[Keys.TRAKT_CLIENT_ID] = traktClientId
             if (traktClientSecret.isNotBlank()) prefs[Keys.TRAKT_CLIENT_SECRET] = traktClientSecret
@@ -643,6 +725,10 @@ class UserPreferencesRepository(context: Context) {
                 jellyfinUsername = this[Keys.JELLYFIN_USERNAME] ?: "",
                 jellyfinPassword = CryptoUtils.decryptStored(this[Keys.JELLYFIN_PASSWORD] ?: ""),
                 jellyfinAccessToken = token,
+                jellyfinServerId = this[Keys.JELLYFIN_SERVER_ID] ?: "",
+                jellyfinServerVersion = this[Keys.JELLYFIN_SERVER_VERSION] ?: "",
+                jellyfinAllowSelfSigned = this[Keys.JELLYFIN_ALLOW_SELF_SIGNED] ?: false,
+                jellyfinCertificateFingerprint = this[Keys.JELLYFIN_CERT_FINGERPRINT] ?: "",
                 traktAccessToken = CryptoUtils.decryptStored(this[Keys.TRAKT_ACCESS_TOKEN] ?: ""),
                 traktClientId = traktId,
                 traktClientSecret = traktSecret,

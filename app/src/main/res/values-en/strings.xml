@@ -237,6 +237,19 @@
     <string name="settings_btn_connecting">Connecting…</string>
     <string name="settings_btn_login">Sign in</string>
 
+    <!-- TLS / self-signed certificate -->
+    <string name="settings_section_tls">SERVER CERTIFICATE</string>
+    <string name="settings_row_tls_self_signed">Self-signed certificate</string>
+    <string name="settings_tls_not_pinned">Not pinned</string>
+    <string name="settings_tls_pinned">Fingerprint pinned</string>
+    <string name="settings_tls_fetching">Fetching certificate…</string>
+    <string name="settings_tls_pin_failed">Could not pin certificate: %1$s</string>
+    <string name="settings_tls_pin_removed">Self-signed certificate removed</string>
+    <string name="settings_btn_pin_certificate">Pin certificate</string>
+    <string name="settings_btn_pin_certificate_again">Re-pin</string>
+    <string name="settings_btn_remove_pin">Remove trust</string>
+    <string name="settings_tls_pin_hint">Only allow if the fingerprint matches your server.</string>
+
     <!-- Trakt -->
     <string name="settings_section_account_linked">LINKED ACCOUNT</string>
     <string name="settings_row_trakt_user">Trakt user</string>
@@ -470,8 +483,26 @@
     <string name="player_more_like_this">More Like This</string>
     <string name="player_auto_exit_in">Exiting in %1$ds</string>
     <string name="player_watch_credits">Watch credits</string>
-    <string name="player_tab_audio">Audio Tracks</string>
+    <string name="player_tab_audio">Audio &amp; Sound</string>
+    <string name="player_audio_tracks">Audio tracks</string>
+    <string name="player_night_mode">Night mode</string>
+    <string name="player_night_mode_desc">Boosts dialogue and softens loud effects</string>
+    <string name="player_night_mode_off">Off</string>
+    <string name="player_night_mode_soft">Soft</string>
+    <string name="player_night_mode_strong">Strong</string>
+    <string name="player_volume_boost">Volume boost</string>
+    <string name="player_volume_boost_desc">Increases gain for quiet 5.1/7.1 tracks</string>
+    <string name="player_volume_boost_original">0 dB</string>
+    <string name="player_volume_boost_low">+3 dB</string>
+    <string name="player_volume_boost_medium">+6 dB</string>
+    <string name="player_volume_boost_high">+10 dB</string>
+    <string name="player_volume_boost_max">+15 dB</string>
     <string name="player_tab_subtitles">Subtitles</string>
+    <string name="player_versions">Versions</string>
+    <string name="player_tab_versions">Available versions</string>
+    <string name="player_version_choose">Choose a version of this title</string>
+    <string name="player_no_versions">No alternative versions are available for this title.</string>
+    <string name="player_version_default">Version %1$d</string>
     <string name="player_tab_settings">Playback Settings</string>
     <string name="player_decoder_unsupported">This device does not support this video or audio format (HEVC/HDR)</string>
     <string name="player_error_http_5xx">The streaming server returned an error (HTTP %1$d). Press Retry.</string>
@@ -558,6 +589,18 @@
     <string name="update_error_apk_http">Error downloading APK: HTTP %1$d</string>
     <string name="update_error_empty_body">Empty response while downloading APK</string>
     <string name="update_error_integrity">Integrity check failed: the downloaded APK does not match the expected hash.</string>
+
+    <!-- Media context menu -->
+    <string name="context_menu_resume">Resume</string>
+    <string name="context_menu_play_from_start">Play from start</string>
+    <string name="context_menu_play">Play</string>
+    <string name="context_menu_mark_watched">Mark as watched</string>
+    <string name="context_menu_mark_unwatched">Mark as unwatched</string>
+    <string name="context_menu_remove_from_continue">Remove from Continue Watching</string>
+    <string name="context_menu_add_favorite">Add to Favorites</string>
+    <string name="context_menu_remove_favorite">Remove from Favorites</string>
+    <string name="context_menu_view_details">View details</string>
+    <string name="context_menu_go_to_series">Go to series</string>
 
     <!-- Demo Mode for Reviewers -->
     <string name="home_demo_button">Explore Demo Catalog</string>

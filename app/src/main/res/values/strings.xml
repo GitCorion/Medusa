@@ -237,6 +237,19 @@
     <string name="settings_btn_connecting">Conectando…</string>
     <string name="settings_btn_login">Iniciar sesión</string>
 
+    <!-- TLS / certificado autofirmado -->
+    <string name="settings_section_tls">CERTIFICADO DEL SERVIDOR</string>
+    <string name="settings_row_tls_self_signed">Certificado autofirmado</string>
+    <string name="settings_tls_not_pinned">No fijado</string>
+    <string name="settings_tls_pinned">Fingerprint fijado</string>
+    <string name="settings_tls_fetching">Obteniendo certificado…</string>
+    <string name="settings_tls_pin_failed">No se pudo fijar el certificado: %1$s</string>
+    <string name="settings_tls_pin_removed">Certificado autofirmado eliminado</string>
+    <string name="settings_btn_pin_certificate">Fijar certificado</string>
+    <string name="settings_btn_pin_certificate_again">Volver a fijar</string>
+    <string name="settings_btn_remove_pin">Quitar confianza</string>
+    <string name="settings_tls_pin_hint">Autoriza solo si el fingerprint coincide con el de tu servidor.</string>
+
     <!-- Trakt -->
     <string name="settings_section_account_linked">CUENTA VINCULADA</string>
     <string name="settings_row_trakt_user">Usuario Trakt</string>
@@ -485,6 +498,11 @@
     <string name="player_volume_boost_high">+10 dB</string>
     <string name="player_volume_boost_max">+15 dB</string>
     <string name="player_tab_subtitles">Subtítulos</string>
+    <string name="player_versions">Versiones</string>
+    <string name="player_tab_versions">Versiones disponibles</string>
+    <string name="player_version_choose">Elige una versión del contenido</string>
+    <string name="player_no_versions">No hay versiones alternativas para este contenido.</string>
+    <string name="player_version_default">Versión %1$d</string>
     <string name="player_tab_settings">Ajustes de Reproducción</string>
     <string name="player_decoder_unsupported">El dispositivo no soporta este formato de vídeo o audio (HEVC/HDR)</string>
     <string name="player_error_http_5xx">El servidor de streaming devolvió un error (HTTP %1$d). Pulsa Reintentar.</string>

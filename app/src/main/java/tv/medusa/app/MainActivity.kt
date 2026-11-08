@@ -221,6 +221,9 @@ class MainActivity : ComponentActivity() {
         super.onStop()
     }
 
+    // ComponentActivity.dispatchKeyEvent está marcado como RestrictedApi para consumidores
+    // externos; sobrescribirlo aquí es intencional para gestionar el mando de TV.
+    @android.annotation.SuppressLint("RestrictedApi")
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         val isSelectKey = event.keyCode == KeyEvent.KEYCODE_DPAD_CENTER ||
                 event.keyCode == KeyEvent.KEYCODE_ENTER ||

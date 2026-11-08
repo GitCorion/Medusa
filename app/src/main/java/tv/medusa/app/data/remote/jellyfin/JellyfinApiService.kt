@@ -12,7 +12,7 @@ interface JellyfinApiService {
 
     @GET("System/Info/Public")
     suspend fun getPublicInfo(
-        @Header("Authorization") authHeader: String = "MediaBrowser Client=\"Medusa\", Device=\"AndroidTV\", DeviceId=\"MedusaTV\", Version=\"1.0.0\""
+        @Header("Authorization") authHeader: String = tv.medusa.app.data.repository.buildJellyfinAuthHeader(token = "")
     ): JellyfinPublicInfo
 
     @POST("Users/AuthenticateByName")
@@ -160,8 +160,24 @@ interface JellyfinApiService {
         @Header("Authorization") authHeader: String,
         @Path("itemId") itemId: String,
         @Query("UserId") userId: String,
+        @Query("StartTimeTicks") startTimeTicks: Long? = null,
+        @Query("AudioStreamIndex") audioStreamIndex: Int? = null,
+        @Query("SubtitleStreamIndex") subtitleStreamIndex: Int? = null,
+        @Query("MediaSourceId") mediaSourceId: String? = null,
+        @Query("LiveStreamId") liveStreamId: String? = null,
+        @Query("AutoOpenLiveStream") autoOpenLiveStream: Boolean? = null,
+        @Query("EnableDirectPlay") enableDirectPlay: Boolean? = null,
+        @Query("EnableDirectStream") enableDirectStream: Boolean? = null,
+        @Query("EnableTranscoding") enableTranscoding: Boolean? = null,
+        @Query("MaxStreamingBitrate") maxStreamingBitrate: Long? = null,
         @Body request: JellyfinPlaybackInfoRequest? = null
     ): JellyfinPlaybackInfoResponse
+
+    @POST("Sessions/Capabilities/Full")
+    suspend fun postCapabilities(
+        @Header("Authorization") authHeader: String,
+        @Body capabilities: JellyfinClientCapabilitiesDto
+    )
 
     @POST("Sessions/Playing")
     suspend fun reportPlaybackStart(

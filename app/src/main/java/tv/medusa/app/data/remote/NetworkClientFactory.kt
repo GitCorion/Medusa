@@ -1,6 +1,7 @@
 package tv.medusa.app.data.remote
 
 import android.content.Context
+import android.util.Log
 import java.io.File
 import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
@@ -10,15 +11,22 @@ import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFact
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
+import okhttp3.Request
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import java.net.InetAddress
 import java.net.Socket
+import java.net.URI
+import java.security.MessageDigest
 import java.security.SecureRandom
+import java.security.cert.CertificateException
 import java.security.cert.X509Certificate
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
+import javax.net.ssl.HttpsURLConnection
 import javax.net.ssl.SSLContext
 import javax.net.ssl.SSLSocketFactory
+import javax.net.ssl.TrustManagerFactory
 import javax.net.ssl.X509TrustManager
 
 object NetworkClientFactory {
@@ -33,38 +41,206 @@ object NetworkClientFactory {
     }
 
     /**
-     * Trust manager permisivo: acepta certificados self-signed. Se usa **solo** para
-     * hosts locales/privados (LAN, localhost, docker) donde el bypass de TLS
-     * es necesario porque el usuario despliega su propio Jellyfin con certificados propios.
+     * Trust manager estricto del sistema. En Android se construye desde `AndroidCAStore`
+     * excluyendo las entradas de usuario (prefijo `user:`), de modo que las CAs instaladas
+     * manualmente en el dispositivo nunca se aceptan. En JVM se usa el almacén por defecto.
      */
-    private val trustAllCerts = arrayOf<X509TrustManager>(object : X509TrustManager {
-        override fun checkClientTrusted(chain: Array<out X509Certificate>?, authType: String?) {}
-        override fun checkServerTrusted(chain: Array<out X509Certificate>?, authType: String?) {}
-        override fun getAcceptedIssuers(): Array<X509Certificate> = arrayOf()
-    })
+    private val systemTrustManager: X509TrustManager = run {
+        val systemKeyStore = runCatching {
+            val androidStore = java.security.KeyStore.getInstance("AndroidCAStore")
+            androidStore.load(null, null)
+            val filtered = java.security.KeyStore.getInstance(java.security.KeyStore.getDefaultType())
+            filtered.load(null, null)
+            val aliases = androidStore.aliases()
+            while (aliases.hasMoreElements()) {
+                val alias = aliases.nextElement()
+                if (alias.startsWith("user:", ignoreCase = true)) continue
+                androidStore.getCertificate(alias)?.let { filtered.setCertificateEntry(alias, it) }
+            }
+            filtered
+        }.getOrNull()
 
-    /** Contexto TLS permisivo (trust-all) para hosts locales/privados. */
-    private val relaxedSslContext: SSLContext = SSLContext.getInstance("TLS").apply {
-        init(null, trustAllCerts, SecureRandom())
+        val factory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm())
+        factory.init(systemKeyStore)
+        factory.trustManagers.filterIsInstance<X509TrustManager>().firstOrNull()
+            ?: throw IllegalStateException("No system X509TrustManager available")
     }
+
+    /**
+     * Trust manager con pin. Primero delega en las CAs del sistema; si el certificado no es
+     * válido, solo lo acepta cuando el fingerprint SHA-256 de la hoja coincide exactamente con
+     * el que el usuario fijó para su servidor. Nunca acepta certificados arbitrarios.
+     */
+    private class PinnedTrustManager(
+        private val delegate: X509TrustManager,
+        private val fingerprintProvider: () -> String?,
+        private val fingerprintHasher: (ByteArray) -> String,
+        private val fingerprintMatcher: (String?, String?) -> Boolean
+    ) : X509TrustManager {
+
+        @Suppress("UNCHECKED_CAST")
+        override fun checkClientTrusted(chain: Array<out X509Certificate>?, authType: String?) {
+            delegate.checkClientTrusted(chain as Array<X509Certificate>?, authType)
+        }
+
+        override fun checkServerTrusted(chain: Array<out X509Certificate>?, authType: String?) {
+            try {
+                @Suppress("UNCHECKED_CAST")
+                delegate.checkServerTrusted(chain as Array<X509Certificate>?, authType)
+                return
+            } catch (e: CertificateException) {
+                // Se evalúa el pin más abajo.
+            }
+            val expected = fingerprintProvider()
+                ?: throw CertificateException("Certificado no confiado y sin pin configurado")
+            val leaf = chain?.firstOrNull()
+                ?: throw CertificateException("Cadena de certificados vacía")
+            val actual = fingerprintHasher(leaf.encoded)
+            if (!fingerprintMatcher(actual, expected)) {
+                throw CertificateException("El fingerprint del certificado no coincide con el pin")
+            }
+        }
+
+        override fun getAcceptedIssuers(): Array<X509Certificate> = delegate.acceptedIssuers
+    }
+
+    private val pinnedTrustManager = PinnedTrustManager(
+        delegate = systemTrustManager,
+        fingerprintProvider = { pinnedFingerprintSha256 },
+        fingerprintHasher = { sha256Fingerprint(it) },
+        fingerprintMatcher = { a, b -> sameFingerprint(a, b) }
+    )
 
     /** Contexto TLS estricto (CAs del sistema) para hosts públicos. */
     private val strictSslContext: SSLContext = SSLContext.getInstance("TLS").apply {
-        init(null, null, null)
+        init(null, arrayOf(systemTrustManager), SecureRandom())
+    }
+
+    /** Contexto TLS con pin para el host exacto del servidor que optó por autofirmado. */
+    private val pinnedSslContext: SSLContext = SSLContext.getInstance("TLS").apply {
+        init(null, arrayOf(pinnedTrustManager), SecureRandom())
+    }
+
+    @Volatile
+    private var customTrustedServerHost: String? = null
+
+    @Volatile
+    private var allowSelfSignedForTrustedHost: Boolean = false
+
+    @Volatile
+    private var pinnedFingerprintSha256: String? = null
+
+    /**
+     * Registra el host exacto del servidor Jellyfin y, si el usuario lo autorizó
+     * explícitamente, el fingerprint SHA-256 del certificado autofirmado. El resto de hosts
+     * (TMDB, Trakt, Firebase, CDNs) sigue usando validación TLS estricta del sistema.
+     */
+    fun setTrustedServer(
+        serverUrl: String?,
+        allowSelfSigned: Boolean = false,
+        certificateFingerprintSha256: String? = null
+    ) {
+        val host = serverUrl
+            ?.takeIf { it.isNotBlank() }
+            ?.let { runCatching { URI(normalizeUrl(it)) }.getOrNull()?.host?.lowercase() }
+
+        customTrustedServerHost = host
+        pinnedFingerprintSha256 = certificateFingerprintSha256
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
+        allowSelfSignedForTrustedHost =
+            allowSelfSigned && host != null && pinnedFingerprintSha256 != null
+    }
+
+    private fun isSelfSignedPermittedHost(hostname: String?): Boolean {
+        if (hostname.isNullOrBlank()) return false
+        if (!allowSelfSignedForTrustedHost) return false
+        val trusted = customTrustedServerHost ?: return false
+        return hostname.equals(trusted, ignoreCase = true)
+    }
+
+    /**
+     * Descarga el certificado del servidor y devuelve su fingerprint SHA-256 en formato
+     * `AA:BB:...`. El trust manager de la sonda **no acepta** el certificado: solo captura la
+     * cadena y lanza [CertificateException], de modo que el handshake falla siempre.
+     *
+     * Es una operación de red bloqueante: debe invocarse fuera del hilo principal.
+     */
+    fun fetchCertificateFingerprint(serverUrl: String): String {
+        val clean = normalizeUrl(serverUrl)
+        require(clean.startsWith("https://", ignoreCase = true)) {
+            "El pin de certificado solo aplica a servidores HTTPS"
+        }
+
+        val captured = AtomicReference<Array<X509Certificate>?>(null)
+        val captureTrustManager = object : X509TrustManager {
+            override fun checkClientTrusted(chain: Array<out X509Certificate>?, authType: String?) {
+                throw CertificateException("Sonda de certificado: no se aceptan certificados de cliente")
+            }
+
+            override fun checkServerTrusted(chain: Array<out X509Certificate>?, authType: String?) {
+                @Suppress("UNCHECKED_CAST")
+                captured.set(chain?.copyOf() as Array<X509Certificate>?)
+                throw CertificateException("Sonda de certificado: cadena capturada")
+            }
+
+            override fun getAcceptedIssuers(): Array<X509Certificate> = arrayOf()
+        }
+
+        val probeContext = SSLContext.getInstance("TLS").apply {
+            init(null, arrayOf(captureTrustManager), SecureRandom())
+        }
+
+        val probeClient = OkHttpClient.Builder()
+            .sslSocketFactory(probeContext.socketFactory, captureTrustManager)
+            // La sonda nunca completa la petición: el trust manager lanza antes.
+            .hostnameVerifier { _, _ -> true }
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(15, TimeUnit.SECONDS)
+            .build()
+
+        runCatching {
+            probeClient.newCall(
+                Request.Builder()
+                    .url(clean)
+                    .head()
+                    .build()
+            ).execute().close()
+        }
+
+        val chain = captured.get()
+            ?: throw IOException("No se pudo obtener el certificado del servidor")
+        val leaf = chain.firstOrNull()
+            ?: throw IOException("El servidor no presentó certificado")
+        return sha256Fingerprint(leaf.encoded)
+    }
+
+    /** Fingerprint SHA-256 con separadores para mostrar en ajustes. */
+    fun sha256Fingerprint(encodedCertificate: ByteArray): String {
+        val digest = MessageDigest.getInstance("SHA-256").digest(encodedCertificate)
+        return digest.joinToString(":") { "%02X".format(it.toInt() and 0xFF) }
+    }
+
+    /** Compara fingerprints ignorando separadores, mayúsculas y espacios. */
+    fun sameFingerprint(a: String?, b: String?): Boolean {
+        if (a.isNullOrBlank() || b.isNullOrBlank()) return false
+        fun normalize(value: String) =
+            value.replace(":", "").replace(" ", "").trim().lowercase()
+        return normalize(a) == normalize(b)
     }
 
     /**
      * Fábrica TLS consciente del host. OkHttp la invoca con el host destino
-     * (`createSocket(socket, host, port, autoClose)`), lo que permite validar con las CAs del
-     * sistema los hosts públicos y conservar el bypass (self-signed) únicamente en la LAN.
-     * Así el endurecimiento aplica también a Coil y a las llamadas directas, no solo a Retrofit.
+     * (`createSocket(socket, host, port, autoClose)`), de modo que solo el host exacto del
+     * servidor con pin usa el contexto con certificado fijado. Todos los demás hosts usan
+     * las CAs del sistema.
      */
     private val hostAwareSslSocketFactory: SSLSocketFactory = object : SSLSocketFactory() {
         private val strict: SSLSocketFactory = strictSslContext.socketFactory
-        private val relaxed: SSLSocketFactory = relaxedSslContext.socketFactory
+        private val pinned: SSLSocketFactory = pinnedSslContext.socketFactory
 
         private fun factoryFor(host: String?): SSLSocketFactory =
-            if (host != null && isLocalHost(host)) relaxed else strict
+            if (isSelfSignedPermittedHost(host)) pinned else strict
 
         override fun getDefaultCipherSuites(): Array<String> = strict.defaultCipherSuites
         override fun getSupportedCipherSuites(): Array<String> = strict.supportedCipherSuites
@@ -79,31 +255,27 @@ object NetworkClientFactory {
             factoryFor(host).createSocket(host, port, localHost, localPort)
 
         override fun createSocket(host: InetAddress, port: Int): Socket =
-            relaxed.createSocket(host, port)
+            factoryFor(host.hostAddress ?: host.hostName).createSocket(host, port)
 
         override fun createSocket(address: InetAddress, port: Int, localAddress: InetAddress, localPort: Int): Socket =
-            relaxed.createSocket(address, port, localAddress, localPort)
-    }
-
-    private fun isLocalHost(hostname: String): Boolean {
-        return hostname.equals("localhost", ignoreCase = true)
-                || hostname.startsWith("127.0.0.1")
-                || hostname.startsWith("10.")
-                || hostname.startsWith("192.168.")
-                || hostname.matches(Regex("^172\\.(1[6-9]|2[0-9]|3[0-1])\\..*"))
-                || hostname.endsWith(".local", ignoreCase = true)
-                || hostname.endsWith(".lan", ignoreCase = true)
-                || hostname.endsWith(".home", ignoreCase = true)
+            factoryFor(address.hostAddress ?: address.hostName).createSocket(address, port, localAddress, localPort)
     }
 
     @Volatile
     var okHttpClient: OkHttpClient = OkHttpClient.Builder()
-        .sslSocketFactory(hostAwareSslSocketFactory, trustAllCerts[0])
+        .sslSocketFactory(hostAwareSslSocketFactory, pinnedTrustManager)
+        // No hay bypass global: para cualquier host distinto del servidor configurado se
+        // delega en el verificador del sistema. Solo el host exacto con pin válido relaja el
+        // nombre, y aun así exige que el fingerprint del certificado coincida.
         .hostnameVerifier { hostname, session ->
-            if (isLocalHost(hostname)) {
-                true
+            if (isSelfSignedPermittedHost(hostname)) {
+                val expected = pinnedFingerprintSha256
+                val actual = runCatching {
+                    session.peerCertificates.firstOrNull()?.let { sha256Fingerprint(it.encoded) }
+                }.getOrNull()
+                expected != null && actual != null && sameFingerprint(actual, expected)
             } else {
-                javax.net.ssl.HttpsURLConnection.getDefaultHostnameVerifier().verify(hostname, session)
+                HttpsURLConnection.getDefaultHostnameVerifier().verify(hostname, session)
             }
         }
         .followRedirects(true)
@@ -171,7 +343,8 @@ object NetworkClientFactory {
                     requestBuilder.header("X-MediaBrowser-Token", token)
                 }
                 if (authHeader.isNullOrBlank() && embyAuthHeader.isNullOrBlank()) {
-                    val defaultAuth = "MediaBrowser Client=\"Medusa\", Device=\"AndroidTV\", DeviceId=\"MedusaTV\", Version=\"1.0.0\", Token=\"$token\""
+                    val stableDevId = tv.medusa.app.util.DeviceUtils.cachedDeviceId ?: "MedusaTV"
+                    val defaultAuth = "MediaBrowser Client=\"Medusa\", Device=\"AndroidTV\", DeviceId=\"$stableDevId\", Version=\"1.0.0\", Token=\"$token\""
                     requestBuilder.header("Authorization", defaultAuth)
                     requestBuilder.header("X-Emby-Authorization", defaultAuth)
                 }
@@ -200,12 +373,38 @@ object NetworkClientFactory {
         }
         .apply {
             if (tv.medusa.app.BuildConfig.DEBUG) {
-                addInterceptor(HttpLoggingInterceptor().apply {
+                addInterceptor(HttpLoggingInterceptor { message ->
+                    // BASIC solo registra método + URL, pero la URL puede llevar api_key/token.
+                    Log.d("OkHttp", redactLogMessage(message))
+                }.apply {
                     level = HttpLoggingInterceptor.Level.BASIC
+                    redactHeader("Authorization")
+                    redactHeader("X-Emby-Authorization")
+                    redactHeader("X-Emby-Token")
+                    redactHeader("X-MediaBrowser-Token")
+                    redactHeader("Cookie")
+                    redactHeader("Set-Cookie")
                 })
             }
         }
         .build()
+
+    /**
+     * Oculta credenciales en las líneas de log de OkHttp. Se marca `internal` para poder
+     * cubrirlo con tests JVM sin exponerlo como API pública.
+     */
+    internal fun redactLogMessage(message: String): String = message
+        // Cabecera MediaBrowser: Token="..." (se procesa antes que los query params para
+        // conservar las comillas y distinguirla de un token de URL).
+        .replace(
+            Regex("(?i)(Token\\s*=\\s*\")[^\"]+(\")"),
+            "$1REDACTED$2"
+        )
+        // Query params sensibles (api_key=, token=, X-Emby-Token=…)
+        .replace(
+            Regex("(?i)(api_key|apikey|access_token|token|x-emby-token|x-mediabrowser-token)=([^&\\s\"]+)"),
+            "$1=REDACTED"
+        )
 
     private val serviceCache = ConcurrentHashMap<Pair<String, Class<*>>, Any>()
 

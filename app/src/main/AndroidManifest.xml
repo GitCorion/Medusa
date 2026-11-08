@@ -113,6 +113,12 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
+
+        <!-- No se declara un foreground service de tipo mediaPlayback porque la app no
+             reproduce en segundo plano: al recibir ON_STOP pausa ExoPlayer y envía
+             PlaybackStopped a Jellyfin. Si en el futuro se habilita reproducción en
+             background, habrá que añadir el servicio con android:foregroundServiceType=
+             "mediaPlayback" y los permisos FOREGROUND_SERVICE_MEDIA_PLAYBACK. -->
     </application>
 
 </manifest>

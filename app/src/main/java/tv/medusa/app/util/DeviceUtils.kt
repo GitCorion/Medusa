@@ -8,6 +8,32 @@ import android.content.res.Configuration
 import android.os.Build
 
 object DeviceUtils {
+
+    private const val PREFS_DEVICE = "medusa_device_identity"
+    private const val KEY_STABLE_DEVICE_ID = "stable_device_id"
+
+    @Volatile
+    var cachedDeviceId: String? = null
+        private set
+
+    /**
+     * Retorna un ID de dispositivo único y estable por instalación (persiste entre reinicios y sesiones).
+     */
+    fun getStableDeviceId(context: Context): String {
+        cachedDeviceId?.let { return it }
+        synchronized(this) {
+            cachedDeviceId?.let { return it }
+            val prefs = context.applicationContext.getSharedPreferences(PREFS_DEVICE, Context.MODE_PRIVATE)
+            var id = prefs.getString(KEY_STABLE_DEVICE_ID, null)
+            if (id.isNullOrBlank()) {
+                id = java.util.UUID.randomUUID().toString()
+                prefs.edit().putString(KEY_STABLE_DEVICE_ID, id).apply()
+            }
+            cachedDeviceId = id
+            return id
+        }
+    }
+
     fun isEmulator(): Boolean {
         val fingerprint = Build.FINGERPRINT?.lowercase() ?: ""
         val model = Build.MODEL?.lowercase() ?: ""

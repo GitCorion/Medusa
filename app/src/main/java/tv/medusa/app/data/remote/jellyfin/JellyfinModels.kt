@@ -128,9 +128,17 @@ fun parseIsoToEpochMs(isoString: String?): Long {
 @Serializable
 data class JellyfinPlaybackProgressRequest(
     @SerialName("ItemId") val itemId: String,
-    @SerialName("PositionTicks") val positionTicks: Long = 0L,
+    @SerialName("PlaySessionId") val playSessionId: String? = null,
+    @SerialName("MediaSourceId") val mediaSourceId: String? = null,
+    @SerialName("AudioStreamIndex") val audioStreamIndex: Int? = null,
+    @SerialName("SubtitleStreamIndex") val subtitleStreamIndex: Int? = null,
     @SerialName("IsPaused") val isPaused: Boolean = false,
-    @SerialName("EventName") val eventName: String? = null
+    @SerialName("IsMuted") val isMuted: Boolean = false,
+    @SerialName("PositionTicks") val positionTicks: Long = 0L,
+    @SerialName("PlayMethod") val playMethod: String? = null, // "DirectPlay", "DirectStream", "Transcode"
+    @SerialName("RepeatMode") val repeatMode: String = "RepeatNone",
+    @SerialName("EventName") val eventName: String? = null,
+    @SerialName("CanSeek") val canSeek: Boolean = true
 )
 
 @Serializable
@@ -142,6 +150,8 @@ data class JellyfinMediaStreamDto(
     @SerialName("Codec") val codec: String? = null,
     @SerialName("IsDefault") val isDefault: Boolean = false,
     @SerialName("IsForced") val isForced: Boolean = false,
+    @SerialName("Channels") val channels: Int? = null,
+    @SerialName("ChannelLayout") val channelLayout: String? = null,
     @SerialName("DeliveryUrl") val deliveryUrl: String? = null,
     @SerialName("SupportsExternalStream") val supportsExternalStream: Boolean = false
 )
@@ -217,6 +227,11 @@ data class JellyfinPlaybackInfoRequest(
     @SerialName("UserId") val userId: String? = null,
     @SerialName("MaxStreamingBitrate") val maxStreamingBitrate: Long = 120_000_000L,
     @SerialName("StartTimeTicks") val startTimeTicks: Long = 0L,
+    @SerialName("AudioStreamIndex") val audioStreamIndex: Int? = null,
+    @SerialName("SubtitleStreamIndex") val subtitleStreamIndex: Int? = null,
+    @SerialName("MediaSourceId") val mediaSourceId: String? = null,
+    @SerialName("LiveStreamId") val liveStreamId: String? = null,
+    @SerialName("PlaySessionId") val playSessionId: String? = null,
     @SerialName("EnableDirectPlay") val enableDirectPlay: Boolean = true,
     @SerialName("EnableDirectStream") val enableDirectStream: Boolean = true,
     @SerialName("EnableTranscoding") val enableTranscoding: Boolean = true,
@@ -224,6 +239,15 @@ data class JellyfinPlaybackInfoRequest(
     @SerialName("AllowAudioStreamCopy") val allowAudioStreamCopy: Boolean = true,
     @SerialName("AutoOpenLiveStream") val autoOpenLiveStream: Boolean = false,
     @SerialName("EnableSubtitleExtraction") val enableSubtitleExtraction: Boolean = false,
+    @SerialName("DeviceProfile") val deviceProfile: JellyfinDeviceProfile? = null
+)
+
+@Serializable
+data class JellyfinClientCapabilitiesDto(
+    @SerialName("PlayableMediaTypes") val playableMediaTypes: List<String> = listOf("Audio", "Video"),
+    @SerialName("SupportedCommands") val supportedCommands: List<String> = emptyList(),
+    @SerialName("SupportsMediaControl") val supportsMediaControl: Boolean = false,
+    @SerialName("SupportsPersistentIdentifier") val supportsPersistentIdentifier: Boolean = true,
     @SerialName("DeviceProfile") val deviceProfile: JellyfinDeviceProfile? = null
 )
 

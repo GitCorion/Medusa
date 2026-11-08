@@ -751,7 +751,7 @@ const val JELLYFIN_VERSION = "1.0.0"
 
 fun buildJellyfinAuthHeader(
     clientName: String = JELLYFIN_CLIENT_NAME,
-    deviceId: String = JELLYFIN_DEVICE_ID,
+    deviceId: String = tv.medusa.app.util.DeviceUtils.cachedDeviceId ?: JELLYFIN_DEVICE_ID,
     version: String = JELLYFIN_VERSION,
     token: String = ""
 ): String {

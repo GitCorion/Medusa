@@ -264,6 +264,16 @@ class MediaSyncRepository(
                     username = authedUser,
                     password = password
                 )
+                runCatching {
+                    appContext?.let { ctx ->
+                        val authedHdr = buildJellyfinAuthHeader(token = newToken)
+                        val passthroughMode = userPreferencesRepository?.audioPassthroughMode?.value
+                            ?: tv.medusa.app.data.local.AUDIO_PASSTHROUGH_OFF
+                        val caps = tv.medusa.app.data.remote.jellyfin.JellyfinDeviceProfileBuilder
+                            .createDefaultCapabilities(ctx, passthroughMode)
+                        api.postCapabilities(authHeader = authedHdr, capabilities = caps)
+                    }
+                }
                 Log.i("MediaSyncRepository", "Silent re-authentication succeeded! New token acquired.")
                 Pair(newToken, newUserId)
             } else {

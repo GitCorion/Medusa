@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
+    <!-- HTTP permitido en toda la app: Jellyfin puede estar en cualquier IP de la LAN y
+         Android no soporta rangos CIDR. La validación TLS de hosts públicos la aplica
+         NetworkClientFactory; aquí solo confiamos en las CAs del sistema. -->
     <base-config cleartextTrafficPermitted="true">
         <trust-anchors>
             <certificates src="system" />
-            <certificates src="user" />
         </trust-anchors>
     </base-config>
 </network-security-config>
