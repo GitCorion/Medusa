@@ -1,0 +1,191 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-08T11:34:00Z",
+  "title": "Design System: Medusa TV (Tujelly)",
+  "extensions": {
+    "colorMeta": {
+      "void-black": {
+        "role": "neutral",
+        "displayName": "Void Black",
+        "canonical": "#06080D",
+        "tonalRamp": ["#000000", "#030407", "#06080D", "#0C1017", "#141B26", "#1C2433", "#283347", "#3B4B66"]
+      },
+      "surface-dark": {
+        "role": "neutral",
+        "displayName": "Surface Dark",
+        "canonical": "#0C1017",
+        "tonalRamp": ["#040608", "#080B10", "#0C1017", "#121822", "#192230", "#222D40", "#2E3B52", "#3E4E6B"]
+      },
+      "surface-elevated": {
+        "role": "neutral",
+        "displayName": "Surface Elevated",
+        "canonical": "#141B26",
+        "tonalRamp": ["#0A0E14", "#0F141D", "#141B26", "#1C2535", "#253146", "#303F5A", "#3E5070", "#4F658C"]
+      },
+      "obsidian-glass": {
+        "role": "neutral",
+        "displayName": "Obsidian Glass",
+        "canonical": "rgba(255, 255, 255, 0.086)",
+        "tonalRamp": ["rgba(255,255,255,0.02)", "rgba(255,255,255,0.05)", "rgba(255,255,255,0.086)", "rgba(255,255,255,0.12)", "rgba(255,255,255,0.16)", "rgba(255,255,255,0.22)", "rgba(255,255,255,0.30)", "rgba(255,255,255,0.40)"]
+      },
+      "obsidian-glass-active": {
+        "role": "neutral",
+        "displayName": "Obsidian Glass Active",
+        "canonical": "rgba(255, 255, 255, 0.157)",
+        "tonalRamp": ["rgba(255,255,255,0.06)", "rgba(255,255,255,0.10)", "rgba(255,255,255,0.157)", "rgba(255,255,255,0.22)", "rgba(255,255,255,0.30)", "rgba(255,255,255,0.40)", "rgba(255,255,255,0.55)", "rgba(255,255,255,0.70)"]
+      },
+      "gradient-scrim": {
+        "role": "neutral",
+        "displayName": "Gradient Scrim",
+        "canonical": "rgba(6, 8, 13, 0.80)",
+        "tonalRamp": ["rgba(6,8,13,0.2)", "rgba(6,8,13,0.4)", "rgba(6,8,13,0.6)", "rgba(6,8,13,0.8)", "rgba(6,8,13,0.9)", "rgba(6,8,13,0.95)", "rgba(6,8,13,0.98)", "#06080D"]
+      },
+      "focus-cyan": {
+        "role": "primary",
+        "displayName": "Focus Cyan",
+        "canonical": "#00F2FE",
+        "tonalRamp": ["#003238", "#005E69", "#008E9E", "#00C3D9", "#00F2FE", "#3BF5FE", "#7DF8FE", "#C4FCFF"]
+      },
+      "focus-content-dark": {
+        "role": "primary",
+        "displayName": "Focus Content Dark",
+        "canonical": "#06080D",
+        "tonalRamp": ["#000000", "#030407", "#06080D", "#0C1017", "#141B26", "#1C2433", "#283347", "#3B4B66"]
+      },
+      "amber-rating": {
+        "role": "secondary",
+        "displayName": "Amber Rating",
+        "canonical": "#F59E0B",
+        "tonalRamp": ["#451A03", "#78350F", "#B45309", "#D97706", "#F59E0B", "#FBBF24", "#FCD34D", "#FEF3C7"]
+      },
+      "text-primary": {
+        "role": "neutral",
+        "displayName": "Text Primary",
+        "canonical": "#F8FAFC",
+        "tonalRamp": ["#475569", "#64748B", "#94A3B8", "#CBD5E1", "#E2E8F0", "#F1F5F9", "#F8FAFC", "#FFFFFF"]
+      },
+      "text-secondary": {
+        "role": "neutral",
+        "displayName": "Text Secondary",
+        "canonical": "#94A3B8",
+        "tonalRamp": ["#1E293B", "#334155", "#475569", "#64748B", "#94A3B8", "#CBD5E1", "#E2E8F0", "#F8FAFC"]
+      },
+      "text-tertiary": {
+        "role": "neutral",
+        "displayName": "Text Tertiary",
+        "canonical": "#64748B",
+        "tonalRamp": ["#0F172A", "#1E293B", "#334155", "#475569", "#64748B", "#94A3B8", "#CBD5E1", "#E2E8F0"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display Hero", "purpose": "Hero title typography fallback with marquee support." },
+      "headline": { "displayName": "Section Headline", "purpose": "Section and carousel headers." },
+      "title": { "displayName": "Card Title", "purpose": "Media item titles beneath poster artwork." },
+      "body": { "displayName": "Body & Overview", "purpose": "Editorial plot synopsis and loglines." },
+      "label": { "displayName": "Tag Label", "purpose": "Rating badges, format pills, and episode numbers." }
+    },
+    "shadows": [
+      { "name": "tonal-zero", "value": "none", "purpose": "No drop shadows on dark surfaces; depth is conveyed via Z-index, alpha glass, and focus borders." }
+    ],
+    "motion": [
+      { "name": "ease-focus", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "High-responsiveness focus transition for 10-foot TV D-Pad navigation." },
+      { "name": "duration-fast", "value": "150ms", "purpose": "Quick state transitions for scale and border highlight." },
+      { "name": "duration-backdrop", "value": "400ms", "purpose": "Smooth crossfade for full-screen hero backdrop updates." }
+    ],
+    "breakpoints": [
+      { "name": "tv-1080p", "value": "1920x1080" },
+      { "name": "tv-4k", "value": "3840x2160" }
+    ]
+  },
+  "components": [
+    {
+      "name": "TV Action Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Standard 34dp button for Play, Trailer, and Favorites. Idle in obsidian glass, solid cyan on focus.",
+      "html": "<button class=\"ds-btn-tv\"><svg class=\"ds-btn-icon\" viewBox=\"0 0 24 24\"><path fill=\"currentColor\" d=\"M8 5v14l11-7z\"/></svg><span>Reproducir</span></button>",
+      "css": ".ds-btn-tv { display: inline-flex; align-items: center; justify-content: center; height: 34px; padding: 0 18px; border-radius: 10px; border: none; background: rgba(255, 255, 255, 0.094); color: #CBD5E1; font-family: Inter, Roboto, sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), background 0.15s, color 0.15s; } .ds-btn-tv .ds-btn-icon { width: 17px; height: 17px; margin-right: 6px; } .ds-btn-tv:hover, .ds-btn-tv:focus { background: #00F2FE; color: #06080D; transform: scale(1.08); outline: none; }"
+    },
+    {
+      "name": "Format Filter Chip",
+      "kind": "chip",
+      "refersTo": "filter-chip",
+      "description": "Filter chip for Películas, Series, and Plataformas. Zero idle border slop.",
+      "html": "<button class=\"ds-chip-tv\"><span>Series</span></button>",
+      "css": ".ds-chip-tv { display: inline-flex; align-items: center; justify-content: center; height: 34px; padding: 0 14px; border-radius: 10px; border: none; background: rgba(255, 255, 255, 0.094); color: #94A3B8; font-family: Inter, Roboto, sans-serif; font-size: 12.5px; font-weight: 600; cursor: pointer; transition: all 0.15s ease; } .ds-chip-tv.selected { background: rgba(255, 255, 255, 0.157); color: #F8FAFC; } .ds-chip-tv:hover, .ds-chip-tv:focus { background: #00F2FE; color: #06080D; transform: scale(1.05); outline: none; }"
+    },
+    {
+      "name": "Vertical Media Card",
+      "kind": "card",
+      "refersTo": "media-card-poster",
+      "description": "2:3 vertical cover art card with score badge and title outside the artwork.",
+      "html": "<div class=\"ds-card-poster\"><div class=\"ds-card-art\"><div class=\"ds-card-badge\">★ 8.7</div></div><div class=\"ds-card-title\">Severance</div><div class=\"ds-card-meta\"><span class=\"ds-meta-year\">2025</span> • SERIES</div></div>",
+      "css": ".ds-card-poster { width: 150px; cursor: pointer; transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.15s; } .ds-card-art { width: 150px; height: 225px; border-radius: 12px; background: #141B26; position: relative; overflow: hidden; box-sizing: border-box; } .ds-card-badge { position: absolute; top: 10px; right: 10px; background: rgba(6, 8, 13, 0.82); border-radius: 4px; padding: 2px 6px; font-size: 10px; font-weight: 700; color: #F59E0B; } .ds-card-title { margin-top: 8px; font-size: 14px; font-weight: 600; color: #94A3B8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .ds-card-meta { font-size: 11px; font-weight: 600; color: #64748B; margin-top: 2px; } .ds-card-meta .ds-meta-year { color: #64748B; } .ds-card-poster:hover, .ds-card-poster:focus { transform: scale(1.05); z-index: 10; } .ds-card-poster:hover .ds-card-art, .ds-card-poster:focus .ds-card-art { border: 2px solid #00F2FE; } .ds-card-poster:hover .ds-card-title, .ds-card-poster:focus .ds-card-title { color: #F8FAFC; } .ds-card-poster:hover .ds-meta-year, .ds-card-poster:focus .ds-meta-year { color: #00F2FE; }"
+    },
+    {
+      "name": "Continue Watching Card",
+      "kind": "card",
+      "refersTo": "media-card-backdrop",
+      "description": "16:9 panoramic card with episode tag and floating cyan progress bar.",
+      "html": "<div class=\"ds-card-cw\"><div class=\"ds-cw-art\"><div class=\"ds-cw-tag\">T2:E4</div><div class=\"ds-cw-scrim\"><div class=\"ds-cw-progress\"><div class=\"ds-cw-bar\" style=\"width: 65%;\"></div></div></div></div><div class=\"ds-cw-title\">Slow Horses</div></div>",
+      "css": ".ds-card-cw { width: 280px; cursor: pointer; transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1); } .ds-cw-art { width: 280px; height: 158px; border-radius: 12px; background: #141B26; position: relative; overflow: hidden; box-sizing: border-box; } .ds-cw-tag { position: absolute; top: 10px; left: 10px; background: rgba(0, 242, 254, 0.18); color: #00F2FE; border-radius: 4px; padding: 2px 6px; font-size: 10px; font-weight: 700; } .ds-cw-scrim { position: absolute; bottom: 0; left: 0; right: 0; height: 40px; background: linear-gradient(transparent, rgba(6, 8, 13, 0.9)); display: flex; align-items: flex-end; padding: 10px 12px; box-sizing: border-box; } .ds-cw-progress { width: 100%; height: 3px; background: rgba(255, 255, 255, 0.2); border-radius: 2px; overflow: hidden; } .ds-cw-bar { height: 100%; background: #00F2FE; } .ds-cw-title { margin-top: 8px; font-size: 14px; font-weight: 600; color: #F8FAFC; } .ds-card-cw:hover, .ds-card-cw:focus { transform: scale(1.05); z-index: 10; } .ds-card-cw:hover .ds-cw-art, .ds-card-cw:focus .ds-cw-art { border: 2px solid #00F2FE; }"
+    },
+    {
+      "name": "Tablet Touch Back Button",
+      "kind": "custom",
+      "refersTo": "button-ghost",
+      "description": "38dp floating circular obsidian glass back button exclusively for tablet / touch.",
+      "html": "<button class=\"ds-touch-back\"><svg viewBox=\"0 0 24 24\"><path fill=\"currentColor\" d=\"M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z\"/></svg></button>",
+      "css": ".ds-touch-back { width: 38px; height: 38px; border-radius: 50%; border: none; background: rgba(0, 0, 0, 0.25); color: rgba(255, 255, 255, 0.9); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.15s ease; } .ds-touch-back svg { width: 19px; height: 19px; } .ds-touch-back:active { background: rgba(255, 255, 255, 0.15); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Cinematic Leanback Precision",
+    "overview": "Medusa TV is an editorial, zero-slop streaming interface built specifically for Android TV, living room displays, and OLED panels. Designed following the clean, content-first philosophies of Apple TV+ and Netflix, it rejects artificial cosmetic containers, decorative border noise, and fantasy prose in favor of pure cinematic art, strong focal hierarchy, and high-performance rendering.",
+    "keyCharacteristics": [
+      "Zero Idle Border Slop: Clean obsidian glass surfaces with no 1px outline noise in resting state.",
+      "Inescapable 10-Foot Focus: High-contrast solid cyan focus with deep ink text (#06080D) readable from 3 meters.",
+      "Pure Full-Bleed Art: Movie and series cards are 100% photographic artwork with title and metadata displayed cleanly outside the poster on the dark ground plane.",
+      "Hardware-Friendly Performance: Flat alpha layers and compiled native gradients instead of GPU-heavy real-time blur.",
+      "Remote-First Navigation: Zero on-screen back buttons on TV; navigation relies naturally on the physical TV remote BACK key."
+    ],
+    "rules": [
+      {
+        "name": "The Single Beacon Rule",
+        "body": "Exactly one element owns the focus indicator at any given moment. Idle elements must never simulate focus or carry glowing accents.",
+        "section": "colors"
+      },
+      {
+        "name": "The Zero-Blur Rule",
+        "body": "All glass, scrim, and layer treatments must be achieved using native color alphas and linear Brush gradients. Costly GPU blur shaders are strictly prohibited.",
+        "section": "colors"
+      },
+      {
+        "name": "The Marquee Reveal Rule",
+        "body": "Text that overflows its single-line boundary must execute a smooth continuous marquee autoscroll (repeatDelayMillis = 2000) exclusively when its parent card or button holds D-Pad focus. Resting text truncates cleanly with ellipsis.",
+        "section": "typography"
+      },
+      {
+        "name": "The Root-Scale Rule",
+        "body": "Zoom scaling (graphicsLayer { scaleX = ...; scaleY = ... }) and zIndex must be applied to the outer container root before any clipping or border modifiers. Scaling inside a clipped container causes badge and text cutoff.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do rely on the TV remote physical BACK key as the primary navigation mechanism for Android TV.",
+      "Do position title and metadata outside the poster boundary on the dark ground plane in vertical media rows.",
+      "Do illuminate the focused interactive element with solid Focus Cyan and deep #06080D text for 3-meter legibility.",
+      "Do dim non-focused cards in an active carousel to alpha = 0.65f to create an optical spotlight.",
+      "Do apply graphicsLayer scale and zIndex to the root container before any clip or border modifiers.",
+      "Do use basicMarquee(repeatDelayMillis = 2000) on long movie titles and episode descriptions when focused."
+    ],
+    "donts": [
+      "Don't use real-time blur (Modifier.blur() or RenderEffect) anywhere in the app.",
+      "Don't draw 1px grey outline borders on cards, buttons, or chips in idle state (cero border slop).",
+      "Don't render on-screen [← Back] buttons in TV mode; TV users navigate via the remote.",
+      "Don't enclose vertical poster cards inside rigid grey boxes with static text beneath.",
+      "Don't clip badges or progress bars against card focus borders; always provide at least 10.dp internal breathing room.",
+      "Don't invent artificial drop shadows on dark backgrounds."
+    ]
+  }
+}
