@@ -1094,20 +1094,6 @@ class PlayerViewModel @Inject constructor(
                     currentItemId = itemId
                 )
             }
-
-            // 4️⃣ Fallback Credits Marker si el servidor no tiene intro/outro markers cargados
-            if (_creditsMarker.value == null) {
-                val dur = _streamInfo.value?.durationMs ?: 0L
-                if (dur > 180_000L) { // Películas o contenidos > 3 minutos
-                    val showAt = (dur * 0.94f).toLong().coerceAtLeast(dur - 150_000L)
-                    _creditsMarker.value = SkipMarker(
-                        showAtMs = showAt,
-                        hideAtMs = dur,
-                        skipToMs = dur
-                    )
-                    Log.i("PlayerViewModel", "Fallback Credits Marker calculated: ${showAt}ms → ${dur}ms")
-                }
-            }
         }
     }
 

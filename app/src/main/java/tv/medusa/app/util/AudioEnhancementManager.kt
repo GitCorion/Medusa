@@ -90,29 +90,10 @@ class AudioEnhancementManager {
     }
 
     private fun updateEnhancer() {
-        val sessionId = currentSessionId
-        val totalGainMb = calculateTotalGainMb()
-
-        if (totalGainMb <= 0 || sessionId == C.AUDIO_SESSION_ID_UNSET || sessionId <= 0) {
-            release()
-            return
-        }
-
-        try {
-            var enhancer = loudnessEnhancer
-            if (enhancer == null) {
-                enhancer = LoudnessEnhancer(sessionId)
-                loudnessEnhancer = enhancer
-            }
-            enhancer.setTargetGain(totalGainMb)
-            if (!enhancer.enabled) {
-                enhancer.enabled = true
-            }
-            Log.d(TAG, "Audio enhancement activo: nightMode=$nightModeLevel, volumeBoost=${volumeBoostDb}dB -> totalTargetGain=${totalGainMb}mB")
-        } catch (t: Throwable) {
-            Log.w(TAG, "No se pudo inicializar LoudnessEnhancer para la sesión $sessionId: ${t.message}")
-            release()
-        }
+        // En Android TV y TV Boxes, LoudnessEnhancer (efecto del sistema HAL) falla, silencia
+        // o rompe la inicialización de AudioTrack en flujos multicanal o streams .strm/proxy.
+        // Todo el realce de volumen y compresión nocturna se ejecuta 100% en AudioGainProcessor.
+        release()
     }
 
     fun release() {
@@ -191,11 +172,16 @@ class AudioGainProcessor : BaseAudioProcessor() {
         val output = replaceOutputBuffer(remaining)
         val encoding = inputAudioFormat.encoding
 
-        if (encoding == C.ENCODING_PCM_16BIT) {
-            processPcm16(inputBuffer, output, mult, night)
-        } else if (encoding == C.ENCODING_PCM_FLOAT) {
-            processPcmFloat(inputBuffer, output, mult, night)
-        } else {
+        try {
+            if (encoding == C.ENCODING_PCM_16BIT) {
+                processPcm16(inputBuffer, output, mult, night)
+            } else if (encoding == C.ENCODING_PCM_FLOAT) {
+                processPcmFloat(inputBuffer, output, mult, night)
+            } else {
+                output.put(inputBuffer)
+            }
+        } catch (_: Throwable) {
+            output.clear()
             output.put(inputBuffer)
         }
 
@@ -230,14 +216,12 @@ class AudioGainProcessor : BaseAudioProcessor() {
             // Aplicar ganancia lineal
             val boosted = sampleNorm * gain
 
-            // Soft limiter con curva suave tipo tanh para prevenir clipeo
-            val limited = if (boosted > 0.92f) {
-                0.92f + 0.08f * tanh(((boosted - 0.92f) / 0.08f).toDouble()).toFloat()
-            } else if (boosted < -0.92f) {
-                -0.92f - 0.08f * tanh(((-boosted - 0.92f) / 0.08f).toDouble()).toFloat()
-            } else {
-                boosted
-            }
+            // Soft limiter lineal ultrarrápido sin Math.tanh para no asfixiar la CPU del TV Box
+            val limited = when {
+                boosted > 0.95f -> 0.95f + (boosted - 0.95f) * 0.15f
+                boosted < -0.95f -> -0.95f + (boosted + 0.95f) * 0.15f
+                else -> boosted
+            }.coerceIn(-1.0f, 1.0f)
 
             val outShort = (limited * 32767.0f).toInt().coerceIn(-32768, 32767).toShort()
             output.putShort(outShort)
@@ -272,13 +256,12 @@ class AudioGainProcessor : BaseAudioProcessor() {
             }
 
             val boosted = sample * gain
-            val limited = if (boosted > 0.92f) {
-                0.92f + 0.08f * tanh(((boosted - 0.92f) / 0.08f).toDouble()).toFloat()
-            } else if (boosted < -0.92f) {
-                -0.92f - 0.08f * tanh(((-boosted - 0.92f) / 0.08f).toDouble()).toFloat()
-            } else {
-                boosted
-            }
+            // Soft limiter lineal ultrarrápido sin Math.tanh para no asfixiar la CPU del TV Box
+            val limited = when {
+                boosted > 0.95f -> 0.95f + (boosted - 0.95f) * 0.15f
+                boosted < -0.95f -> -0.95f + (boosted + 0.95f) * 0.15f
+                else -> boosted
+            }.coerceIn(-1.0f, 1.0f)
 
             output.putFloat(limited.coerceIn(-1.0f, 1.0f))
         }

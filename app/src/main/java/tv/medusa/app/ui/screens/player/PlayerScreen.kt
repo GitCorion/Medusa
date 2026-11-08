@@ -1515,14 +1515,7 @@ private fun PlayerContent(
                 }
                 playerView.subtitleView?.setStyle(subStyle)
             },
-            modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer {
-                    scaleX = videoScale
-                    scaleY = videoScale
-                    translationX = videoTranslationX.toPx()
-                    translationY = videoTranslationY.toPx()
-                }
+            modifier = Modifier.fillMaxSize()
         )
 
         // Resume Playback Dialog Overlay (Netflix-style)
