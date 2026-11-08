@@ -13,6 +13,7 @@ import tv.medusa.app.data.local.UserPreferences
 import tv.medusa.app.data.local.UserPreferencesRepository
 import tv.medusa.app.data.repository.MediaRepository
 import tv.medusa.app.domain.model.HomeSection
+import tv.medusa.app.domain.model.HomeSectionKind
 import tv.medusa.app.domain.model.MediaItem
 import tv.medusa.app.domain.model.MediaSource
 import tv.medusa.app.domain.usecase.GetHomeFeedUseCase
@@ -317,7 +318,11 @@ class HomeViewModel @Inject constructor(
             val newItems = entities.take(15).map {
                 it.toOptimizedMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.JELLYFIN)
             }
-            val newSection = HomeSection(title = "Continuar Viendo", items = newItems)
+            val newSection = HomeSection(
+                title = "Continuar Viendo",
+                items = newItems,
+                kind = HomeSectionKind.CONTINUE_WATCHING
+            )
             if (sectionIndex != -1) {
                 currentSections[sectionIndex] = newSection
             } else {

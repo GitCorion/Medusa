@@ -1,12 +1,12 @@
 {
-  "versionCode": 1000133,
-  "versionName": "2.2.86-beta",
+  "versionCode": 1000134,
+  "versionName": "2.2.87-beta",
   "minSupportedVersionCode": 1000105,
   "forceUpdate": true,
   "killSwitch": false,
-  "releaseNotes": "Ordenación correcta en Continuar Viendo (prioridad por fecha real de reproducción entre series y películas), rediseño estático y multilínea de sinopsis en HeroBanner sin ticker deslizante, y consolidación completa de mejoras visuales y de rendimiento.",
+  "releaseNotes": "Restaurada la imagen de portada de la serie en las tarjetas de Continuar Viendo para todos los episodios con fallback resiliente, corrigiendo el error 404 del endpoint de episodios.",
   "apkUrl": "https://medusa-fd388.web.app/Medusa.apk",
-  "apkSha256": "ade6667e5d480a7555b727def985f4a41114bb010c4b00797fc69597ea4f4c03",
+  "apkSha256": "e437d005f0a1f8b362f4fdc453fedb0689c774d6e72bf783b314f8c9959df54a",
   "signatures": [
     "26bccb39ed122a69ecf7a8d0b50deeabeb15bc1a4b2a8b77941b47a96fdd3fea",
     "78a588afcc90d8ea59e008c9cbd1e8bbed3b2831518184d5a9935948b9d245ac"

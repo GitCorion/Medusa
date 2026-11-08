@@ -172,12 +172,21 @@ fun JellyfinMediaEntity.toOptimizedMediaItem(
         token = token
     )
 
-    val backdropUrl = JellyfinImageUtils.getBackdropUrl(
-        baseUrl = baseUrl,
-        itemId = id,
-        imageTag = backdropImageTag,
-        token = token
-    )
+    // Para episodios, si tiene serie madre, el backdrop debe referenciar a la serie madre,
+    // nunca al id del episodio individual (que en Jellyfin no tiene endpoint de backdrop /Backdrop/0 y da 404).
+    val effectiveBackdropId = if (hasSeriesParent) seriesId!! else id
+    val effectiveBackdropTag = if (hasSeriesParent) null else backdropImageTag
+
+    val backdropUrl = if (isEpisode && !hasSeriesParent) {
+        null
+    } else {
+        JellyfinImageUtils.getBackdropUrl(
+            baseUrl = baseUrl,
+            itemId = effectiveBackdropId,
+            imageTag = effectiveBackdropTag,
+            token = token
+        )
+    }
 
     val effectiveLogoId = if (hasSeriesParent) seriesId!! else id
     val logoUrl = JellyfinImageUtils.getLogoUrl(

@@ -81,6 +81,8 @@ class JellyfinImageUtilsTest {
         // Poster URL should use the parent series ID and seriesPrimaryImageTag
         assertTrue(mediaItem.posterUrl!!.contains("/Items/series-99/Images/Primary"))
         assertTrue(mediaItem.posterUrl!!.contains("tag=seriesPosterTag"))
+        // Backdrop URL should use the parent series ID and not the episode ID (which 404s in Jellyfin)
+        assertTrue(mediaItem.backdropUrl!!.contains("/Items/series-99/Images/Backdrop/0"))
         // Title in continue watching should show series name + code
         assertEquals("Breaking Good (T1:E1)", mediaItem.title)
     }

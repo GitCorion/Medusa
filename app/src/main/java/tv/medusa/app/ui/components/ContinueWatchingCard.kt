@@ -31,6 +31,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Movie
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Tv
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -135,7 +136,20 @@ fun ContinueWatchingCard(
         label = "continuePlayAlpha"
     )
 
-    val imageModel = item.backdropUrl ?: item.posterUrl
+    val isEpisode = item.type.equals("Episode", ignoreCase = true) || !item.seriesId.isNullOrEmpty()
+
+    // Para capítulos de series, el usuario requiere mantener la imagen oficial de la serie (posterUrl),
+    // con fallback al backdrop si fuera necesario.
+    // Para películas, se prioriza el backdrop panorámico 16:9 con fallback al póster.
+    val preferredImage = if (isEpisode) {
+        item.posterUrl ?: item.backdropUrl
+    } else {
+        item.backdropUrl ?: item.posterUrl
+    }
+
+    var currentImageModel by remember(item.id, preferredImage) { mutableStateOf(preferredImage) }
+    var isFallbackAttempted by remember(item.id) { mutableStateOf(false) }
+    var isImageError by remember(item.id) { mutableStateOf(false) }
 
     Card(
         onClick = safeOnClick,
@@ -175,15 +189,21 @@ fun ContinueWatchingCard(
                     } else Modifier
                 )
         ) {
-            var isImageError by remember(item.id, imageModel) { mutableStateOf(false) }
-
-            if (!isImageError && !imageModel.isNullOrBlank()) {
+            if (!isImageError && !currentImageModel.isNullOrBlank()) {
                 AsyncImage(
-                    model = imageModel,
+                    model = currentImageModel,
                     contentDescription = item.title,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize(),
-                    onError = { isImageError = true }
+                    onError = {
+                        val alternateImage = if (isEpisode) item.backdropUrl else item.posterUrl
+                        if (!isFallbackAttempted && !alternateImage.isNullOrBlank() && alternateImage != currentImageModel) {
+                            isFallbackAttempted = true
+                            currentImageModel = alternateImage
+                        } else {
+                            isImageError = true
+                        }
+                    }
                 )
             } else {
                 Box(
@@ -197,7 +217,7 @@ fun ContinueWatchingCard(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Rounded.Movie,
+                        imageVector = if (isEpisode) Icons.Rounded.Tv else Icons.Rounded.Movie,
                         contentDescription = null,
                         tint = Color(0x66FFFFFF),
                         modifier = Modifier.size(36.dp)
