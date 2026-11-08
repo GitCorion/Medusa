@@ -247,7 +247,7 @@ class MediaSyncRepository(
         }
         return try {
             Log.i("MediaSyncRepository", "Attempting silent re-authentication with Jellyfin for user '$username'...")
-            val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
+            val api = NetworkClientFactory.createJellyfinService(serverUrl, JellyfinApiService::class.java)
             val authHeader = buildJellyfinAuthHeader(token = "")
             val response = api.authenticateByName(
                 authHeader = authHeader,
@@ -290,7 +290,7 @@ class MediaSyncRepository(
             var activeToken = token
             var activeUserId = userId
             var authHeader = buildJellyfinAuthHeader(token = activeToken)
-            val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
+            val api = NetworkClientFactory.createJellyfinService(serverUrl, JellyfinApiService::class.java)
 
             var playedEntities: List<JellyfinMediaEntity> = emptyList()
 
@@ -438,7 +438,7 @@ class MediaSyncRepository(
         }
         return try {
             runCatching {
-                val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
+                val api = NetworkClientFactory.createJellyfinService(serverUrl, JellyfinApiService::class.java)
                 var currentToken = token
                 var currentUserId = userId
                 var authHeader = buildJellyfinAuthHeader(token = currentToken)

@@ -41,6 +41,23 @@ object NetworkClientFactory {
     }
 
     /**
+     * JSON exclusivo para la API de Jellyfin.
+     *
+     * `encodeDefaults = true` es obligatorio: kotlinx.serialization omite por defecto los
+     * campos que coinciden con su valor por defecto. En el DeviceProfile eso hacía que
+     * `Type: "Video"`, `PlayableMediaTypes` y todo el perfil de transcodificación se
+     * omitieran, y Jellyfin los sustituyera por sus defaults (`Type: "Audio"`, listas vacías,
+     * contenedores y códecs vacíos).
+     */
+    internal val jellyfinJson = Json {
+        ignoreUnknownKeys = true
+        coerceInputValues = true
+        isLenient = true
+        encodeDefaults = true
+        explicitNulls = false
+    }
+
+    /**
      * Trust manager estricto del sistema. En Android se construye desde `AndroidCAStore`
      * excluyendo las entradas de usuario (prefijo `user:`), de modo que las CAs instaladas
      * manualmente en el dispositivo nunca se aceptan. En JVM se usa el almacén por defecto.
@@ -344,7 +361,7 @@ object NetworkClientFactory {
                 }
                 if (authHeader.isNullOrBlank() && embyAuthHeader.isNullOrBlank()) {
                     val stableDevId = tv.medusa.app.util.DeviceUtils.cachedDeviceId ?: "MedusaTV"
-                    val defaultAuth = "MediaBrowser Client=\"Medusa\", Device=\"AndroidTV\", DeviceId=\"$stableDevId\", Version=\"1.0.0\", Token=\"$token\""
+                    val defaultAuth = "MediaBrowser Client=\"Medusa\", Device=\"AndroidTV\", DeviceId=\"$stableDevId\", Version=\"${tv.medusa.app.BuildConfig.VERSION_NAME}\", Token=\"$token\""
                     requestBuilder.header("Authorization", defaultAuth)
                     requestBuilder.header("X-Emby-Authorization", defaultAuth)
                 }
@@ -406,7 +423,13 @@ object NetworkClientFactory {
             "$1=REDACTED"
         )
 
-    private val serviceCache = ConcurrentHashMap<Pair<String, Class<*>>, Any>()
+    private data class ServiceCacheKey(
+        val baseUrl: String,
+        val serviceClass: Class<*>,
+        val jsonIdentity: Int
+    )
+
+    private val serviceCache = ConcurrentHashMap<ServiceCacheKey, Any>()
 
     fun initCache(context: Context) {
         appContext = context.applicationContext
@@ -488,17 +511,40 @@ object NetworkClientFactory {
         return "$scheme$rest"
     }
 
+    /**
+     * Servicio Retrofit genérico (Trakt, TMDB, updater…). Usa el JSON compartido, que no
+     * fuerza la serialización de defaults.
+     */
+    fun <T> createService(baseUrl: String, serviceClass: Class<T>): T =
+        createServiceInternal(baseUrl, serviceClass, json)
+
+    /**
+     * Servicio Retrofit de Jellyfin. Usa [jellyfinJson] para que DeviceProfile, capabilities
+     * y eventos de sesión viajen completos aunque sus valores coincidan con los defaults.
+     */
+    fun <T> createJellyfinService(baseUrl: String, serviceClass: Class<T>): T =
+        createServiceInternal(baseUrl, serviceClass, jellyfinJson)
+
     @Suppress("UNCHECKED_CAST")
-    fun <T> createService(baseUrl: String, serviceClass: Class<T>): T {
+    private fun <T> createServiceInternal(
+        baseUrl: String,
+        serviceClass: Class<T>,
+        serializerJson: Json
+    ): T {
         val cleanUrl = normalizeUrl(baseUrl)
         val validUrl = if (cleanUrl.endsWith("/")) cleanUrl else "$cleanUrl/"
+        val cacheKey = ServiceCacheKey(
+            baseUrl = validUrl,
+            serviceClass = serviceClass,
+            jsonIdentity = System.identityHashCode(serializerJson)
+        )
 
-        return serviceCache.getOrPut(Pair(validUrl, serviceClass)) {
+        return serviceCache.getOrPut(cacheKey) {
             val contentType = "application/json".toMediaType()
             Retrofit.Builder()
                 .baseUrl(validUrl)
                 .client(okHttpClient)
-                .addConverterFactory(json.asConverterFactory(contentType))
+                .addConverterFactory(serializerJson.asConverterFactory(contentType))
                 .build()
                 .create(serviceClass) as Any
         } as T

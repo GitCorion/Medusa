@@ -100,6 +100,29 @@ object JellyfinDeviceProfileBuilder {
                 "maxWidth=$maxVideoWidth, passthroughMode=$audioPassthroughMode"
         )
 
+        val profile = buildProfileFromCodecs(
+            videoCodecs = hwVideoCodecs,
+            audioCodecs = audioCodecs,
+            maxVideoWidth = maxVideoWidth
+        )
+
+        cachedProfile = profile
+        cachedPassthroughMode = audioPassthroughMode
+        return profile
+    }
+
+    /**
+     * Construcción pura del DeviceProfile, separada del sondeo de hardware para poder
+     * verificarla en tests JVM con un golden JSON exacto.
+     */
+    internal fun buildProfileFromCodecs(
+        videoCodecs: Set<String>,
+        audioCodecs: Set<String>,
+        maxVideoWidth: Int
+    ): JellyfinDeviceProfile {
+        val videoCodecStr = videoCodecs.joinToString(",")
+        val audioCodecStr = audioCodecs.joinToString(",")
+
         val codecProfiles = mutableListOf<JellyfinCodecProfile>()
         codecProfiles.add(
             JellyfinCodecProfile(
@@ -114,7 +137,7 @@ object JellyfinDeviceProfileBuilder {
                 )
             )
         )
-        if ("hevc" in hwVideoCodecs) {
+        if ("hevc" in videoCodecs) {
             codecProfiles.add(
                 JellyfinCodecProfile(
                     type = "Video",
@@ -136,7 +159,7 @@ object JellyfinDeviceProfileBuilder {
             )
         )
 
-        val profile = JellyfinDeviceProfile(
+        return JellyfinDeviceProfile(
             name = "Medusa Android TV",
             maxStreamingBitrate = 120_000_000L,
             maxStaticBitrate = 120_000_000L,
@@ -187,10 +210,6 @@ object JellyfinDeviceProfileBuilder {
             ),
             codecProfiles = codecProfiles
         )
-
-        cachedProfile = profile
-        cachedPassthroughMode = audioPassthroughMode
-        return profile
     }
 
     /**
@@ -288,7 +307,7 @@ object JellyfinDeviceProfileBuilder {
         audioPassthroughMode: Int = AUDIO_PASSTHROUGH_OFF
     ): JellyfinClientCapabilitiesDto {
         return JellyfinClientCapabilitiesDto(
-            playableMediaTypes = listOf("Audio", "Video"),
+            playableMediaTypes = listOf("Video", "Audio"),
             supportedCommands = emptyList(),
             supportsMediaControl = false,
             supportsPersistentIdentifier = true,

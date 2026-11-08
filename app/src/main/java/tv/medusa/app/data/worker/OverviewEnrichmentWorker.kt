@@ -160,7 +160,7 @@ class OverviewEnrichmentWorker @AssistedInject constructor(
         }
 
         // FASE 3: Obtener descripciones y portadas primarias de Jellyfin (LAN)
-        val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
+        val api = NetworkClientFactory.createJellyfinService(serverUrl, JellyfinApiService::class.java)
         val authHeader = buildJellyfinAuthHeader(token = token)
         val overviewBatchSize = 40
         val missingIds = jellyfinDao.getIdsMissingOverview(limit = 120)

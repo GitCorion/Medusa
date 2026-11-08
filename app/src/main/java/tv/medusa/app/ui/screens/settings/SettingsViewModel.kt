@@ -868,7 +868,7 @@ class SettingsViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(serverUrl = cleanUrl, isLoading = true, statusMessage = context.getString(R.string.settings_testing_connection, cleanUrl))
 
         viewModelScope.launch {
-            val api = NetworkClientFactory.createService(cleanUrl, JellyfinApiService::class.java)
+            val api = NetworkClientFactory.createJellyfinService(cleanUrl, JellyfinApiService::class.java)
             try {
                 val info = api.getPublicInfo()
                 val serverName = info.effectiveServerName
@@ -921,7 +921,7 @@ class SettingsViewModel @Inject constructor(
                 statusMessage = context.getString(R.string.settings_starting_quick_connect)
             )
 
-            val api = NetworkClientFactory.createService(cleanUrl, JellyfinApiService::class.java)
+            val api = NetworkClientFactory.createJellyfinService(cleanUrl, JellyfinApiService::class.java)
             val authHeader = tv.medusa.app.data.repository.buildJellyfinAuthHeader(token = "")
 
             try {
@@ -1027,7 +1027,7 @@ class SettingsViewModel @Inject constructor(
 
             _uiState.value = state.copy(isLoading = true, statusMessage = context.getString(R.string.settings_connecting_with, cleanUrl))
 
-            val api = NetworkClientFactory.createService(cleanUrl, JellyfinApiService::class.java)
+            val api = NetworkClientFactory.createJellyfinService(cleanUrl, JellyfinApiService::class.java)
             val authHeader = tv.medusa.app.data.repository.buildJellyfinAuthHeader(token = "")
 
             var detectedServerId = ""

@@ -244,7 +244,7 @@ data class JellyfinPlaybackInfoRequest(
 
 @Serializable
 data class JellyfinClientCapabilitiesDto(
-    @SerialName("PlayableMediaTypes") val playableMediaTypes: List<String> = listOf("Audio", "Video"),
+    @SerialName("PlayableMediaTypes") val playableMediaTypes: List<String> = listOf("Video", "Audio"),
     @SerialName("SupportedCommands") val supportedCommands: List<String> = emptyList(),
     @SerialName("SupportsMediaControl") val supportsMediaControl: Boolean = false,
     @SerialName("SupportsPersistentIdentifier") val supportsPersistentIdentifier: Boolean = true,

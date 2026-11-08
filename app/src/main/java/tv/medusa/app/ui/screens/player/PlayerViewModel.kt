@@ -46,8 +46,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import okhttp3.Request
-import java.util.concurrent.TimeUnit
 
 data class SubtitleTrackInfo(
     val url: String,
@@ -335,7 +333,7 @@ class PlayerViewModel @Inject constructor(
             }
 
             var playableId = itemId
-            val api = NetworkClientFactory.createService(baseUrl, JellyfinApiService::class.java)
+            val api = NetworkClientFactory.createJellyfinService(baseUrl, JellyfinApiService::class.java)
 
             if (entity?.type?.equals("Series", ignoreCase = true) == true) {
                 try {
@@ -524,18 +522,6 @@ class PlayerViewModel @Inject constructor(
                 val isStrm = JellyfinPlaybackSourceResolver.isStrm(mediaSource)
                 Log.i("PlayerViewModel", "Chosen MediaSource: id=$mediaSourceId container=$container isStrm=$isStrm PlayMethod=$activePlayMethod playSessionId=$activePlaySessionId")
 
-                val extractedStrmUrl = if (isStrm) {
-                    resolveStrmTargetUrl(
-                        baseUrl = baseUrl,
-                        token = effectiveToken,
-                        authHeader = effectiveAuthHeader,
-                        playableId = playableId,
-                        mediaSourceId = mediaSourceId
-                    )
-                } else {
-                    null
-                }
-
                 candidateUrls += JellyfinPlaybackSourceResolver.buildCandidates(
                     baseUrl = baseUrl,
                     playableId = playableId,
@@ -543,8 +529,7 @@ class PlayerViewModel @Inject constructor(
                     playSessionId = activePlaySessionId,
                     audioStreamIndex = activeAudioStreamIndex,
                     mediaSource = mediaSource,
-                    alternativeMediaSources = mediaSources ?: emptyList(),
-                    extractedStrmUrl = extractedStrmUrl
+                    alternativeMediaSources = mediaSources ?: emptyList()
                 )
 
                 if (candidateUrls.isEmpty()) {
@@ -556,19 +541,12 @@ class PlayerViewModel @Inject constructor(
                 // Parse Subtitles & Audio streams
                 for (stream in mediaSource.mediaStreams) {
                     if (stream.type.equals("Subtitle", ignoreCase = true)) {
-                        val deliveryUrl = stream.deliveryUrl
-                        val rawSubUrl = if (!deliveryUrl.isNullOrBlank()) {
-                            JellyfinDeviceProfileBuilder.combineBaseUrlAndPath(baseUrl, deliveryUrl)
-                        } else {
-                            // Fallback oficial para subtítulos externos/sidecar; necesario
-                            // también en .strm cuando Jellyfin no entrega DeliveryUrl.
-                            "$baseUrl/Videos/$playableId/$mediaSourceId/Subtitles/${stream.index}/Stream.srt"
-                        }
-                        val subUrl = JellyfinDeviceProfileBuilder.appendPlaybackParams(
-                            url = rawSubUrl,
-                            playSessionId = activePlaySessionId,
-                            apiKey = effectiveToken,
-                            mediaSourceId = mediaSource.id
+                        val subUrl = JellyfinPlaybackSourceResolver.buildSubtitleUrl(
+                            baseUrl = baseUrl,
+                            playableId = playableId,
+                            mediaSourceId = mediaSourceId,
+                            stream = stream,
+                            token = effectiveToken
                         )
                         subtitles.add(
                             SubtitleTrackInfo(
@@ -699,7 +677,7 @@ class PlayerViewModel @Inject constructor(
             val baseUrl = jellyfinBaseUrl
             val token = prefs.jellyfinAccessToken
             val userId = prefs.jellyfinUserId
-            val api = NetworkClientFactory.createService(baseUrl, JellyfinApiService::class.java)
+            val api = NetworkClientFactory.createJellyfinService(baseUrl, JellyfinApiService::class.java)
 
             val androidTvProfile = withContext(Dispatchers.Default) { cachedDeviceProfile }
             val resumeTicks = resumePositionMs * 10_000L
@@ -855,74 +833,6 @@ class PlayerViewModel @Inject constructor(
         return result.toList()
     }
 
-    /**
-     * Lee el descriptor `.strm` a través de Jellyfin y extrae su URL destino. No se usa para
-     * reproducir directamente si el host es Docker/LAN (el TV no lo alcanza); en ese caso el
-     * candidato válido es el `stream?static=true` del servidor.
-     */
-    private suspend fun resolveStrmTargetUrl(
-        baseUrl: String,
-        token: String,
-        authHeader: String,
-        playableId: String,
-        mediaSourceId: String
-    ): String? {
-        val endpoints = listOfNotNull(
-            "$baseUrl/Items/$playableId/Download",
-            if (mediaSourceId.isNotBlank()) {
-                "$baseUrl/Videos/$playableId/stream?static=true&MediaSourceId=$mediaSourceId"
-            } else {
-                null
-            }
-        )
-
-        val fastClient = NetworkClientFactory.okHttpClient.newBuilder()
-            .connectTimeout(4, TimeUnit.SECONDS)
-            .readTimeout(4, TimeUnit.SECONDS)
-            .callTimeout(5, TimeUnit.SECONDS)
-            .build()
-
-        return withContext(Dispatchers.IO) {
-            for (endpoint in endpoints) {
-                val result = runCatching {
-                    val url = JellyfinDeviceProfileBuilder.appendPlaybackParams(
-                        url = endpoint,
-                        playSessionId = activePlaySessionId,
-                        apiKey = token,
-                        mediaSourceId = mediaSourceId.takeIf { it.isNotBlank() }
-                    )
-                    val request = Request.Builder()
-                        .url(url)
-                        .header("Authorization", authHeader)
-                        .header("X-Emby-Authorization", authHeader)
-                        .build()
-
-                    fastClient.newCall(request).execute().use { response ->
-                        val contentType = response.header("Content-Type").orEmpty()
-                        if (!response.isSuccessful ||
-                            contentType.contains("video", ignoreCase = true)
-                        ) {
-                            return@use null
-                        }
-                        response.peekBody(8192).string()
-                            .lineSequence()
-                            .map { it.trim().removePrefix("\uFEFF") }
-                            .firstOrNull {
-                                it.startsWith("http://", ignoreCase = true) ||
-                                    it.startsWith("https://", ignoreCase = true)
-                            }
-                    }
-                }.getOrNull()
-
-                if (!result.isNullOrBlank()) {
-                    Log.i("PlayerViewModel", "Extracted .strm target: $result")
-                    return@withContext result
-                }
-            }
-            null
-        }
-    }
-
     private fun failFatalPlayback() {
         if (_fatalPlaybackError.value == null) {
             _fatalPlaybackError.value = appContext.getString(R.string.player_cannot_play_file)
@@ -960,7 +870,7 @@ class PlayerViewModel @Inject constructor(
 
         viewModelScope.launch(Dispatchers.IO) {
             runCatching {
-                val api = NetworkClientFactory.createService(jellyfinBaseUrl, JellyfinApiService::class.java)
+                val api = NetworkClientFactory.createJellyfinService(jellyfinBaseUrl, JellyfinApiService::class.java)
                 val ticks = positionMs * 10_000L
                 api.reportPlaybackStart(
                     authHeader = jellyfinAuthHeader,
@@ -1001,7 +911,7 @@ class PlayerViewModel @Inject constructor(
                 }
             }
             runCatching {
-                val api = NetworkClientFactory.createService(jellyfinBaseUrl, JellyfinApiService::class.java)
+                val api = NetworkClientFactory.createJellyfinService(jellyfinBaseUrl, JellyfinApiService::class.java)
                 val ticks = positionMs * 10_000L
                 api.reportPlaybackProgress(
                     authHeader = jellyfinAuthHeader,
@@ -1113,7 +1023,7 @@ class PlayerViewModel @Inject constructor(
             // 3. Notificar al servidor Jellyfin con PlaySessionId
             if (baseUrl.isNotBlank() && authHeader.isNotBlank()) {
                 runCatching {
-                    val api = NetworkClientFactory.createService(baseUrl, JellyfinApiService::class.java)
+                    val api = NetworkClientFactory.createJellyfinService(baseUrl, JellyfinApiService::class.java)
                     api.reportPlaybackStopped(
                         authHeader = authHeader,
                         request = JellyfinPlaybackProgressRequest(
@@ -1157,7 +1067,7 @@ class PlayerViewModel @Inject constructor(
     fun loadIntroAndNextEpisode(itemId: String, seriesId: String?) {
         if (jellyfinBaseUrl.isBlank() || jellyfinAuthHeader.isBlank()) return
         viewModelScope.launch {
-            val api = NetworkClientFactory.createService(jellyfinBaseUrl, JellyfinApiService::class.java)
+            val api = NetworkClientFactory.createJellyfinService(jellyfinBaseUrl, JellyfinApiService::class.java)
             val prefs = userPreferencesRepository.userPreferencesFlow.first()
             val userId = prefs.jellyfinUserId
 
@@ -1393,7 +1303,7 @@ class PlayerViewModel @Inject constructor(
     suspend fun refreshNextEpisode(itemId: String, seriesId: String?): NextEpisodeInfo? {
         if (jellyfinBaseUrl.isBlank() || jellyfinAuthHeader.isBlank()) return null
         val prefs = userPreferencesRepository.userPreferencesFlow.first()
-        val api = NetworkClientFactory.createService(jellyfinBaseUrl, JellyfinApiService::class.java)
+        val api = NetworkClientFactory.createJellyfinService(jellyfinBaseUrl, JellyfinApiService::class.java)
         return if (!seriesId.isNullOrBlank()) {
             fetchNextEpisode(
                 api = api,

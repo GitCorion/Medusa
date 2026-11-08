@@ -45,7 +45,7 @@ class JellyfinMediaRemoteRepository(
 
         // 2. Query remote Jellyfin with fast indexed search
         return runCatching {
-            val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
+            val api = NetworkClientFactory.createJellyfinService(serverUrl, JellyfinApiService::class.java)
             val authHeader = buildJellyfinAuthHeader(token = token)
             val cleanTitle = title.trim()
                 .substringBefore(":")
@@ -87,7 +87,7 @@ class JellyfinMediaRemoteRepository(
             return Result.success(emptyList())
         }
         return runCatching {
-            val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
+            val api = NetworkClientFactory.createJellyfinService(serverUrl, JellyfinApiService::class.java)
             val authHeader = buildJellyfinAuthHeader(token = token)
             val response = api.searchLibraryItems(
                 authHeader = authHeader,
@@ -105,7 +105,7 @@ class JellyfinMediaRemoteRepository(
 
     suspend fun getUserViews(serverUrl: String, userId: String, token: String): Result<List<JellyfinItemDto>> {
         return runCatching {
-            val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
+            val api = NetworkClientFactory.createJellyfinService(serverUrl, JellyfinApiService::class.java)
             val authHeader = buildJellyfinAuthHeader(token = token)
             api.getUserViews(authHeader = authHeader, userId = userId).items
         }
@@ -130,7 +130,7 @@ class JellyfinMediaRemoteRepository(
         cacheKey: String
     ): Result<List<JellyfinMediaEntity>> {
         return runCatching {
-            val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
+            val api = NetworkClientFactory.createJellyfinService(serverUrl, JellyfinApiService::class.java)
             val authHeader = buildJellyfinAuthHeader(token = token)
 
             coroutineScope {
@@ -196,7 +196,7 @@ class JellyfinMediaRemoteRepository(
 
     suspend fun getNextUp(serverUrl: String, userId: String, token: String): Result<List<JellyfinMediaEntity>> {
         return runCatching {
-            val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
+            val api = NetworkClientFactory.createJellyfinService(serverUrl, JellyfinApiService::class.java)
             val authHeader = buildJellyfinAuthHeader(token = token)
             val response = api.getNextUpItems(authHeader = authHeader, userId = userId)
             val entities = response.items.map { it.toEntity() }
@@ -223,7 +223,7 @@ class JellyfinMediaRemoteRepository(
         cacheKey: String
     ): Result<List<JellyfinMediaEntity>> {
         return runCatching {
-            val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
+            val api = NetworkClientFactory.createJellyfinService(serverUrl, JellyfinApiService::class.java)
             val authHeader = buildJellyfinAuthHeader(token = token)
             val response = api.getLatestItems(authHeader = authHeader, userId = userId)
             val entities = response.map { it.toEntity() }
@@ -242,7 +242,7 @@ class JellyfinMediaRemoteRepository(
         return runCatching {
             val local = jellyfinDao.getItemById(itemId)
             if (local != null && !local.overview.isNullOrBlank()) return@runCatching local
-            val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
+            val api = NetworkClientFactory.createJellyfinService(serverUrl, JellyfinApiService::class.java)
             val authHeader = buildJellyfinAuthHeader(token = token)
             val dto = api.getItemDetail(authHeader = authHeader, userId = userId, itemId = itemId)
             val entity = dto.toEntity()
@@ -277,7 +277,7 @@ class JellyfinMediaRemoteRepository(
         cacheKey: String
     ): Result<List<JellyfinMediaEntity>> {
         return runCatching {
-            val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
+            val api = NetworkClientFactory.createJellyfinService(serverUrl, JellyfinApiService::class.java)
             val authHeader = buildJellyfinAuthHeader(token = token)
             val response = api.getRecentlyPlayedItems(authHeader = authHeader, userId = userId)
             val entities = response.items.map { it.toEntity() }
@@ -294,7 +294,7 @@ class JellyfinMediaRemoteRepository(
             val local = jellyfinDao.getFavorites().deduplicateMediaEntities()
             if (serverUrl.isBlank() || token.isBlank()) return@runCatching local
             try {
-                val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
+                val api = NetworkClientFactory.createJellyfinService(serverUrl, JellyfinApiService::class.java)
                 val authHeader = buildJellyfinAuthHeader(token = token)
                 val response = api.getFavoriteItems(authHeader = authHeader, userId = userId)
                 val entities = response.items.map { it.toEntity().copy(isFavorite = true) }
@@ -312,7 +312,7 @@ class JellyfinMediaRemoteRepository(
         return runCatching {
             jellyfinDao.updateFavoriteStatus(itemId, makeFavorite)
             if (serverUrl.isNotBlank() && token.isNotBlank() && userId.isNotBlank()) {
-                val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
+                val api = NetworkClientFactory.createJellyfinService(serverUrl, JellyfinApiService::class.java)
                 val authHeader = buildJellyfinAuthHeader(token = token)
                 if (makeFavorite) {
                     api.markFavorite(authHeader, userId, itemId)
@@ -328,7 +328,7 @@ class JellyfinMediaRemoteRepository(
         return runCatching {
             jellyfinDao.updatePlayedStatus(itemId, makePlayed)
             if (serverUrl.isNotBlank() && token.isNotBlank() && userId.isNotBlank()) {
-                val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
+                val api = NetworkClientFactory.createJellyfinService(serverUrl, JellyfinApiService::class.java)
                 val authHeader = buildJellyfinAuthHeader(token = token)
                 if (makePlayed) {
                     api.markPlayed(authHeader, userId, itemId)
@@ -344,7 +344,7 @@ class JellyfinMediaRemoteRepository(
         return runCatching {
             jellyfinDao.updatePlaybackPosition(itemId, positionTicks = 0L, isPlayed = false, lastPlayedTicks = 0L)
             if (serverUrl.isNotBlank() && token.isNotBlank()) {
-                val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
+                val api = NetworkClientFactory.createJellyfinService(serverUrl, JellyfinApiService::class.java)
                 val authHeader = buildJellyfinAuthHeader(token = token)
                 api.reportPlaybackStopped(
                     authHeader,
@@ -388,7 +388,7 @@ class JellyfinMediaRemoteRepository(
         cacheKey: String
     ): List<JellyfinMediaEntity> {
         return runCatching {
-            val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
+            val api = NetworkClientFactory.createJellyfinService(serverUrl, JellyfinApiService::class.java)
             val authHeader = buildJellyfinAuthHeader(token = token)
             val fields = "Overview,ProviderIds,PrimaryImageTag,BackdropImageTags,CommunityRating,OfficialRating,UserData,Genres,Tags"
 
@@ -481,7 +481,7 @@ class JellyfinMediaRemoteRepository(
         cacheKey: String
     ): List<JellyfinMediaEntity> {
         return runCatching {
-            val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
+            val api = NetworkClientFactory.createJellyfinService(serverUrl, JellyfinApiService::class.java)
             val authHeader = buildJellyfinAuthHeader(token = token)
             val fields = "Overview,ProviderIds,PrimaryImageTag,BackdropImageTags,CommunityRating,OfficialRating,UserData,Genres,Tags"
 
@@ -549,7 +549,7 @@ class JellyfinMediaRemoteRepository(
 
     suspend fun getSeasons(serverUrl: String, userId: String, token: String, seriesId: String): List<SeasonItem> {
         return runCatching {
-            val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
+            val api = NetworkClientFactory.createJellyfinService(serverUrl, JellyfinApiService::class.java)
             val authHeader = buildJellyfinAuthHeader(token = token)
             val response = api.getSeasonsForSeries(authHeader = authHeader, seriesId = seriesId, userId = userId)
             response.items.mapNotNull { item ->
@@ -568,7 +568,7 @@ class JellyfinMediaRemoteRepository(
 
     suspend fun getSeriesEpisodeStats(serverUrl: String, userId: String, token: String, seriesId: String): SeriesEpisodeStats? {
         return runCatching {
-            val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
+            val api = NetworkClientFactory.createJellyfinService(serverUrl, JellyfinApiService::class.java)
             val authHeader = buildJellyfinAuthHeader(token = token)
             val response = api.getEpisodesForSeries(
                 authHeader = authHeader,
@@ -612,7 +612,7 @@ class JellyfinMediaRemoteRepository(
     ): List<JellyfinMediaEntity> {
         if (serverUrl.isBlank() || userId.isBlank() || token.isBlank() || collectionId.isBlank()) return emptyList()
         return runCatching {
-            val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
+            val api = NetworkClientFactory.createJellyfinService(serverUrl, JellyfinApiService::class.java)
             val authHeader = buildJellyfinAuthHeader(token = token)
             val response = api.getCollectionItems(
                 authHeader = authHeader,
@@ -635,7 +635,7 @@ class JellyfinMediaRemoteRepository(
         seasonId: String? = null
     ): List<EpisodeItem> {
         return runCatching {
-            val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
+            val api = NetworkClientFactory.createJellyfinService(serverUrl, JellyfinApiService::class.java)
             val authHeader = buildJellyfinAuthHeader(token = token)
             val response = api.getEpisodesForSeries(
                 authHeader = authHeader,
@@ -716,7 +716,7 @@ class JellyfinMediaRemoteRepository(
         seriesId: String
     ): EpisodeItem? {
         return runCatching {
-            val api = NetworkClientFactory.createService(serverUrl, JellyfinApiService::class.java)
+            val api = NetworkClientFactory.createJellyfinService(serverUrl, JellyfinApiService::class.java)
             val authHeader = buildJellyfinAuthHeader(token = token)
             val nextUpResponse = api.getNextUpItems(
                 authHeader = authHeader,
@@ -747,7 +747,8 @@ class JellyfinMediaRemoteRepository(
 const val JELLYFIN_CLIENT_NAME = "Medusa"
 const val JELLYFIN_DEVICE_NAME = "AndroidTV"
 const val JELLYFIN_DEVICE_ID = "MedusaTV"
-const val JELLYFIN_VERSION = "1.0.0"
+/** Versión real del build; Jellyfin la muestra en la sesión para distinguir la build instalada. */
+val JELLYFIN_VERSION: String = tv.medusa.app.BuildConfig.VERSION_NAME
 
 fun buildJellyfinAuthHeader(
     clientName: String = JELLYFIN_CLIENT_NAME,
