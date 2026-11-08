@@ -38,6 +38,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.Font
@@ -66,6 +67,7 @@ import tv.medusa.app.ui.components.TvNavTab
 import tv.medusa.app.ui.components.TvTopBar
 import tv.medusa.app.ui.theme.TvAccent
 import tv.medusa.app.ui.util.handleTouchClick
+import tv.medusa.app.util.DeviceUtils
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
@@ -372,6 +374,8 @@ private fun SeasonalAllGrid(
     onDetailMedia: (String) -> Unit
 ) {
     val gridState = rememberLazyGridState()
+    val context = LocalContext.current
+    val isTouchDevice = remember(context) { DeviceUtils.isTouchDevice(context) }
 
     LaunchedEffect(state.items.size, state.hasMoreAll, state.isLoadingAll) {
         snapshotFlow { gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0 }
@@ -407,12 +411,14 @@ private fun SeasonalAllGrid(
                     isMonochrome = isMonochrome,
                     hideWatched = state.hideWatched,
                     onToggleHideWatched = onToggleHideWatched,
-                    modifier = Modifier.weight(1f)
+                    modifier = if (isTouchDevice) Modifier.weight(1f) else Modifier.fillMaxWidth()
                 )
-                TvBackButton(
-                    onClick = onBackToLanding,
-                    isMonochrome = isMonochrome
-                )
+                if (isTouchDevice) {
+                    TvBackButton(
+                        onClick = onBackToLanding,
+                        isMonochrome = isMonochrome
+                    )
+                }
             }
         }
 

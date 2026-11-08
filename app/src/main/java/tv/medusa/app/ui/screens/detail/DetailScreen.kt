@@ -92,6 +92,7 @@ import tv.medusa.app.ui.components.TvBackButton
 import tv.medusa.app.ui.theme.TvAccent
 import tv.medusa.app.ui.theme.TvPill
 import tv.medusa.app.ui.theme.TvRatingBadge
+import tv.medusa.app.util.DeviceUtils
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
@@ -226,32 +227,16 @@ fun DetailScreen(
                         )
                 )
 
-                // Main Content Unified Vertical Scroll Layout (Zero cutoff, full-width TV carousels)
+                val context = LocalContext.current
+                val isTouchDevice = remember(context) { DeviceUtils.isTouchDevice(context) }
                 val detailScrollState = rememberScrollState()
 
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
                         .verticalScroll(detailScrollState)
-                        .padding(top = 32.dp, bottom = 64.dp)
+                        .padding(top = 40.dp, bottom = 64.dp)
                 ) {
-                    // Top Bar: Botón Volver cinemático integrado
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 48.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        TvBackButton(
-                            onClick = onBack,
-                            accentColorKey = state.accentColor,
-                            isMonochrome = isMonochrome,
-                            showLabel = true
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(14.dp))
-
                     // Hero Section: Poster + Metadata + Action Buttons + Synopsis
                     Row(
                         modifier = Modifier
@@ -1000,6 +985,28 @@ fun DetailScreen(
                         )
                 )
 
+                // Botón Volver táctil ultra-elegante (solo en tablets / pantallas táctiles; en TV se usa la tecla BACK física)
+                if (isTouchDevice) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .statusBarsPadding()
+                            .padding(start = 28.dp, top = 22.dp)
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(Color(0x40000000))
+                            .focusProperties { canFocus = false }
+                            .handleTouchClick { onBack() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                            contentDescription = stringResource(R.string.common_back),
+                            tint = Color.White.copy(alpha = 0.90f),
+                            modifier = Modifier.size(19.dp)
+                        )
+                    }
+                }
 
                 if (isShowingTrailer && state.trailerUrl != null) {
                     InAppTrailerPlayer(

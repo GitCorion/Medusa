@@ -27,10 +27,12 @@ import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -55,6 +57,7 @@ import tv.medusa.app.ui.components.TvNavTab
 import tv.medusa.app.ui.components.TvTopBar
 import tv.medusa.app.ui.theme.TvAccent
 import tv.medusa.app.ui.util.handleTouchClick
+import tv.medusa.app.util.DeviceUtils
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
@@ -303,6 +306,8 @@ private fun GenreAllGrid(
 ) {
     val accentColor = if (isMonochrome) Color.White else TvAccent.getColor(accentColorKey)
     val focusedContent = if (isMonochrome) Color(0xFF0F172A) else TvAccent.getFocusedContentColor(accentColorKey)
+    val context = LocalContext.current
+    val isTouchDevice = remember(context) { DeviceUtils.isTouchDevice(context) }
 
     LazyVerticalGrid(
         columns = GridCells.Adaptive(minSize = 145.dp),
@@ -342,13 +347,15 @@ private fun GenreAllGrid(
                     isMonochrome = isMonochrome,
                     hideWatched = state.hideWatched,
                     onToggleHideWatched = onToggleHideWatched,
-                    modifier = Modifier.weight(1f)
+                    modifier = if (isTouchDevice) Modifier.weight(1f) else Modifier.fillMaxWidth()
                 )
-                TvBackButton(
-                    onClick = onBackToLanding,
-                    accentColorKey = accentColorKey,
-                    isMonochrome = isMonochrome
-                )
+                if (isTouchDevice) {
+                    TvBackButton(
+                        onClick = onBackToLanding,
+                        accentColorKey = accentColorKey,
+                        isMonochrome = isMonochrome
+                    )
+                }
             }
         }
 

@@ -1,7 +1,10 @@
 package tv.medusa.app.util
 
 import android.app.ActivityManager
+import android.app.UiModeManager
 import android.content.Context
+import android.content.pm.PackageManager
+import android.content.res.Configuration
 import android.os.Build
 
 object DeviceUtils {
@@ -54,6 +57,34 @@ object DeviceUtils {
      */
     fun getRecommendedParticleScale(context: Context): Float {
         return if (isLowResourceDevice(context)) 0.3f else 1.0f
+    }
+
+    /**
+     * Determina si el dispositivo actual es una televisión (Android TV / Google TV / Leanback).
+     */
+    fun isTvDevice(context: Context): Boolean {
+        val pm = context.packageManager
+        val isLeanback = pm.hasSystemFeature(PackageManager.FEATURE_LEANBACK)
+        val isTelevision = pm.hasSystemFeature(PackageManager.FEATURE_TELEVISION)
+        val uiModeManager = context.getSystemService(Context.UI_MODE_SERVICE) as? UiModeManager
+        val isTvUiMode = uiModeManager?.currentModeType == Configuration.UI_MODE_TYPE_TELEVISION
+        val hasTouch = pm.hasSystemFeature(PackageManager.FEATURE_TOUCHSCREEN)
+
+        return isLeanback || isTelevision || isTvUiMode || !hasTouch
+    }
+
+    /**
+     * Determina si el dispositivo admite entrada táctil activa (tablets, teléfonos) y no es una TV pura.
+     */
+    fun isTouchDevice(context: Context): Boolean {
+        val pm = context.packageManager
+        val hasTouch = pm.hasSystemFeature(PackageManager.FEATURE_TOUCHSCREEN)
+        val isLeanbackOnly = pm.hasSystemFeature("android.software.leanback_only")
+        val isLeanback = pm.hasSystemFeature(PackageManager.FEATURE_LEANBACK)
+        val uiModeManager = context.getSystemService(Context.UI_MODE_SERVICE) as? UiModeManager
+        val isTvUiMode = uiModeManager?.currentModeType == Configuration.UI_MODE_TYPE_TELEVISION
+
+        return hasTouch && !isTvUiMode && !isLeanbackOnly && !isLeanback
     }
 }
 
