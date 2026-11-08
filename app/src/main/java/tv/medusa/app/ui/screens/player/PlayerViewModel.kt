@@ -3,10 +3,12 @@ package tv.medusa.app.ui.screens.player
 import android.media.MediaCodecList
 import tv.medusa.app.data.remote.jellyfin.JellyfinAuthRequest
 import tv.medusa.app.data.remote.jellyfin.JellyfinDeviceProfile
+import tv.medusa.app.data.remote.jellyfin.JellyfinDeviceProfileBuilder
 import tv.medusa.app.data.remote.jellyfin.JellyfinIntroTimestamps
 import tv.medusa.app.data.remote.jellyfin.JellyfinItemDto
 import tv.medusa.app.data.remote.jellyfin.JellyfinMediaSourceDto
 import tv.medusa.app.data.remote.jellyfin.JellyfinPlaybackInfoRequest
+import tv.medusa.app.data.remote.jellyfin.JellyfinPlaybackSourceResolver
 import tv.medusa.app.util.DeviceUtils
 import android.content.Context
 import android.util.Log
@@ -45,6 +47,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.Request
+import java.util.concurrent.TimeUnit
 
 data class SubtitleTrackInfo(
     val url: String,
@@ -518,33 +521,34 @@ class PlayerViewModel @Inject constructor(
                     else -> "Transcode"
                 }
 
-                Log.i("PlayerViewModel", "Chosen MediaSource: id=$mediaSourceId container=$container PlayMethod=$activePlayMethod playSessionId=$activePlaySessionId")
+                val isStrm = JellyfinPlaybackSourceResolver.isStrm(mediaSource)
+                Log.i("PlayerViewModel", "Chosen MediaSource: id=$mediaSourceId container=$container isStrm=$isStrm PlayMethod=$activePlayMethod playSessionId=$activePlaySessionId")
 
-                // Solo se reproducen las URLs que entrega Jellyfin: DirectStreamUrl y
-                // TranscodingUrl. No se construyen rutas /Videos/... a mano.
-                val dsUrl = mediaSource.directStreamUrl
-                val tcUrl = mediaSource.transcodingUrl
-                val orderedServerUrls = if (activePlayMethod == "Transcode") {
-                    listOf(tcUrl, dsUrl)
+                val extractedStrmUrl = if (isStrm) {
+                    resolveStrmTargetUrl(
+                        baseUrl = baseUrl,
+                        token = effectiveToken,
+                        authHeader = effectiveAuthHeader,
+                        playableId = playableId,
+                        mediaSourceId = mediaSourceId
+                    )
                 } else {
-                    listOf(dsUrl, tcUrl)
+                    null
                 }
-                for (serverUrl in orderedServerUrls) {
-                    if (serverUrl.isNullOrBlank()) continue
-                    val fullUrl = tv.medusa.app.data.remote.jellyfin.JellyfinDeviceProfileBuilder
-                        .combineBaseUrlAndPath(baseUrl, serverUrl)
-                    val urlWithParams = tv.medusa.app.data.remote.jellyfin.JellyfinDeviceProfileBuilder
-                        .appendPlaybackParams(
-                            fullUrl,
-                            activePlaySessionId,
-                            effectiveToken,
-                            mediaSourceId,
-                            activeAudioStreamIndex
-                        )
-                    if (!candidateUrls.contains(urlWithParams)) candidateUrls.add(urlWithParams)
-                }
+
+                candidateUrls += JellyfinPlaybackSourceResolver.buildCandidates(
+                    baseUrl = baseUrl,
+                    playableId = playableId,
+                    token = effectiveToken,
+                    playSessionId = activePlaySessionId,
+                    audioStreamIndex = activeAudioStreamIndex,
+                    mediaSource = mediaSource,
+                    alternativeMediaSources = mediaSources ?: emptyList(),
+                    extractedStrmUrl = extractedStrmUrl
+                )
+
                 if (candidateUrls.isEmpty()) {
-                    Log.e("PlayerViewModel", "Jellyfin did not provide DirectStreamUrl or TranscodingUrl for $playableId")
+                    Log.e("PlayerViewModel", "No playable URL from Jellyfin for itemId=$playableId source=$mediaSourceId")
                     failFatalPlayback()
                     return@launch
                 }
@@ -552,12 +556,20 @@ class PlayerViewModel @Inject constructor(
                 // Parse Subtitles & Audio streams
                 for (stream in mediaSource.mediaStreams) {
                     if (stream.type.equals("Subtitle", ignoreCase = true)) {
-                        // Solo se usan URLs entregadas por Jellyfin (DeliveryUrl). No se
-                        // construyen rutas /Videos/.../Subtitles a mano.
                         val deliveryUrl = stream.deliveryUrl
-                        if (deliveryUrl.isNullOrBlank()) continue
-                        val rawSubUrl = tv.medusa.app.data.remote.jellyfin.JellyfinDeviceProfileBuilder.combineBaseUrlAndPath(baseUrl, deliveryUrl)
-                        val subUrl = tv.medusa.app.data.remote.jellyfin.JellyfinDeviceProfileBuilder.appendPlaybackParams(rawSubUrl, activePlaySessionId, effectiveToken, mediaSource.id)
+                        val rawSubUrl = if (!deliveryUrl.isNullOrBlank()) {
+                            JellyfinDeviceProfileBuilder.combineBaseUrlAndPath(baseUrl, deliveryUrl)
+                        } else {
+                            // Fallback oficial para subtítulos externos/sidecar; necesario
+                            // también en .strm cuando Jellyfin no entrega DeliveryUrl.
+                            "$baseUrl/Videos/$playableId/$mediaSourceId/Subtitles/${stream.index}/Stream.srt"
+                        }
+                        val subUrl = JellyfinDeviceProfileBuilder.appendPlaybackParams(
+                            url = rawSubUrl,
+                            playSessionId = activePlaySessionId,
+                            apiKey = effectiveToken,
+                            mediaSourceId = mediaSource.id
+                        )
                         subtitles.add(
                             SubtitleTrackInfo(
                                 url = subUrl,
@@ -590,20 +602,11 @@ class PlayerViewModel @Inject constructor(
                 return@launch
             }
 
-            val lanUrl = prefs.jellyfinLanServerUrl.trimEnd('/')
-            val finalCandidates = if (lanUrl.isNotBlank() && lanUrl != baseUrl) {
-                val list = mutableListOf<String>()
-                candidateUrls.forEach { url ->
-                    if (url.startsWith(baseUrl)) {
-                        val lanCandidate = url.replaceFirst(baseUrl, lanUrl)
-                        if (!list.contains(lanCandidate)) list.add(lanCandidate)
-                    }
-                    if (!list.contains(url)) list.add(url)
-                }
-                list
-            } else {
-                candidateUrls
-            }
+            val finalCandidates = applyLanFallback(
+                candidates = candidateUrls,
+                baseUrl = baseUrl,
+                lanUrl = prefs.jellyfinLanServerUrl
+            )
             val primaryStreamUrl = finalCandidates.first()
 
             val rawTicks = itemDto?.userData?.playbackPositionTicks ?: entity?.playbackPositionTicks ?: 0L
@@ -615,8 +618,10 @@ class PlayerViewModel @Inject constructor(
                 ?: 0L
             val durationMs = (durationTicks / 10_000L).coerceAtLeast(0L)
 
-            val sanitizedPrimary = tv.medusa.app.data.remote.jellyfin.JellyfinDeviceProfileBuilder.sanitizeUrlForLog(primaryStreamUrl)
+            val sanitizedPrimary = JellyfinDeviceProfileBuilder.sanitizeUrlForLog(primaryStreamUrl)
+            val sanitizedCandidates = finalCandidates.map { JellyfinDeviceProfileBuilder.sanitizeUrlForLog(it) }
             Log.i("PlayerViewModel", "Resolved ${finalCandidates.size} candidate URLs for $playableId. Primary: $sanitizedPrimary, durationMs=$durationMs")
+            Log.i("PlayerViewModel", "Candidate URLs: $sanitizedCandidates")
 
             val seriesId = itemDto?.seriesId ?: entity?.seriesId
 
@@ -754,31 +759,25 @@ class PlayerViewModel @Inject constructor(
                 return@launch
             }
 
-            val candidates = mutableListOf<String>()
-            val tcUrl = chosenMs.transcodingUrl
-            if (!tcUrl.isNullOrBlank()) {
-                val fullTc = tv.medusa.app.data.remote.jellyfin.JellyfinDeviceProfileBuilder.combineBaseUrlAndPath(baseUrl, tcUrl)
-                val urlWithParams = tv.medusa.app.data.remote.jellyfin.JellyfinDeviceProfileBuilder.appendPlaybackParams(
-                    fullTc,
-                    activePlaySessionId,
-                    token,
-                    chosenMs.id,
-                    activeAudioStreamIndex
+            val candidates: List<String> = if (forceFullTranscode || forceAudioTranscodeOnly) {
+                JellyfinPlaybackSourceResolver.buildTranscodeOnlyCandidates(
+                    baseUrl = baseUrl,
+                    playableId = currentPlayableId,
+                    token = token,
+                    playSessionId = activePlaySessionId,
+                    audioStreamIndex = activeAudioStreamIndex,
+                    mediaSource = chosenMs
                 )
-                candidates.add(urlWithParams)
-            }
-
-            val dsUrl = chosenMs.directStreamUrl
-            if (!forceFullTranscode && !forceAudioTranscodeOnly && !dsUrl.isNullOrBlank()) {
-                val fullDs = tv.medusa.app.data.remote.jellyfin.JellyfinDeviceProfileBuilder.combineBaseUrlAndPath(baseUrl, dsUrl)
-                val urlWithParams = tv.medusa.app.data.remote.jellyfin.JellyfinDeviceProfileBuilder.appendPlaybackParams(
-                    fullDs,
-                    activePlaySessionId,
-                    token,
-                    chosenMs.id,
-                    activeAudioStreamIndex
+            } else {
+                JellyfinPlaybackSourceResolver.buildCandidates(
+                    baseUrl = baseUrl,
+                    playableId = currentPlayableId,
+                    token = token,
+                    playSessionId = activePlaySessionId,
+                    audioStreamIndex = activeAudioStreamIndex,
+                    mediaSource = chosenMs,
+                    alternativeMediaSources = msList
                 )
-                if (!candidates.contains(urlWithParams)) candidates.add(urlWithParams)
             }
 
             if (candidates.isEmpty()) {
@@ -786,6 +785,12 @@ class PlayerViewModel @Inject constructor(
                 failFatalPlayback()
                 return@launch
             }
+
+            val finalCandidates = applyLanFallback(
+                candidates = candidates,
+                baseUrl = baseUrl,
+                lanUrl = prefs.jellyfinLanServerUrl
+            )
 
             activePlayMethod = when {
                 forceFullTranscode || forceAudioTranscodeOnly -> "Transcode"
@@ -796,15 +801,15 @@ class PlayerViewModel @Inject constructor(
 
             val currentStream = _streamInfo.value
             _streamInfo.value = currentStream?.copy(
-                primaryStreamUrl = candidates.first(),
-                candidateUrls = candidates,
+                primaryStreamUrl = finalCandidates.first(),
+                candidateUrls = finalCandidates,
                 startPositionMs = resumePositionMs,
                 playSessionId = activePlaySessionId,
                 mediaSourceId = chosenMs.id
             ) ?: PlayerStreamInfo(
                 playableId = currentPlayableId,
-                primaryStreamUrl = candidates.first(),
-                candidateUrls = candidates,
+                primaryStreamUrl = finalCandidates.first(),
+                candidateUrls = finalCandidates,
                 title = "",
                 startPositionMs = resumePositionMs,
                 durationMs = (chosenMs.runTimeTicks ?: 0L) / 10_000L,
@@ -816,11 +821,105 @@ class PlayerViewModel @Inject constructor(
                 mediaSourceId = chosenMs.id
             )
             hasReportedStart = false
-            val sanitizedNew = tv.medusa.app.data.remote.jellyfin.JellyfinDeviceProfileBuilder.sanitizeUrlForLog(candidates.first())
-            Log.i("PlayerViewModel", "retryWithTranscoding resolved ${candidates.size} URLs, primary: $sanitizedNew")
+            val sanitizedNew = JellyfinDeviceProfileBuilder.sanitizeUrlForLog(finalCandidates.first())
+            val sanitizedRetryCandidates = finalCandidates.map { JellyfinDeviceProfileBuilder.sanitizeUrlForLog(it) }
+            Log.i("PlayerViewModel", "retryWithTranscoding resolved ${finalCandidates.size} URLs, primary: $sanitizedNew")
+            Log.i("PlayerViewModel", "retryWithTranscoding candidates: $sanitizedRetryCandidates")
             } finally {
                 retryInFlight = false
             }
+        }
+    }
+
+    /**
+     * Si el usuario configuró una URL LAN distinta de la principal, se antepone esa variante
+     * para cada candidato del mismo servidor. El resto de URLs (CDN, .strm público) se deja
+     * intacto.
+     */
+    private fun applyLanFallback(
+        candidates: List<String>,
+        baseUrl: String,
+        lanUrl: String
+    ): List<String> {
+        val cleanLan = lanUrl.trimEnd('/')
+        val cleanBase = baseUrl.trimEnd('/')
+        if (cleanLan.isBlank() || cleanLan == cleanBase) return candidates
+
+        val result = linkedSetOf<String>()
+        candidates.forEach { url ->
+            if (url.startsWith(cleanBase)) {
+                result += url.replaceFirst(cleanBase, cleanLan)
+            }
+            result += url
+        }
+        return result.toList()
+    }
+
+    /**
+     * Lee el descriptor `.strm` a través de Jellyfin y extrae su URL destino. No se usa para
+     * reproducir directamente si el host es Docker/LAN (el TV no lo alcanza); en ese caso el
+     * candidato válido es el `stream?static=true` del servidor.
+     */
+    private suspend fun resolveStrmTargetUrl(
+        baseUrl: String,
+        token: String,
+        authHeader: String,
+        playableId: String,
+        mediaSourceId: String
+    ): String? {
+        val endpoints = listOfNotNull(
+            "$baseUrl/Items/$playableId/Download",
+            if (mediaSourceId.isNotBlank()) {
+                "$baseUrl/Videos/$playableId/stream?static=true&MediaSourceId=$mediaSourceId"
+            } else {
+                null
+            }
+        )
+
+        val fastClient = NetworkClientFactory.okHttpClient.newBuilder()
+            .connectTimeout(4, TimeUnit.SECONDS)
+            .readTimeout(4, TimeUnit.SECONDS)
+            .callTimeout(5, TimeUnit.SECONDS)
+            .build()
+
+        return withContext(Dispatchers.IO) {
+            for (endpoint in endpoints) {
+                val result = runCatching {
+                    val url = JellyfinDeviceProfileBuilder.appendPlaybackParams(
+                        url = endpoint,
+                        playSessionId = activePlaySessionId,
+                        apiKey = token,
+                        mediaSourceId = mediaSourceId.takeIf { it.isNotBlank() }
+                    )
+                    val request = Request.Builder()
+                        .url(url)
+                        .header("Authorization", authHeader)
+                        .header("X-Emby-Authorization", authHeader)
+                        .build()
+
+                    fastClient.newCall(request).execute().use { response ->
+                        val contentType = response.header("Content-Type").orEmpty()
+                        if (!response.isSuccessful ||
+                            contentType.contains("video", ignoreCase = true)
+                        ) {
+                            return@use null
+                        }
+                        response.peekBody(8192).string()
+                            .lineSequence()
+                            .map { it.trim().removePrefix("\uFEFF") }
+                            .firstOrNull {
+                                it.startsWith("http://", ignoreCase = true) ||
+                                    it.startsWith("https://", ignoreCase = true)
+                            }
+                    }
+                }.getOrNull()
+
+                if (!result.isNullOrBlank()) {
+                    Log.i("PlayerViewModel", "Extracted .strm target: $result")
+                    return@withContext result
+                }
+            }
+            null
         }
     }
 

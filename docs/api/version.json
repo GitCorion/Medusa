@@ -1,12 +1,12 @@
 {
-  "versionCode": 1000136,
-  "versionName": "2.2.89-beta",
+  "versionCode": 1000137,
+  "versionName": "2.2.90-beta",
   "minSupportedVersionCode": 1000105,
   "forceUpdate": true,
   "killSwitch": false,
-  "releaseNotes": "Rediseño visual inspirado en Apple TV: elevación y foco sutiles al 2% sin recortes de bordes ni laterales, alineación de interfaz a márgenes seguros de 60dp, descripciones de episodios estables en 2 líneas completas y optimización de microinteracciones.",
+  "releaseNotes": "Restaurada la reproducción todo terreno: .strm, rclone, IPs internas de Docker, DirectPlay con static=true, perfiles de contenedor completos, subtítulos externos y fallback de decoder de audio/vídeo.",
   "apkUrl": "https://medusa-fd388.web.app/Medusa.apk",
-  "apkSha256": "6d5ce7fd1caf207b09fc0dcd658dbdd60e607c485815dd9a1f70b1b09c595963",
+  "apkSha256": "90009a2e401a11e792cc4465e68992b13fc36e633a1c0c52e89b24176adb8ee3",
   "signatures": [
     "26bccb39ed122a69ecf7a8d0b50deeabeb15bc1a4b2a8b77941b47a96fdd3fea",
     "78a588afcc90d8ea59e008c9cbd1e8bbed3b2831518184d5a9935948b9d245ac"

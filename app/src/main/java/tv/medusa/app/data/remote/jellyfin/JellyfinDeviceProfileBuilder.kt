@@ -143,9 +143,10 @@ object JellyfinDeviceProfileBuilder {
             musicStreamingTranscodingBitrate = 128_000L,
             directPlayProfiles = listOf(
                 JellyfinDirectPlayProfile(
-                    // AVI no tiene extractor en Media3: declararlo provocaba un DirectPlay falso
-                    // seguido de un fallback innecesario.
-                    container = "mkv,mp4,mov,webm,ts,m4v",
+                    // Lista "todo terreno": incluye strm (Docker/rclone) y todos los contenedores
+                    // que Media3 puede abrir. AVI/ASF/WMV quedan fuera para que Jellyfin los
+                    // transcodifique en lugar de provocar un DirectPlay que ExoPlayer no soporta.
+                    container = JellyfinPlaybackSourceResolver.DIRECT_PLAY_CONTAINERS.joinToString(","),
                     type = "Video",
                     videoCodec = videoCodecStr,
                     audioCodec = audioCodecStr

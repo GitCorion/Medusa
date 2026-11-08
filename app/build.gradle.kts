@@ -28,8 +28,8 @@ android {
     defaultConfig {
         minSdk = 26
         targetSdk = 36
-        versionCode = 136
-        versionName = "2.2.89"
+        versionCode = 137
+        versionName = "2.2.90"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -52,7 +52,7 @@ android {
             // con datos, firma y actualizaciones independientes.
             applicationIdSuffix = ".beta"
             // Offset de 1.000.000 para distinguir el canal en soporte/Crashlytics.
-            versionCode = 1_000_136
+            versionCode = 1_000_137
             versionNameSuffix = "-beta"
             buildConfigField("boolean", "ENABLE_IN_APP_UPDATER", "true")
         }

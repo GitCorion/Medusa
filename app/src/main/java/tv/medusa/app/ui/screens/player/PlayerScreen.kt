@@ -784,12 +784,14 @@ private fun PlayerContent(
                         val sanitizedCurrentUrl = tv.medusa.app.data.remote.jellyfin.JellyfinDeviceProfileBuilder.sanitizeUrlForLog(candidates.getOrNull(candidateIdx))
                         Log.e("PlayerScreen", "ExoPlayer error on candidate $candidateIdx ($sanitizedCurrentUrl): ${error.errorCodeName}", error)
 
-                        // Regla fija: ante un fallo de inicialización del decoder de audio se
-                        // hace UN único reintento en el servidor, con DirectPlay desactivado y
-                        // sin copiar el audio, manteniendo PlaySessionId y posición actual.
+                        // Fallo de decoder: se distingue audio y vídeo para no gastar el
+                        // reintento de audio cuando el que falla es el vídeo.
+                        val causeText = error.cause?.message.orEmpty()
                         val isAudioDecoderFailure =
-                            error.errorCode == PlaybackException.ERROR_CODE_DECODER_INIT_FAILED ||
-                                error.errorCode == PlaybackException.ERROR_CODE_AUDIO_TRACK_INIT_FAILED
+                            error.errorCode == PlaybackException.ERROR_CODE_AUDIO_TRACK_INIT_FAILED ||
+                                (error.errorCode == PlaybackException.ERROR_CODE_DECODER_INIT_FAILED &&
+                                    (causeText.contains("audio", ignoreCase = true) ||
+                                        causeText.contains("audio/", ignoreCase = true)))
 
                         if (isAudioDecoderFailure) {
                             Log.w(
@@ -804,9 +806,25 @@ private fun PlayerContent(
                             return
                         }
 
-                        // Si el fallo es del decodificador de vídeo o contenedor
-                        val isVideoOrCodecError = error.errorCode == PlaybackException.ERROR_CODE_DECODER_INIT_FAILED ||
-                                error.errorCode == PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED ||
+                        // Un DECODER_INIT_FAILED sin pistas de audio (o con causa de vídeo)
+                        // se resuelve con transcodificación completa: DirectPlay off y sin
+                        // copiar audio ni vídeo. Así también se reproduce "TODO".
+                        if (error.errorCode == PlaybackException.ERROR_CODE_DECODER_INIT_FAILED) {
+                            Log.w(
+                                "PlayerScreen",
+                                "Decoder init failed (${error.errorCodeName}). Retrying once with full server transcode."
+                            )
+                            chosenStartPositionMs = currentPosition.coerceAtLeast(0L)
+                            viewModel.retryWithTranscoding(
+                                forceFullTranscode = true,
+                                resumePositionMs = chosenStartPositionMs
+                            )
+                            return
+                        }
+
+                        // Si el fallo es del contenedor
+                        val isVideoOrCodecError =
+                            error.errorCode == PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED ||
                                 error.errorCode == PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED
 
                         if (isVideoOrCodecError && candidateIdx >= candidates.size - 1) {
