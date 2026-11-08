@@ -76,6 +76,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.FastRewind
+import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay
@@ -169,7 +170,6 @@ import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.Tracks
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.ResolvingDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
@@ -193,6 +193,7 @@ import tv.medusa.app.R
 import tv.medusa.app.data.local.BUTTON_STYLE_ICONS_AND_TEXT
 import tv.medusa.app.data.local.BUTTON_STYLE_ICONS_ONLY
 import tv.medusa.app.data.local.BUTTON_STYLE_TEXT_ONLY
+import tv.medusa.app.data.remote.jellyfin.JellyfinMediaSourceDto
 import tv.medusa.app.data.remote.jellyfin.NextEpisodeInfo
 import tv.medusa.app.data.remote.NetworkClientFactory
 import tv.medusa.app.data.remote.jellyfin.SkipMarker
@@ -203,6 +204,7 @@ private enum class PlayerModalTab {
     NONE,
     AUDIO,
     SUBTITLES,
+    VERSIONS,
     SETTINGS
 }
 
@@ -212,7 +214,8 @@ private data class TrackItem(
     val label: String,
     val language: String,
     val flagEmoji: String? = null,
-    val isSelected: Boolean
+    val isSelected: Boolean,
+    val jellyfinStreamIndex: Int? = null
 )
 
 private fun Modifier.monochromeFilter(isMonochrome: Boolean): Modifier = if (isMonochrome) {
@@ -451,6 +454,7 @@ private fun PlayerContent(
     val subtitleSize by viewModel.subtitleSize.collectAsStateWithLifecycle()
     val subtitleBackground by viewModel.subtitleBackground.collectAsStateWithLifecycle()
     val autoFrameRateEnabled by viewModel.autoFrameRateEnabled.collectAsStateWithLifecycle()
+    val fatalPlaybackError by viewModel.fatalPlaybackError.collectAsStateWithLifecycle()
 
     DisposableEffect(Unit) {
         AppForeground.isPlaybackActive = true
@@ -550,6 +554,14 @@ private fun PlayerContent(
     var isBuffering by remember { mutableStateOf(true) }
     var playerErrorMessage by remember { mutableStateOf<String?>(null) }
     var retryTrigger by remember { mutableIntStateOf(0) }
+    var audioAutoSelected by remember(info) { mutableStateOf(false) }
+
+    LaunchedEffect(fatalPlaybackError) {
+        fatalPlaybackError?.let { message ->
+            playerErrorMessage = message
+            isBuffering = false
+        }
+    }
 
     val rewindFocusRequester = remember { FocusRequester() }
     val playPauseFocusRequester = remember { FocusRequester() }
@@ -558,6 +570,7 @@ private fun PlayerContent(
     val retryFocusRequester = remember { FocusRequester() }
     val audioButtonFocusRequester = remember { FocusRequester() }
     val subtitleButtonFocusRequester = remember { FocusRequester() }
+    val versionButtonFocusRequester = remember { FocusRequester() }
     val settingsButtonFocusRequester = remember { FocusRequester() }
     val playerRootFocusRequester = remember { FocusRequester() }
 
@@ -734,9 +747,23 @@ private fun PlayerContent(
                     }
 
                     override fun onTracksChanged(tracks: Tracks) {
-                        val (audios, subs) = extractTracksFromExoPlayer(this@apply, context)
+                        val (audios, subs) = extractTracksFromExoPlayer(this@apply, context, info)
                         audioTracks = audios
                         subtitleTracks = subs
+
+                        // En DirectPlay, Jellyfin puede devolver varias pistas del mismo idioma y
+                        // códec (p. ej. AC3 5.1 y AC3 2.0). Forzamos una sola vez la pista que
+                        // eligió la negociación (idioma+códec+canales+default).
+                        if (!audioAutoSelected && audios.isNotEmpty()) {
+                            val preferredIndex = info.audioTracks.firstOrNull { it.isDefault }?.index
+                            val selectedIndex = audios.firstOrNull { it.isSelected }?.jellyfinStreamIndex
+                            if (preferredIndex != null && selectedIndex != preferredIndex) {
+                                audios.firstOrNull { it.jellyfinStreamIndex == preferredIndex }?.let { preferred ->
+                                    selectAudioTrackInExoPlayer(this@apply, preferred)
+                                }
+                            }
+                            audioAutoSelected = true
+                        }
 
                         for (trackGroup in tracks.groups) {
                             if (trackGroup.type == C.TRACK_TYPE_VIDEO && trackGroup.isSelected) {
@@ -754,43 +781,46 @@ private fun PlayerContent(
                     }
 
                     override fun onPlayerError(error: PlaybackException) {
-                        Log.e("PlayerScreen", "ExoPlayer error on candidate $candidateIdx (${candidates.getOrNull(candidateIdx)}): ${error.errorCodeName}", error)
+                        val sanitizedCurrentUrl = tv.medusa.app.data.remote.jellyfin.JellyfinDeviceProfileBuilder.sanitizeUrlForLog(candidates.getOrNull(candidateIdx))
+                        Log.e("PlayerScreen", "ExoPlayer error on candidate $candidateIdx ($sanitizedCurrentUrl): ${error.errorCodeName}", error)
 
-                        // ── Recuperación automática de fallos de audio (Passthrough o pista incompatible) ──
-                        val isAudioError = error.errorCode == PlaybackException.ERROR_CODE_AUDIO_TRACK_INIT_FAILED ||
-                                error.errorCode == PlaybackException.ERROR_CODE_AUDIO_TRACK_WRITE_FAILED ||
-                                error.errorCode == PlaybackException.ERROR_CODE_DECODER_INIT_FAILED ||
-                                error.cause is AudioSink.InitializationException ||
-                                error.cause is AudioSink.WriteException
+                        // Regla fija: ante un fallo de inicialización del decoder de audio se
+                        // hace UN único reintento en el servidor, con DirectPlay desactivado y
+                        // sin copiar el audio, manteniendo PlaySessionId y posición actual.
+                        val isAudioDecoderFailure =
+                            error.errorCode == PlaybackException.ERROR_CODE_DECODER_INIT_FAILED ||
+                                error.errorCode == PlaybackException.ERROR_CODE_AUDIO_TRACK_INIT_FAILED
 
-                        if (isAudioError) {
-                            if (audioPassthroughMode != AUDIO_PASSTHROUGH_OFF) {
-                                Log.w("PlayerScreen", "Error de audio en HDMI passthrough. Conmutando automáticamente a decodificación local PCM.")
-                                playerErrorMessage = context.applicationContext.getString(R.string.player_audio_fallback_toast)
-                                chosenStartPositionMs = currentPosition.coerceAtLeast(0L)
-                                viewModel.setAudioPassthroughMode(AUDIO_PASSTHROUGH_OFF)
-                                return
-                            }
+                        if (isAudioDecoderFailure) {
+                            Log.w(
+                                "PlayerScreen",
+                                "Audio decoder init failed (${error.errorCodeName}). Retrying once with server-side audio transcode."
+                            )
+                            chosenStartPositionMs = currentPosition.coerceAtLeast(0L)
+                            viewModel.retryWithTranscoding(
+                                forceAudioTranscodeOnly = true,
+                                resumePositionMs = chosenStartPositionMs
+                            )
+                            return
+                        }
 
-                            val availableAudios = audioTracks
-                            val currentTrack = availableAudios.firstOrNull { it.isSelected }
-                            val fallbackTrack = availableAudios.firstOrNull { !it.isSelected }
-                            if (fallbackTrack != null) {
-                                Log.w("PlayerScreen", "Error en pista de audio (${currentTrack?.label}). Conmutando automáticamente a: ${fallbackTrack.label}")
-                                playerErrorMessage = context.applicationContext.getString(R.string.player_audio_track_switched_toast, fallbackTrack.label)
-                                selectAudioTrackInExoPlayer(this@apply, fallbackTrack)
-                                val pos = currentPosition.coerceAtLeast(0L)
-                                if (pos > 0) seekTo(pos)
-                                prepare()
-                                playWhenReady = true
-                                return
-                            }
+                        // Si el fallo es del decodificador de vídeo o contenedor
+                        val isVideoOrCodecError = error.errorCode == PlaybackException.ERROR_CODE_DECODER_INIT_FAILED ||
+                                error.errorCode == PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED ||
+                                error.errorCode == PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED
+
+                        if (isVideoOrCodecError && candidateIdx >= candidates.size - 1) {
+                            Log.w("PlayerScreen", "Decodificador de vídeo falló o formato no soportado. Solicitando transcodificación completa HLS al servidor.")
+                            chosenStartPositionMs = currentPosition.coerceAtLeast(0L)
+                            viewModel.retryWithTranscoding(forceFullTranscode = true, resumePositionMs = chosenStartPositionMs)
+                            return
                         }
 
                         candidateIdx++
                         if (candidateIdx < candidates.size) {
                             val nextUrl = candidates[candidateIdx]
-                            Log.i("PlayerScreen", "Attempting fallback candidate $candidateIdx: $nextUrl")
+                            val sanitizedNext = tv.medusa.app.data.remote.jellyfin.JellyfinDeviceProfileBuilder.sanitizeUrlForLog(nextUrl)
+                            Log.i("PlayerScreen", "Attempting fallback candidate $candidateIdx: $sanitizedNext")
                             val pos = currentPosition.coerceAtLeast(0L)
 
                             val fallbackItem = MediaItem.Builder()
@@ -807,6 +837,12 @@ private fun PlayerContent(
                             prepare()
                             playWhenReady = true
                         } else {
+                            if (!isVideoOrCodecError) {
+                                Log.w("PlayerScreen", "Todos los candidatos directos fallaron. Último recurso: renegociar transcodificación en Jellyfin.")
+                                chosenStartPositionMs = currentPosition.coerceAtLeast(0L)
+                                viewModel.retryWithTranscoding(forceFullTranscode = true, resumePositionMs = chosenStartPositionMs)
+                                return
+                            }
                             Log.e("PlayerScreen", "All ${candidates.size} playback candidates failed!")
                             val httpCode = (error.cause as? HttpDataSource.InvalidResponseCodeException)?.responseCode ?: 0
                             val appContext = context.applicationContext
@@ -839,6 +875,18 @@ private fun PlayerContent(
             }
     }
 
+    /**
+     * Salida real de la pantalla: persiste el progreso y cierra la sesión de Jellyfin antes
+     * de navegar. El onDispose del player solo guarda progreso para no matar el transcode
+     * cuando el player se recrea por un fallback.
+     */
+    fun exitPlayer() {
+        val pos = exoPlayer.currentPosition.coerceAtLeast(0L)
+        val dur = exoPlayer.duration.takeIf { it > 0 } ?: info.durationMs.coerceAtLeast(0L)
+        viewModel.finishPlayback(pos, dur)
+        onBack()
+    }
+
     // Integración de MediaSession (androidx.media3.session) para Android TV:
     // Permite que los botones físicos del mando de TV (Play, Pause, FastForward, Rewind),
     // mandos Bluetooth / HDMI-CEC y comandos por voz de Google Assistant ("Ok Google, pausa")
@@ -863,7 +911,7 @@ private fun PlayerContent(
 
     LaunchedEffect(activeModalTab) {
         if (activeModalTab != PlayerModalTab.NONE) {
-            val (audios, subs) = extractTracksFromExoPlayer(exoPlayer, context)
+            val (audios, subs) = extractTracksFromExoPlayer(exoPlayer, context, info)
             if (audios.isNotEmpty()) audioTracks = audios
             if (subs.isNotEmpty()) subtitleTracks = subs
         } else if (previousModalTab != PlayerModalTab.NONE) {
@@ -872,6 +920,7 @@ private fun PlayerContent(
                 when (previousModalTab) {
                     PlayerModalTab.AUDIO -> audioButtonFocusRequester.requestFocus()
                     PlayerModalTab.SUBTITLES -> subtitleButtonFocusRequester.requestFocus()
+                    PlayerModalTab.VERSIONS -> versionButtonFocusRequester.requestFocus()
                     PlayerModalTab.SETTINGS -> settingsButtonFocusRequester.requestFocus()
                     else -> playPauseFocusRequester.requestFocus()
                 }
@@ -892,14 +941,25 @@ private fun PlayerContent(
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner, exoPlayer) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_PAUSE) {
-                if (exoPlayer.isPlaying) {
+            when (event) {
+                Lifecycle.Event.ON_PAUSE -> {
+                    if (exoPlayer.isPlaying) {
+                        exoPlayer.pause()
+                        isPlaying = false
+                        val pos = exoPlayer.currentPosition.coerceAtLeast(0L)
+                        val dur = exoPlayer.duration.takeIf { it > 0 } ?: info.durationMs.coerceAtLeast(0L)
+                        viewModel.reportProgress(pos, isPaused = true, dur)
+                    }
+                }
+                Lifecycle.Event.ON_STOP -> {
+                    // Spec: la sesión se cierra al pasar a segundo plano.
                     exoPlayer.pause()
-                    isPlaying = false
                     val pos = exoPlayer.currentPosition.coerceAtLeast(0L)
                     val dur = exoPlayer.duration.takeIf { it > 0 } ?: info.durationMs.coerceAtLeast(0L)
-                    viewModel.reportProgress(pos, isPaused = true, dur)
+                    viewModel.finishPlayback(pos, dur)
                 }
+                Lifecycle.Event.ON_START -> viewModel.resumeSessionAfterBackground()
+                else -> Unit
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -1100,13 +1160,13 @@ private fun PlayerContent(
 
     BackHandler {
         if (showResumeDialog) {
-            onBack()
+            exitPlayer()
         } else if (activeModalTab != PlayerModalTab.NONE) {
             activeModalTab = PlayerModalTab.NONE
         } else if (showNextEpisodeOverlay) {
             showNextEpisodeOverlay = false
             if (playbackEnded) {
-                onBack()
+                exitPlayer()
             }
         } else if (isScrubbing) {
             isScrubbing = false
@@ -1115,7 +1175,7 @@ private fun PlayerContent(
         } else if (showOverlayControls) {
             showOverlayControls = false
         } else {
-            onBack()
+            exitPlayer()
         }
     }
 
@@ -1144,7 +1204,7 @@ private fun PlayerContent(
         }
     }
 
-    // Report de progreso a Jellyfin cada 5 s durante reproducción activa (no toca estado de Compose).
+    // Report de progreso a Jellyfin cada 10 s durante reproducción activa (no toca estado de Compose).
     LaunchedEffect(exoPlayer) {
         var lastReportedMs = 0L
         var lastWasPlaying = false
@@ -1158,7 +1218,7 @@ private fun PlayerContent(
             if (isActivelyPlaying && pos > 0) {
                 val now = System.currentTimeMillis()
                 val stateChanged = playing != lastWasPlaying
-                if (stateChanged || (now - lastReportedMs) >= 5000L) {
+                if (stateChanged || (now - lastReportedMs) >= 10_000L) {
                     val durReport = exoPlayer.duration.takeIf { it > 0 } ?: info.durationMs.coerceAtLeast(0L)
                     viewModel.reportProgress(pos, isPaused = false, durationMs = durReport)
                     lastReportedMs = now
@@ -1220,9 +1280,10 @@ private fun PlayerContent(
             exoPlayer.removeListener(listener)
             val finalPos = exoPlayer.currentPosition.coerceAtLeast(0L)
             val totalDur = exoPlayer.duration.takeIf { it > 0 } ?: info.durationMs.coerceAtLeast(0L)
-            if (finalPos > 0 && exoPlayer.playerError == null) {
-                viewModel.reportStopped(finalPos, totalDur)
-            }
+            // El player se recrea al cambiar de versión, de pista o al hacer fallback.
+            // No cerramos la sesión aquí: solo guardamos progreso. El Stopped real se envía
+            // al salir de la pantalla (exitPlayer) o en onCleared().
+            viewModel.onPlayerReleased(finalPos, totalDur)
             exoPlayer.release()
         }
     }
@@ -1621,11 +1682,13 @@ private fun PlayerContent(
                         Button(
                             onClick = {
                                 playerErrorMessage = null
+                                viewModel.clearPlaybackError()
                                 retryTrigger++
                             },
                             modifier = Modifier
                                 .handleTouchClick {
                                     playerErrorMessage = null
+                                    viewModel.clearPlaybackError()
                                     retryTrigger++
                                 }
                                 .focusRequester(retryFocusRequester),
@@ -1640,7 +1703,7 @@ private fun PlayerContent(
                         }
                         Button(
                             onClick = onBack,
-                            modifier = Modifier.handleTouchClick { onBack() },
+                            modifier = Modifier.handleTouchClick { exitPlayer() },
                             colors = ButtonDefaults.colors(
                                 containerColor = Color(0x14FFFFFF),
                                 contentColor = Color.White,
@@ -1756,7 +1819,7 @@ private fun PlayerContent(
                     Button(
                         onClick = onBack,
                         modifier = Modifier
-                            .handleTouchClick { onBack() }
+                            .handleTouchClick { exitPlayer() }
                             .size(44.dp),
                         colors = ButtonDefaults.colors(
                             containerColor = Color(0x33FFFFFF),
@@ -1955,6 +2018,7 @@ private fun PlayerContent(
                             val currentSubTrack = subtitleTracks.firstOrNull { it.isSelected }
                             val audioFlag = currentAudioTrack?.flagEmoji
                             val subFlag = currentSubTrack?.flagEmoji
+                            val hasVersions = info.availableVersions.size > 1
 
                             Row(
                                 horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -2002,11 +2066,35 @@ private fun PlayerContent(
                                         .focusProperties {
                                             up = progressBarFocusRequester
                                             left = audioButtonFocusRequester
-                                            right = settingsButtonFocusRequester
+                                            right = if (hasVersions) versionButtonFocusRequester else settingsButtonFocusRequester
                                         }
                                 )
 
-                                // 6. Settings Selector Button
+                                if (hasVersions) {
+                                    // 6. Version Selector Button (solo si Jellyfin ofrece varias versiones)
+                                    TvPillButton(
+                                        onClick = {
+                                            notifyInteraction()
+                                            activeModalTab = PlayerModalTab.VERSIONS
+                                        },
+                                        icon = Icons.Default.Layers,
+                                        label = stringResource(R.string.player_versions),
+                                        isSelected = activeModalTab == PlayerModalTab.VERSIONS,
+                                        buttonStyle = buttonStyle,
+                                        isMonochrome = isMonochrome,
+                                        focusColor = focusColor,
+                                        focusContent = focusContent,
+                                        modifier = Modifier
+                                            .focusRequester(versionButtonFocusRequester)
+                                            .focusProperties {
+                                                up = progressBarFocusRequester
+                                                left = subtitleButtonFocusRequester
+                                                right = settingsButtonFocusRequester
+                                            }
+                                    )
+                                }
+
+                                // 7. Settings Selector Button
                                 TvPillButton(
                                     onClick = {
                                         notifyInteraction()
@@ -2023,7 +2111,7 @@ private fun PlayerContent(
                                         .focusRequester(settingsButtonFocusRequester)
                                         .focusProperties {
                                             up = progressBarFocusRequester
-                                            left = subtitleButtonFocusRequester
+                                            left = if (hasVersions) versionButtonFocusRequester else subtitleButtonFocusRequester
                                         }
                                 )
                             }
@@ -2039,6 +2127,9 @@ private fun PlayerContent(
                 activeTab = activeModalTab,
                 audioTracks = audioTracks,
                 subtitleTracks = subtitleTracks,
+                versions = info.availableVersions,
+                currentVersionName = info.currentVersionName,
+                currentMediaSourceId = info.mediaSourceId,
                 currentSpeed = currentPlaybackSpeed,
                 currentResizeMode = currentResizeMode,
                 nightModeAudio = nightModeAudio,
@@ -2050,11 +2141,28 @@ private fun PlayerContent(
                 buttonStyle = buttonStyle,
                 onSelectAudioTrack = { track ->
                     notifyInteraction()
-                    selectAudioTrackInExoPlayer(exoPlayer, track)
+                    // El índice enviado a Jellyfin es SIEMPRE MediaStream.Index, nunca el
+                    // índice interno de ExoPlayer. Si no hay mapeo fiable, solo cambiamos
+                    // la pista localmente.
+                    val jfIndex = track.jellyfinStreamIndex
+                    if (jfIndex != null) {
+                        viewModel.selectAudioStream(
+                            streamIndex = jfIndex,
+                            resumePositionMs = exoPlayer.currentPosition.coerceAtLeast(0L)
+                        )
+                    } else {
+                        selectAudioTrackInExoPlayer(exoPlayer, track)
+                    }
                 },
                 onSelectSubtitleTrack = { track ->
                     notifyInteraction()
                     selectSubtitleTrackInExoPlayer(exoPlayer, track)
+                    viewModel.updateActiveSubtitleStreamIndex(track?.jellyfinStreamIndex)
+                },
+                onSelectVersion = { mediaSourceId ->
+                    notifyInteraction()
+                    exoPlayer.pause()
+                    viewModel.selectVersion(mediaSourceId)
                 },
                 onSelectSpeed = { speed ->
                     notifyInteraction()
@@ -2676,6 +2784,9 @@ private fun PlayerCustomModalSheet(
     activeTab: PlayerModalTab,
     audioTracks: List<TrackItem>,
     subtitleTracks: List<TrackItem>,
+    versions: List<JellyfinMediaSourceDto> = emptyList(),
+    currentVersionName: String = "",
+    currentMediaSourceId: String = "",
     currentSpeed: Float,
     currentResizeMode: Int,
     nightModeAudio: Int = 0,
@@ -2687,6 +2798,7 @@ private fun PlayerCustomModalSheet(
     buttonStyle: String = BUTTON_STYLE_ICONS_AND_TEXT,
     onSelectAudioTrack: (TrackItem) -> Unit,
     onSelectSubtitleTrack: (TrackItem?) -> Unit,
+    onSelectVersion: (String) -> Unit = {},
     onSelectSpeed: (Float) -> Unit,
     onSelectResizeMode: (Int) -> Unit,
     onSelectNightMode: (Int) -> Unit = {},
@@ -2777,12 +2889,14 @@ private fun PlayerCustomModalSheet(
                         val titleIcon = when (activeTab) {
                             PlayerModalTab.AUDIO -> Icons.Default.Audiotrack
                             PlayerModalTab.SUBTITLES -> if (currentSubTrack != null) Icons.Default.Subtitles else Icons.Default.SubtitlesOff
+                            PlayerModalTab.VERSIONS -> Icons.Default.Layers
                             PlayerModalTab.SETTINGS -> Icons.Default.Tune
                             PlayerModalTab.NONE -> Icons.Default.Settings
                         }
                         val titleText = when (activeTab) {
                             PlayerModalTab.AUDIO -> stringResource(R.string.player_tab_audio)
                             PlayerModalTab.SUBTITLES -> stringResource(R.string.player_tab_subtitles)
+                            PlayerModalTab.VERSIONS -> stringResource(R.string.player_tab_versions)
                             PlayerModalTab.SETTINGS -> stringResource(R.string.player_tab_settings)
                             PlayerModalTab.NONE -> ""
                         }
@@ -3025,6 +3139,54 @@ private fun PlayerCustomModalSheet(
                                     focusColor = focusColor,
                                     focusContent = focusContent
                                 )
+                            }
+                        }
+
+                        PlayerModalTab.VERSIONS -> {
+                            item {
+                                Text(
+                                    text = stringResource(R.string.player_version_choose),
+                                    color = Color(0xFFCBD5E1),
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(bottom = 2.dp)
+                                )
+                            }
+
+                            if (versions.isEmpty()) {
+                                item {
+                                    Text(
+                                        text = stringResource(R.string.player_no_versions),
+                                        color = Color.Gray,
+                                        fontSize = 13.sp
+                                    )
+                                }
+                            } else {
+                                itemsIndexed(
+                                    items = versions,
+                                    key = { index, version -> "version_${version.id}_$index" },
+                                    contentType = { _, _ -> "version_item" }
+                                ) { index, version ->
+                                    val label = version.name?.takeIf { it.isNotBlank() }
+                                        ?: stringResource(R.string.player_version_default, index + 1)
+                                    val container = version.container?.uppercase()?.takeIf { it.isNotBlank() }
+                                    val displayLabel = if (container != null) "$label • $container" else label
+                                    TrackOptionItem(
+                                        label = displayLabel,
+                                        isSelected = version.id == currentMediaSourceId ||
+                                            (currentMediaSourceId.isBlank() && version.name == currentVersionName),
+                                        icon = Icons.Default.Layers,
+                                        buttonStyle = buttonStyle,
+                                        isMonochrome = isMonochrome,
+                                        focusColor = focusColor,
+                                        focusContent = focusContent,
+                                        focusRequester = if (index == 0) firstItemFocusRequester else null,
+                                        onClick = {
+                                            onSelectVersion(version.id)
+                                            onClose()
+                                        }
+                                    )
+                                }
                             }
                         }
 
@@ -3940,7 +4102,75 @@ private fun TvProgressBar(
 }
 
 @OptIn(UnstableApi::class)
-private fun extractTracksFromExoPlayer(exoPlayer: ExoPlayer, context: Context): Pair<List<TrackItem>, List<TrackItem>> {
+/**
+ * Mapea una pista de ExoPlayer a su MediaStream.Index de Jellyfin usando
+ * idioma + códec + canales + IsDefault. Nunca devuelve el índice de ExoPlayer.
+ */
+private fun mapExoAudioTrackToJellyfinIndex(
+    format: androidx.media3.common.Format,
+    jellyfinAudioTracks: List<AudioTrackInfo>?
+): Int? {
+    if (jellyfinAudioTracks.isNullOrEmpty()) return null
+
+    val lang = format.language?.lowercase()?.trim() ?: ""
+    val codec = normalizeAudioCodec(format.sampleMimeType)
+    val channels = format.channelCount.takeIf { it > 0 }
+
+    val scored = jellyfinAudioTracks.map { jf ->
+        val jfLang = jf.language.lowercase().trim()
+        val languageMatches = lang.isNotBlank() &&
+            (lang == jfLang || lang.startsWith(jfLang) || jfLang.startsWith(lang))
+        val codecMatches = codec.isNotBlank() && normalizeAudioCodec(jf.codec) == codec
+        val channelsMatch = channels != null && jf.channels != null && jf.channels == channels
+
+        var score = 0
+        if (languageMatches) score += 8
+        if (codecMatches) score += 4
+        if (channelsMatch) score += 2
+        if (jf.isDefault) score += 1
+        jf to score
+    }
+
+    val best = scored.maxByOrNull { it.second }
+    return if ((best?.second ?: 0) > 0) best?.first?.index else jellyfinAudioTracks.firstOrNull()?.index
+}
+
+private fun normalizeAudioCodec(raw: String?): String {
+    val value = raw?.lowercase()?.trim() ?: return ""
+    return when {
+        value.contains("eac3") || value.contains("e-ac3") || value.contains("ec-3") -> "eac3"
+        value.contains("ac3") || value.contains("ac-3") -> "ac3"
+        value.contains("dts") || value.contains("dca") -> "dts"
+        value.contains("truehd") || value.contains("mlp") -> "truehd"
+        value.contains("aac") || value.contains("mp4a") -> "aac"
+        value.contains("opus") -> "opus"
+        value.contains("flac") -> "flac"
+        value.contains("vorbis") -> "vorbis"
+        value.contains("pcm") -> "pcm"
+        else -> value.substringAfter("/")
+    }
+}
+
+@OptIn(UnstableApi::class)
+private fun mapExoSubtitleTrackToJellyfinIndex(
+    format: androidx.media3.common.Format,
+    jellyfinSubtitles: List<SubtitleTrackInfo>?
+): Int? {
+    if (jellyfinSubtitles.isNullOrEmpty()) return null
+    val lang = format.language?.lowercase()?.trim() ?: ""
+    val matchLang = jellyfinSubtitles.firstOrNull { jf ->
+        val jfLang = jf.language.lowercase().trim()
+        lang.isNotBlank() && (lang == jfLang || lang.startsWith(jfLang) || jfLang.startsWith(lang))
+    }
+    return matchLang?.index ?: jellyfinSubtitles.firstOrNull()?.index
+}
+
+@OptIn(UnstableApi::class)
+private fun extractTracksFromExoPlayer(
+    exoPlayer: ExoPlayer,
+    context: Context,
+    streamInfo: PlayerStreamInfo? = null
+): Pair<List<TrackItem>, List<TrackItem>> {
     val audioTracks = mutableListOf<TrackItem>()
     val subtitleTracks = mutableListOf<TrackItem>()
 
@@ -3980,6 +4210,7 @@ private fun extractTracksFromExoPlayer(exoPlayer: ExoPlayer, context: Context): 
                     channels.ifBlank { null }
                 )
                 val displayLabel = displayParts.joinToString(" • ")
+                val jfAudioIndex = mapExoAudioTrackToJellyfinIndex(format, streamInfo?.audioTracks)
 
                 audioTracks.add(
                     TrackItem(
@@ -3988,12 +4219,14 @@ private fun extractTracksFromExoPlayer(exoPlayer: ExoPlayer, context: Context): 
                         label = displayLabel,
                         language = lang,
                         flagEmoji = flag,
-                        isSelected = isSelected
+                        isSelected = isSelected,
+                        jellyfinStreamIndex = jfAudioIndex
                     )
                 )
             } else if (trackType == C.TRACK_TYPE_TEXT) {
                 val flag = getLanguageFlag(lang)
                 val displayLabel = getLanguageDisplayName(lang, format.label)
+                val jfSubIndex = mapExoSubtitleTrackToJellyfinIndex(format, streamInfo?.subtitles)
 
                 subtitleTracks.add(
                     TrackItem(
@@ -4002,7 +4235,8 @@ private fun extractTracksFromExoPlayer(exoPlayer: ExoPlayer, context: Context): 
                         label = displayLabel,
                         language = lang,
                         flagEmoji = flag,
-                        isSelected = isSelected
+                        isSelected = isSelected,
+                        jellyfinStreamIndex = jfSubIndex
                     )
                 )
             }

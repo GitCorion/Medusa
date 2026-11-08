@@ -1,5 +1,7 @@
 package tv.medusa.app.ui.screens.settings
 
+import android.util.Log
+
 import java.net.ConnectException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
@@ -42,8 +44,10 @@ import tv.medusa.app.data.remote.trakt.TraktDeviceTokenRequest
 import tv.medusa.app.data.repository.MediaRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -111,6 +115,9 @@ data class SettingsUiState(
     val serverName: String? = null,
     val serverVersion: String? = null,
     val isJellyfinConnected: Boolean = false,
+    val jellyfinAllowSelfSigned: Boolean = false,
+    val jellyfinCertificateFingerprint: String = "",
+    val isFetchingCertificateFingerprint: Boolean = false,
     // Trakt QR Device Flow & Status
     val isTraktConnected: Boolean = false,
     val traktUsername: String? = null,
@@ -210,7 +217,9 @@ class SettingsViewModel @Inject constructor(
                     trialDaysRemaining = prefs.trialDaysRemaining,
                     seasonalAudioEnabled = prefs.seasonalAudioEnabled,
                     navigationSoundEnabled = prefs.navigationSoundEnabled,
-                    audioPassthroughMode = prefs.audioPassthroughMode
+                    audioPassthroughMode = prefs.audioPassthroughMode,
+                    jellyfinAllowSelfSigned = prefs.jellyfinAllowSelfSigned,
+                    jellyfinCertificateFingerprint = prefs.jellyfinCertificateFingerprint
                 )
             }
         }
@@ -248,7 +257,9 @@ class SettingsViewModel @Inject constructor(
                 trialDaysRemaining = prefs.trialDaysRemaining,
                 seasonalAudioEnabled = prefs.seasonalAudioEnabled,
                 navigationSoundEnabled = prefs.navigationSoundEnabled,
-                audioPassthroughMode = prefs.audioPassthroughMode
+                audioPassthroughMode = prefs.audioPassthroughMode,
+                jellyfinAllowSelfSigned = prefs.jellyfinAllowSelfSigned,
+                jellyfinCertificateFingerprint = prefs.jellyfinCertificateFingerprint
             )
             if (prefs.traktAccessToken.isNotBlank()) {
                 validateTraktToken(prefs.traktAccessToken, prefs.traktClientId)
@@ -286,6 +297,76 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             userPreferencesRepository.setAudioPassthroughMode(mode)
             _uiState.value = _uiState.value.copy(audioPassthroughMode = mode)
+        }
+    }
+
+    /**
+     * Opt-in explícito de certificado autofirmado: descarga el certificado del servidor,
+     * calcula su fingerprint SHA-256 y lo fija como pin. No acepta el certificado durante
+     * la sonda.
+     */
+    fun pinSelfSignedCertificate() {
+        val serverUrl = _uiState.value.serverUrl
+        if (serverUrl.isBlank()) return
+        if (_uiState.value.isFetchingCertificateFingerprint) return
+
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(
+                isFetchingCertificateFingerprint = true,
+                statusMessage = context.getString(R.string.settings_tls_fetching)
+            )
+
+            val result = runCatching {
+                withContext(Dispatchers.IO) {
+                    NetworkClientFactory.fetchCertificateFingerprint(serverUrl)
+                }
+            }
+
+            result.onSuccess { fingerprint ->
+                // El pin se asocia a la URL mostrada, aunque todavía no haya sesión: así
+                // "Comprobar servidor" usa el host correcto antes de guardar la conexión.
+                userPreferencesRepository.updateJellyfinServerUrl(serverUrl)
+                userPreferencesRepository.setJellyfinSelfSigned(true, fingerprint)
+                NetworkClientFactory.setTrustedServer(
+                    serverUrl = serverUrl,
+                    allowSelfSigned = true,
+                    certificateFingerprintSha256 = fingerprint
+                )
+                _uiState.value = _uiState.value.copy(
+                    isFetchingCertificateFingerprint = false,
+                    jellyfinAllowSelfSigned = true,
+                    jellyfinCertificateFingerprint = fingerprint,
+                    isSuccess = true,
+                    statusMessage = context.getString(R.string.settings_tls_pinned)
+                )
+            }.onFailure { error ->
+                Log.e("SettingsViewModel", "No se pudo fijar el certificado autofirmado", error)
+                _uiState.value = _uiState.value.copy(
+                    isFetchingCertificateFingerprint = false,
+                    isSuccess = false,
+                    statusMessage = context.getString(
+                        R.string.settings_tls_pin_failed,
+                        error.message ?: ""
+                    )
+                )
+            }
+        }
+    }
+
+    fun clearSelfSignedCertificate() {
+        viewModelScope.launch {
+            userPreferencesRepository.setJellyfinSelfSigned(false, "")
+            NetworkClientFactory.setTrustedServer(
+                serverUrl = _uiState.value.serverUrl,
+                allowSelfSigned = false,
+                certificateFingerprintSha256 = null
+            )
+            _uiState.value = _uiState.value.copy(
+                jellyfinAllowSelfSigned = false,
+                jellyfinCertificateFingerprint = "",
+                isSuccess = true,
+                statusMessage = context.getString(R.string.settings_tls_pin_removed)
+            )
         }
     }
 
@@ -792,11 +873,17 @@ class SettingsViewModel @Inject constructor(
                 val info = api.getPublicInfo()
                 val serverName = info.effectiveServerName
                 val version = info.effectiveVersion
+                val isOutdated = isServerVersionOutdated(version)
+                val statusText = if (isOutdated) {
+                    "Aviso: Servidor Jellyfin $serverName ($version) antiguo. Se recomienda 10.7+ para compatibilidad completa."
+                } else {
+                    context.getString(R.string.settings_server_detected, serverName, version)
+                }
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     serverName = serverName,
                     serverVersion = version,
-                    statusMessage = context.getString(R.string.settings_server_detected, serverName, version)
+                    statusMessage = statusText
                 )
             } catch (e: Exception) {
                 val details = formatNetworkError(e, cleanUrl)
@@ -806,6 +893,16 @@ class SettingsViewModel @Inject constructor(
                 )
             }
         }
+    }
+
+    private fun isServerVersionOutdated(versionStr: String): Boolean {
+        if (versionStr.isBlank()) return false
+        val clean = versionStr.filter { it.isDigit() || it == '.' }
+        val parts = clean.split(".").mapNotNull { it.toIntOrNull() }
+        if (parts.isEmpty()) return false
+        val major = parts.getOrElse(0) { 0 }
+        val minor = parts.getOrElse(1) { 0 }
+        return major < 10 || (major == 10 && minor < 7)
     }
 
     fun startJellyfinQuickConnect() {
@@ -825,7 +922,7 @@ class SettingsViewModel @Inject constructor(
             )
 
             val api = NetworkClientFactory.createService(cleanUrl, JellyfinApiService::class.java)
-            val authHeader = "MediaBrowser Client=\"Medusa\", Device=\"AndroidTV\", DeviceId=\"MedusaTV\", Version=\"1.0.0\""
+            val authHeader = tv.medusa.app.data.repository.buildJellyfinAuthHeader(token = "")
 
             try {
                 val initResult = api.initiateQuickConnect(authHeader = authHeader)
@@ -845,8 +942,12 @@ class SettingsViewModel @Inject constructor(
                         val check = api.checkQuickConnect(authHeader = authHeader, secret = initResult.effectiveSecret)
                         if (check.isAuthed && !check.effectiveToken.isNullOrBlank()) {
                             val token = check.effectiveToken!!
-                            val authedHeader = "$authHeader, Token=\"$token\""
+                            val authedHeader = tv.medusa.app.data.repository.buildJellyfinAuthHeader(token = token)
                             val me = api.getCurrentUser(authedHeader)
+
+                            val info = runCatching { api.getPublicInfo(authedHeader) }.getOrNull()
+                            val serverId = info?.effectiveId ?: ""
+                            val serverVersion = info?.effectiveVersion ?: ""
 
                             // 1. Si es otro servidor/usuario, borrar catálogo y cachés antes
                             // de guardar las credenciales nuevas.
@@ -855,8 +956,16 @@ class SettingsViewModel @Inject constructor(
                                 serverUrl = cleanUrl,
                                 userId = me.effectiveId,
                                 accessToken = token,
-                                username = me.effectiveName
+                                username = me.effectiveName,
+                                serverId = serverId,
+                                serverVersion = serverVersion
                             )
+
+                            // Registrar capacidades del dispositivo en Jellyfin
+                            runCatching {
+                                val caps = tv.medusa.app.data.remote.jellyfin.JellyfinDeviceProfileBuilder.createDefaultCapabilities(context)
+                                api.postCapabilities(authHeader = authedHeader, capabilities = caps)
+                            }
 
                             _uiState.value = _uiState.value.copy(
                                 isWaitingJellyfinQuickConnect = false,
@@ -919,11 +1028,15 @@ class SettingsViewModel @Inject constructor(
             _uiState.value = state.copy(isLoading = true, statusMessage = context.getString(R.string.settings_connecting_with, cleanUrl))
 
             val api = NetworkClientFactory.createService(cleanUrl, JellyfinApiService::class.java)
-            val authHeader = "MediaBrowser Client=\"Medusa\", Device=\"AndroidTV\", DeviceId=\"MedusaTV\", Version=\"1.0.0\""
+            val authHeader = tv.medusa.app.data.repository.buildJellyfinAuthHeader(token = "")
 
+            var detectedServerId = ""
+            var detectedServerVersion = ""
             try {
                 val info = api.getPublicInfo()
                 val serverName = info.effectiveServerName
+                detectedServerId = info.effectiveId
+                detectedServerVersion = info.effectiveVersion
                 _uiState.value = state.copy(isLoading = true, statusMessage = context.getString(R.string.settings_server_authenticating, serverName))
             } catch (_: Exception) {
                 _uiState.value = state.copy(isLoading = true, statusMessage = context.getString(R.string.settings_authenticating_user, effectiveUsername))
@@ -949,12 +1062,22 @@ class SettingsViewModel @Inject constructor(
                     accessToken = token,
                     username = authedUser,
                     password = effectivePassword,
+                    serverId = detectedServerId,
+                    serverVersion = detectedServerVersion,
                     traktToken = state.traktToken,
                     traktClientId = state.traktClientId,
                     traktClientSecret = state.traktClientSecret,
                     tmdbApiKey = state.tmdbApiKey,
                     watchRegion = state.watchRegion
                 )
+
+                // Registrar capacidades del dispositivo en Jellyfin
+                runCatching {
+                    val authedHeader = tv.medusa.app.data.repository.buildJellyfinAuthHeader(token = token)
+                    val caps = tv.medusa.app.data.remote.jellyfin.JellyfinDeviceProfileBuilder.createDefaultCapabilities(context)
+                    api.postCapabilities(authHeader = authedHeader, capabilities = caps)
+                    Log.i("SettingsViewModel", "Registered Jellyfin session capabilities after login")
+                }
 
                 val repository = mediaRepository
 

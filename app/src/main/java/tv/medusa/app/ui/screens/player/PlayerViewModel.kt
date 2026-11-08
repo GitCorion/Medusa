@@ -1,21 +1,14 @@
 package tv.medusa.app.ui.screens.player
 
 import android.media.MediaCodecList
-import java.util.concurrent.TimeUnit
 import tv.medusa.app.data.remote.jellyfin.JellyfinAuthRequest
-import tv.medusa.app.data.remote.jellyfin.JellyfinCodecProfile
 import tv.medusa.app.data.remote.jellyfin.JellyfinDeviceProfile
-import tv.medusa.app.data.remote.jellyfin.JellyfinDirectPlayProfile
 import tv.medusa.app.data.remote.jellyfin.JellyfinIntroTimestamps
 import tv.medusa.app.data.remote.jellyfin.JellyfinItemDto
 import tv.medusa.app.data.remote.jellyfin.JellyfinMediaSourceDto
 import tv.medusa.app.data.remote.jellyfin.JellyfinPlaybackInfoRequest
-import tv.medusa.app.data.remote.jellyfin.JellyfinProfileCondition
-import tv.medusa.app.data.remote.jellyfin.JellyfinSubtitleProfile
-import tv.medusa.app.data.remote.jellyfin.JellyfinTranscodingProfile
 import tv.medusa.app.util.DeviceUtils
 import android.content.Context
-import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -39,8 +32,10 @@ import tv.medusa.app.util.toOptimizedMediaItem
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -56,7 +51,8 @@ data class SubtitleTrackInfo(
     val language: String,
     val title: String,
     val codec: String,
-    val isDefault: Boolean
+    val isDefault: Boolean,
+    val index: Int = -1
 )
 
 data class AudioTrackInfo(
@@ -64,7 +60,9 @@ data class AudioTrackInfo(
     val language: String,
     val title: String,
     val codec: String,
-    val isDefault: Boolean
+    val isDefault: Boolean,
+    val channels: Int? = null,
+    val channelLayout: String? = null
 )
 
 data class PlayerStreamInfo(
@@ -80,7 +78,9 @@ data class PlayerStreamInfo(
     val authHeader: String = "",
     val availableVersions: List<JellyfinMediaSourceDto> = emptyList(),
     val currentVersionName: String = "",
-    val seriesId: String? = null
+    val seriesId: String? = null,
+    val playSessionId: String = "",
+    val mediaSourceId: String = ""
 )
 
 @HiltViewModel
@@ -160,17 +160,59 @@ class PlayerViewModel @Inject constructor(
     private var jellyfinBaseUrl: String = ""
     private var jellyfinAuthHeader: String = ""
 
+    @Volatile
+    private var activePlaySessionId: String = ""
+    @Volatile
+    private var activeMediaSourceId: String = ""
+    @Volatile
+    private var activeAudioStreamIndex: Int? = null
+    @Volatile
+    private var activeSubtitleStreamIndex: Int? = null
+    @Volatile
+    private var activePlayMethod: String = "DirectPlay"
+
+    /**
+     * Scope independiente del ViewModel para que el PlaybackStopped final sobreviva a la
+     * destrucción del player. No se cancela nunca: cada petición es corta y termina sola.
+     */
+    private val reportScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    @Volatile
+    private var hasReportedStart = false
+    @Volatile
+    private var sessionFinished = false
+    @Volatile
+    private var lastReportedPositionMs = 0L
+    @Volatile
+    private var lastDurationMs = 0L
+
+    private var audioFallbackAttempts = 0
+    private var fullTranscodeAttempts = 0
+    @Volatile
+    private var retryInFlight = false
+
+    private val _fatalPlaybackError = MutableStateFlow<String?>(null)
+    val fatalPlaybackError: StateFlow<String?> = _fatalPlaybackError.asStateFlow()
+
+    fun updateActiveAudioStreamIndex(index: Int) {
+        activeAudioStreamIndex = index
+    }
+
+    fun updateActiveSubtitleStreamIndex(index: Int?) {
+        activeSubtitleStreamIndex = index
+    }
+
     /** Item actual para publicar en la fila "Continuar viendo" (Watch Next) del launcher. */
     @Volatile
     private var nowPlaying: MediaItem? = null
 
-    // Perfil de dispositivo y soporte 4K HEVC: enumerar MediaCodecList es costoso y el
-    // resultado es estable durante toda la sesión. Se cachea y se calcula la primera vez
-    // en Dispatchers.Default (antes se enumeraba dos veces en el hilo principal por carga).
+    // Perfil de dispositivo adaptativo y soporte 4K HEVC delegados al builder universal
     private val cachedDeviceProfile: JellyfinDeviceProfile
-            by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { createAndroidTvDeviceProfile() }
+        get() = tv.medusa.app.data.remote.jellyfin.JellyfinDeviceProfileBuilder.createDeviceProfile(
+            appContext,
+            userPreferencesRepository.audioPassthroughMode.value
+        )
     private val cachedDevice4kHevc: Boolean
-            by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { canDeviceDecode4kHevc() }
+        by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { canDeviceDecode4kHevc() }
 
     // ─── Skip markers ──────────────────────────────────────────────────
     // Cada campo de SkipMarker viene directamente del plugin/API, sin valores inventados.
@@ -188,209 +230,6 @@ class PlayerViewModel @Inject constructor(
 
     private val _recommendedList = MutableStateFlow<List<NextEpisodeInfo>>(emptyList())
     val recommendedList: StateFlow<List<NextEpisodeInfo>> = _recommendedList.asStateFlow()
-
-    private suspend fun resolveStrmTargetUrl(
-        baseUrl: String,
-        token: String,
-        authHeader: String,
-        playableId: String,
-        mediaSourceId: String
-    ): String? {
-        val downloadEndpoints = listOfNotNull(
-            "$baseUrl/Items/$playableId/Download?api_key=$token",
-            if (mediaSourceId.isNotBlank()) "$baseUrl/Videos/$playableId/stream?static=true&MediaSourceId=$mediaSourceId&api_key=$token" else null
-        )
-
-        val fastClient = NetworkClientFactory.okHttpClient.newBuilder()
-            .connectTimeout(4, TimeUnit.SECONDS)
-            .readTimeout(4, TimeUnit.SECONDS)
-            .callTimeout(5, TimeUnit.SECONDS)
-            .build()
-
-        for (targetUrl in downloadEndpoints) {
-            try {
-                val request = Request.Builder()
-                    .url(targetUrl)
-                    .header("Authorization", authHeader)
-                    .header("X-Emby-Authorization", authHeader)
-                    .build()
-
-                val lineWithUrl = withContext(Dispatchers.IO) {
-                    fastClient.newCall(request).execute().use { response ->
-                        if (response.isSuccessful && response.header("Content-Type")?.contains("video", ignoreCase = true) != true) {
-                            val content = runCatching { response.peekBody(4096).string().trim() }.getOrNull()
-                            content?.lineSequence()
-                                ?.map { it.trim() }
-                                ?.firstOrNull { it.startsWith("http://", ignoreCase = true) || it.startsWith("https://", ignoreCase = true) }
-                        } else null
-                    }
-                }
-
-                if (lineWithUrl != null) {
-                    Log.i("PlayerViewModel", "Extracted target URL from .strm file: $lineWithUrl")
-                    return lineWithUrl
-                }
-            } catch (e: Exception) {
-                Log.w("PlayerViewModel", "Failed to resolve .strm from $targetUrl: ${e.message}")
-            }
-        }
-        return null
-    }
-
-    private fun isDockerOrLocalhostHost(host: String?): Boolean {
-        if (host.isNullOrBlank()) return false
-        val cleanHost = host.substringBefore(":")
-        if (cleanHost.equals("localhost", ignoreCase = true) || cleanHost == "127.0.0.1") return true
-        val parts = cleanHost.split(".")
-        if (parts.size == 4) {
-            val p0 = parts[0].toIntOrNull() ?: return false
-            val p1 = parts[1].toIntOrNull() ?: return false
-            // Docker default / bridge subnets: 172.16.0.0 - 172.31.255.255
-            if (p0 == 172 && p1 in 16..31) return true
-            // Private 10.0.0.0/8 subnet
-            if (p0 == 10) return true
-            // Private 192.168.0.0/16 subnet
-            if (p0 == 192 && p1 == 168) return true
-        }
-        return false
-    }
-
-    /**
-     * Builds DeviceProfile dynamically from MediaCodecList (A.2 requirement from backend dev).
-     * - On emulator / no HW HEVC: declares only h264 + aac → Jellyfin will transcode HEVC content
-     * - On real TV with HEVC HW decoder: declares hevc + ac3/eac3 → Jellyfin allows DirectPlay
-     * This ensures PlayMethod == DirectPlay when the device truly supports the codecs.
-     */
-    private fun createAndroidTvDeviceProfile(): JellyfinDeviceProfile {
-        val isEmu = DeviceUtils.isEmulator()
-        val hwVideoCodecs = mutableSetOf("h264") // h264 always supported
-        val hwAudioCodecs = mutableSetOf("aac", "mp3") // baseline audio
-        var maxVideoWidth = 1920 // default to 1080p
-
-        if (!isEmu) {
-            try {
-                val codecList = MediaCodecList(MediaCodecList.REGULAR_CODECS)
-                for (info in codecList.codecInfos) {
-                    if (info.isEncoder) continue
-                    val name = info.name.lowercase()
-                    val isSoftware = name.startsWith("omx.google.") ||
-                            name.startsWith("c2.android.") ||
-                            name.startsWith("c2.goldfish.")
-                    if (isSoftware) continue
-
-                    for (type in info.supportedTypes) {
-                        when {
-                            type.equals("video/hevc", ignoreCase = true) -> {
-                                val caps = info.getCapabilitiesForType(type)
-                                hwVideoCodecs.add("hevc")
-                                if (caps.videoCapabilities?.isSizeSupported(3840, 2160) == true) {
-                                    maxVideoWidth = maxOf(maxVideoWidth, 3840)
-                                }
-                            }
-                            type.equals("video/vp9", ignoreCase = true) -> hwVideoCodecs.add("vp9")
-                            type.equals("video/av01", ignoreCase = true) -> hwVideoCodecs.add("av1")
-                        }
-                    }
-                }
-                // Si el hardware soporta HEVC, soporta AC3/EAC3 passthrough en Android TV
-                if ("hevc" in hwVideoCodecs) {
-                    hwAudioCodecs.addAll(listOf("ac3", "eac3"))
-                }
-            } catch (e: Exception) {
-                Log.w("PlayerViewModel", "Error probing MediaCodecList: ${e.message}")
-            }
-        }
-
-        val videoCodecStr = hwVideoCodecs.joinToString(",")
-        val audioCodecStr = (hwAudioCodecs + setOf("aac", "mp3", "ac3", "eac3", "dts", "dca", "truehd", "flac", "opus", "vorbis")).distinct().joinToString(",")
-
-        Log.i("PlayerViewModel", "DeviceProfile: isEmulator=$isEmu videoCodecs=$videoCodecStr audioCodecs=$audioCodecStr maxWidth=$maxVideoWidth")
-
-        // Build CodecProfiles with width constraints per codec (A.1 spec)
-        val codecProfiles = mutableListOf<JellyfinCodecProfile>()
-        codecProfiles.add(
-            JellyfinCodecProfile(
-                type = "Video",
-                codec = "h264",
-                conditions = listOf(
-                    JellyfinProfileCondition(
-                        condition = "LessThanEqual",
-                        property = "Width",
-                        value = "1920"
-                    )
-                )
-            )
-        )
-        if ("hevc" in hwVideoCodecs) {
-            codecProfiles.add(
-                JellyfinCodecProfile(
-                    type = "Video",
-                    codec = "hevc",
-                    conditions = listOf(
-                        JellyfinProfileCondition(
-                            condition = "LessThanEqual",
-                            property = "Width",
-                            value = maxVideoWidth.toString()
-                        )
-                    )
-                )
-            )
-        }
-        // VideoAudio codec profile (no conditions = allow all declared audio codecs)
-        codecProfiles.add(
-            JellyfinCodecProfile(
-                type = "VideoAudio",
-                codec = audioCodecStr
-            )
-        )
-
-        return JellyfinDeviceProfile(
-            name = "Medusa Android TV",
-            maxStreamingBitrate = 120_000_000L,
-            maxStaticBitrate = 120_000_000L,
-            musicStreamingTranscodingBitrate = 128_000L,
-            directPlayProfiles = listOf(
-                JellyfinDirectPlayProfile(
-                    container = "mkv,mp4,mov,webm,ts,avi,m4v,strm,flv,asf,wmv,3gp,ogv,m3u8,mpd",
-                    type = "Video",
-                    videoCodec = videoCodecStr,
-                    audioCodec = audioCodecStr
-                )
-            ),
-            transcodingProfiles = listOf(
-                JellyfinTranscodingProfile(
-                    container = "mkv",
-                    type = "Video",
-                    videoCodec = "h264",
-                    audioCodec = "aac,mp3,ac3",
-                    protocol = "hls"
-                )
-            ),
-            subtitleProfiles = listOf(
-                JellyfinSubtitleProfile(format = "srt", method = "External"),
-                JellyfinSubtitleProfile(format = "subrip", method = "External"),
-                JellyfinSubtitleProfile(format = "vtt", method = "External"),
-                JellyfinSubtitleProfile(format = "webvtt", method = "External"),
-                JellyfinSubtitleProfile(format = "ass", method = "External"),
-                JellyfinSubtitleProfile(format = "ssa", method = "External"),
-                JellyfinSubtitleProfile(format = "pgs", method = "External"),
-                JellyfinSubtitleProfile(format = "sub", method = "External"),
-                JellyfinSubtitleProfile(format = "dvdsub", method = "External"),
-                JellyfinSubtitleProfile(format = "dvbsub", method = "External"),
-                JellyfinSubtitleProfile(format = "srt", method = "Embed"),
-                JellyfinSubtitleProfile(format = "subrip", method = "Embed"),
-                JellyfinSubtitleProfile(format = "vtt", method = "Embed"),
-                JellyfinSubtitleProfile(format = "webvtt", method = "Embed"),
-                JellyfinSubtitleProfile(format = "ass", method = "Embed"),
-                JellyfinSubtitleProfile(format = "ssa", method = "Embed"),
-                JellyfinSubtitleProfile(format = "pgs", method = "Embed"),
-                JellyfinSubtitleProfile(format = "sub", method = "Embed"),
-                JellyfinSubtitleProfile(format = "dvdsub", method = "Embed"),
-                JellyfinSubtitleProfile(format = "dvbsub", method = "Embed")
-            ),
-            codecProfiles = codecProfiles
-        )
-    }
 
     private fun canDeviceDecode4kHevc(): Boolean {
         if (DeviceUtils.isEmulator()) {
@@ -420,13 +259,34 @@ class PlayerViewModel @Inject constructor(
 
     fun selectVersion(mediaSourceId: String) {
         if (currentPlayableId.isNotBlank()) {
-            loadStreamUrl(currentPlayableId, preferredMediaSourceId = mediaSourceId)
+            loadStreamUrl(currentPlayableId, preferredMediaSourceId = mediaSourceId, reuseSessionId = true)
         }
     }
 
-    fun loadStreamUrl(itemId: String, preferredMediaSourceId: String? = null) {
+    fun loadStreamUrl(
+        itemId: String,
+        preferredMediaSourceId: String? = null,
+        reuseSessionId: Boolean = false
+    ) {
         viewModelScope.launch {
-            Log.i("PlayerViewModel", "loadStreamUrl START for itemId=$itemId preferredMediaSourceId=$preferredMediaSourceId")
+            Log.i("PlayerViewModel", "loadStreamUrl START for itemId=$itemId preferredMediaSourceId=$preferredMediaSourceId reuseSessionId=$reuseSessionId")
+            if (!reuseSessionId || activePlaySessionId.isBlank()) {
+                activePlaySessionId = java.util.UUID.randomUUID().toString().replace("-", "")
+            }
+            // En una reproducción nueva no arrastramos la pista de audio del ítem anterior.
+            // Al cambiar de versión (reuseSessionId=true) se conserva la pista elegida.
+            if (!reuseSessionId) {
+                activeAudioStreamIndex = null
+                activeSubtitleStreamIndex = null
+                activeMediaSourceId = ""
+            }
+            // Nueva carga de reproducción: la sesión anterior ya no está activa.
+            sessionFinished = false
+            hasReportedStart = false
+            audioFallbackAttempts = 0
+            fullTranscodeAttempts = 0
+            retryInFlight = false
+            _fatalPlaybackError.value = null
             _streamInfo.value = null
             _introMarker.value = null
             _creditsMarker.value = null
@@ -495,10 +355,25 @@ class PlayerViewModel @Inject constructor(
             var effectiveUserId = userId
             var effectiveAuthHeader = jellyfinAuthHeader
 
+            // PlaySessionId único y persistente: si renegociamos o cambiamos versión, mantenemos la sesión.
             val androidTvProfile = withContext(Dispatchers.Default) { cachedDeviceProfile }
+
+            // Registrar inmediatamente las capacidades de la sesión en Jellyfin (PlayableMediaTypes, SupportedCommands, DeviceProfile)
+            runCatching {
+                val caps = tv.medusa.app.data.remote.jellyfin.JellyfinDeviceProfileBuilder.createDefaultCapabilities(
+                    appContext,
+                    userPreferencesRepository.audioPassthroughMode.value
+                )
+                api.postCapabilities(authHeader = effectiveAuthHeader, capabilities = caps)
+                Log.i("PlayerViewModel", "Session capabilities registered with Jellyfin")
+            }
+
+            val entityTicks = entity?.playbackPositionTicks ?: 0L
 
             val pbRequest = JellyfinPlaybackInfoRequest(
                 userId = effectiveUserId,
+                playSessionId = activePlaySessionId,
+                startTimeTicks = entityTicks,
                 enableDirectPlay = true,
                 enableDirectStream = true,
                 enableTranscoding = true,
@@ -506,12 +381,13 @@ class PlayerViewModel @Inject constructor(
                 allowAudioStreamCopy = true,
                 enableSubtitleExtraction = false,
                 maxStreamingBitrate = 120_000_000L,
+                audioStreamIndex = activeAudioStreamIndex,
                 deviceProfile = androidTvProfile
             )
 
             val (initDetailRes, initPbRes) = coroutineScope {
                 val detailDeferred = async { runCatching { api.getItemDetail(authHeader = effectiveAuthHeader, userId = effectiveUserId, itemId = playableId) } }
-                val pbDeferred = async { runCatching { api.getPlaybackInfo(authHeader = effectiveAuthHeader, itemId = playableId, userId = effectiveUserId, request = pbRequest) } }
+                val pbDeferred = async { runCatching { api.getPlaybackInfo(authHeader = effectiveAuthHeader, itemId = playableId, userId = effectiveUserId, startTimeTicks = entityTicks, request = pbRequest) } }
                 Pair(detailDeferred.await(), pbDeferred.await())
             }
             var itemDetailResult = initDetailRes
@@ -559,31 +435,19 @@ class PlayerViewModel @Inject constructor(
             var itemDto = itemDetailResult.getOrNull()
             var playbackInfo = playbackInfoResult.getOrNull()
 
-            val mediaSources = playbackInfo?.mediaSources?.ifEmpty { null } ?: itemDto?.mediaSources
-
-            // A.2 verification: log PlayMethod for each MediaSource (DirectPlay = success, Transcode = profile mismatch)
-            mediaSources?.forEachIndexed { idx, ms ->
-                Log.i("PlayerViewModel", "MS[$idx]: Name='${ms.name}' Container='${ms.container}' " +
-                        "SupportsDirectPlay=${ms.supportsDirectPlay} SupportsDirectStream=${ms.supportsDirectStream} " +
-                        "SupportsTranscoding=${ms.supportsTranscoding} " +
-                        "DirectStreamUrl='${ms.directStreamUrl}' TranscodingUrl='${ms.transcodingUrl}'")
-                // Log the definitive PlayMethod check
-                val playMethod = when {
-                    ms.supportsDirectPlay -> "DirectPlay"
-                    ms.supportsDirectStream -> "DirectStream"
-                    ms.supportsTranscoding -> "Transcode"
-                    else -> "Unknown"
-                }
-                Log.i("PlayerViewModel", "MS[$idx] PlayMethod=$playMethod ← ${if (playMethod == "DirectPlay") "✓ SUCCESS" else "⚠ Profile mismatch — check DeviceProfile codecs"}")
+            // Si Jellyfin devolvió un PlaySessionId, usarlo; de lo contrario mantenemos el UUID generado
+            playbackInfo?.playSessionId?.takeIf { it.isNotBlank() }?.let { serverSessionId ->
+                activePlaySessionId = serverSessionId
             }
+
+            val mediaSources = playbackInfo?.mediaSources?.ifEmpty { null } ?: itemDto?.mediaSources
 
             val supports4K = withContext(Dispatchers.Default) { cachedDevice4kHevc }
             Log.i("PlayerViewModel", "Device 4K HEVC hardware decode support: $supports4K")
 
-            val chosenMediaSource = if (!preferredMediaSourceId.isNullOrBlank()) {
+            var chosenMediaSource = if (!preferredMediaSourceId.isNullOrBlank()) {
                 mediaSources?.firstOrNull { it.id == preferredMediaSourceId } ?: mediaSources?.firstOrNull()
             } else if (!supports4K && mediaSources != null && mediaSources.size > 1) {
-                // If device cannot decode 4K HEVC (e.g. emulator, 1080p stick), pick 1080p H264 version first, then any 1080p
                 val pH264 = mediaSources.firstOrNull { ms ->
                     val name = ms.name?.lowercase() ?: ""
                     (name.contains("1080") || name.contains("fhd")) && (name.contains("h264") || name.contains("eng+esp") || name.contains("multi"))
@@ -597,156 +461,111 @@ class PlayerViewModel @Inject constructor(
                 mediaSources?.firstOrNull()
             }
 
+            // Selección inteligente de pista de audio:
+            // Si la pista por defecto no está soportada (ej. DTS-HD en una TV sin soporte HDMI) y existe una
+            // pista compatible (ej. AC3 o AAC), forzamos dicha pista y re-negociamos PlaybackInfo para
+            // habilitar DirectPlay/DirectStream en lugar de forzar transcodificación completa.
+            chosenMediaSource?.let { ms ->
+                val audioStreams = ms.mediaStreams.filter { it.type.equals("Audio", ignoreCase = true) }
+                val defaultOrFirst = audioStreams.firstOrNull { it.isDefault } ?: audioStreams.firstOrNull()
+                val isDefaultSupported = defaultOrFirst != null &&
+                        tv.medusa.app.data.remote.jellyfin.JellyfinDeviceProfileBuilder.isAudioCodecSupported(defaultOrFirst.codec, androidTvProfile)
+                val compatibleStream = if (isDefaultSupported) {
+                    defaultOrFirst
+                } else {
+                    audioStreams.firstOrNull {
+                        tv.medusa.app.data.remote.jellyfin.JellyfinDeviceProfileBuilder.isAudioCodecSupported(it.codec, androidTvProfile)
+                    } ?: defaultOrFirst
+                }
+                activeAudioStreamIndex = compatibleStream?.index
+
+                if (compatibleStream != null && compatibleStream != defaultOrFirst && !ms.supportsDirectPlay) {
+                    runCatching {
+                        Log.i("PlayerViewModel", "Default audio (${defaultOrFirst?.codec}) not supported. Requesting PlaybackInfo with compatible audio track ${compatibleStream.index} (${compatibleStream.codec})")
+                        val audioPbReq = pbRequest.copy(
+                            audioStreamIndex = compatibleStream.index,
+                            mediaSourceId = ms.id
+                        )
+                        val renegotiatedPb = api.getPlaybackInfo(
+                            authHeader = effectiveAuthHeader,
+                            itemId = playableId,
+                            userId = effectiveUserId,
+                            audioStreamIndex = compatibleStream.index,
+                            mediaSourceId = ms.id,
+                            request = audioPbReq
+                        )
+                        val renegotiatedMs = renegotiatedPb.mediaSources.firstOrNull { it.id == ms.id } ?: renegotiatedPb.mediaSources.firstOrNull()
+                        if (renegotiatedMs != null) {
+                            chosenMediaSource = renegotiatedMs
+                            renegotiatedPb.playSessionId?.takeIf { it.isNotBlank() }?.let { activePlaySessionId = it }
+                            Log.i("PlayerViewModel", "Renegotiated PlayMethod: supportsDirectPlay=${renegotiatedMs.supportsDirectPlay} supportsDirectStream=${renegotiatedMs.supportsDirectStream}")
+                        }
+                    }
+                }
+            }
+
             val candidateUrls = mutableListOf<String>()
             val subtitles = mutableListOf<SubtitleTrackInfo>()
             val audioTracks = mutableListOf<AudioTrackInfo>()
 
-            var isStrmMedia = false
-
             chosenMediaSource?.let { mediaSource ->
                 val mediaSourceId = mediaSource.id
-                val path = mediaSource.path ?: ""
-                val container = mediaSource.container?.lowercase() ?: ""
-                val isStrm = container == "strm" ||
-                        path.endsWith(".strm", ignoreCase = true) ||
-                        mediaSource.protocol?.equals("Http", ignoreCase = true) == true
-                isStrmMedia = isStrm
+                val container = mediaSource.container?.lowercase()?.trim() ?: "mkv"
+                activeMediaSourceId = mediaSourceId
+                activePlayMethod = when {
+                    mediaSource.supportsDirectPlay -> "DirectPlay"
+                    mediaSource.supportsDirectStream -> "DirectStream"
+                    else -> "Transcode"
+                }
 
-                Log.d("PlayerViewModel", "Using MediaSource id=$mediaSourceId name='${mediaSource.name}' container=$container isStrm=$isStrm path=$path")
+                Log.i("PlayerViewModel", "Chosen MediaSource: id=$mediaSourceId container=$container PlayMethod=$activePlayMethod playSessionId=$activePlaySessionId")
 
-                // Remote descriptor / stream resolution for .strm and rclone files:
-                if (isStrm) {
-                    // 1. Direct static stream first: Jellyfin/Cloudflare responds with HTTP 206,
-                    // Accept-Ranges: bytes and Content-Length, so ExoPlayer can seek natively.
-                    // The remux endpoint (without static=true) returns 200 + Accept-Ranges: none
-                    // and ignores StartTimeTicks, which made every seek restart from the beginning.
-                    if (mediaSourceId.isNotBlank()) {
-                        val staticStream = "$baseUrl/Videos/$playableId/stream?static=true&MediaSourceId=$mediaSourceId&api_key=$effectiveToken"
-                        if (!candidateUrls.contains(staticStream)) {
-                            candidateUrls.add(staticStream)
-                        }
-                        val remuxStream = "$baseUrl/Videos/$playableId/stream?MediaSourceId=$mediaSourceId&api_key=$effectiveToken"
-                        if (!candidateUrls.contains(remuxStream)) {
-                            candidateUrls.add(remuxStream)
-                        }
-                    }
-
-                    // 2. DirectStreamUrl provided by Jellyfin API if available
-                    val dsUrl = mediaSource.directStreamUrl
-                    if (!dsUrl.isNullOrBlank()) {
-                        val fullDsUrl = if (dsUrl.startsWith("http", ignoreCase = true)) dsUrl else "$baseUrl$dsUrl"
-                        val authDsUrl = if (!fullDsUrl.contains("api_key=")) "$fullDsUrl&api_key=$effectiveToken" else fullDsUrl
-                        if (!candidateUrls.contains(authDsUrl)) {
-                            candidateUrls.add(authDsUrl)
-                        }
-                    }
-
-                    // 3. Alternative versions as direct static candidates
-                    mediaSources?.filter { it.id != mediaSourceId }?.forEach { altSource ->
-                        if (altSource.id.isNotBlank()) {
-                            val altStatic = "$baseUrl/Videos/$playableId/stream?static=true&MediaSourceId=${altSource.id}&api_key=$effectiveToken"
-                            if (!candidateUrls.contains(altStatic)) {
-                                candidateUrls.add(altStatic)
-                            }
-                        }
-                    }
-
-                    // 4. Direct path from MediaSourceInfo.Path ONLY if LAN/routable IP (not docker bridge)
-                    if (path.startsWith("http://", ignoreCase = true) || path.startsWith("https://", ignoreCase = true)) {
-                        val pathUri = runCatching { Uri.parse(path) }.getOrNull()
-                        val pathHost = pathUri?.host
-                        if (!isDockerOrLocalhostHost(pathHost) && !pathHost.isNullOrBlank()) {
-                            if (!candidateUrls.contains(path)) candidateUrls.add(path)
-                        }
-                    }
-
-                    // 5. Extracted direct target URL from the .strm descriptor (ONLY if publicly routable, NOT internal docker IPs)
-                    val extractedStrmUrl = resolveStrmTargetUrl(
-                        baseUrl = baseUrl,
-                        token = effectiveToken,
-                        authHeader = effectiveAuthHeader,
-                        playableId = playableId,
-                        mediaSourceId = mediaSourceId
-                    )
-                    if (!extractedStrmUrl.isNullOrBlank()) {
-                        val strmUri = runCatching { Uri.parse(extractedStrmUrl) }.getOrNull()
-                        val strmHost = strmUri?.host
-                        if (!isDockerOrLocalhostHost(strmHost) && !strmHost.isNullOrBlank()) {
-                            if (!candidateUrls.contains(extractedStrmUrl)) candidateUrls.add(extractedStrmUrl)
-                        }
-                    }
-
-                    // 6. Transcoding / HLS fallbacks from Jellyfin (ONLY as last resort if direct play and static fails)
-                    if (mediaSourceId.isNotBlank()) {
-                        val transcode1080 = "$baseUrl/Videos/$playableId/master.m3u8?MediaSourceId=$mediaSourceId&VideoCodec=h264&AudioCodec=aac,mp3,ac3&MaxHeight=1080&MaxWidth=1920&api_key=$effectiveToken"
-                        if (!candidateUrls.contains(transcode1080)) {
-                            candidateUrls.add(transcode1080)
-                        }
-                        val hlsWithMs = "$baseUrl/Videos/$playableId/master.m3u8?MediaSourceId=$mediaSourceId&api_key=$effectiveToken"
-                        if (!candidateUrls.contains(hlsWithMs)) {
-                            candidateUrls.add(hlsWithMs)
-                        }
-                        val mainHlsWithMs = "$baseUrl/Videos/$playableId/main.m3u8?MediaSourceId=$mediaSourceId&api_key=$effectiveToken"
-                        if (!candidateUrls.contains(mainHlsWithMs)) {
-                            candidateUrls.add(mainHlsWithMs)
-                        }
-                    }
+                // Solo se reproducen las URLs que entrega Jellyfin: DirectStreamUrl y
+                // TranscodingUrl. No se construyen rutas /Videos/... a mano.
+                val dsUrl = mediaSource.directStreamUrl
+                val tcUrl = mediaSource.transcodingUrl
+                val orderedServerUrls = if (activePlayMethod == "Transcode") {
+                    listOf(tcUrl, dsUrl)
                 } else {
-                    // For regular non-strm media files (MKV, MP4 on rclone or local disk):
-                    // 1. Direct container stream with static=true
-                    if (container.isNotBlank()) {
-                        val containerUrl = "$baseUrl/Videos/$playableId/stream.$container?Static=true&MediaSourceId=$mediaSourceId&api_key=$effectiveToken"
-                        if (!candidateUrls.contains(containerUrl)) {
-                            candidateUrls.add(containerUrl)
-                        }
-                    }
-
-                    // 2. Direct static file stream with MediaSourceId
-                    if (mediaSourceId.isNotBlank()) {
-                        val staticWithMs = "$baseUrl/Videos/$playableId/stream?static=true&MediaSourceId=$mediaSourceId&api_key=$effectiveToken"
-                        if (!candidateUrls.contains(staticWithMs)) {
-                            candidateUrls.add(staticWithMs)
-                        }
-                    }
-
-                    // 3. Dynamic stream through Jellyfin (without static=true)
-                    if (mediaSourceId.isNotBlank()) {
-                        val dynamicWithMs = "$baseUrl/Videos/$playableId/stream?MediaSourceId=$mediaSourceId&api_key=$effectiveToken"
-                        if (!candidateUrls.contains(dynamicWithMs)) {
-                            candidateUrls.add(dynamicWithMs)
-                        }
-
-                        // 4. Master & Main HLS Playlists with MediaSourceId
-                        val transcode1080 = "$baseUrl/Videos/$playableId/master.m3u8?MediaSourceId=$mediaSourceId&VideoCodec=h264&AudioCodec=aac,mp3,ac3&MaxHeight=1080&MaxWidth=1920&api_key=$effectiveToken"
-                        if (!candidateUrls.contains(transcode1080)) {
-                            candidateUrls.add(transcode1080)
-                        }
-                        val hlsWithMs = "$baseUrl/Videos/$playableId/master.m3u8?MediaSourceId=$mediaSourceId&api_key=$effectiveToken"
-                        if (!candidateUrls.contains(hlsWithMs)) {
-                            candidateUrls.add(hlsWithMs)
-                        }
-                        val mainHlsWithMs = "$baseUrl/Videos/$playableId/main.m3u8?MediaSourceId=$mediaSourceId&api_key=$effectiveToken"
-                        if (!candidateUrls.contains(mainHlsWithMs)) {
-                            candidateUrls.add(mainHlsWithMs)
-                        }
-                    }
+                    listOf(dsUrl, tcUrl)
+                }
+                for (serverUrl in orderedServerUrls) {
+                    if (serverUrl.isNullOrBlank()) continue
+                    val fullUrl = tv.medusa.app.data.remote.jellyfin.JellyfinDeviceProfileBuilder
+                        .combineBaseUrlAndPath(baseUrl, serverUrl)
+                    val urlWithParams = tv.medusa.app.data.remote.jellyfin.JellyfinDeviceProfileBuilder
+                        .appendPlaybackParams(
+                            fullUrl,
+                            activePlaySessionId,
+                            effectiveToken,
+                            mediaSourceId,
+                            activeAudioStreamIndex
+                        )
+                    if (!candidateUrls.contains(urlWithParams)) candidateUrls.add(urlWithParams)
+                }
+                if (candidateUrls.isEmpty()) {
+                    Log.e("PlayerViewModel", "Jellyfin did not provide DirectStreamUrl or TranscodingUrl for $playableId")
+                    failFatalPlayback()
+                    return@launch
                 }
 
                 // Parse Subtitles & Audio streams
                 for (stream in mediaSource.mediaStreams) {
                     if (stream.type.equals("Subtitle", ignoreCase = true)) {
-                        val subUrl = if (!stream.deliveryUrl.isNullOrBlank()) {
-                            if (stream.deliveryUrl.startsWith("http", ignoreCase = true)) stream.deliveryUrl else "$baseUrl${stream.deliveryUrl}"
-                        } else {
-                            "$baseUrl/Videos/$playableId/${mediaSource.id}/Subtitles/${stream.index}/Stream.srt?api_key=$effectiveToken"
-                        }
+                        // Solo se usan URLs entregadas por Jellyfin (DeliveryUrl). No se
+                        // construyen rutas /Videos/.../Subtitles a mano.
+                        val deliveryUrl = stream.deliveryUrl
+                        if (deliveryUrl.isNullOrBlank()) continue
+                        val rawSubUrl = tv.medusa.app.data.remote.jellyfin.JellyfinDeviceProfileBuilder.combineBaseUrlAndPath(baseUrl, deliveryUrl)
+                        val subUrl = tv.medusa.app.data.remote.jellyfin.JellyfinDeviceProfileBuilder.appendPlaybackParams(rawSubUrl, activePlaySessionId, effectiveToken, mediaSource.id)
                         subtitles.add(
                             SubtitleTrackInfo(
                                 url = subUrl,
                                 language = stream.language ?: "es",
                                 title = stream.displayTitle ?: stream.language ?: appContext.getString(R.string.player_subtitle_default),
                                 codec = stream.codec ?: "srt",
-                                isDefault = stream.isDefault || stream.isForced
+                                isDefault = stream.isDefault || stream.isForced,
+                                index = stream.index
                             )
                         )
                     } else if (stream.type.equals("Audio", ignoreCase = true)) {
@@ -756,29 +575,19 @@ class PlayerViewModel @Inject constructor(
                                 language = stream.language ?: "und",
                                 title = stream.displayTitle ?: stream.language ?: appContext.getString(R.string.player_audio_track_default, stream.index),
                                 codec = stream.codec ?: "aac",
-                                isDefault = stream.isDefault
+                                isDefault = (stream.index == activeAudioStreamIndex),
+                                channels = stream.channels,
+                                channelLayout = stream.channelLayout
                             )
                         )
                     }
                 }
             }
 
-            // Fallback URLs if candidateUrls is still empty
-            if (!isStrmMedia) {
-                val defaultStatic = "$baseUrl/Videos/$playableId/stream?static=true&api_key=$effectiveToken"
-                if (!candidateUrls.contains(defaultStatic)) {
-                    candidateUrls.add(defaultStatic)
-                }
-            }
-
-            val defaultStandard = "$baseUrl/Videos/$playableId/stream?api_key=$effectiveToken"
-            if (!candidateUrls.contains(defaultStandard)) {
-                candidateUrls.add(defaultStandard)
-            }
-
-            val defaultHls = "$baseUrl/Videos/$playableId/master.m3u8?api_key=$effectiveToken"
-            if (!candidateUrls.contains(defaultHls)) {
-                candidateUrls.add(defaultHls)
+            if (candidateUrls.isEmpty()) {
+                Log.e("PlayerViewModel", "No playable URL from Jellyfin for itemId=$playableId")
+                failFatalPlayback()
+                return@launch
             }
 
             val lanUrl = prefs.jellyfinLanServerUrl.trimEnd('/')
@@ -795,7 +604,7 @@ class PlayerViewModel @Inject constructor(
             } else {
                 candidateUrls
             }
-            val primaryStreamUrl = finalCandidates.firstOrNull() ?: "$baseUrl/Videos/$playableId/stream?api_key=$effectiveToken"
+            val primaryStreamUrl = finalCandidates.first()
 
             val rawTicks = itemDto?.userData?.playbackPositionTicks ?: entity?.playbackPositionTicks ?: 0L
             val startPositionMs = (rawTicks / 10_000L).coerceAtLeast(0L)
@@ -806,11 +615,8 @@ class PlayerViewModel @Inject constructor(
                 ?: 0L
             val durationMs = (durationTicks / 10_000L).coerceAtLeast(0L)
 
-            Log.i("PlayerViewModel", "Resolved ${finalCandidates.size} candidate URLs for $playableId. Primary: $primaryStreamUrl, durationMs=$durationMs")
-
-            if (primaryStreamUrl.isNotBlank()) {
-                prewarmStream(primaryStreamUrl, effectiveToken, effectiveAuthHeader)
-            }
+            val sanitizedPrimary = tv.medusa.app.data.remote.jellyfin.JellyfinDeviceProfileBuilder.sanitizeUrlForLog(primaryStreamUrl)
+            Log.i("PlayerViewModel", "Resolved ${finalCandidates.size} candidate URLs for $playableId. Primary: $sanitizedPrimary, durationMs=$durationMs")
 
             val seriesId = itemDto?.seriesId ?: entity?.seriesId
 
@@ -827,68 +633,269 @@ class PlayerViewModel @Inject constructor(
                 authHeader = effectiveAuthHeader,
                 availableVersions = mediaSources ?: emptyList(),
                 currentVersionName = chosenMediaSource?.name ?: "",
-                seriesId = seriesId
+                seriesId = seriesId,
+                playSessionId = activePlaySessionId,
+                mediaSourceId = activeMediaSourceId
             )
         }
     }
 
-    private fun prewarmStream(url: String, token: String, authHeader: String) {
-        viewModelScope.launch(Dispatchers.IO) {
+    /**
+     * Fallback dinámico de transcodificación en tiempo de ejecución.
+     * Si ExoPlayer falla por códec de audio o vídeo no soportado localmente por la TV,
+     * renegocia con Jellyfin forzando transcode en el servidor manteniendo el mismo PlaySessionId.
+     */
+    /**
+     * Cambio manual de pista de audio. Renegocia PlaybackInfo con el MediaStream.Index de
+     * Jellyfin, mantiene el mismo PlaySessionId y reanuda en la posición actual.
+     */
+    fun selectAudioStream(streamIndex: Int, resumePositionMs: Long) {
+        if (streamIndex <= 0) return
+        activeAudioStreamIndex = streamIndex
+        retryWithTranscoding(
+            forceAudioTranscodeOnly = false,
+            forceFullTranscode = false,
+            resumePositionMs = resumePositionMs,
+            consumeRetryBudget = false
+        )
+    }
+
+    fun retryWithTranscoding(
+        forceAudioTranscodeOnly: Boolean = false,
+        forceFullTranscode: Boolean = false,
+        resumePositionMs: Long = 0L,
+        consumeRetryBudget: Boolean = true
+    ) {
+        if (currentPlayableId.isBlank() || jellyfinBaseUrl.isBlank()) return
+        if (retryInFlight) return
+        if (consumeRetryBudget) {
+            if (forceFullTranscode) {
+                if (fullTranscodeAttempts >= 1) {
+                    Log.e("PlayerViewModel", "Retry budget exhausted: full transcode already attempted")
+                    failFatalPlayback()
+                    return
+                }
+                fullTranscodeAttempts++
+            } else {
+                if (audioFallbackAttempts >= 1) {
+                    Log.e("PlayerViewModel", "Retry budget exhausted: audio fallback already attempted")
+                    failFatalPlayback()
+                    return
+                }
+                audioFallbackAttempts++
+            }
+        }
+        retryInFlight = true
+        _fatalPlaybackError.value = null
+        viewModelScope.launch {
             try {
-                Log.d("PlayerViewModel", "Pre-warming stream: $url")
-                val request = okhttp3.Request.Builder()
-                    .url(url)
-                    .header("Range", "bytes=0-0")
-                    .apply {
-                        if (token.isNotBlank()) {
-                            header("X-Emby-Token", token)
-                            header("X-MediaBrowser-Token", token)
-                        }
-                        if (authHeader.isNotBlank()) {
-                            header("Authorization", authHeader)
-                            header("X-Emby-Authorization", authHeader)
-                        } else if (token.isNotBlank()) {
-                            val genAuth = buildJellyfinAuthHeader(token = token)
-                            header("Authorization", genAuth)
-                            header("X-Emby-Authorization", genAuth)
-                        }
-                    }
-                    .build()
-                NetworkClientFactory.okHttpClient.newBuilder()
-                    .connectTimeout(30, TimeUnit.SECONDS)
-                    .readTimeout(60, TimeUnit.SECONDS)
-                    .build()
-                    .newCall(request)
-                    .execute()
-                    .use { response ->
-                        Log.i("PlayerViewModel", "Pre-warm response: code=${response.code}")
-                    }
-            } catch (e: Exception) {
-                Log.d("PlayerViewModel", "Pre-warm completed/timed out (non-blocking): ${e.message}")
+            Log.i("PlayerViewModel", "retryWithTranscoding START: forceAudioOnly=$forceAudioTranscodeOnly forceFull=$forceFullTranscode resumePosMs=$resumePositionMs session=$activePlaySessionId")
+            val prefs = userPreferencesRepository.userPreferencesFlow.first()
+            val baseUrl = jellyfinBaseUrl
+            val token = prefs.jellyfinAccessToken
+            val userId = prefs.jellyfinUserId
+            val api = NetworkClientFactory.createService(baseUrl, JellyfinApiService::class.java)
+
+            val androidTvProfile = withContext(Dispatchers.Default) { cachedDeviceProfile }
+            val resumeTicks = resumePositionMs * 10_000L
+
+            val transcodeRequest = JellyfinPlaybackInfoRequest(
+                userId = userId,
+                playSessionId = activePlaySessionId,
+                // Un fallo de decoder de audio reintenta siempre en el servidor:
+                // DirectPlay/DirectStream desactivados y sin copiar el audio.
+                enableDirectPlay = !forceFullTranscode && !forceAudioTranscodeOnly,
+                enableDirectStream = !forceFullTranscode && !forceAudioTranscodeOnly,
+                enableTranscoding = true,
+                allowVideoStreamCopy = !forceFullTranscode,
+                allowAudioStreamCopy = !(forceAudioTranscodeOnly || forceFullTranscode),
+                enableSubtitleExtraction = false,
+                maxStreamingBitrate = 120_000_000L,
+                startTimeTicks = resumeTicks,
+                audioStreamIndex = activeAudioStreamIndex,
+                mediaSourceId = activeMediaSourceId.takeIf { it.isNotBlank() },
+                deviceProfile = androidTvProfile
+            )
+
+            val pbResult = runCatching {
+                api.getPlaybackInfo(
+                    authHeader = jellyfinAuthHeader,
+                    itemId = currentPlayableId,
+                    userId = userId,
+                    startTimeTicks = resumeTicks,
+                    audioStreamIndex = activeAudioStreamIndex,
+                    mediaSourceId = activeMediaSourceId.takeIf { it.isNotBlank() },
+                    enableDirectPlay = !forceFullTranscode && !forceAudioTranscodeOnly,
+                    enableDirectStream = !forceFullTranscode && !forceAudioTranscodeOnly,
+                    enableTranscoding = true,
+                    request = transcodeRequest
+                )
+            }
+
+            val pb = pbResult.getOrNull()
+            if (pb == null) {
+                Log.e("PlayerViewModel", "retryWithTranscoding failed to obtain PlaybackInfo: ${pbResult.exceptionOrNull()?.message}")
+                failFatalPlayback()
+                return@launch
+            }
+
+            pb.playSessionId?.takeIf { it.isNotBlank() }?.let { activePlaySessionId = it }
+
+            val msList = pb.mediaSources
+            val chosenMs = if (activeMediaSourceId.isNotBlank()) {
+                msList.firstOrNull { it.id == activeMediaSourceId } ?: msList.firstOrNull()
+            } else {
+                msList.firstOrNull()
+            }
+
+            if (chosenMs == null) {
+                Log.e("PlayerViewModel", "retryWithTranscoding: no MediaSource returned")
+                failFatalPlayback()
+                return@launch
+            }
+
+            val candidates = mutableListOf<String>()
+            val tcUrl = chosenMs.transcodingUrl
+            if (!tcUrl.isNullOrBlank()) {
+                val fullTc = tv.medusa.app.data.remote.jellyfin.JellyfinDeviceProfileBuilder.combineBaseUrlAndPath(baseUrl, tcUrl)
+                val urlWithParams = tv.medusa.app.data.remote.jellyfin.JellyfinDeviceProfileBuilder.appendPlaybackParams(
+                    fullTc,
+                    activePlaySessionId,
+                    token,
+                    chosenMs.id,
+                    activeAudioStreamIndex
+                )
+                candidates.add(urlWithParams)
+            }
+
+            val dsUrl = chosenMs.directStreamUrl
+            if (!forceFullTranscode && !forceAudioTranscodeOnly && !dsUrl.isNullOrBlank()) {
+                val fullDs = tv.medusa.app.data.remote.jellyfin.JellyfinDeviceProfileBuilder.combineBaseUrlAndPath(baseUrl, dsUrl)
+                val urlWithParams = tv.medusa.app.data.remote.jellyfin.JellyfinDeviceProfileBuilder.appendPlaybackParams(
+                    fullDs,
+                    activePlaySessionId,
+                    token,
+                    chosenMs.id,
+                    activeAudioStreamIndex
+                )
+                if (!candidates.contains(urlWithParams)) candidates.add(urlWithParams)
+            }
+
+            if (candidates.isEmpty()) {
+                Log.w("PlayerViewModel", "retryWithTranscoding produced 0 candidates")
+                failFatalPlayback()
+                return@launch
+            }
+
+            activePlayMethod = when {
+                forceFullTranscode || forceAudioTranscodeOnly -> "Transcode"
+                chosenMs.supportsDirectPlay -> "DirectPlay"
+                chosenMs.supportsDirectStream -> "DirectStream"
+                else -> "Transcode"
+            }
+
+            val currentStream = _streamInfo.value
+            _streamInfo.value = currentStream?.copy(
+                primaryStreamUrl = candidates.first(),
+                candidateUrls = candidates,
+                startPositionMs = resumePositionMs,
+                playSessionId = activePlaySessionId,
+                mediaSourceId = chosenMs.id
+            ) ?: PlayerStreamInfo(
+                playableId = currentPlayableId,
+                primaryStreamUrl = candidates.first(),
+                candidateUrls = candidates,
+                title = "",
+                startPositionMs = resumePositionMs,
+                durationMs = (chosenMs.runTimeTicks ?: 0L) / 10_000L,
+                token = token,
+                authHeader = jellyfinAuthHeader,
+                availableVersions = msList,
+                currentVersionName = chosenMs.name ?: "",
+                playSessionId = activePlaySessionId,
+                mediaSourceId = chosenMs.id
+            )
+            hasReportedStart = false
+            val sanitizedNew = tv.medusa.app.data.remote.jellyfin.JellyfinDeviceProfileBuilder.sanitizeUrlForLog(candidates.first())
+            Log.i("PlayerViewModel", "retryWithTranscoding resolved ${candidates.size} URLs, primary: $sanitizedNew")
+            } finally {
+                retryInFlight = false
             }
         }
     }
 
+    private fun failFatalPlayback() {
+        if (_fatalPlaybackError.value == null) {
+            _fatalPlaybackError.value = appContext.getString(R.string.player_cannot_play_file)
+        }
+    }
+
+    /**
+     * Reinicia el estado de error y el presupuesto de reintentos cuando el usuario pulsa
+     * "Reintentar". Sin esto, el siguiente fallo volvía a ser fatal de inmediato porque el
+     * contador seguía agotado y el Flow de error no emitía de nuevo.
+     */
+    fun clearPlaybackError() {
+        _fatalPlaybackError.value = null
+        audioFallbackAttempts = 0
+        fullTranscodeAttempts = 0
+        retryInFlight = false
+    }
+
     fun reportStart(positionMs: Long) {
-        if (currentPlayableId.isBlank() || jellyfinBaseUrl.isBlank()) return
-        // Fuera del hilo principal: createService/la red no deben bloquear la UI.
+        if (currentPlayableId.isBlank() || jellyfinBaseUrl.isBlank() || sessionFinished) return
+        if (hasReportedStart) {
+            // Pausa -> reanudar no es un nuevo "PlaybackStart"; Jellyfin recibiría eventos
+            // duplicados. En su lugar se envía un progreso normal.
+            reportProgress(positionMs, isPaused = false, durationMs = lastDurationMs)
+            return
+        }
+        val sessionId = activePlaySessionId
+        val msId = activeMediaSourceId
+        val audioIdx = activeAudioStreamIndex
+        val subIdx = activeSubtitleStreamIndex
+        val method = activePlayMethod
+
+        hasReportedStart = true
+        lastReportedPositionMs = positionMs
+
         viewModelScope.launch(Dispatchers.IO) {
             runCatching {
                 val api = NetworkClientFactory.createService(jellyfinBaseUrl, JellyfinApiService::class.java)
                 val ticks = positionMs * 10_000L
                 api.reportPlaybackStart(
                     authHeader = jellyfinAuthHeader,
-                    request = JellyfinPlaybackProgressRequest(itemId = currentPlayableId, positionTicks = ticks, isPaused = false)
+                    request = JellyfinPlaybackProgressRequest(
+                        itemId = currentPlayableId,
+                        playSessionId = sessionId.takeIf { it.isNotBlank() },
+                        mediaSourceId = msId.takeIf { it.isNotBlank() },
+                        audioStreamIndex = audioIdx,
+                        subtitleStreamIndex = subIdx,
+                        positionTicks = ticks,
+                        isPaused = false,
+                        playMethod = method,
+                        canSeek = true
+                    )
                 )
+                Log.i("PlayerViewModel", "Reported PlaybackStart: itemId=$currentPlayableId playSessionId=$sessionId playMethod=$method posMs=$positionMs")
+            }.onFailure { e ->
+                Log.w("PlayerViewModel", "Failed to report PlaybackStart: ${e.message}")
             }
         }
     }
 
     fun reportProgress(positionMs: Long, isPaused: Boolean, durationMs: Long = 0L) {
-        if (currentPlayableId.isBlank() || jellyfinBaseUrl.isBlank()) return
-        // Fuera del hilo principal: createService/la red no deben bloquear la UI.
+        if (currentPlayableId.isBlank() || jellyfinBaseUrl.isBlank() || sessionFinished) return
+        val sessionId = activePlaySessionId
+        val msId = activeMediaSourceId
+        val audioIdx = activeAudioStreamIndex
+        val subIdx = activeSubtitleStreamIndex
+        val method = activePlayMethod
+
+        lastReportedPositionMs = positionMs
+        if (durationMs > 0L) lastDurationMs = durationMs
+
         viewModelScope.launch(Dispatchers.IO) {
-            // Publicar en la fila "Continuar viendo" del launcher (TvContract).
             nowPlaying?.let { item ->
                 if (positionMs > 0L && durationMs > 0L) {
                     runCatching { TvChannelManager.publishToWatchNext(appContext, item, positionMs, durationMs) }
@@ -901,22 +908,72 @@ class PlayerViewModel @Inject constructor(
                     authHeader = jellyfinAuthHeader,
                     request = JellyfinPlaybackProgressRequest(
                         itemId = currentPlayableId,
+                        playSessionId = sessionId.takeIf { it.isNotBlank() },
+                        mediaSourceId = msId.takeIf { it.isNotBlank() },
+                        audioStreamIndex = audioIdx,
+                        subtitleStreamIndex = subIdx,
                         positionTicks = ticks,
                         isPaused = isPaused,
-                        eventName = "timeupdate"
+                        playMethod = method,
+                        eventName = "timeupdate",
+                        canSeek = true
                     )
                 )
+            }.onFailure { e ->
+                Log.w("PlayerViewModel", "Failed to report PlaybackProgress: ${e.message}")
             }
         }
     }
 
+    /**
+     * Detiene la sesión de reproducción una sola vez. Es idempotente: las llamadas
+     * posteriores (onDispose, onCleared, STATE_ENDED) no duplican el Stopped.
+     */
     fun reportStopped(positionMs: Long, durationMs: Long = 0L) {
+        finishPlayback(positionMs, durationMs)
+    }
+
+    /**
+     * Al volver del segundo plano se reabre la misma sesión (mismo PlaySessionId), de modo
+     * que la URL del stream y los reportes sigan usando el identificador que ya tenía.
+     */
+    fun resumeSessionAfterBackground() {
+        if (!sessionFinished) return
+        sessionFinished = false
+        hasReportedStart = false
+    }
+
+    /**
+     * Se llama cuando ExoPlayer se libera porque se recrea (fallback, cambio de versión o
+     * de modo de audio). No cierra la sesión: solo guarda el progreso.
+     */
+    fun onPlayerReleased(positionMs: Long, durationMs: Long = 0L) {
+        if (currentPlayableId.isBlank() || jellyfinBaseUrl.isBlank() || sessionFinished) return
+        if (durationMs > 0L) lastDurationMs = durationMs
+        lastReportedPositionMs = positionMs
+        if (hasReportedStart) {
+            reportProgress(positionMs, isPaused = true, durationMs = durationMs)
+        }
+    }
+
+    fun finishPlayback(positionMs: Long, durationMs: Long = 0L) {
+        if (sessionFinished) return
         val itemId = currentPlayableId
+        if (itemId.isBlank()) return
+        // No crear una sesión fantasma si el usuario sale antes de que empiece la reproducción.
+        if (!hasReportedStart && lastReportedPositionMs <= 0L && positionMs <= 0L) return
+
+        sessionFinished = true
+        hasReportedStart = false
+        lastReportedPositionMs = positionMs
+        if (durationMs > 0L) lastDurationMs = durationMs
+
         val baseUrl = jellyfinBaseUrl
         val authHeader = jellyfinAuthHeader
-        if (itemId.isBlank()) return
+        val sessionId = activePlaySessionId
+        val msId = activeMediaSourceId
 
-        viewModelScope.launch(Dispatchers.IO) {
+        reportScope.launch {
             val isCompleted = durationMs > 0L && positionMs >= (durationMs * 0.90).toLong()
             val isTooShort = positionMs < 30_000L && !isCompleted
             val finalTicks = if (isCompleted || isTooShort) 0L else positionMs * 10_000L
@@ -933,9 +990,6 @@ class PlayerViewModel @Inject constructor(
                 )
             }
 
-            // Si es un episodio completado y se dispone del siguiente capítulo,
-            // se marca localmente en Room con la fecha actual para que aparezca de
-            // inmediato al principio de "Continuar viendo" al volver a Inicio.
             if (isCompleted) {
                 val nextEpInfo = _nextEpisode.value
                 if (nextEpInfo != null) {
@@ -957,23 +1011,37 @@ class PlayerViewModel @Inject constructor(
             GetHomeFeedUseCase.invalidateFeedCache()
             MediaRepository.invalidateServerCaches()
 
-            // 3. Notificar al servidor Jellyfin
+            // 3. Notificar al servidor Jellyfin con PlaySessionId
             if (baseUrl.isNotBlank() && authHeader.isNotBlank()) {
                 runCatching {
                     val api = NetworkClientFactory.createService(baseUrl, JellyfinApiService::class.java)
-                    val ticks = positionMs * 10_000L
                     api.reportPlaybackStopped(
                         authHeader = authHeader,
-                        request = JellyfinPlaybackProgressRequest(itemId = itemId, positionTicks = ticks)
+                        request = JellyfinPlaybackProgressRequest(
+                            itemId = itemId,
+                            playSessionId = sessionId.takeIf { it.isNotBlank() },
+                            mediaSourceId = msId.takeIf { it.isNotBlank() },
+                            positionTicks = finalTicks
+                        )
                     )
+                    Log.i("PlayerViewModel", "Reported PlaybackStopped: itemId=$itemId playSessionId=$sessionId posMs=$positionMs")
                     if (isCompleted) {
                         val prefs = userPreferencesRepository.userPreferencesFlow.first()
                         if (prefs.jellyfinUserId.isNotBlank()) {
                             api.markPlayed(authHeader = authHeader, userId = prefs.jellyfinUserId, itemId = itemId)
                         }
                     }
+                }.onFailure { e ->
+                    Log.w("PlayerViewModel", "Failed to report PlaybackStopped: ${e.message}")
                 }
             }
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        if (!sessionFinished && hasReportedStart && currentPlayableId.isNotBlank() && jellyfinBaseUrl.isNotBlank()) {
+            finishPlayback(lastReportedPositionMs, lastDurationMs)
         }
     }
 

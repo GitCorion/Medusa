@@ -470,6 +470,8 @@ private fun JellyfinCategory(
                 }
             }
         }
+
+        TlsCertificateSection(uiState, viewModel, focusColor, focusContent)
     } else {
         // Desconectado
         TvSectionHeader(title = stringResource(R.string.settings_section_server_address))
@@ -516,6 +518,8 @@ private fun JellyfinCategory(
                     Text(stringResource(R.string.settings_btn_check_server), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
+
+            TlsCertificateSection(uiState, viewModel, focusColor, focusContent)
 
             var authMethod by remember { mutableIntStateOf(0) }
 
@@ -598,6 +602,96 @@ private fun JellyfinCategory(
             }
         }
     }
+}
+
+/**
+ * Sección TLS: solo aparece para servidores HTTPS. El pin de certificado es un opt-in
+ * explícito por servidor y se compara con el fingerprint SHA-256 mostrado al usuario.
+ */
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun TlsCertificateSection(
+    uiState: SettingsUiState,
+    viewModel: SettingsViewModel,
+    focusColor: Color,
+    focusContent: Color
+) {
+    if (!uiState.serverUrl.startsWith("https://", ignoreCase = true)) return
+
+    TvSectionHeader(title = stringResource(R.string.settings_section_tls))
+
+    TvSettingRow(
+        title = stringResource(R.string.settings_row_tls_self_signed),
+        value = if (uiState.jellyfinAllowSelfSigned && uiState.jellyfinCertificateFingerprint.isNotBlank()) {
+            stringResource(R.string.settings_tls_pinned)
+        } else {
+            stringResource(R.string.settings_tls_not_pinned)
+        }
+    )
+
+    if (uiState.jellyfinCertificateFingerprint.isNotBlank()) {
+        Text(
+            text = uiState.jellyfinCertificateFingerprint,
+            fontSize = 11.sp,
+            fontFamily = FontFamily.Monospace,
+            color = Color(0xFF94A3B8),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+        )
+    }
+
+    Spacer(modifier = Modifier.height(6.dp))
+
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Button(
+            onClick = { viewModel.pinSelfSignedCertificate() },
+            modifier = Modifier.handleTouchClick(enabled = !uiState.isFetchingCertificateFingerprint) {
+                viewModel.pinSelfSignedCertificate()
+            },
+            colors = ButtonDefaults.colors(
+                containerColor = Color(0x14FFFFFF),
+                contentColor = Color.White,
+                focusedContainerColor = focusColor,
+                focusedContentColor = focusContent
+            ),
+            enabled = !uiState.isFetchingCertificateFingerprint
+        ) {
+            Text(
+                text = when {
+                    uiState.isFetchingCertificateFingerprint -> stringResource(R.string.settings_tls_fetching)
+                    uiState.jellyfinAllowSelfSigned -> stringResource(R.string.settings_btn_pin_certificate_again)
+                    else -> stringResource(R.string.settings_btn_pin_certificate)
+                },
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+
+        if (uiState.jellyfinAllowSelfSigned) {
+            Button(
+                onClick = { viewModel.clearSelfSignedCertificate() },
+                modifier = Modifier.handleTouchClick { viewModel.clearSelfSignedCertificate() },
+                colors = ButtonDefaults.colors(
+                    containerColor = Color(0x14FFFFFF),
+                    contentColor = Color(0xFFFF8A80),
+                    focusedContainerColor = Color(0xFFEF4444),
+                    focusedContentColor = Color.White
+                )
+            ) {
+                Text(
+                    text = stringResource(R.string.settings_btn_remove_pin),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
+    }
+
+    Text(
+        text = stringResource(R.string.settings_tls_pin_hint),
+        fontSize = 11.sp,
+        color = Color(0xFF64748B),
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+    )
 }
 
 // =============================================================================
