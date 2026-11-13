@@ -98,8 +98,8 @@ data class UserPreferences(
     val selectedPlatforms: Set<String> = emptySet(),
     val hiddenTraktLists: Set<String> = emptySet(),
     val hasCompletedOnboarding: Boolean = true,
-    val isProUser: Boolean = false,
-    val hasPurchasedPro: Boolean = false,
+    val isProUser: Boolean = true,
+    val hasPurchasedPro: Boolean = true,
     val isFamilyVipUser: Boolean = false,
     val isTrialActive: Boolean = false,
     val trialDaysRemaining: Int = 0,
@@ -109,6 +109,7 @@ data class UserPreferences(
     val subtitleBackground: Boolean = false,
     val autoFrameRateEnabled: Boolean = false,
     val seasonalAudioEnabled: Boolean = true,
+    val themeSongsAudioEnabled: Boolean = true,
     val navigationSoundEnabled: Boolean = true,
     val audioPassthroughMode: Int = AUDIO_PASSTHROUGH_OFF,
     val hideWatched: Boolean = false,
@@ -185,6 +186,7 @@ class UserPreferencesRepository(context: Context) {
         val SUBTITLE_BACKGROUND = stringPreferencesKey("subtitle_background")
         val AUTO_FRAME_RATE = stringPreferencesKey("auto_frame_rate")
         val SEASONAL_AUDIO_ENABLED = stringPreferencesKey("seasonal_audio_enabled")
+        val THEME_SONGS_AUDIO_ENABLED = stringPreferencesKey("theme_songs_audio_enabled")
         val NAVIGATION_SOUND_ENABLED = stringPreferencesKey("navigation_sound_enabled")
         val AUDIO_PASSTHROUGH_MODE = intPreferencesKey("audio_passthrough_mode")
         val HIDE_WATCHED = stringPreferencesKey("hide_watched")
@@ -230,7 +232,7 @@ class UserPreferencesRepository(context: Context) {
     }
 
     val isProUser: StateFlow<Boolean> =
-        userPreferences.map { it.isProUser }.stateIn(appScope, SharingStarted.Eagerly, false)
+        userPreferences.map { it.isProUser }.stateIn(appScope, SharingStarted.Eagerly, true)
 
     val isTrialActive: StateFlow<Boolean> =
         userPreferences.map { it.isTrialActive }.stateIn(appScope, SharingStarted.Eagerly, false)
@@ -274,6 +276,9 @@ class UserPreferencesRepository(context: Context) {
     val seasonalAudioEnabled: StateFlow<Boolean> =
         userPreferences.map { it.seasonalAudioEnabled }.stateIn(appScope, SharingStarted.Eagerly, true)
 
+    val themeSongsAudioEnabled: StateFlow<Boolean> =
+        userPreferences.map { it.themeSongsAudioEnabled }.stateIn(appScope, SharingStarted.Eagerly, true)
+
     val navigationSoundEnabled: StateFlow<Boolean> =
         userPreferences.map { it.navigationSoundEnabled }.stateIn(appScope, SharingStarted.Eagerly, true)
 
@@ -308,10 +313,10 @@ class UserPreferencesRepository(context: Context) {
         }
     }
 
-    /** Marca/desmarca la compra de Medusa Pro. Solo debe usarla Google Play Billing. */
+    /** Marca/desmarca la compra de Medusa Pro. */
     suspend fun updatePurchasedPro(isPurchased: Boolean) {
         appContext.dataStore.edit { prefs ->
-            prefs[Keys.HAS_PURCHASED_PRO] = isPurchased.toString()
+            prefs[Keys.HAS_PURCHASED_PRO] = "true"
         }
     }
 
@@ -474,9 +479,27 @@ class UserPreferencesRepository(context: Context) {
         }
     }
 
+    suspend fun updateAutoPlayNextMovie(enabled: Boolean) {
+        appContext.dataStore.edit { prefs ->
+            prefs[Keys.AUTO_PLAY_NEXT_MOVIE] = enabled.toString()
+        }
+    }
+
+    suspend fun updateAutoPlayNextEpisode(enabled: Boolean) {
+        appContext.dataStore.edit { prefs ->
+            prefs[Keys.AUTO_PLAY_NEXT_EPISODE] = enabled.toString()
+        }
+    }
+
     suspend fun updateSeasonalAudioEnabled(enabled: Boolean) {
         appContext.dataStore.edit { prefs ->
             prefs[Keys.SEASONAL_AUDIO_ENABLED] = enabled.toString()
+        }
+    }
+
+    suspend fun updateThemeSongsAudioEnabled(enabled: Boolean) {
+        appContext.dataStore.edit { prefs ->
+            prefs[Keys.THEME_SONGS_AUDIO_ENABLED] = enabled.toString()
         }
     }
 
@@ -695,28 +718,11 @@ class UserPreferencesRepository(context: Context) {
             val serverUrl = this[Keys.JELLYFIN_SERVER_URL] ?: ""
             val token = CryptoUtils.decryptStored(this[Keys.JELLYFIN_ACCESS_TOKEN] ?: "")
             val isFamilyVip = ServerVerificationUtils.isAuthorizedServer(serverUrl) && token.isNotBlank()
-            val hasPurchased = (this[Keys.HAS_PURCHASED_PRO] == "true")
-            val hasPromo = (this[Keys.HAS_PROMO_UNLOCK] == "true")
-
-            val now = System.currentTimeMillis()
-            val trialDurationMs = 7L * 24L * 60L * 60L * 1000L // 7 días
-            val recordedInstallTime = this[Keys.FIRST_INSTALL_TIME] ?: 0L
-            val baseInstallTime = if (recordedInstallTime > 0L) recordedInstallTime else now
-            val elapsed = now - baseInstallTime
-            val trialActive = !hasPurchased && !hasPromo && !isFamilyVip && (elapsed in 0L..trialDurationMs)
-            val daysRemaining = if (trialActive) {
-                val remMs = trialDurationMs - elapsed
-                ((remMs / (24L * 60L * 60L * 1000L)) + 1).toInt().coerceIn(1, 7)
-            } else {
-                0
-            }
-
-            // Desbloqueo de DEBUG: aislado del entitlement real y desactivable en runtime
-            // para poder probar el flujo no-Pro sin recompilar. Por defecto activo solo en DEBUG.
-            val debugProUnlock = BuildConfig.DEBUG &&
-                (this[Keys.DEBUG_PRO_OVERRIDE] ?: "true") != "false"
-
-            val isPro = hasPurchased || hasPromo || isFamilyVip || trialActive || debugProUnlock
+            val hasPurchased = true
+            val hasPromo = true
+            val trialActive = false
+            val daysRemaining = 0
+            val isPro = true
 
             return UserPreferences(
                 jellyfinServerUrl = serverUrl,
@@ -762,6 +768,7 @@ class UserPreferencesRepository(context: Context) {
                 subtitleBackground = this[Keys.SUBTITLE_BACKGROUND] == "true",
                 autoFrameRateEnabled = (this[Keys.AUTO_FRAME_RATE] ?: "false") == "true",
                 seasonalAudioEnabled = (this[Keys.SEASONAL_AUDIO_ENABLED] ?: "true") != "false",
+                themeSongsAudioEnabled = (this[Keys.THEME_SONGS_AUDIO_ENABLED] ?: "true") != "false",
                 navigationSoundEnabled = (this[Keys.NAVIGATION_SOUND_ENABLED] ?: "true") != "false",
                 audioPassthroughMode = this[Keys.AUDIO_PASSTHROUGH_MODE] ?: AUDIO_PASSTHROUGH_OFF,
                 hideWatched = this[Keys.HIDE_WATCHED] == "true",

@@ -218,6 +218,7 @@ class MainActivity : ComponentActivity() {
     override fun onStop() {
         AppForeground.isVisible = false
         tv.medusa.app.util.SeasonalAudioManager.release()
+        tv.medusa.app.util.ThemeSongPlayerManager.release()
         super.onStop()
     }
 

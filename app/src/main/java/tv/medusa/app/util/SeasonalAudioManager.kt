@@ -36,6 +36,8 @@ object SeasonalAudioManager {
 
         fadeJob?.cancel()
         fadeJob = scope.launch {
+            ThemeSongPlayerManager.stop(fadeOutMs = 200L)
+
             val existing = mediaPlayer
             if (existing != null && currentResId == resId) {
                 if (!existing.isPlaying) {

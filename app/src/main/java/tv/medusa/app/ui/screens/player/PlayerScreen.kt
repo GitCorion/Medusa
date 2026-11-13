@@ -359,6 +359,7 @@ fun PlayerScreen(
     LaunchedEffect(itemId) {
         Log.i("PlayerScreen", "PlayerScreen LaunchedEffect for itemId=$itemId")
         tv.medusa.app.util.SeasonalAudioManager.release()
+        tv.medusa.app.util.ThemeSongPlayerManager.release()
         viewModel.loadStreamUrl(itemId)
     }
 
@@ -1355,12 +1356,10 @@ private fun PlayerContent(
         }
     }
 
-    // ─── Intro / Credits banner: usa los campos del plugin fielmente ────────────
-    // introMarker.showAtMs = ShowSkipPromptAt del plugin
-    // ─── Intro / Credits banner: función exclusiva de Medusa Pro (Netflix style) ─
-    LaunchedEffect(introMarker, isProUser) {
+    // ─── Intro / Credits banner ─────────────────────────────────────────────
+    LaunchedEffect(introMarker) {
         val marker = introMarker
-        if (marker == null || !isProUser) {
+        if (marker == null) {
             showSkipIntroBanner = false
             return@LaunchedEffect
         }
@@ -1372,9 +1371,9 @@ private fun PlayerContent(
         }
     }
 
-    LaunchedEffect(creditsMarker, isProUser) {
+    LaunchedEffect(creditsMarker) {
         val marker = creditsMarker
-        if (marker == null || !isProUser) {
+        if (marker == null) {
             showSkipCreditsBanner = false
             return@LaunchedEffect
         }
@@ -1386,10 +1385,10 @@ private fun PlayerContent(
         }
     }
 
-    // ─── Next episode overlay (exclusivo Medusa Pro) durante créditos ───────────
-    LaunchedEffect(creditsMarker, nextEpisode, isProUser) {
+    // ─── Next episode overlay durante créditos ──────────────────────────────
+    LaunchedEffect(creditsMarker, nextEpisode) {
         val next = nextEpisode
-        if (next == null || !isProUser) {
+        if (next == null) {
             if (showNextEpisodeOverlay && !playbackEnded) showNextEpisodeOverlay = false
             return@LaunchedEffect
         }
@@ -1414,9 +1413,9 @@ private fun PlayerContent(
     }
 
     // Cuando el countdown llega a 0 (caso A: créditos terminaron), lanzar siguiente episodio/película
-    LaunchedEffect(nextEpisodeCountdown, isProUser) {
+    LaunchedEffect(nextEpisodeCountdown) {
         val next = nextEpisode
-        if (isProUser && nextEpisodeCountdown == 0 && showNextEpisodeOverlay && next != null) {
+        if (nextEpisodeCountdown == 0 && showNextEpisodeOverlay && next != null) {
             playNext(next)
         }
     }

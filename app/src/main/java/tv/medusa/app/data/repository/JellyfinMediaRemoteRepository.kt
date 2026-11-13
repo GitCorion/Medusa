@@ -261,6 +261,31 @@ class JellyfinMediaRemoteRepository(
         }
     }
 
+    suspend fun getThemeSongUrl(
+        serverUrl: String,
+        token: String,
+        itemId: String,
+        inheritFromParent: Boolean = true
+    ): String? {
+        if (serverUrl.isBlank() || itemId.isBlank()) return null
+        return runCatching {
+            val api = NetworkClientFactory.createJellyfinService(serverUrl, JellyfinApiService::class.java)
+            val authHeader = buildJellyfinAuthHeader(token = token)
+            val response = api.getThemeSongs(
+                authHeader = authHeader,
+                itemId = itemId,
+                inheritFromParent = inheritFromParent
+            )
+            val song = response.items.firstOrNull() ?: return null
+            val cleanBase = serverUrl.trimEnd('/')
+            if (token.isNotBlank()) {
+                "$cleanBase/Audio/${song.id}/stream?static=true&api_key=$token"
+            } else {
+                "$cleanBase/Audio/${song.id}/stream?static=true"
+            }
+        }.getOrNull()
+    }
+
     suspend fun getRecentlyPlayed(serverUrl: String, userId: String, token: String): Result<List<JellyfinMediaEntity>> {
         val cacheKey = "$serverUrl-$userId"
         MediaCaches.serverRecentlyPlayedCache.get(cacheKey)?.let { return Result.success(it) }

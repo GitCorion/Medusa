@@ -95,6 +95,7 @@ import tv.medusa.app.ui.theme.TvPill
 import tv.medusa.app.ui.theme.TvRatingBadge
 import tv.medusa.app.ui.theme.TvSpacing
 import tv.medusa.app.util.DeviceUtils
+import tv.medusa.app.util.ThemeSongPlayerManager
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
@@ -107,20 +108,33 @@ fun DetailScreen(
 ) {
     var isShowingTrailer by remember { mutableStateOf(false) }
     var isLaunchingPlayer by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val isMonochromeFlow by viewModel.isMonochrome.collectAsStateWithLifecycle()
+    val isMonochrome = LocalIsMonochromeTheme.current || isMonochromeFlow
+
+    val currentThemeSongUrl = (uiState as? DetailUiState.Success)?.themeSongUrl
+    val shouldPlayThemeSong = !currentThemeSongUrl.isNullOrBlank() && !isShowingTrailer && !isLaunchingPlayer
+
+    LaunchedEffect(shouldPlayThemeSong, currentThemeSongUrl) {
+        if (shouldPlayThemeSong) {
+            currentThemeSongUrl?.let { ThemeSongPlayerManager.playThemeSong(context, it) }
+        } else {
+            ThemeSongPlayerManager.stop()
+        }
+    }
 
     DisposableEffect(Unit) {
         onDispose {
             isLaunchingPlayer = false
+            ThemeSongPlayerManager.release()
         }
     }
 
     LaunchedEffect(itemId) {
         viewModel.loadDetail(itemId)
     }
-
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val isMonochromeFlow by viewModel.isMonochrome.collectAsStateWithLifecycle()
-    val isMonochrome = LocalIsMonochromeTheme.current || isMonochromeFlow
 
     val playButtonFocusRequester = remember { FocusRequester() }
 
@@ -441,14 +455,14 @@ fun DetailScreen(
                                 PaddingValues(horizontal = 14.dp, vertical = 10.dp)
                             } else {
                                 // Balance óptico: lado del icono con 2-4dp menos de padding que el lado del texto
-                                if (showIcons) PaddingValues(start = 14.dp, end = 18.dp, top = 10.dp, bottom = 10.dp)
-                                else PaddingValues(horizontal = 18.dp, vertical = 10.dp)
+                                if (showIcons) PaddingValues(start = 12.dp, end = 14.dp, top = 10.dp, bottom = 10.dp)
+                                else PaddingValues(horizontal = 16.dp, vertical = 10.dp)
                             }
 
                             // Action Buttons Row (Adapts dynamically to buttonStyle)
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
                                 val playTargetId = when {
                                     state.isCollection && state.collectionItems.isNotEmpty() -> state.collectionItems.first().id
@@ -507,13 +521,25 @@ fun DetailScreen(
                                         }
                                         if (showText) {
                                             if (showIcons) Spacer(modifier = Modifier.width(6.dp))
-                                            Text(playLabel, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                                            Text(
+                                                text = playLabel,
+                                                fontWeight = FontWeight.SemiBold,
+                                                fontSize = 13.sp,
+                                                maxLines = 1,
+                                                softWrap = false,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
                                         }
                                     }
                                 }
 
                                 // 2. Go to Series Button (when viewing an episode)
                                 if (isEpisode && !entity.seriesId.isNullOrBlank()) {
+                                    val goToSeriesLabel = if (sName.isNotBlank()) {
+                                        stringResource(R.string.detail_go_to_series_name, sName)
+                                    } else {
+                                        stringResource(R.string.detail_go_to_series)
+                                    }
                                     Button(
                                         onClick = {
                                             onNavigateToDetail(entity.seriesId)
@@ -537,16 +563,19 @@ fun DetailScreen(
                                             if (showIcons) {
                                                 Icon(
                                                     imageVector = Icons.Rounded.Tv,
-                                                    contentDescription = if (sName.isNotBlank()) "Ir a $sName" else "Ir a la serie",
+                                                    contentDescription = goToSeriesLabel,
                                                     modifier = Modifier.size(17.dp)
                                                 )
                                             }
                                             if (showText) {
                                                 if (showIcons) Spacer(modifier = Modifier.width(6.dp))
                                                 Text(
-                                                    text = if (sName.isNotBlank()) "Ir a $sName" else "Ir a la serie",
+                                                    text = goToSeriesLabel,
                                                     fontWeight = FontWeight.SemiBold,
-                                                    fontSize = 13.sp
+                                                    fontSize = 13.sp,
+                                                    maxLines = 1,
+                                                    softWrap = false,
+                                                    overflow = TextOverflow.Ellipsis
                                                 )
                                             }
                                         }
@@ -555,6 +584,7 @@ fun DetailScreen(
 
                                 // 3. Favorite Toggle Button
                                 var isFavFocused by remember { mutableStateOf(false) }
+                                val favLabel = if (state.isFavorite) stringResource(R.string.detail_in_favorites) else stringResource(R.string.detail_add_favorites)
                                 Button(
                                     onClick = { viewModel.toggleFavorite() },
                                     contentPadding = actionButtonPadding,
@@ -582,7 +612,7 @@ fun DetailScreen(
                                         if (showIcons) {
                                             Icon(
                                                 imageVector = if (state.isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                                                contentDescription = if (state.isFavorite) stringResource(R.string.detail_in_favorites) else stringResource(R.string.detail_add_favorites),
+                                                contentDescription = favLabel,
                                                 tint = if (isFavFocused) focusContent else (if (state.isFavorite && !isMonochrome) Color(0xFFEF4444) else Color.White),
                                                 modifier = Modifier.size(17.dp)
                                             )
@@ -590,10 +620,13 @@ fun DetailScreen(
                                         if (showText) {
                                             if (showIcons) Spacer(modifier = Modifier.width(6.dp))
                                             Text(
-                                                text = if (state.isFavorite) stringResource(R.string.detail_in_favorites) else stringResource(R.string.detail_add_favorites),
+                                                text = favLabel,
                                                 color = if (isFavFocused) focusContent else Color.White,
                                                 fontWeight = FontWeight.SemiBold,
-                                                fontSize = 13.sp
+                                                fontSize = 13.sp,
+                                                maxLines = 1,
+                                                softWrap = false,
+                                                overflow = TextOverflow.Ellipsis
                                             )
                                         }
                                     }
@@ -601,6 +634,7 @@ fun DetailScreen(
 
                                 // 4. Trailer Button
                                 if (state.trailerUrl != null) {
+                                    val trailerLabel = stringResource(R.string.detail_watch_trailer)
                                     Button(
                                         onClick = { isShowingTrailer = true },
                                         contentPadding = actionButtonPadding,
@@ -622,13 +656,20 @@ fun DetailScreen(
                                             if (showIcons) {
                                                 Icon(
                                                     imageVector = Icons.Rounded.Movie,
-                                                    contentDescription = stringResource(R.string.detail_watch_trailer),
+                                                    contentDescription = trailerLabel,
                                                     modifier = Modifier.size(17.dp)
                                                 )
                                             }
                                             if (showText) {
                                                 if (showIcons) Spacer(modifier = Modifier.width(6.dp))
-                                                Text(stringResource(R.string.detail_watch_trailer), fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                                                Text(
+                                                    text = trailerLabel,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    fontSize = 13.sp,
+                                                    maxLines = 1,
+                                                    softWrap = false,
+                                                    overflow = TextOverflow.Ellipsis
+                                                )
                                             }
                                         }
                                     }
@@ -636,6 +677,7 @@ fun DetailScreen(
 
                                 // 5. Mark as Watched / Watched Button
                                 var isWatchedFocused by remember { mutableStateOf(false) }
+                                val watchedLabel = if (state.isPlayed) stringResource(R.string.detail_watched) else stringResource(R.string.detail_mark_watched)
                                 Button(
                                     onClick = { viewModel.togglePlayed() },
                                     contentPadding = actionButtonPadding,
@@ -663,7 +705,7 @@ fun DetailScreen(
                                         if (showIcons) {
                                             Icon(
                                                 imageVector = if (state.isPlayed) Icons.Rounded.CheckCircle else Icons.Rounded.Check,
-                                                contentDescription = if (state.isPlayed) "Visto" else "Marcar como visto",
+                                                contentDescription = watchedLabel,
                                                 tint = if (isWatchedFocused) focusContent else (if (state.isPlayed && !isMonochrome) Color(0xFF10B981) else Color.White),
                                                 modifier = Modifier.size(17.dp)
                                             )
@@ -671,10 +713,13 @@ fun DetailScreen(
                                         if (showText) {
                                             if (showIcons) Spacer(modifier = Modifier.width(6.dp))
                                             Text(
-                                                text = if (state.isPlayed) "Visto" else "Marcar como visto",
+                                                text = watchedLabel,
                                                 color = if (isWatchedFocused) focusContent else Color.White,
                                                 fontWeight = FontWeight.SemiBold,
-                                                fontSize = 13.sp
+                                                fontSize = 13.sp,
+                                                maxLines = 1,
+                                                softWrap = false,
+                                                overflow = TextOverflow.Ellipsis
                                             )
                                         }
                                     }

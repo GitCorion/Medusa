@@ -40,6 +40,7 @@ sealed interface DetailUiState {
         val backdropUrl: String?,
         val logoUrl: String? = null,
         val trailerUrl: String? = null,
+        val themeSongUrl: String? = null,
         val baseUrl: String? = null,
         val isFavorite: Boolean = false,
         val isPlayed: Boolean = false,
@@ -274,6 +275,32 @@ class DetailViewModel @Inject constructor(
                                 _uiState.value = curr.copy(trailerUrl = trailer)
                             }
                         }
+                    }
+                }
+
+                // Tema de audio (Banda sonora de la serie o película)
+                if (prefs.themeSongsAudioEnabled && baseUrl.isNotBlank()) {
+                    launch {
+                        try {
+                            val queryItemId = if (finalEntity.type.equals("Episode", ignoreCase = true) || finalEntity.type.equals("Season", ignoreCase = true)) {
+                                finalEntity.seriesId ?: finalEntity.id
+                            } else {
+                                finalEntity.id
+                            }
+                            val themeSong = mediaRepository.getThemeSongUrl(
+                                serverUrl = baseUrl,
+                                token = token,
+                                itemId = queryItemId,
+                                inheritFromParent = true
+                            )
+                            if (themeSong != null) {
+                                (_uiState.value as? DetailUiState.Success)?.let { curr ->
+                                    if (curr.entity.id == finalEntity.id) {
+                                        _uiState.value = curr.copy(themeSongUrl = themeSong)
+                                    }
+                                }
+                            }
+                        } catch (_: Exception) {}
                     }
                 }
 
