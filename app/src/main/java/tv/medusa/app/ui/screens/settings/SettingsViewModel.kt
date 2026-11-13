@@ -14,6 +14,7 @@ import tv.medusa.app.data.local.INDICATOR_THEME_MONOCHROME
 import tv.medusa.app.data.local.PERFORMANCE_MODE_AUTO
 import tv.medusa.app.data.local.PLATFORM_LOGO_COLOR
 import tv.medusa.app.data.local.PLATFORM_LOGO_MONOCHROME
+import tv.medusa.app.data.local.SUBTITLE_SIZE_NORMAL
 import tv.medusa.app.data.remote.update.UpdateInfo
 import tv.medusa.app.data.remote.trakt.TraktUserListDto
 import tv.medusa.app.ui.screens.brand.BrandViewModel
@@ -34,8 +35,12 @@ import tv.medusa.app.data.local.UserPreferencesRepository
 import tv.medusa.app.data.remote.ApiConfig
 import tv.medusa.app.data.remote.NetworkClientFactory
 import tv.medusa.app.data.remote.update.AppUpdateManager
+import tv.medusa.app.data.remote.jellyfin.DiscoveredJellyfinServer
 import tv.medusa.app.data.remote.jellyfin.JellyfinApiService
 import tv.medusa.app.data.remote.jellyfin.JellyfinAuthRequest
+import tv.medusa.app.data.remote.jellyfin.JellyfinQuickConnectAuthRequest
+import tv.medusa.app.data.remote.jellyfin.JellyfinQuickConnectResult
+import tv.medusa.app.data.remote.jellyfin.JellyfinServerDiscovery
 import tv.medusa.app.data.worker.JellyfinSyncWorker
 import tv.medusa.app.data.worker.OverviewEnrichmentWorker
 import tv.medusa.app.data.remote.trakt.TraktApiService
@@ -128,6 +133,9 @@ data class SettingsUiState(
     val jellyfinQuickConnectCode: String? = null,
     val jellyfinQrUrl: String? = null,
     val isWaitingJellyfinQuickConnect: Boolean = false,
+    // Descubrimiento de servidores en la red local
+    val isDiscoveringServers: Boolean = false,
+    val discoveredServers: List<DiscoveredJellyfinServer> = emptyList(),
     // TV Dialog Edit State
     val activeDialogField: SettingField? = null,
     val activeDialogValue: String = "",
@@ -145,14 +153,23 @@ data class SettingsUiState(
     val syncedEpisodesCount: Int = 0,
     val isSyncingCatalog: Boolean = false,
     val lastSyncTimestamp: String? = null,
-    val isProUser: Boolean = false,
-    val hasPurchasedPro: Boolean = false,
+    val isProUser: Boolean = true,
+    val hasPurchasedPro: Boolean = true,
     val isFamilyVipUser: Boolean = false,
     val isTrialActive: Boolean = false,
     val trialDaysRemaining: Int = 0,
     val seasonalAudioEnabled: Boolean = true,
+    val themeSongsAudioEnabled: Boolean = true,
     val navigationSoundEnabled: Boolean = true,
-    val audioPassthroughMode: Int = AUDIO_PASSTHROUGH_OFF
+    val audioPassthroughMode: Int = AUDIO_PASSTHROUGH_OFF,
+    val autoPlayNextEpisodeEnabled: Boolean = true,
+    val autoPlayNextMovieEnabled: Boolean = true,
+    val autoFrameRateEnabled: Boolean = false,
+    val subtitleSize: String = SUBTITLE_SIZE_NORMAL,
+    val subtitleBackground: Boolean = false,
+    val hideWatched: Boolean = false,
+    val nightModeAudio: Int = 0,
+    val audioVolumeBoostDb: Int = 0
 ) {
     val isMonochrome: Boolean
         get() = indicatorTheme == INDICATOR_THEME_MONOCHROME || accentColor == ACCENT_WHITE
@@ -216,8 +233,17 @@ class SettingsViewModel @Inject constructor(
                     isTrialActive = prefs.isTrialActive,
                     trialDaysRemaining = prefs.trialDaysRemaining,
                     seasonalAudioEnabled = prefs.seasonalAudioEnabled,
+                    themeSongsAudioEnabled = prefs.themeSongsAudioEnabled,
                     navigationSoundEnabled = prefs.navigationSoundEnabled,
                     audioPassthroughMode = prefs.audioPassthroughMode,
+                    autoPlayNextEpisodeEnabled = prefs.autoPlayNextEpisodeEnabled,
+                    autoPlayNextMovieEnabled = prefs.autoPlayNextMovieEnabled,
+                    autoFrameRateEnabled = prefs.autoFrameRateEnabled,
+                    subtitleSize = prefs.subtitleSize,
+                    subtitleBackground = prefs.subtitleBackground,
+                    hideWatched = prefs.hideWatched,
+                    nightModeAudio = prefs.nightModeAudio,
+                    audioVolumeBoostDb = prefs.audioVolumeBoostDb,
                     jellyfinAllowSelfSigned = prefs.jellyfinAllowSelfSigned,
                     jellyfinCertificateFingerprint = prefs.jellyfinCertificateFingerprint
                 )
@@ -256,8 +282,17 @@ class SettingsViewModel @Inject constructor(
                 isTrialActive = prefs.isTrialActive,
                 trialDaysRemaining = prefs.trialDaysRemaining,
                 seasonalAudioEnabled = prefs.seasonalAudioEnabled,
+                themeSongsAudioEnabled = prefs.themeSongsAudioEnabled,
                 navigationSoundEnabled = prefs.navigationSoundEnabled,
                 audioPassthroughMode = prefs.audioPassthroughMode,
+                autoPlayNextEpisodeEnabled = prefs.autoPlayNextEpisodeEnabled,
+                autoPlayNextMovieEnabled = prefs.autoPlayNextMovieEnabled,
+                autoFrameRateEnabled = prefs.autoFrameRateEnabled,
+                subtitleSize = prefs.subtitleSize,
+                subtitleBackground = prefs.subtitleBackground,
+                hideWatched = prefs.hideWatched,
+                nightModeAudio = prefs.nightModeAudio,
+                audioVolumeBoostDb = prefs.audioVolumeBoostDb,
                 jellyfinAllowSelfSigned = prefs.jellyfinAllowSelfSigned,
                 jellyfinCertificateFingerprint = prefs.jellyfinCertificateFingerprint
             )
@@ -286,6 +321,13 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    fun updateThemeSongsAudioEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.updateThemeSongsAudioEnabled(enabled)
+            _uiState.value = _uiState.value.copy(themeSongsAudioEnabled = enabled)
+        }
+    }
+
     fun updateNavigationSoundEnabled(enabled: Boolean) {
         viewModelScope.launch {
             userPreferencesRepository.updateNavigationSoundEnabled(enabled)
@@ -297,6 +339,62 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             userPreferencesRepository.setAudioPassthroughMode(mode)
             _uiState.value = _uiState.value.copy(audioPassthroughMode = mode)
+        }
+    }
+
+    fun updateAutoPlayNextEpisode(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.updateAutoPlayNextEpisode(enabled)
+            _uiState.value = _uiState.value.copy(autoPlayNextEpisodeEnabled = enabled)
+        }
+    }
+
+    fun updateAutoPlayNextMovie(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.updateAutoPlayNextMovie(enabled)
+            _uiState.value = _uiState.value.copy(autoPlayNextMovieEnabled = enabled)
+        }
+    }
+
+    fun updateAutoFrameRate(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.updateAutoFrameRate(enabled)
+            _uiState.value = _uiState.value.copy(autoFrameRateEnabled = enabled)
+        }
+    }
+
+    fun updateSubtitleSize(size: String) {
+        viewModelScope.launch {
+            userPreferencesRepository.updateSubtitleSize(size)
+            _uiState.value = _uiState.value.copy(subtitleSize = size)
+        }
+    }
+
+    fun updateSubtitleBackground(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.updateSubtitleBackground(enabled)
+            _uiState.value = _uiState.value.copy(subtitleBackground = enabled)
+        }
+    }
+
+    fun updateHideWatched(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setHideWatched(enabled)
+            _uiState.value = _uiState.value.copy(hideWatched = enabled)
+        }
+    }
+
+    fun updateNightModeAudio(level: Int) {
+        viewModelScope.launch {
+            userPreferencesRepository.setNightModeAudio(level)
+            _uiState.value = _uiState.value.copy(nightModeAudio = level)
+        }
+    }
+
+    fun updateAudioVolumeBoost(db: Int) {
+        viewModelScope.launch {
+            userPreferencesRepository.setAudioVolumeBoostDb(db)
+            _uiState.value = _uiState.value.copy(audioVolumeBoostDb = db)
         }
     }
 
@@ -646,9 +744,6 @@ class SettingsViewModel @Inject constructor(
         jellyfinQuickConnectJob?.cancel()
         viewModelScope.launch {
             clearAllLocalCatalog()
-            if (tv.medusa.app.data.demo.DemoCatalogManager.isDemoServer(_uiState.value.serverUrl)) {
-                tv.medusa.app.data.demo.DemoCatalogManager.clearDemoCatalog(database)
-            }
             userPreferencesRepository.updateJellyfinConfig(
                 serverUrl = "",
                 userId = "",
@@ -664,36 +759,48 @@ class SettingsViewModel @Inject constructor(
                 serverName = null,
                 serverVersion = null,
                 isSuccess = false,
+                discoveredServers = emptyList(),
                 statusMessage = context.getString(R.string.settings_jellyfin_session_closed)
             )
         }
     }
 
-    fun activateDemoMode() {
+    /**
+     * Busca servidores Jellyfin en la red local mediante el broadcast UDP del puerto 7359.
+     * Los resultados se muestran en ajustes para rellenar la URL con un toque.
+     */
+    fun discoverJellyfinServers() {
+        if (_uiState.value.isDiscoveringServers) return
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(
-                isLoading = true,
-                statusMessage = context.getString(R.string.demo_activating)
+                isDiscoveringServers = true,
+                discoveredServers = emptyList(),
+                statusMessage = context.getString(R.string.settings_discovering_servers)
             )
-            val previous = userPreferencesRepository.userPreferencesFlow.first()
-            if (!tv.medusa.app.data.demo.DemoCatalogManager.isDemoServer(previous.jellyfinServerUrl)) {
-                clearAllLocalCatalog()
-            }
-            tv.medusa.app.data.demo.DemoCatalogManager.populateDemoCatalog(
-                database = database,
-                prefsRepo = userPreferencesRepository
-            )
+
+            val servers = JellyfinServerDiscovery.discover()
+
             _uiState.value = _uiState.value.copy(
-                isLoading = false,
-                isJellyfinConnected = true,
-                serverUrl = tv.medusa.app.data.demo.DemoCatalogManager.DEMO_SERVER_URL,
-                username = tv.medusa.app.data.demo.DemoCatalogManager.DEMO_USERNAME,
-                serverName = "Catálogo Demo (Play Store)",
-                serverVersion = "Demo 1.0",
-                isSuccess = true,
-                statusMessage = context.getString(R.string.demo_activated_success)
+                isDiscoveringServers = false,
+                discoveredServers = servers,
+                statusMessage = when {
+                    servers.isEmpty() -> context.getString(R.string.settings_no_servers_found)
+                    servers.size == 1 -> context.getString(R.string.settings_one_server_found)
+                    else -> context.getString(R.string.settings_servers_found, servers.size)
+                }
             )
         }
+    }
+
+    /** Rellena la URL con el servidor elegido y comprueba la conexión. */
+    fun selectDiscoveredServer(server: DiscoveredJellyfinServer) {
+        _uiState.value = _uiState.value.copy(
+            serverUrl = server.address,
+            discoveredServers = emptyList()
+        )
+        // Si todavía no hay sesión, se persiste la URL al validar el servidor: así la
+        // elección sobrevive a un reinicio de la app antes de terminar el inicio de sesión.
+        testServerConnection(persistUrlIfDisconnected = true)
     }
 
     fun disconnectTrakt() {
@@ -848,7 +955,7 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun testServerConnection() {
+    fun testServerConnection(persistUrlIfDisconnected: Boolean = false) {
         val raw = _uiState.value.serverUrl
         val cleanUrl = NetworkClientFactory.normalizeUrl(raw)
         if (cleanUrl.isBlank()) {
@@ -856,16 +963,12 @@ class SettingsViewModel @Inject constructor(
             return
         }
 
-        if (tv.medusa.app.data.demo.DemoCatalogManager.isDemoServer(cleanUrl)) {
-            _uiState.value = _uiState.value.copy(
-                isLoading = false,
-                serverName = "Catálogo Demo (Play Store)",
-                serverVersion = "Demo 1.0",
-                statusMessage = context.getString(R.string.settings_server_detected, "Catálogo Demo (Play Store)", "Demo 1.0")
-            )
-            return
-        }
-        _uiState.value = _uiState.value.copy(serverUrl = cleanUrl, isLoading = true, statusMessage = context.getString(R.string.settings_testing_connection, cleanUrl))
+        _uiState.value = _uiState.value.copy(
+            serverUrl = cleanUrl,
+            isLoading = true,
+            discoveredServers = emptyList(),
+            statusMessage = context.getString(R.string.settings_testing_connection, cleanUrl)
+        )
 
         viewModelScope.launch {
             val api = NetworkClientFactory.createJellyfinService(cleanUrl, JellyfinApiService::class.java)
@@ -878,6 +981,9 @@ class SettingsViewModel @Inject constructor(
                     "Aviso: Servidor Jellyfin $serverName ($version) antiguo. Se recomienda 10.7+ para compatibilidad completa."
                 } else {
                     context.getString(R.string.settings_server_detected, serverName, version)
+                }
+                if (persistUrlIfDisconnected && !_uiState.value.isJellyfinConnected) {
+                    userPreferencesRepository.updateJellyfinServerUrl(cleanUrl)
                 }
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
@@ -918,6 +1024,8 @@ class SettingsViewModel @Inject constructor(
         jellyfinQuickConnectJob = viewModelScope.launch {
             _uiState.value = _uiState.value.copy(
                 isWaitingJellyfinQuickConnect = true,
+                jellyfinQuickConnectCode = null,
+                jellyfinQrUrl = null,
                 statusMessage = context.getString(R.string.settings_starting_quick_connect)
             )
 
@@ -926,8 +1034,10 @@ class SettingsViewModel @Inject constructor(
 
             try {
                 val initResult = api.initiateQuickConnect(authHeader = authHeader)
+                val detectedVersion = runCatching { api.getPublicInfo(authHeader).effectiveVersion }
+                    .getOrDefault("")
 
-                val webQuickConnectUrl = "$cleanUrl/web/index.html#!/quickconnect.html"
+                val webQuickConnectUrl = buildQuickConnectWebUrl(cleanUrl, detectedVersion, initResult.effectiveCode)
                 val qrUrl = "${ApiConfig.QR_GENERATOR_BASE_URL}?size=300x300&data=" + URLEncoder.encode(webQuickConnectUrl, "UTF-8")
 
                 _uiState.value = _uiState.value.copy(
@@ -936,64 +1046,113 @@ class SettingsViewModel @Inject constructor(
                     statusMessage = context.getString(R.string.settings_qc_code, initResult.effectiveCode)
                 )
 
+                var authorized = false
+                var authFailure: String? = null
+                // Si el servidor deja de responder varios ciclos seguidos (caído, bloqueado
+                // o inaccesible) se corta en vez de esperar los 9 minutos completos.
+                val maxCheckFailures = 5
+                var checkFailures = 0
                 for (i in 0 until 180) {
                     delay(3000L)
+
+                    var check: JellyfinQuickConnectResult? = null
                     try {
-                        val check = api.checkQuickConnect(authHeader = authHeader, secret = initResult.effectiveSecret)
-                        if (check.isAuthed && !check.effectiveToken.isNullOrBlank()) {
-                            val token = check.effectiveToken!!
-                            val authedHeader = tv.medusa.app.data.repository.buildJellyfinAuthHeader(token = token)
-                            val me = api.getCurrentUser(authedHeader)
-
-                            val info = runCatching { api.getPublicInfo(authedHeader) }.getOrNull()
-                            val serverId = info?.effectiveId ?: ""
-                            val serverVersion = info?.effectiveVersion ?: ""
-
-                            // 1. Si es otro servidor/usuario, borrar catálogo y cachés antes
-                            // de guardar las credenciales nuevas.
-                            clearCatalogIfIdentityChanged(cleanUrl, me.effectiveId)
-                            userPreferencesRepository.updateJellyfinConfig(
-                                serverUrl = cleanUrl,
-                                userId = me.effectiveId,
-                                accessToken = token,
-                                username = me.effectiveName,
-                                serverId = serverId,
-                                serverVersion = serverVersion
-                            )
-
-                            // Registrar capacidades del dispositivo en Jellyfin
-                            runCatching {
-                                val caps = tv.medusa.app.data.remote.jellyfin.JellyfinDeviceProfileBuilder.createDefaultCapabilities(context)
-                                api.postCapabilities(authHeader = authedHeader, capabilities = caps)
-                            }
-
-                            _uiState.value = _uiState.value.copy(
-                                isWaitingJellyfinQuickConnect = false,
-                                username = me.effectiveName,
-                                isJellyfinConnected = true,
-                                statusMessage = context.getString(R.string.settings_authorized_as, me.effectiveName)
-                            )
-
-                            val repository = mediaRepository
-                            // 2. Sincronizar catálogo en segundo plano (no se cancela al salir de la pantalla)
-                            repository.startBackgroundSync(
-                                serverUrl = cleanUrl,
-                                userId = me.effectiveId,
-                                token = token,
-                                forceFullSync = true
-                            )
-                            val count = repository.getLocalCount()
-
-                            _uiState.value = _uiState.value.copy(
-                                isSuccess = true,
-                                isLoading = false,
-                                statusMessage = context.getString(R.string.settings_sync_started, count)
-                            )
+                        check = api.checkQuickConnect(authHeader = authHeader, secret = initResult.effectiveSecret)
+                        checkFailures = 0
+                    } catch (e: Exception) {
+                        // Normalmente solo significa que el usuario aún no ha autorizado.
+                        checkFailures++
+                        if (checkFailures >= maxCheckFailures) {
+                            authFailure = formatNetworkError(e, cleanUrl)
                             break
                         }
-                    } catch (_: Exception) {
-                        // Esperando autorización
+                        continue
                     }
+                    if (check == null || !check.isAuthed) continue
+
+                    // `QuickConnect/Connect` solo marca `Authenticated`: el token hay que
+                    // canjearlo aparte. El secreto es de un solo uso, así que si el canje
+                    // falla no se puede reintentar con el mismo código.
+                    val authResult = try {
+                        api.authenticateWithQuickConnect(
+                            request = JellyfinQuickConnectAuthRequest(secret = initResult.effectiveSecret)
+                        )
+                    } catch (e: Exception) {
+                        authFailure = formatNetworkError(e, cleanUrl)
+                        break
+                    }
+
+                    val token = authResult.effectiveToken
+                    if (token.isBlank()) {
+                        authFailure = context.getString(R.string.settings_error_unknown)
+                        break
+                    }
+
+                    authorized = true
+                    val authedHeader = tv.medusa.app.data.repository.buildJellyfinAuthHeader(token = token)
+                    try {
+                        val me = api.getCurrentUser(authedHeader)
+
+                        val info = runCatching { api.getPublicInfo(authedHeader) }.getOrNull()
+                        val serverId = info?.effectiveId ?: ""
+                        val serverVersion = info?.effectiveVersion ?: ""
+
+                        // 1. Si es otro servidor/usuario, borrar catálogo y cachés antes
+                        // de guardar las credenciales nuevas.
+                        clearCatalogIfIdentityChanged(cleanUrl, me.effectiveId)
+                        userPreferencesRepository.updateJellyfinConfig(
+                            serverUrl = cleanUrl,
+                            userId = me.effectiveId,
+                            accessToken = token,
+                            username = me.effectiveName,
+                            serverId = serverId,
+                            serverVersion = serverVersion
+                        )
+
+                        // Registrar capacidades del dispositivo en Jellyfin
+                        runCatching {
+                            val caps = tv.medusa.app.data.remote.jellyfin.JellyfinDeviceProfileBuilder.createDefaultCapabilities(context)
+                            api.postCapabilities(authHeader = authedHeader, capabilities = caps)
+                        }
+
+                        _uiState.value = _uiState.value.copy(
+                            isWaitingJellyfinQuickConnect = false,
+                            username = me.effectiveName,
+                            isJellyfinConnected = true,
+                            statusMessage = context.getString(R.string.settings_authorized_as, me.effectiveName)
+                        )
+
+                        val repository = mediaRepository
+                        // 2. Sincronizar catálogo en segundo plano (no se cancela al salir de la pantalla)
+                        repository.startBackgroundSync(
+                            serverUrl = cleanUrl,
+                            userId = me.effectiveId,
+                            token = token,
+                            forceFullSync = true
+                        )
+                        val count = repository.getLocalCount()
+
+                        _uiState.value = _uiState.value.copy(
+                            isSuccess = true,
+                            isLoading = false,
+                            statusMessage = context.getString(R.string.settings_sync_started, count)
+                        )
+                    } catch (e: Exception) {
+                        authorized = false
+                        authFailure = formatNetworkError(e, cleanUrl)
+                    }
+                    break
+                }
+
+                if (!authorized) {
+                    _uiState.value = _uiState.value.copy(
+                        isWaitingJellyfinQuickConnect = false,
+                        jellyfinQuickConnectCode = null,
+                        jellyfinQrUrl = null,
+                        statusMessage = authFailure?.let {
+                            context.getString(R.string.settings_quick_connect_token_error, it)
+                        } ?: context.getString(R.string.settings_quick_connect_expired)
+                    )
                 }
             } catch (e: Exception) {
                 val details = formatNetworkError(e, cleanUrl)
@@ -1002,6 +1161,37 @@ class SettingsViewModel @Inject constructor(
                     statusMessage = context.getString(R.string.settings_error_prefix, details)
                 )
             }
+        }
+    }
+
+    /**
+     * URL de la página de Quick Connect de la web de Jellyfin.
+     *
+     * Jellyfin 10.9+ usa el router nuevo (`#/quickconnect`) y admite `?code=` para
+     * prerrellenar el código, así que el QR sirve tanto de atajo como de ayuda para
+     * teclearlo. Las versiones 10.8 y anteriores usaban el router antiguo (`#!`), cuyo
+     * alias de la página de usuario es `mypreferencesquickconnect.html`.
+     */
+    private fun buildQuickConnectWebUrl(
+        serverUrl: String,
+        serverVersion: String,
+        code: String
+    ): String {
+        val base = serverUrl.trimEnd('/')
+        val parts = serverVersion
+            .filter { it.isDigit() || it == '.' }
+            .split('.')
+            .mapNotNull { it.toIntOrNull() }
+        val major = parts.getOrElse(0) { 0 }
+        val minor = parts.getOrElse(1) { 0 }
+        // Sin versión conocida asumimos la web moderna (el caso habitual hoy).
+        val isModernWeb = serverVersion.isBlank() || major > 10 || (major == 10 && minor >= 9)
+
+        return if (isModernWeb) {
+            val query = if (code.isBlank()) "" else "?code=" + URLEncoder.encode(code, "UTF-8")
+            "$base/web/index.html#/quickconnect$query"
+        } else {
+            "$base/web/index.html#!/mypreferencesquickconnect.html"
         }
     }
 
@@ -1017,11 +1207,6 @@ class SettingsViewModel @Inject constructor(
 
             if (cleanUrl.isBlank() || effectiveUsername.isBlank()) {
                 _uiState.value = state.copy(statusMessage = context.getString(R.string.settings_enter_url_and_user))
-                return@launch
-            }
-
-            if (tv.medusa.app.data.demo.DemoCatalogManager.isDemoServer(cleanUrl) || tv.medusa.app.data.demo.DemoCatalogManager.isDemoReviewerUser(effectiveUsername)) {
-                activateDemoMode()
                 return@launch
             }
 

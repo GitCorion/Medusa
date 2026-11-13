@@ -159,7 +159,8 @@ class SearchViewModel @Inject constructor(
                 isLoading = true
             )
 
-            // 2. Capa 2: Búsqueda Remota en Jellyfin (tolerancia a erratas con Meilisearch)
+            // 2. Capa 2: Búsqueda Remota en Jellyfin para lo que aún no está en la caché
+            // local (biblioteca recién añadida o catálogo todavía sin sincronizar).
             if (prefs.jellyfinServerUrl.isNotBlank() && prefs.jellyfinAccessToken.isNotBlank()) {
                 val remoteResults = withContext(Dispatchers.IO) {
                     mediaRepository.searchRemoteAndCache(

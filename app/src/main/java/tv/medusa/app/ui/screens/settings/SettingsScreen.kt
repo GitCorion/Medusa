@@ -32,22 +32,27 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Logout
+import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Clear
 import androidx.compose.material.icons.rounded.CloudDone
 import androidx.compose.material.icons.rounded.Dns
-import androidx.compose.material.icons.rounded.Movie
+import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Palette
+import androidx.compose.material.icons.rounded.PlayCircle
 import androidx.compose.material.icons.rounded.Public
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.Subtitles
 import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material.icons.rounded.SyncAlt
 import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.VisibilityOff
+import androidx.compose.material.icons.rounded.VolumeUp
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
@@ -110,6 +115,9 @@ import tv.medusa.app.data.local.AUDIO_PASSTHROUGH_DIRECT
 import tv.medusa.app.data.local.PERFORMANCE_MODE_AUTO
 import tv.medusa.app.data.local.PERFORMANCE_MODE_HIGH
 import tv.medusa.app.data.local.PERFORMANCE_MODE_LOW
+import tv.medusa.app.data.local.SUBTITLE_SIZE_SMALL
+import tv.medusa.app.data.local.SUBTITLE_SIZE_NORMAL
+import tv.medusa.app.data.local.SUBTITLE_SIZE_LARGE
 import tv.medusa.app.data.model.SUPPORTED_PLATFORMS
 import tv.medusa.app.data.model.StreamPlatform
 import tv.medusa.app.data.remote.trakt.TraktUserListDto
@@ -173,15 +181,16 @@ fun SettingsScreen(
                     .padding(start = 48.dp, end = 48.dp, bottom = 24.dp)
             ) {
                 // =============================================================
-                // BARRA LATERAL DE CATEGORÍAS (220dp)
+                // BARRA LATERAL DE CATEGORÍAS (8 APARTADOS)
                 // =============================================================
                 Column(
                     modifier = Modifier
-                        .width(220.dp)
+                        .width(236.dp)
                         .fillMaxHeight()
-                        .background(Color(0x06FFFFFF), RoundedCornerShape(14.dp))
-                        .border(0.5.dp, Color(0x10FFFFFF), RoundedCornerShape(14.dp))
-                        .padding(8.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(Color(0x06FFFFFF))
+                        .verticalScroll(rememberScrollState())
+                        .padding(6.dp)
                 ) {
                     Text(
                         text = stringResource(R.string.settings_title),
@@ -202,8 +211,8 @@ fun SettingsScreen(
                     )
 
                     TvSettingsNavRailItem(
-                        icon = Icons.Rounded.SyncAlt,
-                        title = stringResource(R.string.settings_nav_trakt),
+                        icon = Icons.Rounded.Public,
+                        title = stringResource(R.string.settings_nav_platforms),
                         isSelected = uiState.activeCategory == 1,
                         onClick = { viewModel.selectCategory(1) },
                         focusColor = focusColor,
@@ -211,8 +220,8 @@ fun SettingsScreen(
                     )
 
                     TvSettingsNavRailItem(
-                        icon = Icons.Rounded.Public,
-                        title = stringResource(R.string.settings_nav_platforms),
+                        icon = Icons.Rounded.SyncAlt,
+                        title = stringResource(R.string.settings_nav_library),
                         isSelected = uiState.activeCategory == 2,
                         onClick = { viewModel.selectCategory(2) },
                         focusColor = focusColor,
@@ -220,8 +229,8 @@ fun SettingsScreen(
                     )
 
                     TvSettingsNavRailItem(
-                        icon = Icons.Rounded.Palette,
-                        title = stringResource(R.string.settings_nav_appearance),
+                        icon = Icons.Rounded.PlayCircle,
+                        title = stringResource(R.string.settings_nav_playback),
                         isSelected = uiState.activeCategory == 3,
                         onClick = { viewModel.selectCategory(3) },
                         focusColor = focusColor,
@@ -229,10 +238,37 @@ fun SettingsScreen(
                     )
 
                     TvSettingsNavRailItem(
-                        icon = Icons.Rounded.SystemUpdate,
-                        title = stringResource(R.string.settings_nav_about),
+                        icon = Icons.AutoMirrored.Rounded.VolumeUp,
+                        title = stringResource(R.string.settings_nav_audio),
                         isSelected = uiState.activeCategory == 4,
                         onClick = { viewModel.selectCategory(4) },
+                        focusColor = focusColor,
+                        focusContent = focusContent
+                    )
+
+                    TvSettingsNavRailItem(
+                        icon = Icons.Rounded.Subtitles,
+                        title = stringResource(R.string.settings_nav_subtitles),
+                        isSelected = uiState.activeCategory == 5,
+                        onClick = { viewModel.selectCategory(5) },
+                        focusColor = focusColor,
+                        focusContent = focusContent
+                    )
+
+                    TvSettingsNavRailItem(
+                        icon = Icons.Rounded.Palette,
+                        title = stringResource(R.string.settings_nav_appearance),
+                        isSelected = uiState.activeCategory == 6,
+                        onClick = { viewModel.selectCategory(6) },
+                        focusColor = focusColor,
+                        focusContent = focusContent
+                    )
+
+                    TvSettingsNavRailItem(
+                        icon = Icons.Rounded.Info,
+                        title = stringResource(R.string.settings_nav_about),
+                        isSelected = uiState.activeCategory == 7,
+                        onClick = { viewModel.selectCategory(7) },
                         focusColor = focusColor,
                         focusContent = focusContent
                     )
@@ -250,9 +286,12 @@ fun SettingsScreen(
                 ) {
                     val sectionTitle = when (uiState.activeCategory) {
                         0 -> stringResource(R.string.settings_nav_jellyfin)
-                        1 -> stringResource(R.string.settings_nav_trakt)
-                        2 -> stringResource(R.string.settings_nav_platforms)
-                        3 -> stringResource(R.string.settings_section_appearance_perf)
+                        1 -> stringResource(R.string.settings_nav_platforms)
+                        2 -> stringResource(R.string.settings_nav_library)
+                        3 -> stringResource(R.string.settings_nav_playback)
+                        4 -> stringResource(R.string.settings_nav_audio)
+                        5 -> stringResource(R.string.settings_nav_subtitles)
+                        6 -> stringResource(R.string.settings_nav_appearance)
                         else -> stringResource(R.string.settings_nav_about)
                     }
 
@@ -272,10 +311,13 @@ fun SettingsScreen(
                     ) {
                         when (uiState.activeCategory) {
                             0 -> JellyfinCategory(uiState, viewModel, focusColor, focusContent)
-                            1 -> TraktCategory(uiState, viewModel, focusColor, focusContent)
-                            2 -> PlatformsCategory(uiState, viewModel, focusColor, focusContent)
-                            3 -> AppearanceCategory(uiState, viewModel, focusColor, focusContent)
-                            4 -> AboutCategory(
+                            1 -> PlatformsCategory(uiState, viewModel, focusColor, focusContent)
+                            2 -> LibraryCategory(uiState, viewModel, focusColor, focusContent)
+                            3 -> PlaybackCategory(uiState, viewModel, focusColor, focusContent)
+                            4 -> AudioCategory(uiState, viewModel, focusColor, focusContent)
+                            5 -> SubtitlesCategory(uiState, viewModel, focusColor, focusContent)
+                            6 -> AppearanceCategory(uiState, viewModel, focusColor, focusContent)
+                            else -> AboutCategory(
                                 uiState = uiState,
                                 viewModel = viewModel,
                                 focusColor = focusColor,
@@ -361,53 +403,52 @@ private fun JellyfinCategory(
     focusContent: Color
 ) {
     if (uiState.isJellyfinConnected) {
-        TvSectionHeader(title = stringResource(R.string.settings_section_server_session))
-
-        TvSettingRow(
-            title = stringResource(R.string.settings_row_server),
-            value = uiState.serverUrl,
-            onClick = { viewModel.openEditDialog(SettingField.SERVER_URL) }
-        )
-
-        TvSettingRow(
-            title = stringResource(R.string.settings_row_user),
-            value = uiState.username
-        )
-
-        TvSettingRow(
-            title = stringResource(R.string.settings_row_status),
-            value = stringResource(R.string.settings_status_connected)
-        )
-
-        val totalTitles = uiState.syncedMoviesCount + uiState.syncedSeriesCount
-        TvSettingRow(
-            title = stringResource(R.string.settings_row_library_synced),
-            value = if (totalTitles > 0) {
-                stringResource(
-                    R.string.settings_library_count,
-                    formatNumber(totalTitles),
-                    formatNumber(uiState.syncedMoviesCount),
-                    formatNumber(uiState.syncedSeriesCount)
-                )
-            } else {
-                stringResource(R.string.settings_library_empty)
-            }
-        )
-
-        if (!uiState.lastSyncTimestamp.isNullOrBlank()) {
-            val formatted = uiState.lastSyncTimestamp?.replace("T", " ")?.substringBefore(".") ?: ""
+        TvSettingsGroupCard(title = stringResource(R.string.settings_section_server_session)) {
             TvSettingRow(
-                title = stringResource(R.string.settings_row_last_sync),
-                value = formatted
+                title = stringResource(R.string.settings_row_server),
+                value = uiState.serverUrl,
+                onClick = { viewModel.openEditDialog(SettingField.SERVER_URL) }
             )
+
+            TvSettingRow(
+                title = stringResource(R.string.settings_row_user),
+                value = uiState.username
+            )
+
+            TvSettingRow(
+                title = stringResource(R.string.settings_row_status),
+                value = stringResource(R.string.settings_status_connected)
+            )
+
+            val totalTitles = uiState.syncedMoviesCount + uiState.syncedSeriesCount
+            TvSettingRow(
+                title = stringResource(R.string.settings_row_library_synced),
+                value = if (totalTitles > 0) {
+                    stringResource(
+                        R.string.settings_library_count,
+                        formatNumber(totalTitles),
+                        formatNumber(uiState.syncedMoviesCount),
+                        formatNumber(uiState.syncedSeriesCount)
+                    )
+                } else {
+                    stringResource(R.string.settings_library_empty)
+                }
+            )
+
+            if (!uiState.lastSyncTimestamp.isNullOrBlank()) {
+                val formatted = uiState.lastSyncTimestamp?.replace("T", " ")?.substringBefore(".") ?: ""
+                TvSettingRow(
+                    title = stringResource(R.string.settings_row_last_sync),
+                    value = formatted
+                )
+            }
         }
 
-        TvSectionHeader(title = stringResource(R.string.settings_section_actions))
-
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            modifier = Modifier.padding(top = 4.dp)
-        ) {
+        TvSettingsGroupCard(title = stringResource(R.string.settings_section_actions)) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.padding(vertical = 4.dp)
+            ) {
             Button(
                 onClick = { viewModel.forceSyncCatalog() },
                 modifier = Modifier.handleTouchClick(enabled = !uiState.isSyncingCatalog) { viewModel.forceSyncCatalog() },
@@ -470,8 +511,9 @@ private fun JellyfinCategory(
                 }
             }
         }
+    }
 
-        TlsCertificateSection(uiState, viewModel, focusColor, focusContent)
+    TlsCertificateSection(uiState, viewModel, focusColor, focusContent)
     } else {
         // Desconectado
         TvSectionHeader(title = stringResource(R.string.settings_section_server_address))
@@ -484,19 +526,49 @@ private fun JellyfinCategory(
 
         Spacer(modifier = Modifier.height(6.dp))
         Button(
-            onClick = { viewModel.activateDemoMode() },
-            modifier = Modifier.handleTouchClick { viewModel.activateDemoMode() },
+            onClick = { viewModel.discoverJellyfinServers() },
+            modifier = Modifier.handleTouchClick(enabled = !uiState.isDiscoveringServers) {
+                viewModel.discoverJellyfinServers()
+            },
             colors = ButtonDefaults.colors(
                 containerColor = Color(0x18FFFFFF),
                 contentColor = Color.White,
                 focusedContainerColor = focusColor,
                 focusedContentColor = focusContent
-            )
+            ),
+            enabled = !uiState.isDiscoveringServers
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Rounded.Movie, contentDescription = null, modifier = Modifier.size(15.dp))
+                if (uiState.isDiscoveringServers) {
+                    CircularProgressIndicator(
+                        color = Color.White,
+                        strokeWidth = 2.dp,
+                        modifier = Modifier.size(14.dp)
+                    )
+                } else {
+                    Icon(Icons.Rounded.Search, contentDescription = null, modifier = Modifier.size(15.dp))
+                }
                 Spacer(modifier = Modifier.width(6.dp))
-                Text(stringResource(R.string.settings_btn_demo_catalog), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                Text(
+                    text = stringResource(
+                        if (uiState.isDiscoveringServers) R.string.settings_btn_searching_servers
+                        else R.string.settings_btn_discover_servers
+                    ),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
+
+        if (uiState.discoveredServers.isNotEmpty()) {
+            TvSettingsGroupCard(title = stringResource(R.string.settings_section_servers_found)) {
+                uiState.discoveredServers.forEach { server ->
+                    TvSettingRow(
+                        title = server.name,
+                        value = server.address,
+                        onClick = { viewModel.selectDiscoveredServer(server) }
+                    )
+                }
             }
         }
 
@@ -695,17 +767,53 @@ private fun TlsCertificateSection(
 }
 
 // =============================================================================
-// CATEGORÍA 1: TRAKT.TV
+// CATEGORÍA 5: BIBLIOTECA Y TRAKT
 // =============================================================================
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
-private fun TraktCategory(
+private fun LibraryCategory(
     uiState: SettingsUiState,
     viewModel: SettingsViewModel,
     focusColor: Color,
     focusContent: Color
 ) {
+    TvSettingsGroupCard(title = stringResource(R.string.settings_section_library_view)) {
+        TvSettingSwitchRow(
+            title = stringResource(R.string.settings_library_hide_watched_title),
+            description = stringResource(R.string.settings_library_hide_watched_desc),
+            checked = uiState.hideWatched,
+            onCheckedChange = { viewModel.updateHideWatched(it) },
+            focusColor = focusColor,
+            focusContent = focusContent
+        )
+    }
+
+    TvSettingsGroupCard(title = stringResource(R.string.settings_section_library_database)) {
+        val syncStatusText = if (uiState.isSyncingCatalog) {
+            "Sincronizando..."
+        } else if (!uiState.lastSyncTimestamp.isNullOrBlank()) {
+            uiState.lastSyncTimestamp?.replace("T", " ")?.substringBefore(".") ?: "Completada"
+        } else {
+            "Completada"
+        }
+
+        TvSettingActionRow(
+            title = stringResource(R.string.settings_library_db_stats_title),
+            description = stringResource(
+                R.string.settings_library_db_stats_desc,
+                uiState.syncedMoviesCount,
+                uiState.syncedSeriesCount,
+                uiState.syncedEpisodesCount
+            ),
+            value = syncStatusText,
+            icon = Icons.Rounded.Sync,
+            onClick = { viewModel.forceSyncCatalog() },
+            focusColor = focusColor,
+            focusContent = focusContent
+        )
+    }
+
     if (uiState.isTraktConnected) {
         TvSectionHeader(title = stringResource(R.string.settings_section_account_linked))
 
@@ -946,7 +1054,188 @@ private fun PlatformsCategory(
 }
 
 // =============================================================================
-// CATEGORÍA 3: APARIENCIA & RENDIMIENTO
+// CATEGORÍA 1: REPRODUCCIÓN
+// =============================================================================
+
+@Composable
+private fun PlaybackCategory(
+    uiState: SettingsUiState,
+    viewModel: SettingsViewModel,
+    focusColor: Color,
+    focusContent: Color
+) {
+    TvSettingsGroupCard(title = stringResource(R.string.settings_section_playback_auto)) {
+        TvSettingSwitchRow(
+            title = stringResource(R.string.settings_playback_next_episode_title),
+            description = stringResource(R.string.settings_playback_next_episode_desc),
+            checked = uiState.autoPlayNextEpisodeEnabled,
+            onCheckedChange = { viewModel.updateAutoPlayNextEpisode(it) },
+            focusColor = focusColor,
+            focusContent = focusContent
+        )
+
+        TvSettingSwitchRow(
+            title = stringResource(R.string.settings_playback_next_movie_title),
+            description = stringResource(R.string.settings_playback_next_movie_desc),
+            checked = uiState.autoPlayNextMovieEnabled,
+            onCheckedChange = { viewModel.updateAutoPlayNextMovie(it) },
+            focusColor = focusColor,
+            focusContent = focusContent
+        )
+    }
+
+    TvSettingsGroupCard(title = stringResource(R.string.settings_section_video_display)) {
+        TvSettingSwitchRow(
+            title = stringResource(R.string.settings_playback_afr_title),
+            description = stringResource(R.string.settings_playback_afr_desc),
+            checked = uiState.autoFrameRateEnabled,
+            onCheckedChange = { viewModel.updateAutoFrameRate(it) },
+            focusColor = focusColor,
+            focusContent = focusContent
+        )
+    }
+}
+
+// =============================================================================
+// CATEGORÍA 2: AUDIO Y SONIDO
+// =============================================================================
+
+@Composable
+private fun AudioCategory(
+    uiState: SettingsUiState,
+    viewModel: SettingsViewModel,
+    focusColor: Color,
+    focusContent: Color
+) {
+    TvSettingsGroupCard(title = stringResource(R.string.settings_section_audio_output)) {
+        TvSettingsSegmentedRow(
+            title = stringResource(R.string.settings_audio_passthrough_title),
+            description = stringResource(R.string.settings_audio_passthrough_desc),
+            options = listOf(
+                AUDIO_PASSTHROUGH_OFF to stringResource(R.string.settings_passthrough_off),
+                AUDIO_PASSTHROUGH_AUTO to stringResource(R.string.settings_passthrough_auto),
+                AUDIO_PASSTHROUGH_DIRECT to stringResource(R.string.settings_passthrough_direct)
+            ),
+            selectedOption = uiState.audioPassthroughMode,
+            onOptionSelected = { viewModel.updateAudioPassthroughMode(it) },
+            focusColor = focusColor,
+            focusContent = focusContent
+        )
+    }
+
+    TvSettingsGroupCard(title = stringResource(R.string.settings_section_audio_enhancements)) {
+        TvSettingsSegmentedRow(
+            title = stringResource(R.string.settings_audio_night_mode_title),
+            description = stringResource(R.string.settings_audio_night_mode_desc),
+            options = listOf(
+                0 to stringResource(R.string.settings_audio_night_off),
+                1 to stringResource(R.string.settings_audio_night_moderate),
+                2 to stringResource(R.string.settings_audio_night_high)
+            ),
+            selectedOption = uiState.nightModeAudio,
+            onOptionSelected = { viewModel.updateNightModeAudio(it) },
+            focusColor = focusColor,
+            focusContent = focusContent
+        )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        TvSettingsSegmentedRow(
+            title = stringResource(R.string.settings_audio_boost_title),
+            description = stringResource(R.string.settings_audio_boost_desc),
+            options = listOf(
+                0 to stringResource(R.string.settings_audio_boost_none),
+                5 to stringResource(R.string.settings_audio_boost_5db),
+                10 to stringResource(R.string.settings_audio_boost_10db),
+                15 to stringResource(R.string.settings_audio_boost_15db)
+            ),
+            selectedOption = uiState.audioVolumeBoostDb,
+            onOptionSelected = { viewModel.updateAudioVolumeBoost(it) },
+            focusColor = focusColor,
+            focusContent = focusContent
+        )
+    }
+
+    TvSettingsGroupCard(title = stringResource(R.string.settings_section_ambient_audio)) {
+        TvSettingSwitchRow(
+            title = stringResource(R.string.settings_section_theme_songs_audio),
+            description = stringResource(R.string.settings_audio_theme_songs_desc),
+            checked = uiState.themeSongsAudioEnabled,
+            onCheckedChange = { viewModel.updateThemeSongsAudioEnabled(it) },
+            focusColor = focusColor,
+            focusContent = focusContent
+        )
+
+        TvSettingSwitchRow(
+            title = stringResource(R.string.settings_section_seasonal_audio),
+            description = stringResource(R.string.settings_audio_seasonal_desc),
+            checked = uiState.seasonalAudioEnabled,
+            onCheckedChange = { viewModel.updateSeasonalAudioEnabled(it) },
+            focusColor = focusColor,
+            focusContent = focusContent
+        )
+
+        TvSettingSwitchRow(
+            title = stringResource(R.string.settings_section_navigation_sound),
+            description = stringResource(R.string.settings_audio_navigation_desc),
+            checked = uiState.navigationSoundEnabled,
+            onCheckedChange = { viewModel.updateNavigationSoundEnabled(it) },
+            focusColor = focusColor,
+            focusContent = focusContent
+        )
+    }
+}
+
+// =============================================================================
+// CATEGORÍA 3: SUBTÍTULOS
+// =============================================================================
+
+@Composable
+private fun SubtitlesCategory(
+    uiState: SettingsUiState,
+    viewModel: SettingsViewModel,
+    focusColor: Color,
+    focusContent: Color
+) {
+    TvSettingsGroupCard(title = stringResource(R.string.settings_section_subtitles_style)) {
+        TvSettingsSegmentedRow(
+            title = stringResource(R.string.settings_subtitles_size_title),
+            description = stringResource(R.string.settings_subtitles_size_desc),
+            options = listOf(
+                SUBTITLE_SIZE_SMALL to stringResource(R.string.settings_subtitles_size_small),
+                SUBTITLE_SIZE_NORMAL to stringResource(R.string.settings_subtitles_size_normal),
+                SUBTITLE_SIZE_LARGE to stringResource(R.string.settings_subtitles_size_large)
+            ),
+            selectedOption = uiState.subtitleSize,
+            onOptionSelected = { viewModel.updateSubtitleSize(it) },
+            focusColor = focusColor,
+            focusContent = focusContent
+        )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        TvSettingSwitchRow(
+            title = stringResource(R.string.settings_subtitles_background_title),
+            description = stringResource(R.string.settings_subtitles_background_desc),
+            checked = uiState.subtitleBackground,
+            onCheckedChange = { viewModel.updateSubtitleBackground(it) },
+            focusColor = focusColor,
+            focusContent = focusContent
+        )
+    }
+
+    TvSettingsGroupCard(title = stringResource(R.string.settings_subtitles_preview_title)) {
+        TvSubtitlePreviewBox(
+            subtitleSize = uiState.subtitleSize,
+            subtitleBackground = uiState.subtitleBackground,
+            sampleText = stringResource(R.string.settings_subtitles_preview_sample),
+            modifier = Modifier.padding(vertical = 8.dp)
+        )
+    }
+}
+
+// =============================================================================
+// CATEGORÍA 4: INTERFAZ Y PANTALLA
 // =============================================================================
 
 @Composable
@@ -956,86 +1245,52 @@ private fun AppearanceCategory(
     focusColor: Color,
     focusContent: Color
 ) {
-    TvSectionHeader(title = stringResource(R.string.settings_section_theme))
+    TvSettingsGroupCard(title = stringResource(R.string.settings_section_theme)) {
+        TvSettingsSegmentedRow(
+            title = stringResource(R.string.settings_section_theme),
+            description = stringResource(R.string.settings_theme_desc),
+            options = listOf(
+                APP_THEME_ORIGINAL to stringResource(R.string.settings_theme_neon),
+                APP_THEME_MONOCHROME to stringResource(R.string.settings_theme_monochrome)
+            ),
+            selectedOption = if (uiState.isMonochrome) APP_THEME_MONOCHROME else APP_THEME_ORIGINAL,
+            onOptionSelected = { viewModel.setAppTheme(it) },
+            focusColor = focusColor,
+            focusContent = focusContent
+        )
+    }
 
-    TvSegmentedSelector(
-        options = listOf(
-            APP_THEME_ORIGINAL to stringResource(R.string.settings_theme_neon),
-            APP_THEME_MONOCHROME to stringResource(R.string.settings_theme_monochrome)
-        ),
-        selectedOption = if (uiState.isMonochrome) APP_THEME_MONOCHROME else APP_THEME_ORIGINAL,
-        onOptionSelected = { viewModel.setAppTheme(it) },
-        focusColor = focusColor,
-        focusContent = focusContent
-    )
+    TvSettingsGroupCard(title = stringResource(R.string.settings_section_buttons)) {
+        TvSettingsSegmentedRow(
+            title = stringResource(R.string.settings_section_buttons),
+            description = stringResource(R.string.settings_buttons_desc),
+            options = listOf(
+                BUTTON_STYLE_ICONS_ONLY to stringResource(R.string.settings_btn_style_icons),
+                BUTTON_STYLE_TEXT_ONLY to stringResource(R.string.settings_btn_style_text),
+                BUTTON_STYLE_ICONS_AND_TEXT to stringResource(R.string.settings_btn_style_both)
+            ),
+            selectedOption = uiState.buttonStyle,
+            onOptionSelected = { viewModel.updateButtonStyle(it) },
+            focusColor = focusColor,
+            focusContent = focusContent
+        )
+    }
 
-    TvSectionHeader(title = stringResource(R.string.settings_section_buttons))
-
-    TvSegmentedSelector(
-        options = listOf(
-            BUTTON_STYLE_ICONS_ONLY to stringResource(R.string.settings_btn_style_icons),
-            BUTTON_STYLE_TEXT_ONLY to stringResource(R.string.settings_btn_style_text),
-            BUTTON_STYLE_ICONS_AND_TEXT to stringResource(R.string.settings_btn_style_both)
-        ),
-        selectedOption = uiState.buttonStyle,
-        onOptionSelected = { viewModel.updateButtonStyle(it) },
-        focusColor = focusColor,
-        focusContent = focusContent
-    )
-
-    TvSectionHeader(title = stringResource(R.string.settings_section_perf))
-
-    TvSegmentedSelector(
-        options = listOf(
-            PERFORMANCE_MODE_AUTO to stringResource(R.string.settings_perf_auto),
-            PERFORMANCE_MODE_HIGH to stringResource(R.string.settings_perf_high),
-            PERFORMANCE_MODE_LOW to stringResource(R.string.settings_perf_low)
-        ),
-        selectedOption = uiState.performanceMode,
-        onOptionSelected = { viewModel.updatePerformanceMode(it) },
-        focusColor = focusColor,
-        focusContent = focusContent
-    )
-
-    TvSectionHeader(title = stringResource(R.string.settings_section_navigation_sound))
-
-    TvSegmentedSelector(
-        options = listOf(
-            true to stringResource(R.string.settings_navigation_sound_enabled),
-            false to stringResource(R.string.settings_navigation_sound_disabled)
-        ),
-        selectedOption = uiState.navigationSoundEnabled,
-        onOptionSelected = { viewModel.updateNavigationSoundEnabled(it) },
-        focusColor = focusColor,
-        focusContent = focusContent
-    )
-
-    TvSectionHeader(title = stringResource(R.string.settings_section_seasonal_audio))
-
-    TvSegmentedSelector(
-        options = listOf(
-            true to stringResource(R.string.settings_seasonal_audio_enabled),
-            false to stringResource(R.string.settings_seasonal_audio_disabled)
-        ),
-        selectedOption = uiState.seasonalAudioEnabled,
-        onOptionSelected = { viewModel.updateSeasonalAudioEnabled(it) },
-        focusColor = focusColor,
-        focusContent = focusContent
-    )
-
-    TvSectionHeader(title = stringResource(R.string.settings_section_audio_passthrough))
-
-    TvSegmentedSelector(
-        options = listOf(
-            AUDIO_PASSTHROUGH_OFF to stringResource(R.string.settings_passthrough_off),
-            AUDIO_PASSTHROUGH_AUTO to stringResource(R.string.settings_passthrough_auto),
-            AUDIO_PASSTHROUGH_DIRECT to stringResource(R.string.settings_passthrough_direct)
-        ),
-        selectedOption = uiState.audioPassthroughMode,
-        onOptionSelected = { viewModel.updateAudioPassthroughMode(it) },
-        focusColor = focusColor,
-        focusContent = focusContent
-    )
+    TvSettingsGroupCard(title = stringResource(R.string.settings_section_perf)) {
+        TvSettingsSegmentedRow(
+            title = stringResource(R.string.settings_section_perf),
+            description = stringResource(R.string.settings_perf_desc),
+            options = listOf(
+                PERFORMANCE_MODE_AUTO to stringResource(R.string.settings_perf_auto),
+                PERFORMANCE_MODE_HIGH to stringResource(R.string.settings_perf_high),
+                PERFORMANCE_MODE_LOW to stringResource(R.string.settings_perf_low)
+            ),
+            selectedOption = uiState.performanceMode,
+            onOptionSelected = { viewModel.updatePerformanceMode(it) },
+            focusColor = focusColor,
+            focusContent = focusContent
+        )
+    }
 }
 
 // =============================================================================
@@ -1073,40 +1328,12 @@ private fun AboutCategory(
 
     val editionText = when {
         uiState.isFamilyVipUser -> stringResource(R.string.settings_edition_vip)
-        uiState.hasPurchasedPro -> stringResource(R.string.settings_edition_lifetime)
-        uiState.isTrialActive -> stringResource(R.string.settings_edition_trial, uiState.trialDaysRemaining)
-        else -> stringResource(R.string.settings_edition_standard)
+        else -> stringResource(R.string.settings_edition_lifetime)
     }
     TvSettingRow(
         title = stringResource(R.string.settings_row_edition),
         value = editionText
     )
-
-    if (!uiState.hasPurchasedPro && !uiState.isFamilyVipUser) {
-        Row(
-            modifier = Modifier.padding(top = 4.dp, bottom = 8.dp)
-        ) {
-            Button(
-                onClick = onOpenProDialog,
-                colors = ButtonDefaults.colors(
-                    containerColor = Color(0xFFD97706),
-                    contentColor = Color.White,
-                    focusedContainerColor = focusColor,
-                    focusedContentColor = focusContent
-                )
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Rounded.Star, contentDescription = null, modifier = Modifier.size(15.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = if (uiState.isTrialActive) stringResource(R.string.settings_btn_get_lifetime) else stringResource(R.string.settings_btn_unlock_pro),
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-        }
-    }
 
     TvSettingRow(
         title = stringResource(R.string.settings_row_status),

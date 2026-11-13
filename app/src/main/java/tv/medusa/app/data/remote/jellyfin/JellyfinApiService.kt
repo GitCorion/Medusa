@@ -32,6 +32,16 @@ interface JellyfinApiService {
         @Query("Secret") secret: String
     ): JellyfinQuickConnectResult
 
+    /**
+     * Canjea el secreto de Quick Connect ya autorizado por el usuario por un token de
+     * acceso. `QuickConnect/Connect` nunca devuelve el token: solo marca `Authenticated`.
+     */
+    @POST("Users/AuthenticateWithQuickConnect")
+    suspend fun authenticateWithQuickConnect(
+        @Header("Authorization") authHeader: String = tv.medusa.app.data.repository.buildJellyfinAuthHeader(token = ""),
+        @Body request: JellyfinQuickConnectAuthRequest
+    ): JellyfinAuthResponse
+
     @GET("Users/Me")
     suspend fun getCurrentUser(
         @Header("Authorization") authHeader: String
@@ -258,4 +268,12 @@ interface JellyfinApiService {
         @Path("itemId") itemId: String,
         @Query("SegmentType") segmentType: String? = null // "Intro", "Outro", etc.
     ): JellyfinMediaSegmentsResponse
+
+    // ─── Theme Songs (Bandas sonoras / música de series y películas) ─────
+    @GET("Items/{itemId}/ThemeSongs")
+    suspend fun getThemeSongs(
+        @Header("Authorization") authHeader: String,
+        @Path("itemId") itemId: String,
+        @Query("InheritFromParent") inheritFromParent: Boolean = true
+    ): JellyfinItemsResponse
 }

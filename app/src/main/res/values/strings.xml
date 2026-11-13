@@ -86,7 +86,7 @@
     <string name="detail_loading">Cargando detalles...</string>
     <string name="detail_season_episode">Temporada %1$s • Episodio %2$s</string>
     <string name="detail_progress">PROGRESO: %1$d/%2$d</string>
-    <string name="detail_watch_trailer">Ver Tráiler</string>
+    <string name="detail_watch_trailer">Tráiler</string>
     <string name="detail_synopsis">Sinopsis</string>
     <string name="detail_no_description">Sin descripción disponible para este título.</string>
     <string name="detail_seasons">TEMPORADAS</string>
@@ -200,12 +200,15 @@
 
     <!-- Navegación lateral -->
     <string name="settings_title">AJUSTES</string>
-    <string name="settings_nav_jellyfin">Jellyfin</string>
-    <string name="settings_nav_trakt">Trakt.tv</string>
-    <string name="settings_nav_platforms">Plataformas</string>
-    <string name="settings_nav_appearance">Apariencia</string>
+    <string name="settings_nav_jellyfin">Servidor Jellyfin</string>
+    <string name="settings_nav_platforms">Plataformas y Cadenas</string>
+    <string name="settings_nav_library">Biblioteca y Trakt</string>
+    <string name="settings_nav_playback">Reproducción</string>
+    <string name="settings_nav_audio">Audio y Sonido</string>
+    <string name="settings_nav_subtitles">Subtítulos</string>
+    <string name="settings_nav_appearance">Interfaz y Pantalla</string>
     <string name="settings_nav_about">Acerca de</string>
-    <string name="settings_section_appearance_perf">Apariencia &amp; Rendimiento</string>
+    <string name="settings_section_appearance_perf">Interfaz y Pantalla</string>
 
     <!-- Jellyfin -->
     <string name="settings_section_server_session">SERVIDOR Y SESIÓN</string>
@@ -223,6 +226,13 @@
     <string name="settings_btn_check_connection">Comprobar conexión</string>
     <string name="settings_btn_logout">Cerrar sesión</string>
     <string name="settings_section_server_address">DIRECCIÓN DEL SERVIDOR</string>
+    <string name="settings_btn_discover_servers">Buscar servidores en la red</string>
+    <string name="settings_btn_searching_servers">Buscando servidores…</string>
+    <string name="settings_section_servers_found">SERVIDORES ENCONTRADOS</string>
+    <string name="settings_discovering_servers">Buscando servidores Jellyfin en la red local…</string>
+    <string name="settings_no_servers_found">No se encontró ningún servidor. Comprueba que estés en la misma red o introduce la URL a mano.</string>
+    <string name="settings_one_server_found">1 servidor encontrado. Selecciónalo para conectarte.</string>
+    <string name="settings_servers_found">%1$d servidores encontrados. Selecciona uno para conectarte.</string>
     <string name="settings_placeholder_enter_url">Introducir URL…</string>
     <string name="settings_btn_check_server">Comprobar servidor</string>
     <string name="settings_section_login_method">MÉTODO DE INICIO DE SESIÓN</string>
@@ -292,9 +302,68 @@
     <string name="settings_section_seasonal_audio">SONIDO DE EVENTOS ESPECIALES</string>
     <string name="settings_seasonal_audio_enabled">Activado</string>
     <string name="settings_seasonal_audio_disabled">Desactivado</string>
+    <string name="settings_section_theme_songs_audio">MÚSICA DE FONDO (BANDAS SONORAS)</string>
+    <string name="settings_theme_songs_audio_enabled">Activado</string>
+    <string name="settings_theme_songs_audio_disabled">Desactivado</string>
     <string name="settings_section_navigation_sound">SONIDOS DE NAVEGACIÓN (SISTEMA)</string>
     <string name="settings_navigation_sound_enabled">Activado</string>
     <string name="settings_navigation_sound_disabled">Desactivado</string>
+
+    <!-- 2. Reproducción -->
+    <string name="settings_section_playback_auto">REPRODUCCIÓN CONTINUA</string>
+    <string name="settings_playback_next_episode_title">Siguiente episodio automático</string>
+    <string name="settings_playback_next_episode_desc">Muestra la cuenta atrás e inicia el próximo capítulo al terminar el episodio actual.</string>
+    <string name="settings_playback_next_movie_title">Siguiente película de saga</string>
+    <string name="settings_playback_next_movie_desc">Sugiere o enlaza la siguiente entrega al finalizar los créditos de una película perteneciente a una saga.</string>
+    <string name="settings_section_video_display">PANTALLA Y FRECUENCIA</string>
+    <string name="settings_playback_afr_title">Ajuste de fotogramas (Auto Frame Rate)</string>
+    <string name="settings_playback_afr_desc">Sincroniza los hercios del televisor (24p, 50p, 60p) con la fuente para eliminar saltos de imagen.</string>
+
+    <!-- 3. Audio y Sonido -->
+    <string name="settings_section_audio_output">SALIDA DE AUDIO DIGITAL</string>
+    <string name="settings_audio_passthrough_title">Modo passthrough HDMI</string>
+    <string name="settings_audio_passthrough_desc">Envía el audio codificado directamente al receptor AV o barra de sonido.</string>
+    <string name="settings_section_audio_enhancements">MEJORAS DE AUDIO Y DIÁLOGOS</string>
+    <string name="settings_audio_night_mode_title">Modo nocturno (Rango dinámico)</string>
+    <string name="settings_audio_night_mode_desc">Atenúa picos sonoros bruscos y explosiones para ver contenido por la noche sin sobresaltos.</string>
+    <string name="settings_audio_night_off">Desactivado</string>
+    <string name="settings_audio_night_moderate">Moderado</string>
+    <string name="settings_audio_night_high">Máximo</string>
+    <string name="settings_audio_boost_title">Realce de ganancia en diálogos</string>
+    <string name="settings_audio_boost_desc">Aumenta el volumen de frecuencias de voz para diálogos tenues o difíciles de comprender.</string>
+    <string name="settings_audio_boost_none">Sin realce (0 dB)</string>
+    <string name="settings_audio_boost_5db">+5 dB</string>
+    <string name="settings_audio_boost_10db">+10 dB</string>
+    <string name="settings_audio_boost_15db">+15 dB</string>
+    <string name="settings_section_ambient_audio">SONIDOS Y MÚSICA AMBIENTAL</string>
+    <string name="settings_audio_theme_songs_desc">Reproduce la sintonía o música temática en la pantalla de detalle de series y películas.</string>
+    <string name="settings_audio_seasonal_desc">Efectos de sonido ambientales durante celebraciones de temporada dentro de la app.</string>
+    <string name="settings_audio_navigation_desc">Efecto auditivo al interactuar y moverse por la interfaz con el mando a distancia.</string>
+
+    <!-- 4. Subtítulos -->
+    <string name="settings_section_subtitles_style">ESTILO Y TAMAÑO DE TEXTO</string>
+    <string name="settings_subtitles_size_title">Tamaño de los subtítulos</string>
+    <string name="settings_subtitles_size_desc">Ajusta el tamaño óptimo de fuente para lectura cómoda a 3 metros de la pantalla.</string>
+    <string name="settings_subtitles_size_small">Pequeño</string>
+    <string name="settings_subtitles_size_normal">Normal</string>
+    <string name="settings_subtitles_size_large">Grande</string>
+    <string name="settings_subtitles_background_title">Fondo semitransparente oscuro</string>
+    <string name="settings_subtitles_background_desc">Coloca una pastilla oscura tras el texto para mantener el contraste sobre fondos muy luminosos.</string>
+    <string name="settings_subtitles_preview_title">VISTA PREVIA EN VIVO</string>
+    <string name="settings_subtitles_preview_sample">El invierno se acerca. — Casa Stark</string>
+
+    <!-- 5. Interfaz y Pantalla -->
+    <string name="settings_theme_desc">Elige entre la estética original Medusa Neón o el modo Monocromático para paneles OLED.</string>
+    <string name="settings_buttons_desc">Formato visual de los botones de acción (Reproducir, Trailer, Visto) en las fichas de detalle.</string>
+    <string name="settings_perf_desc">Controla las partículas y efectos de GPU. Elige ahorro si usas un stick HDMI o TV de baja potencia.</string>
+
+    <!-- 6. Biblioteca y Trakt -->
+    <string name="settings_section_library_view">VISUALIZACIÓN DE CONTENIDO</string>
+    <string name="settings_library_hide_watched_title">Ocultar contenido ya visto</string>
+    <string name="settings_library_hide_watched_desc">Omite películas y capítulos completados en los carruseles de descubrimiento e inicio.</string>
+    <string name="settings_section_library_database">BASE DE DATOS Y CACHÉ LOCAL</string>
+    <string name="settings_library_db_stats_title">Base de datos local (Room)</string>
+    <string name="settings_library_db_stats_desc">%1$d películas · %2$d series (%3$d capítulos) almacenados para navegación instantánea.</string>
 
     <!-- Acerca de -->
     <string name="settings_section_system">SISTEMA</string>
@@ -375,6 +444,8 @@
     <string name="settings_enter_jellyfin_url">Introduce la URL de tu servidor Jellyfin</string>
     <string name="settings_starting_quick_connect">Iniciando Quick Connect…</string>
     <string name="settings_qc_code">Código Quick Connect: %1$s</string>
+    <string name="settings_quick_connect_expired">El código Quick Connect ha caducado. Genera uno nuevo e inténtalo de nuevo.</string>
+    <string name="settings_quick_connect_token_error">Jellyfin autorizó el código, pero no se pudo obtener el token de acceso: %1$s</string>
     <string name="settings_authorized_as">Autorizado como %1$s. Sincronizando catálogo…</string>
     <string name="settings_sync_started">Sincronización iniciada en segundo plano (%1$d ítems en caché)</string>
     <string name="settings_enter_url_and_user">Escribe la URL del servidor y tu usuario</string>
@@ -472,7 +543,11 @@
     <string name="detail_play_first_episode">Reproducir S1:E1</string>
     <string name="detail_continue">Continuar</string>
     <string name="detail_in_favorites">En Favoritos</string>
-    <string name="detail_add_favorites">Añadir a Favoritos</string>
+    <string name="detail_add_favorites">Favoritos</string>
+    <string name="detail_mark_watched">Marcar visto</string>
+    <string name="detail_watched">Visto</string>
+    <string name="detail_go_to_series">Ir a la serie</string>
+    <string name="detail_go_to_series_name">Ir a %1$s</string>
 
     <!-- Reproductor -->
     <string name="player_playing">Reproduciendo</string>
@@ -602,9 +677,4 @@
     <string name="context_menu_view_details">Ver detalles</string>
     <string name="context_menu_go_to_series">Ir a la serie</string>
 
-    <!-- Modo Demo para Revisores -->
-    <string name="home_demo_button">Explorar Catálogo Demo</string>
-    <string name="settings_btn_demo_catalog">Explorar catálogo de demostración (Modo Revisor)</string>
-    <string name="demo_activating">Cargando catálogo de demostración...</string>
-    <string name="demo_activated_success">Conectado al catálogo de demostración local</string>
 </resources>

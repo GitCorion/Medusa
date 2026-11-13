@@ -45,6 +45,17 @@ data class JellyfinAuthResponse(
     val effectiveToken: String get() = accessToken ?: accessTokenLower ?: ""
 }
 
+/**
+ * Cuerpo de `POST Users/AuthenticateWithQuickConnect`.
+ *
+ * El endpoint `QuickConnect/Connect` solo informa de que el usuario ya autorizó el
+ * código; el token de acceso se obtiene canjeando el secreto aquí.
+ */
+@Serializable
+data class JellyfinQuickConnectAuthRequest(
+    @SerialName("Secret") val secret: String
+)
+
 @Serializable
 data class JellyfinQuickConnectResult(
     @SerialName("Code") val code: String? = null,

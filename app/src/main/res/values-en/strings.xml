@@ -86,7 +86,7 @@
     <string name="detail_loading">Loading details...</string>
     <string name="detail_season_episode">Season %1$s • Episode %2$s</string>
     <string name="detail_progress">PROGRESS: %1$d/%2$d</string>
-    <string name="detail_watch_trailer">Watch Trailer</string>
+    <string name="detail_watch_trailer">Trailer</string>
     <string name="detail_synopsis">Synopsis</string>
     <string name="detail_no_description">No description available for this title.</string>
     <string name="detail_seasons">SEASONS</string>
@@ -200,12 +200,15 @@
 
     <!-- Side navigation -->
     <string name="settings_title">SETTINGS</string>
-    <string name="settings_nav_jellyfin">Jellyfin</string>
-    <string name="settings_nav_trakt">Trakt.tv</string>
-    <string name="settings_nav_platforms">Platforms</string>
-    <string name="settings_nav_appearance">Appearance</string>
+    <string name="settings_nav_jellyfin">Jellyfin Server</string>
+    <string name="settings_nav_platforms">Streaming Networks</string>
+    <string name="settings_nav_library">Library &amp; Trakt</string>
+    <string name="settings_nav_playback">Playback</string>
+    <string name="settings_nav_audio">Audio &amp; Sound</string>
+    <string name="settings_nav_subtitles">Subtitles</string>
+    <string name="settings_nav_appearance">Interface &amp; Display</string>
     <string name="settings_nav_about">About</string>
-    <string name="settings_section_appearance_perf">Appearance &amp; Performance</string>
+    <string name="settings_section_appearance_perf">Interface &amp; Display</string>
 
     <!-- Jellyfin -->
     <string name="settings_section_server_session">SERVER AND SESSION</string>
@@ -223,6 +226,13 @@
     <string name="settings_btn_check_connection">Check connection</string>
     <string name="settings_btn_logout">Log out</string>
     <string name="settings_section_server_address">SERVER ADDRESS</string>
+    <string name="settings_btn_discover_servers">Search servers on network</string>
+    <string name="settings_btn_searching_servers">Searching servers…</string>
+    <string name="settings_section_servers_found">SERVERS FOUND</string>
+    <string name="settings_discovering_servers">Searching for Jellyfin servers on the local network…</string>
+    <string name="settings_no_servers_found">No servers found. Check that you are on the same network or enter the URL manually.</string>
+    <string name="settings_one_server_found">1 server found. Select it to connect.</string>
+    <string name="settings_servers_found">%1$d servers found. Select one to connect.</string>
     <string name="settings_placeholder_enter_url">Enter URL…</string>
     <string name="settings_btn_check_server">Check server</string>
     <string name="settings_section_login_method">SIGN-IN METHOD</string>
@@ -292,9 +302,68 @@
     <string name="settings_section_seasonal_audio">SEASONAL EVENT AUDIO</string>
     <string name="settings_seasonal_audio_enabled">Enabled</string>
     <string name="settings_seasonal_audio_disabled">Disabled</string>
+    <string name="settings_section_theme_songs_audio">THEME SONGS (BACKGROUND MUSIC)</string>
+    <string name="settings_theme_songs_audio_enabled">Enabled</string>
+    <string name="settings_theme_songs_audio_disabled">Disabled</string>
     <string name="settings_section_navigation_sound">SYSTEM NAVIGATION SOUNDS</string>
     <string name="settings_navigation_sound_enabled">Enabled</string>
     <string name="settings_navigation_sound_disabled">Disabled</string>
+
+    <!-- 2. Playback -->
+    <string name="settings_section_playback_auto">CONTINUOUS PLAYBACK</string>
+    <string name="settings_playback_next_episode_title">Auto-play next episode</string>
+    <string name="settings_playback_next_episode_desc">Show countdown and automatically start the next episode when current finishes.</string>
+    <string name="settings_playback_next_movie_title">Next movie in collection</string>
+    <string name="settings_playback_next_movie_desc">Suggest or link the next movie in a saga when ending credits start.</string>
+    <string name="settings_section_video_display">DISPLAY &amp; REFRESH RATE</string>
+    <string name="settings_playback_afr_title">Auto Frame Rate matching (AFR)</string>
+    <string name="settings_playback_afr_desc">Match TV refresh rate (24p, 50p, 60p) to video source to eliminate motion judder.</string>
+
+    <!-- 3. Audio & Sound -->
+    <string name="settings_section_audio_output">DIGITAL AUDIO OUTPUT</string>
+    <string name="settings_audio_passthrough_title">HDMI audio passthrough</string>
+    <string name="settings_audio_passthrough_desc">Send uncompressed or bitstream audio directly to your AV receiver or soundbar.</string>
+    <string name="settings_section_audio_enhancements">AUDIO &amp; DIALOGUE ENHANCEMENTS</string>
+    <string name="settings_audio_night_mode_title">Night mode (Dynamic range)</string>
+    <string name="settings_audio_night_mode_desc">Compress loud action and explosions for comfortable late-night viewing.</string>
+    <string name="settings_audio_night_off">Off</string>
+    <string name="settings_audio_night_moderate">Moderate</string>
+    <string name="settings_audio_night_high">High</string>
+    <string name="settings_audio_boost_title">Dialogue volume boost</string>
+    <string name="settings_audio_boost_desc">Boost dialogue frequencies in real time for clearer voices.</string>
+    <string name="settings_audio_boost_none">None (0 dB)</string>
+    <string name="settings_audio_boost_5db">+5 dB</string>
+    <string name="settings_audio_boost_10db">+10 dB</string>
+    <string name="settings_audio_boost_15db">+15 dB</string>
+    <string name="settings_section_ambient_audio">AMBIENT SOUNDS &amp; MUSIC</string>
+    <string name="settings_audio_theme_songs_desc">Play theme songs and soundtrack music on movie and TV show detail screens.</string>
+    <string name="settings_audio_seasonal_desc">Subtle atmospheric background sounds during seasonal app events.</string>
+    <string name="settings_audio_navigation_desc">Auditory feedback when navigating through the interface with the remote.</string>
+
+    <!-- 4. Subtitles -->
+    <string name="settings_section_subtitles_style">TEXT STYLE &amp; SIZE</string>
+    <string name="settings_subtitles_size_title">Subtitle size</string>
+    <string name="settings_subtitles_size_desc">Choose the optimal font size for comfortable 10-foot living room reading.</string>
+    <string name="settings_subtitles_size_small">Small</string>
+    <string name="settings_subtitles_size_normal">Normal</string>
+    <string name="settings_subtitles_size_large">Large</string>
+    <string name="settings_subtitles_background_title">Semi-transparent dark backdrop</string>
+    <string name="settings_subtitles_background_desc">Adds a contrasting dark plate behind text to improve readability over bright scenes.</string>
+    <string name="settings_subtitles_preview_title">LIVE PREVIEW</string>
+    <string name="settings_subtitles_preview_sample">Winter is coming. — House Stark</string>
+
+    <!-- 5. Interface & Display -->
+    <string name="settings_theme_desc">Choose between the original bioluminescent Medusa Neon or high-contrast Monochrome for OLED displays.</string>
+    <string name="settings_buttons_desc">Choose button presentation style (Play, Trailer, Watched) on media detail screens.</string>
+    <string name="settings_perf_desc">Control background particles and effects. Choose battery saver for low-power HDMI sticks.</string>
+
+    <!-- 6. Library & Trakt -->
+    <string name="settings_section_library_view">CONTENT PRESENTATION</string>
+    <string name="settings_library_hide_watched_title">Hide watched media</string>
+    <string name="settings_library_hide_watched_desc">Omit completed movies and episodes from discovery and home rows.</string>
+    <string name="settings_section_library_database">LOCAL DATABASE &amp; CACHE</string>
+    <string name="settings_library_db_stats_title">Local Room database</string>
+    <string name="settings_library_db_stats_desc">%1$d movies · %2$d series (%3$d episodes) cached for instant 0ms browsing.</string>
 
     <!-- About -->
     <string name="settings_section_system">SYSTEM</string>
@@ -375,6 +444,8 @@
     <string name="settings_enter_jellyfin_url">Enter your Jellyfin server URL</string>
     <string name="settings_starting_quick_connect">Starting Quick Connect…</string>
     <string name="settings_qc_code">Quick Connect code: %1$s</string>
+    <string name="settings_quick_connect_expired">The Quick Connect code has expired. Generate a new one and try again.</string>
+    <string name="settings_quick_connect_token_error">Jellyfin authorized the code, but the access token could not be retrieved: %1$s</string>
     <string name="settings_authorized_as">Authorized as %1$s. Syncing catalog…</string>
     <string name="settings_sync_started">Sync started in the background (%1$d items cached)</string>
     <string name="settings_enter_url_and_user">Enter the server URL and your username</string>
@@ -472,7 +543,11 @@
     <string name="detail_play_first_episode">Play S1:E1</string>
     <string name="detail_continue">Continue</string>
     <string name="detail_in_favorites">In Favorites</string>
-    <string name="detail_add_favorites">Add to Favorites</string>
+    <string name="detail_add_favorites">Favorites</string>
+    <string name="detail_mark_watched">Mark watched</string>
+    <string name="detail_watched">Watched</string>
+    <string name="detail_go_to_series">Go to series</string>
+    <string name="detail_go_to_series_name">Go to %1$s</string>
 
     <!-- Player -->
     <string name="player_playing">Now playing</string>
@@ -602,9 +677,4 @@
     <string name="context_menu_view_details">View details</string>
     <string name="context_menu_go_to_series">Go to series</string>
 
-    <!-- Demo Mode for Reviewers -->
-    <string name="home_demo_button">Explore Demo Catalog</string>
-    <string name="settings_btn_demo_catalog">Explore demo catalog (Reviewer mode)</string>
-    <string name="demo_activating">Loading demo catalog...</string>
-    <string name="demo_activated_success">Connected to local demo catalog</string>
 </resources>
