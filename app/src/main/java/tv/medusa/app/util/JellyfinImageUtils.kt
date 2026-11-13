@@ -136,7 +136,6 @@ object JellyfinImageUtils {
         maxWidth: Int = 400,
         quality: Int = 85
     ): String? {
-        if (itemId.startsWith("demo_")) return null
         if (baseUrl.isBlank() || itemId.isBlank()) return null
         val cleanBase = baseUrl.trimEnd('/')
         val params = mutableListOf<String>()

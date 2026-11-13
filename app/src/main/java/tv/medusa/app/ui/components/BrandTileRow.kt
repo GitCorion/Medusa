@@ -84,7 +84,7 @@ fun BrandTileRow(
             ) { platform ->
                 BrandCard(
                     brand = platform,
-                    isLocked = !isProUser,
+                    isLocked = false,
                     onClick = { onSelectBrand(platform.id) }
                 )
             }

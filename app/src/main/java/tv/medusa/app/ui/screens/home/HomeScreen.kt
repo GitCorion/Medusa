@@ -56,7 +56,6 @@ import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Dns
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Favorite
-import androidx.compose.material.icons.rounded.Movie
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Tune
@@ -273,27 +272,6 @@ fun HomeScreen(
                                     Text(text = stringResource(R.string.home_config_button), fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
                                 }
                             }
-
-                            Button(
-                                onClick = { viewModel.activateDemoMode() },
-                                modifier = Modifier.handleTouchClick { viewModel.activateDemoMode() },
-                                colors = ButtonDefaults.colors(
-                                    containerColor = Color(0x22FFFFFF),
-                                    contentColor = Color.White,
-                                    focusedContainerColor = focusColor,
-                                    focusedContentColor = focusContent
-                                )
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.Movie,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(text = stringResource(R.string.home_demo_button), fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
-                                }
-                            }
                         }
                     }
                 }
@@ -446,11 +424,7 @@ fun HomeScreen(
                                 },
                                 onExploreSeasonal = {
                                     if (activeSeasonalEvent != null) {
-                                        if (isProUser) {
-                                            onOpenSeasonal(activeSeasonalEvent.id)
-                                        } else {
-                                            showProDialog = true
-                                        }
+                                        onOpenSeasonal(activeSeasonalEvent.id)
                                     }
                                 }
                             )
@@ -476,15 +450,11 @@ fun HomeScreen(
                     item(key = "home_brand_row", contentType = "brand_row") {
                         BrandTileRow(
                             onSelectBrand = { brandId ->
-                                if (isProUser) {
-                                    onOpenBrand(brandId)
-                                } else {
-                                    showProDialog = true
-                                }
+                                onOpenBrand(brandId)
                             },
                             visiblePlatforms = selectedPlatforms.takeIf { it.isNotEmpty() },
                             watchRegion = watchRegion,
-                            isProUser = isProUser,
+                            isProUser = true,
                             modifier = Modifier.onFocusChanged { focusState ->
                                 if (focusState.hasFocus) {
                                     viewModel.setFocusedItem(null)

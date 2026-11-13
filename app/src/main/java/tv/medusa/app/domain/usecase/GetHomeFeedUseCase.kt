@@ -580,7 +580,7 @@ class GetHomeFeedUseCase(
             // JOB 3: PLATAFORMAS OFICIALES DE STREAMING (CONCURRENTE CON STREAMING)
             // ---------------------------------------------------------------------
             launch {
-                if (effectiveTmdbKey.isNotBlank() && prefs.isProUser) {
+                if (effectiveTmdbKey.isNotBlank()) {
                     val selected = prefs.selectedPlatforms
                     val activeProviders = (if (selected.isEmpty()) {
                         SUPPORTED_PLATFORMS

@@ -169,32 +169,20 @@ class MediaRepository(
     suspend fun getRecentlyPlayed(serverUrl: String, userId: String, token: String): Result<List<JellyfinMediaEntity>> =
         jellyfinRemote.getRecentlyPlayed(serverUrl, userId, token)
 
-    suspend fun getItemDetail(serverUrl: String, userId: String, token: String, itemId: String): Result<JellyfinMediaEntity> {
-        if (tv.medusa.app.data.demo.DemoCatalogManager.isDemoServer(serverUrl) || tv.medusa.app.data.demo.DemoCatalogManager.isDemoMediaId(itemId)) {
-            val local = jellyfinDao.getItemById(itemId)
-            return if (local != null) Result.success(local) else Result.failure(Exception("Item no encontrado"))
-        }
-        return jellyfinRemote.getItemDetail(serverUrl, userId, token, itemId)
-    }
+    suspend fun getItemDetail(serverUrl: String, userId: String, token: String, itemId: String): Result<JellyfinMediaEntity> =
+        jellyfinRemote.getItemDetail(serverUrl, userId, token, itemId)
+
+    suspend fun getThemeSongUrl(serverUrl: String, token: String, itemId: String, inheritFromParent: Boolean = true): String? =
+        jellyfinRemote.getThemeSongUrl(serverUrl, token, itemId, inheritFromParent)
 
     suspend fun getFavorites(serverUrl: String, userId: String, token: String): Result<List<JellyfinMediaEntity>> =
         jellyfinRemote.getFavorites(serverUrl, userId, token)
 
-    suspend fun toggleFavorite(serverUrl: String, userId: String, token: String, itemId: String, makeFavorite: Boolean): Result<Boolean> {
-        if (tv.medusa.app.data.demo.DemoCatalogManager.isDemoServer(serverUrl) || tv.medusa.app.data.demo.DemoCatalogManager.isDemoMediaId(itemId)) {
-            jellyfinDao.updateFavoriteStatus(itemId, makeFavorite)
-            return Result.success(makeFavorite)
-        }
-        return jellyfinRemote.toggleFavorite(serverUrl, userId, token, itemId, makeFavorite)
-    }
+    suspend fun toggleFavorite(serverUrl: String, userId: String, token: String, itemId: String, makeFavorite: Boolean): Result<Boolean> =
+        jellyfinRemote.toggleFavorite(serverUrl, userId, token, itemId, makeFavorite)
 
-    suspend fun togglePlayed(serverUrl: String, userId: String, token: String, itemId: String, makePlayed: Boolean): Result<Boolean> {
-        if (tv.medusa.app.data.demo.DemoCatalogManager.isDemoServer(serverUrl) || tv.medusa.app.data.demo.DemoCatalogManager.isDemoMediaId(itemId)) {
-            jellyfinDao.updatePlayedStatus(itemId, makePlayed)
-            return Result.success(makePlayed)
-        }
-        return jellyfinRemote.togglePlayed(serverUrl, userId, token, itemId, makePlayed)
-    }
+    suspend fun togglePlayed(serverUrl: String, userId: String, token: String, itemId: String, makePlayed: Boolean): Result<Boolean> =
+        jellyfinRemote.togglePlayed(serverUrl, userId, token, itemId, makePlayed)
 
     suspend fun clearPlaybackPosition(serverUrl: String, userId: String, token: String, itemId: String): Result<Unit> =
         jellyfinRemote.clearPlaybackPosition(serverUrl, userId, token, itemId)
@@ -205,19 +193,11 @@ class MediaRepository(
     suspend fun getTopRatedSeriesServer(serverUrl: String, userId: String, token: String, limit: Int = 20): List<JellyfinMediaEntity> =
         jellyfinRemote.getTopRatedSeriesServer(serverUrl, userId, token, limit)
 
-    suspend fun getSeasons(serverUrl: String, userId: String, token: String, seriesId: String): List<SeasonItem> {
-        if (tv.medusa.app.data.demo.DemoCatalogManager.isDemoServer(serverUrl) || tv.medusa.app.data.demo.DemoCatalogManager.isDemoMediaId(seriesId)) {
-            return tv.medusa.app.data.demo.DemoCatalogManager.getDemoSeasons(seriesId)
-        }
-        return jellyfinRemote.getSeasons(serverUrl, userId, token, seriesId)
-    }
+    suspend fun getSeasons(serverUrl: String, userId: String, token: String, seriesId: String): List<SeasonItem> =
+        jellyfinRemote.getSeasons(serverUrl, userId, token, seriesId)
 
-    suspend fun getSeriesEpisodeStats(serverUrl: String, userId: String, token: String, seriesId: String): SeriesEpisodeStats? {
-        if (tv.medusa.app.data.demo.DemoCatalogManager.isDemoServer(serverUrl) || tv.medusa.app.data.demo.DemoCatalogManager.isDemoMediaId(seriesId)) {
-            return SeriesEpisodeStats(totalUniqueEpisodes = 3, playedUniqueEpisodes = 0, unplayedUniqueEpisodes = 3)
-        }
-        return jellyfinRemote.getSeriesEpisodeStats(serverUrl, userId, token, seriesId)
-    }
+    suspend fun getSeriesEpisodeStats(serverUrl: String, userId: String, token: String, seriesId: String): SeriesEpisodeStats? =
+        jellyfinRemote.getSeriesEpisodeStats(serverUrl, userId, token, seriesId)
 
     suspend fun getCollectionItems(serverUrl: String, userId: String, token: String, collectionId: String): List<JellyfinMediaEntity> =
         jellyfinRemote.getCollectionItems(serverUrl, userId, token, collectionId)
@@ -228,19 +208,11 @@ class MediaRepository(
         token: String,
         seriesId: String,
         seasonId: String? = null
-    ): List<EpisodeItem> {
-        if (tv.medusa.app.data.demo.DemoCatalogManager.isDemoServer(serverUrl) || tv.medusa.app.data.demo.DemoCatalogManager.isDemoMediaId(seriesId)) {
-            return tv.medusa.app.data.demo.DemoCatalogManager.getDemoEpisodes(seriesId, seasonId ?: "")
-        }
-        return jellyfinRemote.getEpisodes(serverUrl, userId, token, seriesId, seasonId)
-    }
+    ): List<EpisodeItem> =
+        jellyfinRemote.getEpisodes(serverUrl, userId, token, seriesId, seasonId)
 
-    suspend fun getNextUpEpisode(serverUrl: String, userId: String, token: String, seriesId: String): EpisodeItem? {
-        if (tv.medusa.app.data.demo.DemoCatalogManager.isDemoServer(serverUrl) || tv.medusa.app.data.demo.DemoCatalogManager.isDemoMediaId(seriesId)) {
-            return tv.medusa.app.data.demo.DemoCatalogManager.getDemoEpisodes(seriesId, "").firstOrNull()
-        }
-        return jellyfinRemote.getNextUpEpisode(serverUrl, userId, token, seriesId)
-    }
+    suspend fun getNextUpEpisode(serverUrl: String, userId: String, token: String, seriesId: String): EpisodeItem? =
+        jellyfinRemote.getNextUpEpisode(serverUrl, userId, token, seriesId)
 
     // =========================================================================
     // TMDB
