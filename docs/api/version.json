@@ -1,12 +1,12 @@
 {
-  "versionCode": 1000145,
-  "versionName": "2.2.98-beta",
+  "versionCode": 1000146,
+  "versionName": "2.2.99-beta",
   "minSupportedVersionCode": 1000105,
   "forceUpdate": true,
   "killSwitch": false,
-  "releaseNotes": "Quick Connect: si el servidor deja de responder, la app corta a los ~15 s con el error real en vez de esperar 9 minutos. El servidor elegido con 'Buscar servidores en la red' se guarda al validarlo, aunque todavía no hayas iniciado sesión.",
+  "releaseNotes": "Salto de intros y créditos mejorado: soporte Jellyfin MediaSegments e Intro Skipper plugin con fallback automático, eliminación de parpadeo tras saltar, botón Atrás para descartar aviso sin salir, y respeto de la opción 'Ver créditos' sin forzar la tarjeta de siguiente episodio.",
   "apkUrl": "https://medusa-fd388.web.app/Medusa.apk",
-  "apkSha256": "47920a3d27ffb716b2ba79bc21de8649b1c82029a1579b5e4a2d5d12bc6188b8",
+  "apkSha256": "d709dc0d46c74405445ef6d936e0b7b3cef1092a7f70826e8feec2ae7e444eac",
   "signatures": [
     "26bccb39ed122a69ecf7a8d0b50deeabeb15bc1a4b2a8b77941b47a96fdd3fea",
     "78a588afcc90d8ea59e008c9cbd1e8bbed3b2831518184d5a9935948b9d245ac"

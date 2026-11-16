@@ -40,10 +40,12 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -116,6 +118,12 @@ class PlayerViewModel @Inject constructor(
     val subtitleBackground: StateFlow<Boolean> = userPreferencesRepository.subtitleBackground
     val autoFrameRateEnabled: StateFlow<Boolean> = userPreferencesRepository.autoFrameRateEnabled
     val audioPassthroughMode: StateFlow<Int> = userPreferencesRepository.audioPassthroughMode
+    val autoPlayNextEpisodeEnabled: StateFlow<Boolean> = userPreferencesRepository.userPreferences
+        .map { it.autoPlayNextEpisodeEnabled }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+    val autoPlayNextMovieEnabled: StateFlow<Boolean> = userPreferencesRepository.userPreferences
+        .map { it.autoPlayNextMovieEnabled }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
 
     fun setAudioPassthroughMode(mode: Int) {
         viewModelScope.launch {
@@ -1048,20 +1056,20 @@ class PlayerViewModel @Inject constructor(
             _recommendedList.value = emptyList()
 
             // 1️⃣ Try native MediaSegments (Jellyfin 10.10+) — covers Intro, Outro, Recap, etc.
-            var nativeSegmentsLoaded = false
             runCatching {
                 val segmentsResponse = api.getMediaSegments(
                     authHeader = jellyfinAuthHeader,
                     itemId = itemId
                 )
                 if (segmentsResponse.items.isNotEmpty()) {
-                    nativeSegmentsLoaded = true
                     for (seg in segmentsResponse.items) {
                         // MediaSegments usa ticks; los convertimos a ms directamente
                         val startMs = seg.startPositionTicks / 10_000L
                         val endMs   = seg.endPositionTicks   / 10_000L
-                        when (seg.type.lowercase()) {
-                            "intro" -> {
+                        if (endMs <= startMs || startMs < 0) continue
+
+                        when (seg.type.trim().lowercase()) {
+                            "intro", "opening" -> {
                                 // Para intro nativo: showAt=start, hideAt=end, skipTo=end
                                 _introMarker.value = SkipMarker(
                                     showAtMs = startMs,
@@ -1070,7 +1078,7 @@ class PlayerViewModel @Inject constructor(
                                 )
                                 Log.i("PlayerViewModel", "MediaSegments Intro: ${startMs}ms → ${endMs}ms")
                             }
-                            "outro", "credits" -> {
+                            "outro", "credits", "credit", "ending" -> {
                                 // Para outro: showAt=start (aquí aparece el card), hideAt=end, skipTo=end
                                 _creditsMarker.value = SkipMarker(
                                     showAtMs = startMs,
@@ -1087,17 +1095,21 @@ class PlayerViewModel @Inject constructor(
                 Log.d("PlayerViewModel", "MediaSegments API not available (${e.message}), trying Intro Skipper plugin…")
             }
 
-            // 2️⃣ Fallback: Intro Skipper plugin — usa exactamente los campos que el plugin devuelve
-            if (!nativeSegmentsLoaded) {
+            // 2️⃣ Fallback: Intro Skipper plugin — si todavía no tenemos marcador de intro, consultar plugin
+            if (_introMarker.value == null) {
                 var introLoaded = false
 
                 fun applyIntroSkipperResult(ts: JellyfinIntroTimestamps) {
                     if (!ts.valid || ts.introEnd <= ts.introStart) return
-                    // El plugin especifica exactamente cuándo mostrar y ocultar el botón
+                    val showPrompt = (ts.showSkipPromptAt?.takeIf { it > 0 } ?: ts.introStart).times(1000).toLong()
+                    val hidePrompt = (ts.hideSkipPromptAt?.takeIf { it > showPrompt / 1000.0 } ?: ts.introEnd).times(1000).toLong()
+                    val skipTarget = ts.introEnd.times(1000).toLong()
+                    if (skipTarget <= showPrompt) return
+
                     _introMarker.value = SkipMarker(
-                        showAtMs = (ts.showSkipPromptAt ?: ts.introStart).times(1000).toLong(),
-                        hideAtMs = (ts.hideSkipPromptAt ?: ts.introEnd).times(1000).toLong(),
-                        skipToMs = ts.introEnd.times(1000).toLong()
+                        showAtMs = showPrompt,
+                        hideAtMs = hidePrompt,
+                        skipToMs = skipTarget
                     )
                 }
 

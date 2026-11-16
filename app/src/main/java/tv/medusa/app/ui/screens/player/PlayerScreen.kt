@@ -455,6 +455,8 @@ private fun PlayerContent(
     val subtitleSize by viewModel.subtitleSize.collectAsStateWithLifecycle()
     val subtitleBackground by viewModel.subtitleBackground.collectAsStateWithLifecycle()
     val autoFrameRateEnabled by viewModel.autoFrameRateEnabled.collectAsStateWithLifecycle()
+    val autoPlayNextEpisodeEnabled by viewModel.autoPlayNextEpisodeEnabled.collectAsStateWithLifecycle()
+    val autoPlayNextMovieEnabled by viewModel.autoPlayNextMovieEnabled.collectAsStateWithLifecycle()
     val fatalPlaybackError by viewModel.fatalPlaybackError.collectAsStateWithLifecycle()
 
     DisposableEffect(Unit) {
@@ -482,6 +484,8 @@ private fun PlayerContent(
     // Intro / Credits skip banner visibility
     var showSkipIntroBanner by remember { mutableStateOf(false) }
     var showSkipCreditsBanner by remember { mutableStateOf(false) }
+    var introSkippedOrDismissed by remember(introMarker) { mutableStateOf(false) }
+    var creditsSkippedOrDismissed by remember(creditsMarker) { mutableStateOf(false) }
 
     // Next-episode / movie overlay & auto exit state
     var showNextEpisodeOverlay by remember { mutableStateOf(false) }
@@ -1183,10 +1187,18 @@ private fun PlayerContent(
         } else if (activeModalTab != PlayerModalTab.NONE) {
             activeModalTab = PlayerModalTab.NONE
         } else if (showNextEpisodeOverlay) {
+            creditsSkippedOrDismissed = true
             showNextEpisodeOverlay = false
             if (playbackEnded) {
                 exitPlayer()
+            } else {
+                nextEpisodeCountdown = -1
             }
+        } else if (showSkipIntroBanner || showSkipCreditsBanner) {
+            introSkippedOrDismissed = true
+            creditsSkippedOrDismissed = true
+            showSkipIntroBanner = false
+            showSkipCreditsBanner = false
         } else if (isScrubbing) {
             isScrubbing = false
             scrubDeltaMs = 0L
@@ -1334,8 +1346,11 @@ private fun PlayerContent(
                 delay(1000L)
             }
             if (isActive && showNextEpisodeOverlay && !nextEpisodeTriggered) {
-                nextEpisodeCountdown = 0
-                playNext(next)
+                val allowAutoPlay = if (next.isMovie) autoPlayNextMovieEnabled else autoPlayNextEpisodeEnabled
+                if (allowAutoPlay) {
+                    nextEpisodeCountdown = 0
+                    playNext(next)
+                }
             } else if (isActive && !nextEpisodeTriggered) {
                 // Si la sugerencia se canceló/descartó al finalizar -> auto-salir
                 latestOnBack()
@@ -1364,7 +1379,10 @@ private fun PlayerContent(
             return@LaunchedEffect
         }
         snapshotFlow { currentPosition }.collect { pos ->
-            val inWindow = pos in marker.showAtMs..marker.hideAtMs
+            if (pos < marker.showAtMs) {
+                introSkippedOrDismissed = false
+            }
+            val inWindow = !introSkippedOrDismissed && pos >= marker.showAtMs && pos < marker.hideAtMs
             if (inWindow != showSkipIntroBanner) {
                 showSkipIntroBanner = inWindow
             }
@@ -1378,7 +1396,10 @@ private fun PlayerContent(
             return@LaunchedEffect
         }
         snapshotFlow { currentPosition }.collect { pos ->
-            val inWindow = pos in marker.showAtMs..marker.hideAtMs
+            if (pos < marker.showAtMs) {
+                creditsSkippedOrDismissed = false
+            }
+            val inWindow = !creditsSkippedOrDismissed && pos >= marker.showAtMs && pos < marker.hideAtMs
             if (nextEpisode == null && inWindow != showSkipCreditsBanner) {
                 showSkipCreditsBanner = inWindow
             }
@@ -1397,26 +1418,37 @@ private fun PlayerContent(
         if (marker != null) {
             snapshotFlow { currentPosition }.collect { pos ->
                 if (playbackEnded || nextEpisodeTriggered) return@collect
-                val inRange = pos in marker.showAtMs..marker.hideAtMs
-                if (inRange) {
-                    nextEpisodeCountdown = ((marker.hideAtMs - pos) / 1000L).toInt().coerceAtLeast(0)
-                    if (!showNextEpisodeOverlay) showNextEpisodeOverlay = true
-                } else if (pos > marker.hideAtMs) {
-                    if (showNextEpisodeOverlay) {
-                        playNext(next)
+                if (pos < marker.showAtMs) {
+                    creditsSkippedOrDismissed = false
+                }
+                if (!creditsSkippedOrDismissed) {
+                    val inRange = pos >= marker.showAtMs && pos < marker.hideAtMs
+                    if (inRange) {
+                        nextEpisodeCountdown = ((marker.hideAtMs - pos) / 1000L).toInt().coerceAtLeast(0)
+                        if (!showNextEpisodeOverlay) showNextEpisodeOverlay = true
+                    } else if (pos >= marker.hideAtMs) {
+                        if (showNextEpisodeOverlay) {
+                            val allowAutoPlay = if (next.isMovie) autoPlayNextMovieEnabled else autoPlayNextEpisodeEnabled
+                            if (allowAutoPlay) {
+                                playNext(next)
+                            }
+                        }
+                    } else {
+                        if (showNextEpisodeOverlay && !playbackEnded) showNextEpisodeOverlay = false
                     }
-                } else {
-                    if (showNextEpisodeOverlay && !playbackEnded) showNextEpisodeOverlay = false
                 }
             }
         }
     }
 
-    // Cuando el countdown llega a 0 (caso A: créditos terminaron), lanzar siguiente episodio/película
+    // Cuando el countdown llega a 0 (caso A: créditos terminaron), lanzar siguiente episodio/película si está habilitado
     LaunchedEffect(nextEpisodeCountdown) {
         val next = nextEpisode
         if (nextEpisodeCountdown == 0 && showNextEpisodeOverlay && next != null) {
-            playNext(next)
+            val allowAutoPlay = if (next.isMovie) autoPlayNextMovieEnabled else autoPlayNextEpisodeEnabled
+            if (allowAutoPlay) {
+                playNext(next)
+            }
         }
     }
 
@@ -2241,8 +2273,9 @@ private fun PlayerContent(
                 onSkip = {
                     // skipToMs = IntroEnd del plugin, el campo exacto para saltar
                     val skipTo = introMarker?.skipToMs ?: return@SkipIntroBanner
-                    performSeek(skipTo)
+                    introSkippedOrDismissed = true
                     showSkipIntroBanner = false
+                    performSeek(skipTo)
                     notifyInteraction()
                 }
             )
@@ -2265,8 +2298,9 @@ private fun PlayerContent(
                 onSkip = {
                     // skipToMs = EndPositionTicks del segmento Outro
                     val skipTo = creditsMarker?.skipToMs ?: return@SkipIntroBanner
-                    performSeek(skipTo)
+                    creditsSkippedOrDismissed = true
                     showSkipCreditsBanner = false
+                    performSeek(skipTo)
                     notifyInteraction()
                 }
             )
@@ -2318,6 +2352,7 @@ private fun PlayerContent(
                         playNext(targetItem)
                     },
                     onDismiss = {
+                        creditsSkippedOrDismissed = true
                         showNextEpisodeOverlay = false
                         if (playbackEnded) {
                             latestOnBack()
