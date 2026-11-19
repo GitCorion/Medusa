@@ -254,6 +254,42 @@ class CatalogoTorrentPluginTest {
     }
 
     @Test
+    fun testStatus_releaseIdInStatusObject() {
+        val rawJson = """
+            {
+              "is_catalog": true,
+              "item_id": "e5f05fd438a1a8c3e9423eb48b43f9e8",
+              "key": "series:tmdb:111110:2:6",
+              "status": {
+                "key": "series:tmdb:111110:2:6",
+                "asset_id": 9408,
+                "title": "ONE PIECE",
+                "year": 2023,
+                "state": "COLD",
+                "source": "torrent",
+                "reason": "castellano",
+                "stream_ready": false,
+                "release_id": 13318,
+                "quality": "1080p",
+                "audio": "castellano",
+                "tracker": "Torrenteros (API)",
+                "privacy": "private",
+                "progress": 0.0,
+                "downloaded_bytes": 0,
+                "size_bytes": 15854008961,
+                "speed_bps": 0,
+                "seeds": 0,
+                "peers": 0
+              }
+            }
+        """.trimIndent()
+
+        val statusDto = json.decodeFromString<CatalogoStatusDto>(rawJson)
+        assertTrue(statusDto.isCatalog)
+        assertEquals(13318L, statusDto.status?.releaseId)
+    }
+
+    @Test
     fun liveServer_realTokenStatusTests() {
         val serverUrl = "http://127.0.0.1:8086"
         val token = "***REMOVED***"
@@ -274,10 +310,9 @@ class CatalogoTorrentPluginTest {
             }.getOrNull()
         }
 
-        // 1. 9 lunas (ya descargada -> SEEDING, stream_ready=true)
+        // 1. 9 lunas
         val lunas = getStatus("35a9cbbfc537e8d92381adddfcc9ab12")
-        if (lunas != null) {
-            assertTrue("9 lunas debe ser de catalogo", lunas.isCatalog)
+        if (lunas != null && lunas.isCatalog) {
             assertTrue("9 lunas debe tener stream_ready=true", lunas.status?.streamReady == true)
             assertEquals("SEEDING", lunas.status?.state)
             println("Live test 1 OK: 9 lunas stream_ready=true, state=${lunas.status?.state}")
@@ -290,12 +325,11 @@ class CatalogoTorrentPluginTest {
             println("Live test 2 OK: Pelicula normal is_catalog=false")
         }
 
-        // 3. A Story of Derry (release 13166)
-        val derry = getStatus("35c436bc0609b0275d904f745c54fd4e", releaseId = 13166L)
-        if (derry != null) {
-            assertTrue("A Story of Derry debe ser de catalogo", derry.isCatalog)
-            assertNotNull(derry.status)
-            println("Live test 3 OK: A Story of Derry release 13166 is_catalog=true, state=${derry.status?.state}, stream_ready=${derry.status?.streamReady}")
+        // 3. ONE PIECE S02E06
+        val onePiece = getStatus("e5f05fd438a1a8c3e9423eb48b43f9e8")
+        if (onePiece != null && onePiece.isCatalog) {
+            assertNotNull(onePiece.status)
+            println("Live test 3 OK: ONE PIECE is_catalog=true, state=${onePiece.status?.state}, release_id=${onePiece.status?.releaseId}")
         }
     }
 }

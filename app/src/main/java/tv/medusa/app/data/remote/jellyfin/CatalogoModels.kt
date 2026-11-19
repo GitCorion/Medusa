@@ -27,6 +27,7 @@ data class CatalogoTorrentStatusDto(
     @SerialName("seeds") val seeds: Int? = null,
     @SerialName("peers") val peers: Int? = null,
     @SerialName("stream_ready") val streamReady: Boolean = false,
+    @SerialName("release_id") val releaseId: Long? = null,
     @SerialName("quality") val quality: String? = null,
     @SerialName("audio") val audio: String? = null,
     @SerialName("tracker") val tracker: String? = null,

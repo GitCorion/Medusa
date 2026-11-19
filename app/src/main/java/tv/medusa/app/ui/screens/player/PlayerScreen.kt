@@ -19,6 +19,7 @@ import android.content.ContextWrapper
 import android.content.Intent
 import androidx.media3.session.MediaSession
 import tv.medusa.app.MainActivity
+import tv.medusa.app.util.player.SeekableExtractorsFactory
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
 import android.net.Uri
@@ -653,7 +654,12 @@ private fun PlayerContent(
             }
         }
 
-        val mediaSourceFactory = DefaultMediaSourceFactory(resolvingDataSourceFactory)
+        val effectiveAuth = defaultHeaders["Authorization"] ?: defaultHeaders["X-Emby-Authorization"]
+        val extractorsFactory = SeekableExtractorsFactory(
+            fallbackDurationMs = info.durationMs,
+            authHeader = effectiveAuth
+        )
+        val mediaSourceFactory = DefaultMediaSourceFactory(resolvingDataSourceFactory, extractorsFactory)
 
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(
@@ -880,7 +886,7 @@ private fun PlayerContent(
                             prepare()
                             playWhenReady = true
                         } else {
-                            if (!isVideoOrCodecError) {
+                            if (!isVideoOrCodecError && !info.isStrm) {
                                 Log.w("PlayerScreen", "Todos los candidatos directos fallaron. Último recurso: renegociar transcodificación en Jellyfin.")
                                 chosenStartPositionMs = currentPosition.coerceAtLeast(0L)
                                 viewModel.retryWithTranscoding(forceFullTranscode = true, resumePositionMs = chosenStartPositionMs)
@@ -1043,10 +1049,11 @@ private fun PlayerContent(
         val dur = exoPlayer.duration.takeIf { it > 0 } ?: duration.takeIf { it > 0 } ?: info.durationMs.coerceAtLeast(0L)
         val target = if (dur > 0) targetMs.coerceIn(0L, dur) else targetMs.coerceAtLeast(0L)
 
-        // Seek nativo. Con el candidato static=true el servidor responde 206 + Accept-Ranges
-        // y ExoPlayer puede reposicionarse sin reiniciar la descarga desde el byte 0.
+        // Seek nativo con HTTP Range (206) contra el servidor Jellyfin
+        Log.i("PlayerScreen", "performSeek target=${target}ms (duration=${dur}ms, isSeekable=${exoPlayer.isCurrentMediaItemSeekable})")
         if (exoPlayer.playbackState != Player.STATE_IDLE && !exoPlayer.isCurrentMediaItemSeekable) {
-            Log.w("PlayerScreen", "Seek requested on non-seekable media at ${target}ms; the current candidate does not support HTTP Range")
+            Log.w("PlayerScreen", "Seek requested on media reported unseekable by container; forcing position at ${target}ms")
+            chosenStartPositionMs = target
         }
         exoPlayer.seekTo(target)
         currentPosition = target
@@ -1134,10 +1141,10 @@ private fun PlayerContent(
         isScrubbing = true
     }
 
-    // Debounce del seek: ejecuta el salto real en ExoPlayer 650 ms después de que el usuario deja de pulsar
+    // Debounce del seek: ejecuta el salto real en ExoPlayer 400 ms después de que el usuario deja de pulsar
     LaunchedEffect(scrubTargetPosition, isScrubbing, lastScrubKeystrokeTime) {
         if (isScrubbing) {
-            delay(650L)
+            delay(400L)
             if (isScrubbing) {
                 performSeek(scrubTargetPosition)
             }
@@ -1483,12 +1490,16 @@ private fun PlayerContent(
                 if (keyEvent.type != KeyEventType.KeyDown) return@onKeyEvent false
 
                 when (keyEvent.key) {
-                    Key.MediaRewind -> {
-                        seekRelative(-10_000L)
+                    Key.MediaRewind, Key.MediaStepBackward, Key.MediaSkipBackward -> {
+                        val cur = if (isScrubbing) scrubTargetPosition else currentPosition
+                        val target = (cur - 10_000L).coerceAtLeast(0L)
+                        performSeek(target)
                         true
                     }
-                    Key.MediaFastForward -> {
-                        seekRelative(+10_000L)
+                    Key.MediaFastForward, Key.MediaStepForward, Key.MediaSkipForward -> {
+                        val cur = if (isScrubbing) scrubTargetPosition else currentPosition
+                        val target = cur + 10_000L
+                        performSeek(target)
                         true
                     }
                     Key.MediaPlayPause -> {
@@ -2001,7 +2012,8 @@ private fun PlayerContent(
                                 // 1. Rewind 10s (Retroceso)
                                 TvCircularIconButton(
                                     onClick = {
-                                        seekRelative(-10_000L)
+                                        val cur = if (isScrubbing) scrubTargetPosition else currentPosition
+                                        performSeek((cur - 10_000L).coerceAtLeast(0L))
                                     },
                                     icon = Icons.Default.FastRewind,
                                     contentDescription = stringResource(R.string.player_rewind_10),
@@ -2051,7 +2063,8 @@ private fun PlayerContent(
                                 // 3. Fast Forward 10s (Avance)
                                 TvCircularIconButton(
                                     onClick = {
-                                        seekRelative(+10_000L)
+                                        val cur = if (isScrubbing) scrubTargetPosition else currentPosition
+                                        performSeek(cur + 10_000L)
                                     },
                                     icon = Icons.Default.FastForward,
                                     contentDescription = stringResource(R.string.player_forward_10),

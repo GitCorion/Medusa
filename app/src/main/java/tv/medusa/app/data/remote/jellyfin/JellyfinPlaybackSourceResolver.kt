@@ -67,20 +67,27 @@ internal object JellyfinPlaybackSourceResolver {
         }
 
         if (isStrm) {
-            // 1. Proxy del servidor: resuelve el .strm (Docker/rclone/LAN) y permite seek.
+            // 1. Proxy del servidor: resuelve el .strm (Docker/rclone/LAN) con HTTP 206 y soporte de Range.
             if (mediaSourceId.isNotBlank()) {
                 add("$baseUrl/Videos/$playableId/stream?static=true&MediaSourceId=$mediaSourceId")
-                add("$baseUrl/Videos/$playableId/stream?MediaSourceId=$mediaSourceId")
+                if (container.isNotBlank() && container != "strm") {
+                    add("$baseUrl/Videos/$playableId/stream.$container?static=true&MediaSourceId=$mediaSourceId")
+                }
             }
 
-            // 2. URLs que entrega Jellyfin.
+            // 2. URLs que entrega Jellyfin (DirectStreamUrl estático oficial primero).
             add(mediaSource.directStreamUrl)
-            add(mediaSource.transcodingUrl)
 
-            // 3. Versiones alternativas mediante el mismo proxy.
+            // 3. Versiones alternativas mediante el mismo proxy estático.
             alternativeMediaSources
                 .filter { it.id.isNotBlank() && it.id != mediaSourceId }
                 .forEach { add("$baseUrl/Videos/$playableId/stream?static=true&MediaSourceId=${it.id}") }
+
+            // 4. Remux y transcode como último recurso.
+            if (mediaSourceId.isNotBlank()) {
+                add("$baseUrl/Videos/$playableId/stream?MediaSourceId=$mediaSourceId")
+            }
+            add(mediaSource.transcodingUrl)
         } else {
             // 1. Lo que decida Jellyfin.
             add(mediaSource.directStreamUrl)

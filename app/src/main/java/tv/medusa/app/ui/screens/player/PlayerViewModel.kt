@@ -88,7 +88,8 @@ data class PlayerStreamInfo(
     val currentVersionName: String = "",
     val seriesId: String? = null,
     val playSessionId: String = "",
-    val mediaSourceId: String = ""
+    val mediaSourceId: String = "",
+    val isStrm: Boolean = false
 )
 
 @HiltViewModel
@@ -390,19 +391,82 @@ class PlayerViewModel @Inject constructor(
                 deviceProfile = androidTvProfile
             )
 
-            val (initDetailRes, initPbRes) = coroutineScope {
-                val detailDeferred = async { runCatching { api.getItemDetail(authHeader = effectiveAuthHeader, userId = effectiveUserId, itemId = playableId) } }
-                val pbDeferred = async { runCatching { api.getPlaybackInfo(authHeader = effectiveAuthHeader, itemId = playableId, userId = effectiveUserId, startTimeTicks = entityTicks, request = pbRequest) } }
-                Pair(detailDeferred.await(), pbDeferred.await())
-            }
-            var itemDetailResult = initDetailRes
-            var playbackInfoResult = initPbRes
+            val itemDetailResult = runCatching { api.getItemDetail(authHeader = effectiveAuthHeader, userId = effectiveUserId, itemId = playableId) }
 
             val is401 = (itemDetailResult.exceptionOrNull() as? retrofit2.HttpException)?.code() == 401 ||
-                    (playbackInfoResult.exceptionOrNull() as? retrofit2.HttpException)?.code() == 401 ||
-                    (itemDetailResult.isFailure && playbackInfoResult.isFailure && prefs.jellyfinPassword.isNotBlank())
+                    (itemDetailResult.isFailure && prefs.jellyfinPassword.isNotBlank())
 
+            var effectiveItemDetailResult = itemDetailResult
             if (is401 && prefs.jellyfinUsername.isNotBlank() && prefs.jellyfinPassword.isNotBlank()) {
+                Log.i("PlayerViewModel", "ItemDetail token 401 challenged/revoked. Re-authenticating with Jellyfin credentials...")
+                try {
+                    val authResp = api.authenticateByName(
+                        authHeader = buildJellyfinAuthHeader(token = ""),
+                        request = JellyfinAuthRequest(
+                            username = prefs.jellyfinUsername,
+                            pw = prefs.jellyfinPassword
+                        )
+                    )
+                    effectiveToken = authResp.effectiveToken
+                    effectiveUserId = authResp.effectiveUser.effectiveId
+                    effectiveAuthHeader = buildJellyfinAuthHeader(token = effectiveToken)
+                    jellyfinAuthHeader = effectiveAuthHeader
+                    userPreferencesRepository.updateJellyfinConfig(
+                        serverUrl = baseUrl,
+                        userId = effectiveUserId,
+                        accessToken = effectiveToken,
+                        username = prefs.jellyfinUsername,
+                        password = prefs.jellyfinPassword
+                    )
+                    effectiveItemDetailResult = runCatching {
+                        api.getItemDetail(authHeader = effectiveAuthHeader, userId = effectiveUserId, itemId = playableId)
+                    }
+                    Log.i("PlayerViewModel", "Re-authentication succeeded! New token saved: ${effectiveToken.take(6)}...")
+                } catch (e: Exception) {
+                    Log.w("PlayerViewModel", "Re-authentication attempt failed: ${e.message}")
+                }
+            }
+
+            var itemDto = effectiveItemDetailResult.getOrNull()
+
+            val isStrm = (itemDto?.mediaSources?.any { JellyfinPlaybackSourceResolver.isStrm(it) } == true)
+
+            // Detección y preparación de torrent de Catálogo ANTES de solicitar PlaybackInfo.
+            // Si el torrent está frío (stream_ready=false), solicitar PlaybackInfo a Jellyfin bloquearía
+            // su motor de análisis multimedia (ffprobe) congelando la petición durante 120s.
+            if (isStrm) {
+                val backdropUrl = nowPlaying?.backdropUrl ?: entity?.backdropImageTag?.let { tag ->
+                    tv.medusa.app.util.JellyfinImageUtils.getBackdropUrl(baseUrl, playableId, tag, token = effectiveToken)
+                }
+                val releaseIdFromPath = itemDto?.mediaSources?.firstNotNullOfOrNull { ms ->
+                    ms.path?.let { path ->
+                        runCatching {
+                            android.net.Uri.parse(path).getQueryParameter("release")?.toLongOrNull()
+                        }.getOrNull()
+                    }
+                }
+                val isReady = handleCatalogoTorrentPreparation(
+                    api = api,
+                    effectiveAuthHeader = effectiveAuthHeader,
+                    playableId = playableId,
+                    title = itemDto?.name ?: entity?.title ?: "",
+                    backdropUrl = backdropUrl,
+                    releaseId = releaseIdFromPath
+                )
+                if (!isReady) {
+                    Log.i("PlayerViewModel", "Catalogo preparation halted or cancelled for $playableId")
+                    return@launch
+                }
+            }
+
+            var playbackInfoResult = runCatching {
+                api.getPlaybackInfo(authHeader = effectiveAuthHeader, itemId = playableId, userId = effectiveUserId, startTimeTicks = entityTicks, request = pbRequest)
+            }
+
+            val isPb401 = (playbackInfoResult.exceptionOrNull() as? retrofit2.HttpException)?.code() == 401 ||
+                    (playbackInfoResult.isFailure && prefs.jellyfinPassword.isNotBlank())
+
+            if (isPb401 && prefs.jellyfinUsername.isNotBlank() && prefs.jellyfinPassword.isNotBlank()) {
                 Log.i("PlayerViewModel", "Playback token 401 challenged/revoked. Re-authenticating with Jellyfin credentials...")
                 try {
                     val authResp = api.authenticateByName(
@@ -424,20 +488,15 @@ class PlayerViewModel @Inject constructor(
                         password = prefs.jellyfinPassword
                     )
                     val updatedPbRequest = pbRequest.copy(userId = effectiveUserId)
-                    val (reAuthDetailRes, reAuthPbRes) = coroutineScope {
-                        val d = async { runCatching { api.getItemDetail(authHeader = effectiveAuthHeader, userId = effectiveUserId, itemId = playableId) } }
-                        val p = async { runCatching { api.getPlaybackInfo(authHeader = effectiveAuthHeader, itemId = playableId, userId = effectiveUserId, request = updatedPbRequest) } }
-                        Pair(d.await(), p.await())
+                    playbackInfoResult = runCatching {
+                        api.getPlaybackInfo(authHeader = effectiveAuthHeader, itemId = playableId, userId = effectiveUserId, request = updatedPbRequest)
                     }
-                    itemDetailResult = reAuthDetailRes
-                    playbackInfoResult = reAuthPbRes
                     Log.i("PlayerViewModel", "Re-authentication succeeded! New token saved: ${effectiveToken.take(6)}...")
                 } catch (e: Exception) {
                     Log.w("PlayerViewModel", "Re-authentication attempt failed: ${e.message}")
                 }
             }
 
-            var itemDto = itemDetailResult.getOrNull()
             var playbackInfo = playbackInfoResult.getOrNull()
 
             // Si Jellyfin devolvió un PlaySessionId, usarlo; de lo contrario mantenemos el UUID generado
@@ -529,31 +588,8 @@ class PlayerViewModel @Inject constructor(
                     else -> "Transcode"
                 }
 
-                val isStrm = JellyfinPlaybackSourceResolver.isStrm(mediaSource)
-                Log.i("PlayerViewModel", "Chosen MediaSource: id=$mediaSourceId container=$container isStrm=$isStrm PlayMethod=$activePlayMethod playSessionId=$activePlaySessionId")
-
-                if (isStrm) {
-                    val backdropUrl = nowPlaying?.backdropUrl ?: entity?.backdropImageTag?.let { tag ->
-                        tv.medusa.app.util.JellyfinImageUtils.getBackdropUrl(baseUrl, playableId, tag, token = effectiveToken)
-                    }
-                    val releaseId = mediaSource.path?.let { path ->
-                        runCatching {
-                            android.net.Uri.parse(path).getQueryParameter("release")?.toLongOrNull()
-                        }.getOrNull()
-                    }
-                    val isReady = handleCatalogoTorrentPreparation(
-                        api = api,
-                        effectiveAuthHeader = effectiveAuthHeader,
-                        playableId = playableId,
-                        title = itemDto?.name ?: entity?.title ?: "",
-                        backdropUrl = backdropUrl,
-                        releaseId = releaseId
-                    )
-                    if (!isReady) {
-                        Log.i("PlayerViewModel", "Catalogo preparation halted or cancelled for $playableId")
-                        return@launch
-                    }
-                }
+                val isStrmMediaSource = JellyfinPlaybackSourceResolver.isStrm(mediaSource)
+                Log.i("PlayerViewModel", "Chosen MediaSource: id=$mediaSourceId container=$container isStrm=$isStrmMediaSource PlayMethod=$activePlayMethod playSessionId=$activePlaySessionId")
 
                 candidateUrls += JellyfinPlaybackSourceResolver.buildCandidates(
                     baseUrl = baseUrl,
@@ -623,9 +659,9 @@ class PlayerViewModel @Inject constructor(
             val rawTicks = itemDto?.userData?.playbackPositionTicks ?: entity?.playbackPositionTicks ?: 0L
             val startPositionMs = (rawTicks / 10_000L).coerceAtLeast(0L)
 
-            val durationTicks = itemDto?.runTimeTicks
-                ?: chosenMediaSource?.runTimeTicks
-                ?: mediaSources?.firstNotNullOfOrNull { it.runTimeTicks }
+            val durationTicks = itemDto?.runTimeTicks?.takeIf { it > 0 }
+                ?: chosenMediaSource?.runTimeTicks?.takeIf { it > 0 }
+                ?: mediaSources?.firstNotNullOfOrNull { it.runTimeTicks?.takeIf { t -> t > 0 } }
                 ?: 0L
             val durationMs = (durationTicks / 10_000L).coerceAtLeast(0L)
 
@@ -651,7 +687,8 @@ class PlayerViewModel @Inject constructor(
                 currentVersionName = chosenMediaSource?.name ?: "",
                 seriesId = seriesId,
                 playSessionId = activePlaySessionId,
-                mediaSourceId = activeMediaSourceId
+                mediaSourceId = activeMediaSourceId,
+                isStrm = chosenMediaSource?.let { JellyfinPlaybackSourceResolver.isStrm(it) } ?: false
             )
         }
     }
@@ -810,13 +847,15 @@ class PlayerViewModel @Inject constructor(
                 else -> "Transcode"
             }
 
+            val isStrmSource = JellyfinPlaybackSourceResolver.isStrm(chosenMs)
             val currentStream = _streamInfo.value
             _streamInfo.value = currentStream?.copy(
                 primaryStreamUrl = finalCandidates.first(),
                 candidateUrls = finalCandidates,
                 startPositionMs = resumePositionMs,
                 playSessionId = activePlaySessionId,
-                mediaSourceId = chosenMs.id
+                mediaSourceId = chosenMs.id,
+                isStrm = isStrmSource
             ) ?: PlayerStreamInfo(
                 playableId = currentPlayableId,
                 primaryStreamUrl = finalCandidates.first(),
@@ -829,7 +868,8 @@ class PlayerViewModel @Inject constructor(
                 availableVersions = msList,
                 currentVersionName = chosenMs.name ?: "",
                 playSessionId = activePlaySessionId,
-                mediaSourceId = chosenMs.id
+                mediaSourceId = chosenMs.id,
+                isStrm = isStrmSource
             )
             hasReportedStart = false
             val sanitizedNew = JellyfinDeviceProfileBuilder.sanitizeUrlForLog(finalCandidates.first())
@@ -1443,14 +1483,22 @@ class PlayerViewModel @Inject constructor(
             return true
         }
 
+        val effectiveReleaseId = releaseId ?: initialBody.releaseId ?: initialStatus?.releaseId
+
+        if (initialStatus?.state.equals("UNAVAILABLE", ignoreCase = true)) {
+            Log.w("PlayerViewModel", "Torrent is UNAVAILABLE for $playableId.")
+            updateTorrentOverlay(playableId, title, backdropUrl, initialStatus)
+            return false
+        }
+
         // 3. stream_ready == false: mostrar overlay e iniciar descarga sin vídeo
-        Log.i("PlayerViewModel", "Torrent not ready for $playableId. Showing overlay and calling Prepare.")
+        Log.i("PlayerViewModel", "Torrent not ready for $playableId. Showing overlay and calling Prepare (releaseId=$effectiveReleaseId).")
         torrentZeroProgressStartMs = System.currentTimeMillis()
         updateTorrentOverlay(playableId, title, backdropUrl, initialStatus)
 
         // POST /Catalogo/Prepare/{itemId} una sola vez
         runCatching {
-            val prepRes = api.prepareCatalogoItem(authHeader = authHeader, itemId = playableId, releaseId = releaseId)
+            val prepRes = api.prepareCatalogoItem(authHeader = authHeader, itemId = playableId, releaseId = effectiveReleaseId)
             if (prepRes.code() == 503) {
                 _torrentOverlayState.value = _torrentOverlayState.value?.copy(
                     isError = true,
@@ -1467,7 +1515,7 @@ class PlayerViewModel @Inject constructor(
         while (coroutineContext.isActive) {
             delay(1500L)
 
-            val pollRes = runCatching { api.getCatalogoStatus(authHeader = authHeader, itemId = playableId, releaseId = releaseId) }.getOrNull()
+            val pollRes = runCatching { api.getCatalogoStatus(authHeader = authHeader, itemId = playableId, releaseId = effectiveReleaseId) }.getOrNull()
             if (pollRes == null) {
                 continue
             }
@@ -1607,6 +1655,9 @@ class PlayerViewModel @Inject constructor(
             detailParts.add("Seeds: $seeds • Peers: $peers")
         }
 
+        val isUnavailable = status.state.equals("UNAVAILABLE", ignoreCase = true)
+        val isError = status.state.equals("ERROR", ignoreCase = true)
+
         _torrentOverlayState.value = TorrentOverlayUiState(
             itemId = playableId,
             title = title,
@@ -1625,7 +1676,10 @@ class PlayerViewModel @Inject constructor(
             statusText = statusText,
             reasonText = reasonText,
             detailText = detailParts.joinToString(" · "),
-            isZeroProgressFor10s = isZeroProgressFor10s
+            isZeroProgressFor10s = isZeroProgressFor10s,
+            isError = isError,
+            isUnavailable = isUnavailable,
+            errorMessage = if (isError || isUnavailable) statusText else null
         )
     }
 }
