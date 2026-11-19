@@ -677,4 +677,20 @@
     <string name="context_menu_view_details">View details</string>
     <string name="context_menu_go_to_series">Go to series</string>
 
+    <!-- Catalogo Torrent on Demand -->
+    <string name="torrent_preparing">Preparing playback buffer…</string>
+    <string name="torrent_buffering">Loading startup buffer…</string>
+    <string name="torrent_buffering_desc">Buffering initial megabytes for seamless playback without stutter.</string>
+    <string name="torrent_connecting_peers">Connecting to sources…</string>
+    <string name="torrent_connecting_peers_desc">Locating active seeds to start receiving data.</string>
+    <string name="torrent_buffer_title">Startup buffer</string>
+    <string name="torrent_buffer_ready">Buffer ready! Starting playback…</string>
+    <string name="torrent_paused">Download paused; retrying…</string>
+    <string name="torrent_ready">Ready</string>
+    <string name="torrent_error">Error preparing torrent</string>
+    <string name="torrent_unavailable">Source unavailable</string>
+    <string name="torrent_server_unavailable">Download server unavailable</string>
+    <string name="torrent_cancel">Cancel</string>
+    <string name="torrent_retry">Retry</string>
+
 </resources>

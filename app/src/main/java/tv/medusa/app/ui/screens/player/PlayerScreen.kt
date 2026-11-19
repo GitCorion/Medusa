@@ -405,26 +405,46 @@ fun PlayerScreen(
             )
         }
     } else {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+        val torrentState by viewModel.torrentOverlayState.collectAsStateWithLifecycle()
+        if (torrentState != null) {
+            BackHandler(enabled = true) {
+                viewModel.cancelTorrentPreparation()
+                onBack()
+            }
+            TorrentPreparationOverlay(
+                state = torrentState!!,
+                focusColor = focusColor,
+                focusContent = focusContent,
+                onCancel = {
+                    viewModel.cancelTorrentPreparation()
+                    onBack()
+                },
+                onRetry = {
+                    viewModel.retryTorrentPreparation()
+                }
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black),
+                contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator(
-                    color = if (isMonochrome) Color.White else focusColor,
-                    strokeWidth = 3.dp,
-                    modifier = Modifier.size(36.dp)
-                )
-                Text(
-                    text = stringResource(R.string.player_loading),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF94A3B8)
-                )
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    CircularProgressIndicator(
+                        color = if (isMonochrome) Color.White else focusColor,
+                        strokeWidth = 3.dp,
+                        modifier = Modifier.size(36.dp)
+                    )
+                    Text(
+                        text = stringResource(R.string.player_loading),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFF94A3B8)
+                    )
+                }
             }
         }
     }

@@ -1,6 +1,8 @@
 package tv.medusa.app.ui.screens.player
 
 import android.media.MediaCodecList
+import tv.medusa.app.data.remote.jellyfin.CatalogoFormatUtils
+import tv.medusa.app.data.remote.jellyfin.CatalogoTorrentStatusDto
 import tv.medusa.app.data.remote.jellyfin.JellyfinAuthRequest
 import tv.medusa.app.data.remote.jellyfin.JellyfinDeviceProfile
 import tv.medusa.app.data.remote.jellyfin.JellyfinDeviceProfileBuilder
@@ -9,6 +11,7 @@ import tv.medusa.app.data.remote.jellyfin.JellyfinItemDto
 import tv.medusa.app.data.remote.jellyfin.JellyfinMediaSourceDto
 import tv.medusa.app.data.remote.jellyfin.JellyfinPlaybackInfoRequest
 import tv.medusa.app.data.remote.jellyfin.JellyfinPlaybackSourceResolver
+import tv.medusa.app.data.remote.jellyfin.TorrentOverlayUiState
 import tv.medusa.app.util.DeviceUtils
 import android.content.Context
 import android.util.Log
@@ -16,6 +19,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.isActive
+import kotlin.coroutines.coroutineContext
 import tv.medusa.app.R
 import tv.medusa.app.data.local.UserPreferencesRepository
 import tv.medusa.app.data.remote.NetworkClientFactory
@@ -202,6 +207,24 @@ class PlayerViewModel @Inject constructor(
     private val _fatalPlaybackError = MutableStateFlow<String?>(null)
     val fatalPlaybackError: StateFlow<String?> = _fatalPlaybackError.asStateFlow()
 
+    private val _torrentOverlayState = MutableStateFlow<TorrentOverlayUiState?>(null)
+    val torrentOverlayState: StateFlow<TorrentOverlayUiState?> = _torrentOverlayState.asStateFlow()
+
+    private var loadStreamJob: Job? = null
+    private var torrentZeroProgressStartMs: Long? = null
+
+    fun cancelTorrentPreparation() {
+        Log.i("PlayerViewModel", "Torrent preparation cancelled by user")
+        loadStreamJob?.cancel()
+        _torrentOverlayState.value = null
+    }
+
+    fun retryTorrentPreparation() {
+        val id = currentPlayableId.takeIf { it.isNotBlank() } ?: return
+        Log.i("PlayerViewModel", "Torrent preparation retry requested for $id")
+        loadStreamUrl(id, preferredMediaSourceId = activeMediaSourceId.takeIf { it.isNotBlank() }, reuseSessionId = true)
+    }
+
     fun updateActiveAudioStreamIndex(index: Int) {
         activeAudioStreamIndex = index
     }
@@ -277,7 +300,8 @@ class PlayerViewModel @Inject constructor(
         preferredMediaSourceId: String? = null,
         reuseSessionId: Boolean = false
     ) {
-        viewModelScope.launch {
+        loadStreamJob?.cancel()
+        loadStreamJob = viewModelScope.launch {
             Log.i("PlayerViewModel", "loadStreamUrl START for itemId=$itemId preferredMediaSourceId=$preferredMediaSourceId reuseSessionId=$reuseSessionId")
             if (!reuseSessionId || activePlaySessionId.isBlank()) {
                 activePlaySessionId = java.util.UUID.randomUUID().toString().replace("-", "")
@@ -297,6 +321,8 @@ class PlayerViewModel @Inject constructor(
             retryInFlight = false
             _fatalPlaybackError.value = null
             _streamInfo.value = null
+            _torrentOverlayState.value = null
+            torrentZeroProgressStartMs = null
             _introMarker.value = null
             _creditsMarker.value = null
             _nextEpisode.value = null
@@ -427,15 +453,21 @@ class PlayerViewModel @Inject constructor(
             var chosenMediaSource = if (!preferredMediaSourceId.isNullOrBlank()) {
                 mediaSources?.firstOrNull { it.id == preferredMediaSourceId } ?: mediaSources?.firstOrNull()
             } else if (!supports4K && mediaSources != null && mediaSources.size > 1) {
-                val pH264 = mediaSources.firstOrNull { ms ->
-                    val name = ms.name?.lowercase() ?: ""
-                    (name.contains("1080") || name.contains("fhd")) && (name.contains("h264") || name.contains("eng+esp") || name.contains("multi"))
+                val primaryName = mediaSources.firstOrNull()?.name?.lowercase().orEmpty()
+                val primaryIs4K = primaryName.contains("4k") || primaryName.contains("uhd") || primaryName.contains("2160")
+                if (primaryIs4K) {
+                    val pH264 = mediaSources.firstOrNull { ms ->
+                        val name = ms.name?.lowercase() ?: ""
+                        (name.contains("1080") || name.contains("fhd")) && (name.contains("h264") || name.contains("eng+esp") || name.contains("multi"))
+                    }
+                    val p1080 = mediaSources.firstOrNull { ms ->
+                        val name = ms.name?.lowercase() ?: ""
+                        name.contains("1080") || name.contains("fhd")
+                    }
+                    pH264 ?: p1080 ?: mediaSources.firstOrNull()
+                } else {
+                    mediaSources.firstOrNull()
                 }
-                val p1080 = mediaSources.firstOrNull { ms ->
-                    val name = ms.name?.lowercase() ?: ""
-                    name.contains("1080") || name.contains("fhd")
-                }
-                pH264 ?: p1080 ?: mediaSources.firstOrNull()
             } else {
                 mediaSources?.firstOrNull()
             }
@@ -499,6 +531,29 @@ class PlayerViewModel @Inject constructor(
 
                 val isStrm = JellyfinPlaybackSourceResolver.isStrm(mediaSource)
                 Log.i("PlayerViewModel", "Chosen MediaSource: id=$mediaSourceId container=$container isStrm=$isStrm PlayMethod=$activePlayMethod playSessionId=$activePlaySessionId")
+
+                if (isStrm) {
+                    val backdropUrl = nowPlaying?.backdropUrl ?: entity?.backdropImageTag?.let { tag ->
+                        tv.medusa.app.util.JellyfinImageUtils.getBackdropUrl(baseUrl, playableId, tag, token = effectiveToken)
+                    }
+                    val releaseId = mediaSource.path?.let { path ->
+                        runCatching {
+                            android.net.Uri.parse(path).getQueryParameter("release")?.toLongOrNull()
+                        }.getOrNull()
+                    }
+                    val isReady = handleCatalogoTorrentPreparation(
+                        api = api,
+                        effectiveAuthHeader = effectiveAuthHeader,
+                        playableId = playableId,
+                        title = itemDto?.name ?: entity?.title ?: "",
+                        backdropUrl = backdropUrl,
+                        releaseId = releaseId
+                    )
+                    if (!isReady) {
+                        Log.i("PlayerViewModel", "Catalogo preparation halted or cancelled for $playableId")
+                        return@launch
+                    }
+                }
 
                 candidateUrls += JellyfinPlaybackSourceResolver.buildCandidates(
                     baseUrl = baseUrl,
@@ -1309,6 +1364,269 @@ class PlayerViewModel @Inject constructor(
     fun seekToMs(positionMs: Long, exoPlayerSeek: (Long) -> Unit) {
         exoPlayerSeek(positionMs)
         Log.i("PlayerViewModel", "Seeked to ${positionMs}ms via user action")
+    }
+
+    /**
+     * Gestiona la detección y preparación de torrents bajo demanda a través del plugin Catalogo.
+     * Devuelve true si el ítem ya está listo para reproducir (o si el plugin no aplica/falla en modo fail-open).
+     * Devuelve false si la preparación fue cancelada o detenida por un error no recuperable.
+     */
+    private suspend fun handleCatalogoTorrentPreparation(
+        api: JellyfinApiService,
+        effectiveAuthHeader: String,
+        playableId: String,
+        title: String,
+        backdropUrl: String?,
+        releaseId: Long? = null
+    ): Boolean {
+        // 1. Detección del plugin: GET /Catalogo/Capabilities
+        val capsRes = runCatching { api.getCatalogoCapabilities() }.getOrNull()
+        if (capsRes == null || !capsRes.isSuccessful || capsRes.body()?.isSupported != true) {
+            Log.i("PlayerViewModel", "Catalogo plugin not available or unsupported (code=${capsRes?.code()}). Proceeding normally with Jellyfin.")
+            return true
+        }
+
+        // 2. Consultar estado: GET /Catalogo/Status/{itemId}?release=...
+        var authHeader = effectiveAuthHeader
+        var statusRes = runCatching { api.getCatalogoStatus(authHeader = authHeader, itemId = playableId, releaseId = releaseId) }.getOrNull()
+
+        if (statusRes == null || statusRes.code() == 404) {
+            Log.i("PlayerViewModel", "Catalogo status 404/network error. Proceeding normally.")
+            return true
+        }
+
+        if (statusRes.code() == 401) {
+            Log.w("PlayerViewModel", "Catalogo status 401. Re-authenticating with Jellyfin...")
+            val reAuthSuccess = runCatching {
+                val prefs = userPreferencesRepository.userPreferencesFlow.first()
+                if (prefs.jellyfinUsername.isNotBlank() && prefs.jellyfinPassword.isNotBlank()) {
+                    val authResp = api.authenticateByName(
+                        authHeader = buildJellyfinAuthHeader(token = ""),
+                        request = JellyfinAuthRequest(username = prefs.jellyfinUsername, pw = prefs.jellyfinPassword)
+                    )
+                    authHeader = buildJellyfinAuthHeader(token = authResp.effectiveToken)
+                    true
+                } else false
+            }.getOrDefault(false)
+
+            if (reAuthSuccess) {
+                statusRes = runCatching { api.getCatalogoStatus(authHeader = authHeader, itemId = playableId, releaseId = releaseId) }.getOrNull()
+            }
+            if (statusRes == null || statusRes.code() == 401) {
+                _fatalPlaybackError.value = appContext.getString(R.string.player_error_http_401)
+                return false
+            }
+        }
+
+        if (statusRes.code() == 503) {
+            _torrentOverlayState.value = TorrentOverlayUiState(
+                itemId = playableId,
+                title = title,
+                backdropUrl = backdropUrl,
+                state = "ERROR",
+                isError = true,
+                statusText = appContext.getString(R.string.torrent_server_unavailable),
+                errorMessage = appContext.getString(R.string.torrent_server_unavailable)
+            )
+            return false
+        }
+
+        val initialBody = statusRes.body()
+        if (initialBody == null || !initialBody.isCatalog) {
+            Log.i("PlayerViewModel", "Item $playableId is not a catalog torrent (is_catalog=false). Proceeding normally.")
+            return true
+        }
+
+        val initialStatus = initialBody.status
+        if (initialStatus?.streamReady == true) {
+            Log.i("PlayerViewModel", "Torrent stream_ready is already true for $playableId. Proceeding normally without overlay.")
+            return true
+        }
+
+        // 3. stream_ready == false: mostrar overlay e iniciar descarga sin vídeo
+        Log.i("PlayerViewModel", "Torrent not ready for $playableId. Showing overlay and calling Prepare.")
+        torrentZeroProgressStartMs = System.currentTimeMillis()
+        updateTorrentOverlay(playableId, title, backdropUrl, initialStatus)
+
+        // POST /Catalogo/Prepare/{itemId} una sola vez
+        runCatching {
+            val prepRes = api.prepareCatalogoItem(authHeader = authHeader, itemId = playableId, releaseId = releaseId)
+            if (prepRes.code() == 503) {
+                _torrentOverlayState.value = _torrentOverlayState.value?.copy(
+                    isError = true,
+                    statusText = appContext.getString(R.string.torrent_server_unavailable),
+                    errorMessage = appContext.getString(R.string.torrent_server_unavailable)
+                )
+                return false
+            }
+        }.onFailure { e ->
+            Log.w("PlayerViewModel", "Catalogo prepare request failed: ${e.message}")
+        }
+
+        // 4. Polling cada 1.5 s
+        while (coroutineContext.isActive) {
+            delay(1500L)
+
+            val pollRes = runCatching { api.getCatalogoStatus(authHeader = authHeader, itemId = playableId, releaseId = releaseId) }.getOrNull()
+            if (pollRes == null) {
+                continue
+            }
+
+            if (pollRes.code() == 503) {
+                _torrentOverlayState.value = _torrentOverlayState.value?.copy(
+                    isError = true,
+                    statusText = appContext.getString(R.string.torrent_server_unavailable),
+                    errorMessage = appContext.getString(R.string.torrent_server_unavailable)
+                )
+                return false
+            }
+
+            if (pollRes.code() == 404) {
+                Log.w("PlayerViewModel", "Catalogo status 404 during polling. Proceeding normally.")
+                _torrentOverlayState.value = null
+                return true
+            }
+
+            val pollBody = pollRes.body() ?: continue
+            if (!pollBody.isCatalog) {
+                _torrentOverlayState.value = null
+                return true
+            }
+
+            val currStatus = pollBody.status ?: continue
+            updateTorrentOverlay(playableId, title, backdropUrl, currStatus)
+
+            if (currStatus.streamReady) {
+                Log.i("PlayerViewModel", "Torrent reached stream_ready for $playableId! Starting playback.")
+                _torrentOverlayState.value = null
+                return true
+            }
+
+            if (currStatus.state.equals("ERROR", ignoreCase = true)) {
+                _torrentOverlayState.value = _torrentOverlayState.value?.copy(
+                    isError = true,
+                    statusText = appContext.getString(R.string.torrent_error),
+                    errorMessage = appContext.getString(R.string.torrent_error)
+                )
+                return false
+            }
+
+            if (currStatus.state.equals("UNAVAILABLE", ignoreCase = true)) {
+                _torrentOverlayState.value = _torrentOverlayState.value?.copy(
+                    isUnavailable = true,
+                    statusText = appContext.getString(R.string.torrent_unavailable),
+                    errorMessage = appContext.getString(R.string.torrent_unavailable)
+                )
+                return false
+            }
+        }
+
+        return false
+    }
+
+    private fun updateTorrentOverlay(
+        playableId: String,
+        title: String,
+        backdropUrl: String?,
+        status: CatalogoTorrentStatusDto?
+    ) {
+        if (status == null) {
+            _torrentOverlayState.value = TorrentOverlayUiState(
+                itemId = playableId,
+                title = title,
+                backdropUrl = backdropUrl,
+                state = "COLD",
+                statusText = appContext.getString(R.string.torrent_preparing),
+                reasonText = appContext.getString(R.string.torrent_buffering_desc)
+            )
+            return
+        }
+
+        val sizeBytes = status.sizeBytes ?: 0L
+        val downloadedBytes = status.downloadedBytes
+            ?: if (sizeBytes > 0) (status.safeProgress * sizeBytes).toLong() else 0L
+
+        // Meta de búfer de arranque: del backend si existe, o 50 MB por defecto (o tamaño del archivo si es menor)
+        val defaultBufferTarget = 50L * 1024L * 1024L
+        val targetBufferBytes = when {
+            (status.bufferRequiredBytes ?: 0L) > 0L -> status.bufferRequiredBytes!!
+            sizeBytes in 1L..defaultBufferTarget -> sizeBytes
+            else -> defaultBufferTarget
+        }
+
+        // Progreso del búfer de arranque (0f a 1f)
+        val bufferProgress = when {
+            status.streamReady -> 1.0f
+            targetBufferBytes > 0L -> (downloadedBytes.toFloat() / targetBufferBytes.toFloat()).coerceIn(0f, 0.98f)
+            else -> status.safeProgress
+        }
+
+        val speedBps = status.safeSpeedBps
+        val seeds = status.safeSeeds
+        val peers = status.safePeers
+        val now = System.currentTimeMillis()
+
+        // ETA calculada específicamente para completar el búfer inicial
+        val bufferEtaSeconds = if (!status.streamReady && speedBps > 0 && downloadedBytes < targetBufferBytes) {
+            ((targetBufferBytes - downloadedBytes) / speedBps).coerceAtLeast(1L)
+        } else {
+            0L
+        }
+
+        if (downloadedBytes <= 1024L && (status.state.equals("DOWNLOADING", ignoreCase = true) || status.state.equals("COLD", ignoreCase = true))) {
+            if (torrentZeroProgressStartMs == null) {
+                torrentZeroProgressStartMs = now
+            }
+        } else {
+            torrentZeroProgressStartMs = null
+        }
+
+        val isZeroProgressFor10s = torrentZeroProgressStartMs != null && (now - torrentZeroProgressStartMs!!) >= 10_000L
+
+        val statusText = when {
+            status.streamReady -> appContext.getString(R.string.torrent_buffer_ready)
+            isZeroProgressFor10s -> appContext.getString(R.string.torrent_connecting_peers)
+            status.state.equals("COLD", ignoreCase = true) -> appContext.getString(R.string.torrent_preparing)
+            status.state.equals("DOWNLOADING", ignoreCase = true) -> appContext.getString(R.string.torrent_buffering)
+            status.state.equals("PAUSED", ignoreCase = true) -> appContext.getString(R.string.torrent_paused)
+            status.state.equals("SEEDING", ignoreCase = true) || status.state.equals("AVAILABLE", ignoreCase = true) -> appContext.getString(R.string.torrent_ready)
+            status.state.equals("ERROR", ignoreCase = true) -> appContext.getString(R.string.torrent_error)
+            status.state.equals("UNAVAILABLE", ignoreCase = true) -> appContext.getString(R.string.torrent_unavailable)
+            else -> appContext.getString(R.string.torrent_preparing)
+        }
+
+        val reasonText = when {
+            isZeroProgressFor10s -> appContext.getString(R.string.torrent_connecting_peers_desc)
+            else -> appContext.getString(R.string.torrent_buffering_desc)
+        }
+
+        val detailParts = mutableListOf<String>()
+        if (!status.quality.isNullOrBlank()) detailParts.add(status.quality)
+        if (!status.audio.isNullOrBlank()) detailParts.add(status.audio)
+        if (seeds > 0 || peers > 0) {
+            detailParts.add("Seeds: $seeds • Peers: $peers")
+        }
+
+        _torrentOverlayState.value = TorrentOverlayUiState(
+            itemId = playableId,
+            title = title,
+            backdropUrl = backdropUrl,
+            state = status.state,
+            progress = bufferProgress,
+            downloadedBytes = downloadedBytes,
+            targetBufferBytes = targetBufferBytes,
+            speedBps = speedBps,
+            etaSeconds = bufferEtaSeconds,
+            seeds = seeds,
+            peers = peers,
+            streamReady = status.streamReady,
+            quality = status.quality,
+            audio = status.audio,
+            statusText = statusText,
+            reasonText = reasonText,
+            detailText = detailParts.joinToString(" · "),
+            isZeroProgressFor10s = isZeroProgressFor10s
+        )
     }
 }
 
