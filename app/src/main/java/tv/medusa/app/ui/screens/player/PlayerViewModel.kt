@@ -1591,21 +1591,23 @@ class PlayerViewModel @Inject constructor(
         }
 
         val sizeBytes = status.sizeBytes ?: 0L
-        val downloadedBytes = status.downloadedBytes
+        // Buffer contiguo real desde el inicio del fichero (no total descargado)
+        val bufferBytes = status.bufferBytes ?: status.downloadedBytes
             ?: if (sizeBytes > 0) (status.safeProgress * sizeBytes).toLong() else 0L
+        val downloadedBytes = status.downloadedBytes ?: bufferBytes
 
-        // Meta de búfer de arranque: del backend si existe, o 50 MB por defecto (o tamaño del archivo si es menor)
-        val defaultBufferTarget = 50L * 1024L * 1024L
+        // Meta de búfer de arranque: del backend (buffer_required) si existe,
+        // o cálculo local: tamaño / 120 clampeado a [32 MB, 128 MB]
         val targetBufferBytes = when {
-            (status.bufferRequiredBytes ?: 0L) > 0L -> status.bufferRequiredBytes!!
-            sizeBytes in 1L..defaultBufferTarget -> sizeBytes
-            else -> defaultBufferTarget
+            (status.bufferRequired ?: 0L) > 0L -> status.bufferRequired!!
+            sizeBytes > 0L -> (sizeBytes / 120L).coerceIn(32L * 1024L * 1024L, 128L * 1024L * 1024L)
+            else -> 50L * 1024L * 1024L
         }
 
-        // Progreso del búfer de arranque (0f a 1f)
+        // Progreso del búfer de arranque (0f a 1f) basado en buffer contiguo
         val bufferProgress = when {
             status.streamReady -> 1.0f
-            targetBufferBytes > 0L -> (downloadedBytes.toFloat() / targetBufferBytes.toFloat()).coerceIn(0f, 0.98f)
+            targetBufferBytes > 0L -> (bufferBytes.toFloat() / targetBufferBytes.toFloat()).coerceIn(0f, 0.98f)
             else -> status.safeProgress
         }
 
@@ -1614,14 +1616,14 @@ class PlayerViewModel @Inject constructor(
         val peers = status.safePeers
         val now = System.currentTimeMillis()
 
-        // ETA calculada específicamente para completar el búfer inicial
-        val bufferEtaSeconds = if (!status.streamReady && speedBps > 0 && downloadedBytes < targetBufferBytes) {
-            ((targetBufferBytes - downloadedBytes) / speedBps).coerceAtLeast(1L)
+        // ETA calculada específicamente para completar el búfer contiguo inicial
+        val bufferEtaSeconds = if (!status.streamReady && speedBps > 0 && bufferBytes < targetBufferBytes) {
+            ((targetBufferBytes - bufferBytes) / speedBps).coerceAtLeast(1L)
         } else {
             0L
         }
 
-        if (downloadedBytes <= 1024L && (status.state.equals("DOWNLOADING", ignoreCase = true) || status.state.equals("COLD", ignoreCase = true))) {
+        if (bufferBytes <= 1024L && (status.state.equals("DOWNLOADING", ignoreCase = true) || status.state.equals("COLD", ignoreCase = true))) {
             if (torrentZeroProgressStartMs == null) {
                 torrentZeroProgressStartMs = now
             }
@@ -1664,7 +1666,7 @@ class PlayerViewModel @Inject constructor(
             backdropUrl = backdropUrl,
             state = status.state,
             progress = bufferProgress,
-            downloadedBytes = downloadedBytes,
+            downloadedBytes = bufferBytes,
             targetBufferBytes = targetBufferBytes,
             speedBps = speedBps,
             etaSeconds = bufferEtaSeconds,

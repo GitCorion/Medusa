@@ -290,6 +290,61 @@ class CatalogoTorrentPluginTest {
     }
 
     @Test
+    fun testStatus_bufferFieldsDeserialization() {
+        val rawJson = """
+            {
+              "is_catalog": true,
+              "item_id": "e5f05fd438a1a8c3e9423eb48b43f9e8",
+              "key": "series:tmdb:111110:2:6",
+              "status": {
+                "state": "DOWNLOADING",
+                "stream_ready": false,
+                "progress": 0.03,
+                "downloaded_bytes": 60000000,
+                "buffer_bytes": 50331648,
+                "buffer_required": 48842689,
+                "tail_ready": true,
+                "size_bytes": 1968317116,
+                "speed_bps": 5000000,
+                "seeds": 12,
+                "peers": 3
+              }
+            }
+        """.trimIndent()
+
+        val statusDto = json.decodeFromString<CatalogoStatusDto>(rawJson)
+        assertTrue(statusDto.isCatalog)
+        val st = statusDto.status!!
+        assertEquals(50331648L, st.bufferBytes)
+        assertEquals(48842689L, st.bufferRequired)
+        assertEquals(true, st.tailReady)
+        assertFalse(st.streamReady)
+        assertEquals(60000000L, st.downloadedBytes)
+
+        // Buffer progress should use bufferBytes / bufferRequired
+        val bufferProgress = st.bufferBytes!!.toFloat() / st.bufferRequired!!.toFloat()
+        assertTrue("Buffer progress should be > 1.0 (buffer exceeds required)", bufferProgress > 1.0f)
+    }
+
+    @Test
+    fun testStatus_bufferRequiredCalculation() {
+        // 5.86 GB → size/120 ≈ 49 MB (between 32..128)
+        val size1 = 6_291_456_000L // ~5.86 GB
+        val calc1 = (size1 / 120L).coerceIn(32L * 1024L * 1024L, 128L * 1024L * 1024L)
+        assertTrue("5.86 GB → ~49 MB buffer", calc1 in (48L * 1024 * 1024)..(53L * 1024 * 1024))
+
+        // 63 GB → size/120 = 537 MB → clamped to 128 MB
+        val size2 = 67_645_734_912L // ~63 GB
+        val calc2 = (size2 / 120L).coerceIn(32L * 1024L * 1024L, 128L * 1024L * 1024L)
+        assertEquals(128L * 1024L * 1024L, calc2)
+
+        // 1 GB → size/120 ≈ 8.5 MB → clamped to 32 MB
+        val size3 = 1_073_741_824L
+        val calc3 = (size3 / 120L).coerceIn(32L * 1024L * 1024L, 128L * 1024L * 1024L)
+        assertEquals(32L * 1024L * 1024L, calc3)
+    }
+
+    @Test
     fun liveServer_realTokenStatusTests() {
         val serverUrl = "http://127.0.0.1:8086"
         val token = "***REMOVED***"

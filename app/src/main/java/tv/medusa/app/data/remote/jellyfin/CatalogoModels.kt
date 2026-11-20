@@ -31,8 +31,9 @@ data class CatalogoTorrentStatusDto(
     @SerialName("quality") val quality: String? = null,
     @SerialName("audio") val audio: String? = null,
     @SerialName("tracker") val tracker: String? = null,
-    @SerialName("buffer_required_bytes") val bufferRequiredBytes: Long? = null,
-    @SerialName("buffer_bytes") val bufferBytes: Long? = null
+    @SerialName("buffer_required") val bufferRequired: Long? = null,
+    @SerialName("buffer_bytes") val bufferBytes: Long? = null,
+    @SerialName("tail_ready") val tailReady: Boolean? = null
 ) {
     val safeProgress: Float
         get() = (progress ?: 0f).coerceIn(0f, 1f)
