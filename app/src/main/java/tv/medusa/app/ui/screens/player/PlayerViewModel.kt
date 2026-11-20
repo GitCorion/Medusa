@@ -2,7 +2,9 @@ package tv.medusa.app.ui.screens.player
 
 import android.media.MediaCodecList
 import tv.medusa.app.data.remote.jellyfin.CatalogoFormatUtils
+import tv.medusa.app.data.remote.jellyfin.CatalogoHttpException
 import tv.medusa.app.data.remote.jellyfin.CatalogoTorrentStatusDto
+import tv.medusa.app.data.remote.jellyfin.catalogoErrorMessage
 import tv.medusa.app.data.remote.jellyfin.JellyfinAuthRequest
 import tv.medusa.app.data.remote.jellyfin.JellyfinDeviceProfile
 import tv.medusa.app.data.remote.jellyfin.JellyfinDeviceProfileBuilder
@@ -213,10 +215,18 @@ class PlayerViewModel @Inject constructor(
 
     private var loadStreamJob: Job? = null
     private var torrentZeroProgressStartMs: Long? = null
+    private var catalogoStreamGeneration: Long? = null
+    private var generationJob: Job? = null
+    private var isCurrentItemCatalogo: Boolean = false
+    private var activeCatalogoReleaseId: Long? = null
+    private var currentPlayableTitle: String = ""
+    private var currentPlayableBackdropUrl: String? = null
 
     fun cancelTorrentPreparation() {
         Log.i("PlayerViewModel", "Torrent preparation cancelled by user")
         loadStreamJob?.cancel()
+        generationJob?.cancel()
+        generationJob = null
         _torrentOverlayState.value = null
     }
 
@@ -313,7 +323,12 @@ class PlayerViewModel @Inject constructor(
                 activeAudioStreamIndex = null
                 activeSubtitleStreamIndex = null
                 activeMediaSourceId = ""
+                catalogoStreamGeneration = null
             }
+            generationJob?.cancel()
+            generationJob = null
+            isCurrentItemCatalogo = false
+            activeCatalogoReleaseId = null
             // Nueva carga de reproducción: la sesión anterior ya no está activa.
             sessionFinished = false
             hasReportedStart = false
@@ -438,6 +453,8 @@ class PlayerViewModel @Inject constructor(
                 val backdropUrl = nowPlaying?.backdropUrl ?: entity?.backdropImageTag?.let { tag ->
                     tv.medusa.app.util.JellyfinImageUtils.getBackdropUrl(baseUrl, playableId, tag, token = effectiveToken)
                 }
+                currentPlayableTitle = itemDto?.name ?: entity?.title ?: ""
+                currentPlayableBackdropUrl = backdropUrl
                 val allSources = itemDto?.mediaSources ?: emptyList()
                 val chosenMsForPrep = if (!preferredMediaSourceId.isNullOrBlank()) {
                     allSources.firstOrNull { it.id == preferredMediaSourceId } ?: allSources.firstOrNull()
@@ -696,6 +713,9 @@ class PlayerViewModel @Inject constructor(
                 mediaSourceId = activeMediaSourceId,
                 isStrm = chosenMediaSource?.let { JellyfinPlaybackSourceResolver.isStrm(it) } ?: false
             )
+            if (isCurrentItemCatalogo) {
+                startCatalogoGenerationWatch(playableId = playableId, releaseId = activeCatalogoReleaseId)
+            }
         }
     }
 
@@ -1045,6 +1065,8 @@ class PlayerViewModel @Inject constructor(
     }
 
     fun finishPlayback(positionMs: Long, durationMs: Long = 0L) {
+        generationJob?.cancel()
+        generationJob = null
         if (sessionFinished) return
         val itemId = currentPlayableId
         if (itemId.isBlank()) return
@@ -1128,6 +1150,8 @@ class PlayerViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
+        generationJob?.cancel()
+        generationJob = null
         if (!sessionFinished && hasReportedStart && currentPlayableId.isNotBlank() && jellyfinBaseUrl.isNotBlank()) {
             finishPlayback(lastReportedPositionMs, lastDurationMs)
         }
@@ -1467,14 +1491,18 @@ class PlayerViewModel @Inject constructor(
         }
 
         if (statusRes.code() == 503) {
+            val body = runCatching { statusRes.errorBody()?.string() }.getOrNull()
+            val message = catalogoErrorMessage(body) ?: "No se pudo preparar la descarga."
+            val unavailable = message.contains("No hay ninguna fuente", ignoreCase = true)
             _torrentOverlayState.value = TorrentOverlayUiState(
                 itemId = playableId,
                 title = title,
                 backdropUrl = backdropUrl,
-                state = "ERROR",
+                state = if (unavailable) "UNAVAILABLE" else "ERROR",
                 isError = true,
-                statusText = appContext.getString(R.string.torrent_server_unavailable),
-                errorMessage = appContext.getString(R.string.torrent_server_unavailable),
+                isUnavailable = unavailable,
+                statusText = message,
+                errorMessage = message,
                 availableVersions = availableVersions,
                 currentMediaSourceId = currentMediaSourceId
             )
@@ -1487,13 +1515,28 @@ class PlayerViewModel @Inject constructor(
             return true
         }
 
+        isCurrentItemCatalogo = true
+        val effectiveReleaseId = releaseId ?: initialBody.releaseId ?: initialBody.status?.releaseId
+        activeCatalogoReleaseId = effectiveReleaseId
+
         val initialStatus = initialBody.status
+        val initialGeneration = initialStatus?.streamGeneration
+        if (
+            catalogoStreamGeneration != null &&
+            initialGeneration != null &&
+            initialGeneration != catalogoStreamGeneration
+        ) {
+            restartCatalogoPlayback(initialStatus)
+            return false
+        }
+        if (initialGeneration != null) {
+            catalogoStreamGeneration = initialGeneration
+        }
+
         if (initialStatus?.streamReady == true) {
             Log.i("PlayerViewModel", "Torrent stream_ready is already true for $playableId. Proceeding normally without overlay.")
             return true
         }
-
-        val effectiveReleaseId = releaseId ?: initialBody.releaseId ?: initialStatus?.releaseId
 
         if (initialStatus?.state.equals("UNAVAILABLE", ignoreCase = true)) {
             Log.w("PlayerViewModel", "Torrent is UNAVAILABLE for $playableId.")
@@ -1509,16 +1552,33 @@ class PlayerViewModel @Inject constructor(
         // POST /Catalogo/Prepare/{itemId} una sola vez
         runCatching {
             val prepRes = api.prepareCatalogoItem(authHeader = authHeader, itemId = playableId, releaseId = effectiveReleaseId)
-            if (prepRes.code() == 503) {
-                _torrentOverlayState.value = _torrentOverlayState.value?.copy(
-                    isError = true,
-                    statusText = appContext.getString(R.string.torrent_server_unavailable),
-                    errorMessage = appContext.getString(R.string.torrent_server_unavailable)
+            if (prepRes.code() == 503 || !prepRes.isSuccessful) {
+                val body = runCatching { prepRes.errorBody()?.string() }.getOrNull()
+                throw CatalogoHttpException(
+                    statusCode = prepRes.code(),
+                    serverMessage = catalogoErrorMessage(body)
                 )
-                return false
             }
         }.onFailure { e ->
             Log.w("PlayerViewModel", "Catalogo prepare request failed: ${e.message}")
+            val message = (e as? CatalogoHttpException)?.serverMessage
+                ?: "No se pudo preparar la descarga."
+            val unavailable = message.contains("No hay ninguna fuente", ignoreCase = true)
+            _torrentOverlayState.value = (_torrentOverlayState.value ?: TorrentOverlayUiState(
+                itemId = playableId,
+                title = title,
+                backdropUrl = backdropUrl,
+                state = if (unavailable) "UNAVAILABLE" else "ERROR",
+                availableVersions = availableVersions,
+                currentMediaSourceId = currentMediaSourceId
+            )).copy(
+                state = if (unavailable) "UNAVAILABLE" else "ERROR",
+                isError = true,
+                isUnavailable = unavailable,
+                statusText = message,
+                errorMessage = message
+            )
+            return false
         }
 
         // 4. Polling cada 1.5 s
@@ -1531,10 +1591,15 @@ class PlayerViewModel @Inject constructor(
             }
 
             if (pollRes.code() == 503) {
+                val body = runCatching { pollRes.errorBody()?.string() }.getOrNull()
+                val message = catalogoErrorMessage(body) ?: "No se pudo preparar la descarga."
+                val unavailable = message.contains("No hay ninguna fuente", ignoreCase = true)
                 _torrentOverlayState.value = _torrentOverlayState.value?.copy(
+                    state = if (unavailable) "UNAVAILABLE" else "ERROR",
                     isError = true,
-                    statusText = appContext.getString(R.string.torrent_server_unavailable),
-                    errorMessage = appContext.getString(R.string.torrent_server_unavailable)
+                    isUnavailable = unavailable,
+                    statusText = message,
+                    errorMessage = message
                 )
                 return false
             }
@@ -1552,6 +1617,19 @@ class PlayerViewModel @Inject constructor(
             }
 
             val currStatus = pollBody.status ?: continue
+            val pollGeneration = currStatus.streamGeneration
+            if (
+                catalogoStreamGeneration != null &&
+                pollGeneration != null &&
+                pollGeneration != catalogoStreamGeneration
+            ) {
+                restartCatalogoPlayback(currStatus)
+                return false
+            }
+            if (pollGeneration != null) {
+                catalogoStreamGeneration = pollGeneration
+            }
+
             updateTorrentOverlay(playableId, title, backdropUrl, currStatus, availableVersions, currentMediaSourceId)
 
             if (currStatus.streamReady) {
@@ -1699,6 +1777,66 @@ class PlayerViewModel @Inject constructor(
             availableVersions = availableVersions,
             currentMediaSourceId = currentMediaSourceId
         )
+    }
+
+    private fun startCatalogoGenerationWatch(playableId: String, releaseId: Long? = null) {
+        generationJob?.cancel()
+        generationJob = viewModelScope.launch {
+            while (isActive && !sessionFinished) {
+                delay(5_000L)
+                if (jellyfinBaseUrl.isBlank() || jellyfinAuthHeader.isBlank()) continue
+                runCatching {
+                    val api = NetworkClientFactory.createJellyfinService(jellyfinBaseUrl, JellyfinApiService::class.java)
+                    api.getCatalogoStatus(authHeader = jellyfinAuthHeader, itemId = playableId, releaseId = releaseId)
+                }.onSuccess { response ->
+                    if (!response.isSuccessful) return@onSuccess
+                    val status = response.body()?.status ?: return@onSuccess
+                    val generation = status.streamGeneration
+                    if (
+                        catalogoStreamGeneration != null &&
+                        generation != null &&
+                        generation != catalogoStreamGeneration
+                    ) {
+                        restartCatalogoPlayback(status)
+                    } else if (generation != null) {
+                        catalogoStreamGeneration = generation
+                    }
+                }
+            }
+        }
+    }
+
+    private fun restartCatalogoPlayback(status: CatalogoTorrentStatusDto) {
+        val reason = status.streamSwitchReason
+        val switchMessage = when (reason) {
+            "no_contiguous_buffer" -> "La fuente no tenía el inicio; cambiando de versión…"
+            "slow_swarm" -> "La fuente iba demasiado lenta; cambiando de versión…"
+            "buffer_stalled" -> "El buffer se quedó parado; cambiando de versión…"
+            else -> "Cambiando de fuente…"
+        }
+        generationJob?.cancel()
+        generationJob = null
+        _streamInfo.value = null
+        _torrentOverlayState.value = TorrentOverlayUiState(
+            itemId = currentPlayableId,
+            title = currentPlayableTitle.ifBlank { nowPlaying?.title ?: "" },
+            backdropUrl = currentPlayableBackdropUrl ?: nowPlaying?.backdropUrl,
+            state = "COLD",
+            statusText = switchMessage,
+            reasonText = switchMessage,
+            errorMessage = switchMessage,
+            isError = false,
+            isUnavailable = false,
+            currentMediaSourceId = activeMediaSourceId.takeIf { it.isNotBlank() }
+        )
+        catalogoStreamGeneration = status.streamGeneration
+        viewModelScope.launch {
+            loadStreamUrl(
+                itemId = currentPlayableId,
+                preferredMediaSourceId = activeMediaSourceId.takeIf { it.isNotBlank() },
+                reuseSessionId = true
+            )
+        }
     }
 }
 

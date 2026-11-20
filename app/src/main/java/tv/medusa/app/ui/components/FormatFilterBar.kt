@@ -59,6 +59,7 @@ fun FormatFilterBar(
     isMonochrome: Boolean,
     hideWatched: Boolean = false,
     onToggleHideWatched: (() -> Unit)? = null,
+    contentPadding: PaddingValues = PaddingValues(horizontal = TvSpacing.ScreenSafeHorizontal, vertical = 8.dp),
     modifier: Modifier = Modifier
 ) {
     val focusColor = if (isMonochrome) Color.White else TvAccent.getColor(accentColorKey)
@@ -77,8 +78,7 @@ fun FormatFilterBar(
 
     Row(
         modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = TvSpacing.ScreenSafeHorizontal, vertical = 8.dp),
+            .padding(contentPadding),
         horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.Start),
         verticalAlignment = Alignment.CenterVertically
     ) {

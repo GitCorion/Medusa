@@ -8,9 +8,13 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import tv.medusa.app.data.remote.jellyfin.CatalogoCapabilitiesDto
 import tv.medusa.app.data.remote.jellyfin.CatalogoFormatUtils
+import tv.medusa.app.data.remote.jellyfin.CatalogoHttpException
 import tv.medusa.app.data.remote.jellyfin.CatalogoPrepareResponseDto
 import tv.medusa.app.data.remote.jellyfin.CatalogoStatusDto
+import tv.medusa.app.data.remote.jellyfin.CatalogoStatusResponse
 import tv.medusa.app.data.remote.jellyfin.CatalogoTorrentStatusDto
+import tv.medusa.app.data.remote.jellyfin.catalogoErrorMessage
+import tv.medusa.app.data.remote.jellyfin.catalogoJson
 import tv.medusa.app.data.remote.jellyfin.JellyfinMediaSourceDto
 import tv.medusa.app.data.remote.jellyfin.JellyfinPlaybackSourceResolver
 import tv.medusa.app.data.remote.jellyfin.TorrentOverlayUiState
@@ -386,5 +390,40 @@ class CatalogoTorrentPluginTest {
             assertNotNull(onePiece.status)
             println("Live test 3 OK: ONE PIECE is_catalog=true, state=${onePiece.status?.state}, release_id=${onePiece.status?.releaseId}")
         }
+    }
+
+    @Test
+    fun `status parses stream generation`() {
+        val json = """
+            {"is_catalog":true,"status":{
+              "key":"movie:tmdb:1",
+              "stream_generation":7,
+              "stream_switched_at":"2026-11-20T08:00:00Z",
+              "stream_switch_reason":"slow_swarm"
+            }}
+        """.trimIndent()
+        val response = catalogoJson.decodeFromString<CatalogoStatusResponse>(json)
+        assertEquals(7L, response.status?.streamGeneration)
+        assertEquals("slow_swarm", response.status?.streamSwitchReason)
+        assertEquals("2026-11-20T08:00:00Z", response.status?.streamSwitchedAt)
+    }
+
+    @Test
+    fun `error uses server message`() {
+        val body = """
+            {"error":"sin_fuente","message":"No hay ninguna fuente reproducible para este título."}
+        """.trimIndent()
+        assertEquals(
+            "No hay ninguna fuente reproducible para este título.",
+            catalogoErrorMessage(body),
+        )
+    }
+
+    @Test
+    fun `error parses null or blank or non-json gracefully`() {
+        assertEquals(null, catalogoErrorMessage(null))
+        assertEquals(null, catalogoErrorMessage(""))
+        assertEquals(null, catalogoErrorMessage("   "))
+        assertEquals(null, catalogoErrorMessage("<html>502 Bad Gateway</html>"))
     }
 }

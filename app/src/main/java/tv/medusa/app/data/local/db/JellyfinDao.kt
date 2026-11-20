@@ -291,6 +291,9 @@ interface JellyfinDao {
     @Query("SELECT id, lastPlayedTicks FROM jellyfin_media WHERE lastPlayedTicks > 0 AND id IN (:ids)")
     suspend fun getKnownLastPlayedTicks(ids: Collection<String>): List<LastPlayedTicksRow>
 
+    @Query("SELECT id FROM jellyfin_media WHERE isFavorite = 1 AND id IN (:ids)")
+    suspend fun getKnownFavoriteIds(ids: Collection<String>): List<String>
+
     /**
      * Fecha real de última reproducción **por serie**, tomando el máximo entre la propia fila de la
      * serie y las de sus capítulos ya reproducidos.
@@ -851,31 +854,46 @@ data class LastPlayedTicksRow(
 )
 
 /**
- * Evita que un ítem que llega **sin** fecha del servidor borre la fecha ya guardada en Room:
- * `insertOrUpdateAll` es un REPLACE, así que un `lastPlayedTicks = 0` pisaría el valor real.
+ * Evita que un ítem que llega **sin** fecha o sin estado de favorito del servidor borre los datos ya guardados en Room:
+ * `insertOrUpdateAll` es un REPLACE, así que un `lastPlayedTicks = 0` o un `isFavorite = false` pisaría el valor real.
  *
- * Solo copia fechas que **ya existían**: nunca inventa una nueva. Los ids se consultan en bloques
+ * Solo copia fechas y favoritos que **ya existían**: nunca inventa nuevos. Los ids se consultan en bloques
  * para no acercarse al límite de variables de SQLite (999).
  */
 internal suspend fun JellyfinDao.preserveKnownLastPlayedDates(
     items: List<JellyfinMediaEntity>
 ): List<JellyfinMediaEntity> {
+    if (items.isEmpty()) return items
+
     val undated = items.filter { it.lastPlayedTicks <= 0L }
-    if (undated.isEmpty()) return items
+    val unfavorited = items.filter { !it.isFavorite }
 
     val known = HashMap<String, Long>()
-    undated.map { it.id }.distinct().chunked(MAX_SQL_IDS_PER_QUERY).forEach { batch ->
-        getKnownLastPlayedTicks(batch).forEach { known[it.id] = it.lastPlayedTicks }
+    if (undated.isNotEmpty()) {
+        undated.map { it.id }.distinct().chunked(MAX_SQL_IDS_PER_QUERY).forEach { batch ->
+            getKnownLastPlayedTicks(batch).forEach { known[it.id] = it.lastPlayedTicks }
+        }
     }
-    if (known.isEmpty()) return items
+
+    val knownFavs = HashSet<String>()
+    if (unfavorited.isNotEmpty()) {
+        unfavorited.map { it.id }.distinct().chunked(MAX_SQL_IDS_PER_QUERY).forEach { batch ->
+            knownFavs.addAll(getKnownFavoriteIds(batch))
+        }
+    }
+
+    if (known.isEmpty() && knownFavs.isEmpty()) return items
 
     return items.map { item ->
+        var updated = item
         val saved = known[item.id]
         if (item.lastPlayedTicks <= 0L && saved != null && saved > 0L) {
-            item.copy(lastPlayedTicks = saved)
-        } else {
-            item
+            updated = updated.copy(lastPlayedTicks = saved)
         }
+        if (!item.isFavorite && knownFavs.contains(item.id)) {
+            updated = updated.copy(isFavorite = true)
+        }
+        updated
     }
 }
 

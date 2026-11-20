@@ -1,12 +1,12 @@
 {
-  "versionCode": 1000147,
-  "versionName": "2.3.0-beta",
+  "versionCode": 1000148,
+  "versionName": "2.3.1-beta",
   "minSupportedVersionCode": 1000105,
   "forceUpdate": true,
   "killSwitch": false,
-  "releaseNotes": "Rediseño Anti-Slop de pantalla de buffer: estética cinemática, badges limpios, medidor contiguo y selector de versiones disponible.",
+  "releaseNotes": "Navegación D-pad fluida: eliminación de saltos bruscos en carruseles y ordenación elegante en Buscar y Favoritos.",
   "apkUrl": "https://medusa-fd388.web.app/Medusa.apk",
-  "apkSha256": "e018a3d9373bc9d1d2784befb4ead8e450eaede9df31c94e1805d2dc04749848",
+  "apkSha256": "18c5ef6cb732bfad0c52168010fb6647be023413e024d28da3455f555f318e8e",
   "signatures": [
     "26bccb39ed122a69ecf7a8d0b50deeabeb15bc1a4b2a8b77941b47a96fdd3fea",
     "78a588afcc90d8ea59e008c9cbd1e8bbed3b2831518184d5a9935948b9d245ac"

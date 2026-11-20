@@ -24,8 +24,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -34,7 +39,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -50,6 +58,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -69,6 +79,8 @@ import tv.medusa.app.R
 import tv.medusa.app.ui.components.MediaCard
 import tv.medusa.app.ui.components.TvNavTab
 import tv.medusa.app.ui.components.TvTopBar
+import tv.medusa.app.ui.components.sort.CatalogSortButton
+import tv.medusa.app.ui.components.sort.CatalogSortOption
 import tv.medusa.app.ui.theme.TvAccent
 import tv.medusa.app.ui.theme.TvPill
 import kotlinx.coroutines.delay
@@ -103,6 +115,24 @@ fun SearchScreen(
             ).isNotEmpty()
     }
 
+    var sortOption by rememberSaveable { mutableStateOf(CatalogSortOption.DEFAULT) }
+    val sortedResults = remember(uiState.results, sortOption) {
+        sortOption.sort(uiState.results)
+    }
+
+    val gridState = rememberLazyGridState()
+    val coroutineScope = rememberCoroutineScope()
+
+    LaunchedEffect(sortOption) {
+        try { gridState.scrollToItem(0) } catch (_: Exception) {}
+    }
+
+    LaunchedEffect(uiState.query) {
+        if (uiState.query.isNotBlank()) {
+            try { gridState.scrollToItem(0) } catch (_: Exception) {}
+        }
+    }
+
     val voiceSearchLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -116,8 +146,10 @@ fun SearchScreen(
         }
     }
 
-    // Enfoque inicial automático en la primera tecla del teclado (A)
+    // Enfoque inicial automático en la primera tecla del teclado (A) y requester para el primer resultado
     val initialKeyFocusRequester = remember { FocusRequester() }
+    val firstResultFocusRequester = remember { FocusRequester() }
+    val sortButtonFocusRequester = remember { FocusRequester() }
 
     LaunchedEffect(Unit) {
         delay(180)
@@ -249,7 +281,11 @@ fun SearchScreen(
                                     border = Border.None,
                                     focusedBorder = Border.None
                                 ),
-                                modifier = Modifier.height(26.dp)
+                                modifier = Modifier
+                                    .height(26.dp)
+                                    .focusProperties {
+                                        right = if (sortedResults.isNotEmpty()) sortButtonFocusRequester else FocusRequester.Default
+                                    }
                             ) {
                                 Icon(
                                     imageVector = Icons.Rounded.Mic,
@@ -317,6 +353,20 @@ fun SearchScreen(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight()
+                    .focusProperties {
+                        onEnter = {
+                            if (sortedResults.isNotEmpty()) {
+                                if (gridState.firstVisibleItemIndex > 0) {
+                                    coroutineScope.launch {
+                                        gridState.scrollToItem(0)
+                                    }
+                                }
+                                firstResultFocusRequester
+                            } else {
+                                FocusRequester.Default
+                            }
+                        }
+                    }
             ) {
                 if (uiState.query.isBlank()) {
                     // Estado inicial limpio y minimalista (sin duplicar novedades del Home)
@@ -353,10 +403,9 @@ fun SearchScreen(
                             )
                         }
                     }
-                } else {
-                    // Estado con consulta activa: Muestra Sugerencias superiores, contador y Cuadrícula
+                } else if (sortedResults.isEmpty() && !uiState.isLoading) {
+                    // Sin resultados para el término
                     Column(modifier = Modifier.fillMaxSize()) {
-                        // Fila de sugerencias de autocompletado directa
                         if (uiState.suggestions.isNotEmpty()) {
                             Row(
                                 modifier = Modifier
@@ -365,7 +414,7 @@ fun SearchScreen(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                uiState.suggestions.take(4).forEach { suggestion ->
+                                uiState.suggestions.take(4).forEachIndexed { sIndex, suggestion ->
                                     Button(
                                         onClick = { viewModel.selectSuggestion(suggestion) },
                                         contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
@@ -380,7 +429,13 @@ fun SearchScreen(
                                             border = Border.None,
                                             focusedBorder = Border.None
                                         ),
-                                        modifier = Modifier.height(26.dp)
+                                        modifier = Modifier
+                                            .height(26.dp)
+                                            .focusProperties {
+                                                if (sIndex == 0) {
+                                                    left = initialKeyFocusRequester
+                                                }
+                                            }
                                     ) {
                                         Text(
                                             text = suggestion,
@@ -394,68 +449,144 @@ fun SearchScreen(
                             }
                         }
 
-                        // Cabecera de resultados
-                        Row(
+                        Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(bottom = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                                .weight(1f),
+                            contentAlignment = Alignment.Center
                         ) {
-                            val counterText = when {
-                                uiState.isLoading -> stringResource(R.string.search_counter_searching)
-                                uiState.totalHits == 1 -> stringResource(R.string.search_counter_one)
-                                uiState.totalHits > 1 -> stringResource(R.string.search_counter_many, uiState.totalHits)
-                                else -> stringResource(R.string.search_counter_none)
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    text = stringResource(R.string.search_no_results, uiState.query),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = Color(0xFFCBD5E1),
+                                    fontWeight = FontWeight.SemiBold
+                                )
                             }
+                        }
+                    }
+                } else {
+                    // Cuadrícula TV de Resultados (Pósters interactivos) con cabecera integrada en la propia grid
+                    val counterText = when {
+                        uiState.isLoading -> stringResource(R.string.search_counter_searching)
+                        uiState.totalHits == 1 -> stringResource(R.string.search_counter_one)
+                        uiState.totalHits > 1 -> stringResource(R.string.search_counter_many, uiState.totalHits)
+                        else -> stringResource(R.string.search_counter_none)
+                    }
 
-                            Text(
-                                text = counterText,
-                                style = MaterialTheme.typography.titleMedium,
-                                color = if (uiState.totalHits > 0) Color.White else Color(0xFF94A3B8),
-                                fontWeight = FontWeight.Bold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
+                    LazyVerticalGrid(
+                        state = gridState,
+                        columns = GridCells.Adaptive(minSize = 140.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(20.dp),
+                        contentPadding = PaddingValues(start = 12.dp, end = 16.dp, top = 4.dp, bottom = 48.dp),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        item(key = "search_header", span = { GridItemSpan(maxLineSpan) }) {
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                if (uiState.suggestions.isNotEmpty()) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(bottom = 8.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        uiState.suggestions.take(4).forEachIndexed { sIndex, suggestion ->
+                                            Button(
+                                                onClick = { viewModel.selectSuggestion(suggestion) },
+                                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                                                shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
+                                                colors = ButtonDefaults.colors(
+                                                    containerColor = Color(0xFF191D2C),
+                                                    contentColor = Color(0xFFE2E8F0),
+                                                    focusedContainerColor = focusColor,
+                                                    focusedContentColor = focusContent
+                                                ),
+                                                border = ButtonDefaults.border(
+                                                    border = Border.None,
+                                                    focusedBorder = Border.None
+                                                ),
+                                                modifier = Modifier
+                                                    .height(26.dp)
+                                                    .focusProperties {
+                                                        if (sIndex == 0) {
+                                                            left = initialKeyFocusRequester
+                                                        }
+                                                    }
+                                            ) {
+                                                Text(
+                                                    text = suggestion,
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(bottom = 10.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = counterText,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = if (uiState.totalHits > 0) Color.White else Color(0xFF94A3B8),
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+
+                                    if (sortedResults.isNotEmpty()) {
+                                        CatalogSortButton(
+                                            currentSort = sortOption,
+                                            onSortSelected = { option ->
+                                                sortOption = option
+                                                coroutineScope.launch {
+                                                    gridState.scrollToItem(0)
+                                                    delay(30)
+                                                    sortButtonFocusRequester.requestFocus()
+                                                }
+                                            },
+                                            accentColorKey = accentColorKey,
+                                            isMonochrome = isMonochrome,
+                                            focusRequester = sortButtonFocusRequester,
+                                            modifier = Modifier
+                                                .focusRequester(sortButtonFocusRequester)
+                                                .focusProperties {
+                                                    down = firstResultFocusRequester
+                                                    left = if (uiState.suggestions.isNotEmpty()) FocusRequester.Default else initialKeyFocusRequester
+                                                }
+                                        )
+                                    }
+                                }
+                            }
                         }
 
-                        if (uiState.results.isEmpty() && !uiState.isLoading) {
-                            // Sin resultados para el término
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .weight(1f),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text(
-                                        text = stringResource(R.string.search_no_results, uiState.query),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        color = Color(0xFFCBD5E1),
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                }
-                            }
-                        } else {
-                            // Cuadrícula TV de Resultados (Pósters interactivos)
-                            LazyVerticalGrid(
-                                columns = GridCells.Adaptive(minSize = 140.dp),
-                                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(20.dp),
-                                contentPadding = PaddingValues(start = 12.dp, end = 16.dp, top = 18.dp, bottom = 48.dp),
-                                modifier = Modifier.fillMaxSize()
-                            ) {
-                                items(
-                                    items = uiState.results,
-                                    key = { it.id },
-                                    contentType = { "media_card" }
-                                ) { item ->
-                                    MediaCard(
-                                        item = item,
-                                        onClick = { onDetailMedia(item.id) },
-                                        onFocus = { viewModel.setFocusedItem(item) }
-                                    )
-                                }
-                            }
+                        itemsIndexed(
+                            items = sortedResults,
+                            key = { _, item -> item.id },
+                            contentType = { _, _ -> "media_card" }
+                        ) { index, item ->
+                            MediaCard(
+                                item = item,
+                                onClick = {
+                                    val targetId = if (item.type.equals("Episode", ignoreCase = true) && !item.seriesId.isNullOrBlank()) {
+                                        item.seriesId!!
+                                    } else {
+                                        item.id
+                                    }
+                                    onDetailMedia(targetId)
+                                },
+                                onFocus = { viewModel.setFocusedItem(item) },
+                                modifier = if (index == 0) Modifier.focusRequester(firstResultFocusRequester) else Modifier
+                            )
                         }
                     }
                 }

@@ -387,6 +387,30 @@ fun SettingsScreen(
                 focusContent = focusContent
             )
         }
+
+        if (uiState.jellyfinQrUrl != null) {
+            TvQuickConnectDialog(
+                title = stringResource(R.string.settings_login_quick_connect),
+                step1Text = stringResource(R.string.settings_qc_step1),
+                code = uiState.jellyfinQuickConnectCode ?: "...",
+                qrUrl = uiState.jellyfinQrUrl!!,
+                onDismiss = { viewModel.cancelJellyfinQuickConnect() },
+                focusColor = focusColor,
+                focusContent = focusContent
+            )
+        }
+
+        if (uiState.traktQrUrl != null) {
+            TvQuickConnectDialog(
+                title = stringResource(R.string.pro_feature_trakt_title),
+                step1Text = stringResource(R.string.settings_trakt_step1),
+                code = uiState.traktUserCode ?: "...",
+                qrUrl = uiState.traktQrUrl!!,
+                onDismiss = { viewModel.cancelTraktQuickConnect() },
+                focusColor = focusColor,
+                focusContent = focusContent
+            )
+        }
     }
 }
 
@@ -627,15 +651,6 @@ private fun JellyfinCategory(
                         text = if (uiState.isWaitingJellyfinQuickConnect) stringResource(R.string.settings_btn_waiting_confirmation) else stringResource(R.string.settings_btn_generate_qr),
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold
-                    )
-                }
-
-                if (uiState.jellyfinQrUrl != null) {
-                    Spacer(modifier = Modifier.height(14.dp))
-                    TvActivationCodeBox(
-                        qrUrl = uiState.jellyfinQrUrl!!,
-                        step1Text = stringResource(R.string.settings_qc_step1),
-                        code = uiState.jellyfinQuickConnectCode ?: "..."
                     )
                 }
             } else {
@@ -931,15 +946,6 @@ private fun LibraryCategory(
                 text = if (uiState.isWaitingTraktAuth) stringResource(R.string.settings_btn_generating_code) else stringResource(R.string.settings_btn_link_qr),
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold
-            )
-        }
-
-        if (uiState.traktQrUrl != null) {
-            Spacer(modifier = Modifier.height(14.dp))
-            TvActivationCodeBox(
-                qrUrl = uiState.traktQrUrl!!,
-                step1Text = stringResource(R.string.settings_trakt_step1),
-                code = uiState.traktUserCode ?: "..."
             )
         }
     }
@@ -1989,59 +1995,150 @@ private fun TvPlatformToggleRow(
     }
 }
 
+@OptIn(androidx.tv.material3.ExperimentalTvMaterial3Api::class)
 @Composable
-private fun TvActivationCodeBox(
-    qrUrl: String,
+private fun TvQuickConnectDialog(
+    title: String,
     step1Text: String,
-    code: String
+    code: String,
+    qrUrl: String,
+    onDismiss: () -> Unit,
+    focusColor: Color,
+    focusContent: Color
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Color(0x0AFFFFFF), RoundedCornerShape(12.dp))
-            .border(0.5.dp, Color(0x18FFFFFF), RoundedCornerShape(12.dp))
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically
+    val focusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        delay(150)
+        try {
+            focusRequester.requestFocus()
+        } catch (_: Exception) {}
+    }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
         Box(
             modifier = Modifier
-                .size(110.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(Color.White)
-                .padding(6.dp),
+                .fillMaxSize()
+                .background(Color(0xDD06080D)),
             contentAlignment = Alignment.Center
         ) {
-            AsyncImage(
-                model = qrUrl,
-                contentDescription = stringResource(R.string.settings_qr_content_description),
-                contentScale = ContentScale.Fit,
-                modifier = Modifier.fillMaxSize()
-            )
-        }
+            Box(
+                modifier = Modifier
+                    .width(540.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color(0xFF141722))
+                    .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(16.dp))
+                    .padding(28.dp)
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = title,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
 
-        Spacer(modifier = Modifier.width(20.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
 
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = stringResource(R.string.settings_activation_step1, step1Text),
-                fontSize = 12.sp,
-                color = Color(0xFF94A3B8)
-            )
-            Spacer(modifier = Modifier.height(10.dp))
-            Text(
-                text = stringResource(R.string.settings_activation_step2),
-                fontSize = 12.sp,
-                color = Color(0xFF94A3B8)
-            )
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = code,
-                color = Color.White,
-                fontSize = 26.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = FontFamily.Monospace,
-                letterSpacing = 2.sp
-            )
+                    Text(
+                        text = stringResource(R.string.settings_activation_step1, step1Text),
+                        fontSize = 13.sp,
+                        color = Color(0xFF94A3B8),
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color(0x0AFFFFFF), RoundedCornerShape(12.dp))
+                            .border(0.5.dp, Color(0x18FFFFFF), RoundedCornerShape(12.dp))
+                            .padding(18.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(160.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(Color.White)
+                                .padding(8.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            AsyncImage(
+                                model = qrUrl,
+                                contentDescription = stringResource(R.string.settings_qr_content_description),
+                                contentScale = ContentScale.Fit,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(24.dp))
+
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                text = stringResource(R.string.settings_activation_step2),
+                                fontSize = 12.sp,
+                                color = Color(0xFF94A3B8)
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = code,
+                                color = Color.White,
+                                fontSize = 32.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                fontFamily = FontFamily.Monospace,
+                                letterSpacing = 3.sp
+                            )
+                            Spacer(modifier = Modifier.height(14.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(14.dp),
+                                    strokeWidth = 2.dp,
+                                    color = focusColor
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = stringResource(R.string.settings_btn_waiting_confirmation),
+                                    fontSize = 11.sp,
+                                    color = Color(0xFF94A3B8)
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    Button(
+                        onClick = onDismiss,
+                        modifier = Modifier
+                            .focusRequester(focusRequester)
+                            .handleTouchClick { onDismiss() },
+                        colors = ButtonDefaults.colors(
+                            containerColor = Color(0x14FFFFFF),
+                            contentColor = Color.White,
+                            focusedContainerColor = focusColor,
+                            focusedContentColor = focusContent
+                        )
+                    ) {
+                        Text(
+                            text = stringResource(R.string.common_cancel),
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+            }
         }
     }
 }

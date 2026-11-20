@@ -3,6 +3,8 @@ package tv.medusa.app.ui.components.contextmenu
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -24,6 +26,12 @@ class MediaActionHandler @Inject constructor(
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+    private val _onRemoveFromContinueWatching = MutableSharedFlow<MediaItem>(extraBufferCapacity = 64)
+    val onRemoveFromContinueWatching = _onRemoveFromContinueWatching.asSharedFlow()
+
+    private val _onMediaChanged = MutableSharedFlow<Unit>(extraBufferCapacity = 64)
+    val onMediaChanged = _onMediaChanged.asSharedFlow()
+
     fun toggleFavorite(item: MediaItem) {
         val newFav = !item.isFavorite
         scope.launch {
@@ -35,6 +43,7 @@ class MediaActionHandler @Inject constructor(
                 itemId = item.id,
                 makeFavorite = newFav
             )
+            _onMediaChanged.tryEmit(Unit)
         }
     }
 
@@ -49,10 +58,12 @@ class MediaActionHandler @Inject constructor(
                 itemId = item.id,
                 makePlayed = newPlayed
             )
+            _onMediaChanged.tryEmit(Unit)
         }
     }
 
     fun removeFromContinueWatching(item: MediaItem) {
+        _onRemoveFromContinueWatching.tryEmit(item)
         scope.launch {
             val prefs = userPreferencesRepository.userPreferencesFlow.first()
             mediaRepository.clearPlaybackPosition(
@@ -61,6 +72,18 @@ class MediaActionHandler @Inject constructor(
                 token = prefs.jellyfinAccessToken,
                 itemId = item.id
             )
+            if (!item.seriesId.isNullOrBlank()) {
+                mediaRepository.clearPlaybackPosition(
+                    serverUrl = prefs.jellyfinServerUrl,
+                    userId = prefs.jellyfinUserId,
+                    token = prefs.jellyfinAccessToken,
+                    itemId = item.seriesId
+                )
+            }
+            tv.medusa.app.data.repository.MediaCaches.serverContinueWatchingCache.clear()
+            tv.medusa.app.domain.usecase.GetHomeFeedUseCase.invalidateFeedCache()
+            MediaRepository.invalidateServerCaches()
+            _onMediaChanged.tryEmit(Unit)
         }
     }
 

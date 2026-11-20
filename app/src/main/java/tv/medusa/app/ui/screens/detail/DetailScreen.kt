@@ -1,6 +1,8 @@
 package tv.medusa.app.ui.screens.detail
 
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import tv.medusa.app.ui.components.JellyLoadingIndicator
 import tv.medusa.app.ui.theme.LocalIsMonochromeTheme
 import tv.medusa.app.ui.theme.currentFocusColor
@@ -17,6 +19,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -137,12 +141,30 @@ fun DetailScreen(
     }
 
     val playButtonFocusRequester = remember { FocusRequester() }
+    val episodeFocusRequester = remember { FocusRequester() }
+    val episodesLazyListState = rememberLazyListState()
+    var lastPlayedEpisodeId by rememberSaveable { mutableStateOf<String?>(null) }
+    var hasRequestedInitialFocus by rememberSaveable { mutableStateOf(false) }
 
-    LaunchedEffect(uiState) {
+    LaunchedEffect(uiState, lastPlayedEpisodeId) {
         if (uiState is DetailUiState.Success) {
-            delay(120)
-            runCatching {
-                playButtonFocusRequester.requestFocus()
+            val success = uiState as DetailUiState.Success
+            val targetEpisodeIndex = if (lastPlayedEpisodeId != null) {
+                success.episodes.indexOfFirst { it.id == lastPlayedEpisodeId }
+            } else -1
+
+            if (targetEpisodeIndex >= 0) {
+                delay(150)
+                runCatching {
+                    episodesLazyListState.scrollToItem(targetEpisodeIndex)
+                    episodeFocusRequester.requestFocus()
+                }
+            } else if (!hasRequestedInitialFocus) {
+                hasRequestedInitialFocus = true
+                delay(120)
+                runCatching {
+                    playButtonFocusRequester.requestFocus()
+                }
             }
         }
     }
@@ -201,6 +223,7 @@ fun DetailScreen(
                 val focusContent = if (isMonochrome) Color(0xFF0F172A) else TvAccent.getFocusedContentColor(state.accentColor)
                 val isTv = entity.type.equals("Series", ignoreCase = true) || entity.type.equals("Episode", ignoreCase = true)
                 val isTvSeries = entity.type.equals("Series", ignoreCase = true)
+                val isEpisode = entity.type.equals("Episode", ignoreCase = true)
 
                 // Backdrop Image Background
                 if (state.backdropUrl != null) {
@@ -246,6 +269,7 @@ fun DetailScreen(
                 val context = LocalContext.current
                 val isTouchDevice = remember(context) { DeviceUtils.isTouchDevice(context) }
                 val detailScrollState = rememberScrollState()
+                val coroutineScope = rememberCoroutineScope()
 
                 Column(
                     modifier = Modifier
@@ -257,6 +281,13 @@ fun DetailScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .onFocusChanged { focusState ->
+                                if (focusState.hasFocus && detailScrollState.value > 0) {
+                                    coroutineScope.launch {
+                                        detailScrollState.animateScrollTo(0)
+                                    }
+                                }
+                            }
                             .padding(horizontal = TvSpacing.ScreenSafeHorizontal),
                         verticalAlignment = Alignment.Top
                     ) {
@@ -487,6 +518,9 @@ fun DetailScreen(
                                 Button(
                                     onClick = {
                                         isLaunchingPlayer = true
+                                        if (isTvSeries && state.nextUpEpisode != null) {
+                                            lastPlayedEpisodeId = state.nextUpEpisode.id
+                                        }
                                         onPlay(playTargetId)
                                     },
                                     contentPadding = actionButtonPadding,
@@ -505,6 +539,9 @@ fun DetailScreen(
                                     modifier = Modifier
                                         .handleTouchClick {
                                             isLaunchingPlayer = true
+                                            if (isTvSeries && state.nextUpEpisode != null) {
+                                                lastPlayedEpisodeId = state.nextUpEpisode.id
+                                            }
                                             onPlay(playTargetId)
                                         }
                                         .focusRequester(playButtonFocusRequester)
@@ -743,8 +780,8 @@ fun DetailScreen(
                         }
                     }
 
-                    // Seasons and Episodes Section for Series
-                    if (isTvSeries && state.seasons.isNotEmpty()) {
+                    // Seasons and Episodes Section for Series or Episodes with Series parent
+                    if ((isTvSeries || isEpisode) && state.seasons.isNotEmpty()) {
                         if (state.seasons.size > 1) {
                             Spacer(modifier = Modifier.height(36.dp))
                             Row(
@@ -851,6 +888,7 @@ fun DetailScreen(
                             )
                         } else {
                             LazyRow(
+                                state = episodesLazyListState,
                                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                                 contentPadding = PaddingValues(
                                     start = TvSpacing.ScreenSafeHorizontal,
@@ -865,13 +903,16 @@ fun DetailScreen(
                                     key = { it.id },
                                     contentType = { "episode_card" }
                                 ) { episode ->
+                                    val isTarget = episode.id == lastPlayedEpisodeId
                                     EpisodeCard(
                                         episode = episode,
                                         onClick = {
                                             isLaunchingPlayer = true
+                                            lastPlayedEpisodeId = episode.id
                                             onPlay(episode.id)
                                         },
-                                        accentColor = state.accentColor
+                                        accentColor = state.accentColor,
+                                        modifier = if (isTarget) Modifier.focusRequester(episodeFocusRequester) else Modifier
                                     )
                                 }
                             }

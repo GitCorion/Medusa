@@ -693,4 +693,20 @@
     <string name="torrent_cancel">Cancelar</string>
     <string name="torrent_retry">Reintentar</string>
 
+    <!-- Ordenación de catálogo -->
+    <string name="sort_dialog_title">Ordenar catálogo</string>
+    <string name="sort_dialog_subtitle">Selecciona el criterio de ordenación</string>
+    <string name="sort_default">Predeterminado (Relevancia)</string>
+    <string name="sort_default_short">Orden</string>
+    <string name="sort_title_asc">Título (A → Z)</string>
+    <string name="sort_title_asc_short">A → Z</string>
+    <string name="sort_title_desc">Título (Z → A)</string>
+    <string name="sort_title_desc_short">Z → A</string>
+    <string name="sort_year_desc">Año (Más recientes primero)</string>
+    <string name="sort_year_desc_short">Año ▼</string>
+    <string name="sort_year_asc">Año (Más antiguos primero)</string>
+    <string name="sort_year_asc_short">Año ▲</string>
+    <string name="sort_rating_desc">Calificación (Mejor valoradas)</string>
+    <string name="sort_rating_desc_short">Nota ▼</string>
+
 </resources>

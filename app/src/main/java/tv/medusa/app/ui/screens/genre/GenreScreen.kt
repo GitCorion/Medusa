@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items as gridItems
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -27,7 +28,10 @@ import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -55,6 +59,8 @@ import tv.medusa.app.ui.components.MediaRow
 import tv.medusa.app.ui.components.TvBackButton
 import tv.medusa.app.ui.components.TvNavTab
 import tv.medusa.app.ui.components.TvTopBar
+import tv.medusa.app.ui.components.sort.CatalogSortButton
+import tv.medusa.app.ui.components.sort.CatalogSortOption
 import tv.medusa.app.ui.theme.TvAccent
 import tv.medusa.app.ui.util.handleTouchClick
 import tv.medusa.app.util.DeviceUtils
@@ -309,7 +315,19 @@ private fun GenreAllGrid(
     val context = LocalContext.current
     val isTouchDevice = remember(context) { DeviceUtils.isTouchDevice(context) }
 
+    var sortOption by rememberSaveable { mutableStateOf(CatalogSortOption.DEFAULT) }
+    val sortedItems = remember(state.allItems, sortOption) {
+        sortOption.sort(state.allItems)
+    }
+
+    val gridState = rememberLazyGridState()
+
+    LaunchedEffect(sortOption) {
+        try { gridState.scrollToItem(0) } catch (_: Exception) {}
+    }
+
     LazyVerticalGrid(
+        state = gridState,
         columns = GridCells.Adaptive(minSize = 145.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -347,19 +365,32 @@ private fun GenreAllGrid(
                     isMonochrome = isMonochrome,
                     hideWatched = state.hideWatched,
                     onToggleHideWatched = onToggleHideWatched,
-                    modifier = if (isTouchDevice) Modifier.weight(1f) else Modifier.fillMaxWidth()
+                    contentPadding = PaddingValues(vertical = 4.dp),
+                    modifier = Modifier.weight(1f, fill = false)
                 )
-                if (isTouchDevice) {
-                    TvBackButton(
-                        onClick = onBackToLanding,
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    CatalogSortButton(
+                        currentSort = sortOption,
+                        onSortSelected = { sortOption = it },
                         accentColorKey = accentColorKey,
                         isMonochrome = isMonochrome
                     )
+                    if (isTouchDevice) {
+                        TvBackButton(
+                            onClick = onBackToLanding,
+                            accentColorKey = accentColorKey,
+                            isMonochrome = isMonochrome
+                        )
+                    }
                 }
             }
         }
 
-        if (state.allItems.isEmpty()) {
+        if (sortedItems.isEmpty()) {
             item(key = "genre_all_empty", span = { GridItemSpan(maxLineSpan) }) {
                 Box(
                     modifier = Modifier
@@ -375,7 +406,7 @@ private fun GenreAllGrid(
                 }
             }
         } else {
-            gridItems(items = state.allItems, key = { it.id }, contentType = { "media_card" }) { item ->
+            gridItems(items = sortedItems, key = { it.id }, contentType = { "media_card" }) { item ->
                 MediaCard(item = item, onClick = { onDetailMedia(item.id) })
             }
         }

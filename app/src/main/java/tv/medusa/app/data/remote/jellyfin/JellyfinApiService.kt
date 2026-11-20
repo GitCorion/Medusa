@@ -59,7 +59,7 @@ interface JellyfinApiService {
         @Query("UserId") userId: String,
         @Query("ParentId") parentId: String? = null,
         @Query("Ids") ids: String? = null,
-        @Query("IncludeItemTypes") includeItemTypes: String? = "Movie,Series,BoxSet",
+        @Query(value = "IncludeItemTypes", encoded = true) includeItemTypes: String? = "Movie,Series,BoxSet",
         @Query("Fields") fields: String? = "ProviderIds,PrimaryImageTag,BackdropImageTags,CommunityRating,OfficialRating,Genres,UserData,ItemCounts,RecursiveItemCount",
         @Query("Recursive") recursive: Boolean = true,
         @Query("Limit") limit: Int? = 500,
@@ -86,7 +86,7 @@ interface JellyfinApiService {
         @Header("Authorization") authHeader: String,
         @Query("UserId") userId: String,
         @Query("SearchTerm") searchTerm: String,
-        @Query("IncludeItemTypes") includeItemTypes: String = "Movie,Series,BoxSet",
+        @Query(value = "IncludeItemTypes", encoded = true) includeItemTypes: String = "Movie,Series,BoxSet",
         @Query("Recursive") recursive: Boolean = true,
         @Query("Limit") limit: Int = 5,
         @Query("Fields") fields: String = "Overview,ProviderIds,PrimaryImageTag,BackdropImageTags,CommunityRating,OfficialRating,UserData,Genres"
@@ -143,7 +143,7 @@ interface JellyfinApiService {
         @Query("Filters") filters: String = "IsPlayed",
         @Query("SortBy") sortBy: String = "DatePlayed",
         @Query("SortOrder") sortOrder: String = "Descending",
-        @Query("IncludeItemTypes") includeItemTypes: String = "Movie,Series,Episode",
+        @Query(value = "IncludeItemTypes", encoded = true) includeItemTypes: String = "Movie,Series,Episode",
         @Query("Recursive") recursive: Boolean = true,
         @Query("Limit") limit: Int = 10,
         @Query("Fields") fields: String = "ProviderIds,Overview,PrimaryImageTag,BackdropImageTags,CommunityRating,UserData,SeriesPrimaryImageTag"
@@ -227,8 +227,8 @@ interface JellyfinApiService {
         @Path("userId") userId: String,
         @Query("Filters") filters: String = "IsFavorite",
         @Query("Recursive") recursive: Boolean = true,
-        @Query("IncludeItemTypes") includeItemTypes: String = "Movie,Series",
-        @Query("Fields") fields: String = "Overview,ProviderIds,PrimaryImageTag,BackdropImageTags,CommunityRating,UserData,Genres",
+        @Query(value = "IncludeItemTypes", encoded = true) includeItemTypes: String? = "Movie,Series,Episode",
+        @Query("Fields") fields: String = "Overview,ProviderIds,PrimaryImageTag,BackdropImageTags,CommunityRating,UserData,Genres,ItemCounts",
         @Query("SortBy") sortBy: String = "SortName",
         @Query("SortOrder") sortOrder: String = "Ascending"
     ): JellyfinItemsResponse

@@ -29,7 +29,10 @@ import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -63,6 +66,8 @@ import tv.medusa.app.ui.components.MediaCard
 import tv.medusa.app.ui.components.MediaRow
 import tv.medusa.app.ui.components.TvBackButton
 import tv.medusa.app.ui.components.SeasonalParticles
+import tv.medusa.app.ui.components.sort.CatalogSortButton
+import tv.medusa.app.ui.components.sort.CatalogSortOption
 import tv.medusa.app.ui.components.TvNavTab
 import tv.medusa.app.ui.components.TvTopBar
 import tv.medusa.app.ui.theme.TvAccent
@@ -377,6 +382,15 @@ private fun SeasonalAllGrid(
     val context = LocalContext.current
     val isTouchDevice = remember(context) { DeviceUtils.isTouchDevice(context) }
 
+    var sortOption by rememberSaveable { mutableStateOf(CatalogSortOption.DEFAULT) }
+    val sortedItems = remember(state.items, sortOption) {
+        sortOption.sort(state.items)
+    }
+
+    LaunchedEffect(sortOption) {
+        try { gridState.scrollToItem(0) } catch (_: Exception) {}
+    }
+
     LaunchedEffect(state.items.size, state.hasMoreAll, state.isLoadingAll) {
         snapshotFlow { gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0 }
             .collect { lastVisible ->
@@ -399,7 +413,9 @@ private fun SeasonalAllGrid(
         }
         item(key = "seasonal_filters_all", span = { GridItemSpan(maxLineSpan) }) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -411,13 +427,26 @@ private fun SeasonalAllGrid(
                     isMonochrome = isMonochrome,
                     hideWatched = state.hideWatched,
                     onToggleHideWatched = onToggleHideWatched,
-                    modifier = if (isTouchDevice) Modifier.weight(1f) else Modifier.fillMaxWidth()
+                    contentPadding = PaddingValues(vertical = 4.dp),
+                    modifier = Modifier.weight(1f, fill = false)
                 )
-                if (isTouchDevice) {
-                    TvBackButton(
-                        onClick = onBackToLanding,
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    CatalogSortButton(
+                        currentSort = sortOption,
+                        onSortSelected = { sortOption = it },
+                        accentColorKey = accentColorKey,
                         isMonochrome = isMonochrome
                     )
+                    if (isTouchDevice) {
+                        TvBackButton(
+                            onClick = onBackToLanding,
+                            isMonochrome = isMonochrome
+                        )
+                    }
                 }
             }
         }
@@ -431,7 +460,7 @@ private fun SeasonalAllGrid(
                 )
             }
         } else {
-            gridItems(items = state.items, key = { it.id }, contentType = { "media_card" }) { item ->
+            gridItems(items = sortedItems, key = { it.id }, contentType = { "media_card" }) { item ->
                 MediaCard(item = item, onClick = { onDetailMedia(item.id) })
             }
             if (state.isLoadingAll) {

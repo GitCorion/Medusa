@@ -1,6 +1,7 @@
 package tv.medusa.app.data.repository
 
 import android.content.Context
+import android.util.Log
 import tv.medusa.app.data.local.db.JellyfinDao
 import tv.medusa.app.data.local.db.JellyfinMediaEntity
 import tv.medusa.app.data.local.db.preserveKnownLastPlayedDates
@@ -317,17 +318,52 @@ class JellyfinMediaRemoteRepository(
     suspend fun getFavorites(serverUrl: String, userId: String, token: String): Result<List<JellyfinMediaEntity>> {
         return runCatching {
             val local = jellyfinDao.getFavorites().deduplicateMediaEntities()
-            if (serverUrl.isBlank() || token.isBlank()) return@runCatching local
+            if (serverUrl.isBlank() || token.isBlank() || userId.isBlank()) return@runCatching local
             try {
                 val api = NetworkClientFactory.createJellyfinService(serverUrl, JellyfinApiService::class.java)
                 val authHeader = buildJellyfinAuthHeader(token = token)
-                val response = api.getFavoriteItems(authHeader = authHeader, userId = userId)
-                val entities = response.items.map { it.toEntity().copy(isFavorite = true) }
+
+                // Consultar Series, Películas y Episodios en paralelo para asegurar que Jellyfin entregue
+                // tanto los contenedores (Series) como los ítems hoja (Movie, Episode) sin exclusiones.
+                val allFavoriteDtos = kotlinx.coroutines.coroutineScope {
+                    val seriesDeferred = async {
+                        runCatching {
+                            api.getFavoriteItems(authHeader = authHeader, userId = userId, includeItemTypes = "Series")
+                        }.getOrNull()?.items ?: emptyList()
+                    }
+                    val moviesDeferred = async {
+                        runCatching {
+                            api.getFavoriteItems(authHeader = authHeader, userId = userId, includeItemTypes = "Movie")
+                        }.getOrNull()?.items ?: emptyList()
+                    }
+                    val episodesDeferred = async {
+                        runCatching {
+                            api.getFavoriteItems(authHeader = authHeader, userId = userId, includeItemTypes = "Episode")
+                        }.getOrNull()?.items ?: emptyList()
+                    }
+                    (seriesDeferred.await() + moviesDeferred.await() + episodesDeferred.await()).distinctBy { it.id }
+                }
+
+                val entities = allFavoriteDtos.map { it.toEntity().copy(isFavorite = true) }
                 if (entities.isNotEmpty()) {
                     jellyfinDao.insertOrUpdateAll(entities)
-                    entities.deduplicateMediaEntities()
-                } else local
+
+                    // Si hay episodios favoritos, asegurar que la serie padre también está en favoritos
+                    val episodesWithSeries = entities.filter { it.type.equals("Episode", ignoreCase = true) && !it.seriesId.isNullOrBlank() }
+                    for (ep in episodesWithSeries) {
+                        val sId = ep.seriesId!!
+                        jellyfinDao.updateFavoriteStatus(sId, true)
+                        if (jellyfinDao.getItemById(sId) == null) {
+                            runCatching {
+                                val seriesDto = api.getItemDetail(authHeader = authHeader, userId = userId, itemId = sId)
+                                jellyfinDao.insertOrUpdate(seriesDto.toEntity().copy(isFavorite = true))
+                            }
+                        }
+                    }
+                }
+                jellyfinDao.getFavorites().deduplicateMediaEntities()
             } catch (e: Exception) {
+                Log.e("JellyfinMediaRemoteRepo", "Error fetching favorites: ${e.message}", e)
                 local
             }
         }
@@ -368,16 +404,24 @@ class JellyfinMediaRemoteRepository(
     suspend fun clearPlaybackPosition(serverUrl: String, userId: String, token: String, itemId: String): Result<Unit> {
         return runCatching {
             jellyfinDao.updatePlaybackPosition(itemId, positionTicks = 0L, isPlayed = false, lastPlayedTicks = 0L)
+            MediaCaches.invalidateServerCaches()
             if (serverUrl.isNotBlank() && token.isNotBlank()) {
                 val api = NetworkClientFactory.createJellyfinService(serverUrl, JellyfinApiService::class.java)
                 val authHeader = buildJellyfinAuthHeader(token = token)
-                api.reportPlaybackStopped(
-                    authHeader,
-                    tv.medusa.app.data.remote.jellyfin.JellyfinPlaybackProgressRequest(
-                        itemId = itemId,
-                        positionTicks = 0L
+                runCatching {
+                    if (userId.isNotBlank()) {
+                        api.unmarkPlayed(authHeader, userId, itemId)
+                    }
+                }
+                runCatching {
+                    api.reportPlaybackStopped(
+                        authHeader,
+                        tv.medusa.app.data.remote.jellyfin.JellyfinPlaybackProgressRequest(
+                            itemId = itemId,
+                            positionTicks = 0L
+                        )
                     )
-                )
+                }
             }
         }
     }

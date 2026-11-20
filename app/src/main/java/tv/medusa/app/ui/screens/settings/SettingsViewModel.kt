@@ -926,6 +926,15 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    fun cancelTraktQuickConnect() {
+        traktPollJob?.cancel()
+        _uiState.value = _uiState.value.copy(
+            isWaitingTraktAuth = false,
+            traktUserCode = null,
+            traktQrUrl = null
+        )
+    }
+
     private fun formatNetworkError(e: Throwable, cleanUrl: String): String {
         val msg = e.localizedMessage ?: ""
         val isHtmlInsteadOfJson = msg.contains("Expected start of the object", ignoreCase = true)
@@ -1162,6 +1171,16 @@ class SettingsViewModel @Inject constructor(
                 )
             }
         }
+    }
+
+    fun cancelJellyfinQuickConnect() {
+        jellyfinQuickConnectJob?.cancel()
+        _uiState.value = _uiState.value.copy(
+            isWaitingJellyfinQuickConnect = false,
+            jellyfinQuickConnectCode = null,
+            jellyfinQrUrl = null,
+            statusMessage = null
+        )
     }
 
     /**

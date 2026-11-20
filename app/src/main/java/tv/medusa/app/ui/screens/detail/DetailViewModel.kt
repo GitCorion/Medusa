@@ -500,6 +500,15 @@ class DetailViewModel @Inject constructor(
                     itemId = state.entity.id,
                     makeFavorite = newFavStatus
                 )
+                if (state.entity.type.equals("Episode", ignoreCase = true) && !state.entity.seriesId.isNullOrBlank()) {
+                    mediaRepository.toggleFavorite(
+                        serverUrl = prefs.jellyfinServerUrl,
+                        userId = prefs.jellyfinUserId,
+                        token = prefs.jellyfinAccessToken,
+                        itemId = state.entity.seriesId!!,
+                        makeFavorite = newFavStatus
+                    )
+                }
             } catch (e: Exception) {
                 // Revert on error
                 _uiState.value = state.copy(isFavorite = !newFavStatus)

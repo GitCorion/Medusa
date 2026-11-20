@@ -377,12 +377,32 @@ class MediaSyncRepository(
                 // 3. Sync Favorites (Fast, critical)
                 launch {
                     try {
-                        val favResponse = api.getFavoriteItems(authHeader = authHeader, userId = userId)
+                        val seriesFav = async {
+                            runCatching { api.getFavoriteItems(authHeader = authHeader, userId = userId, includeItemTypes = "Series") }.getOrNull()?.items ?: emptyList()
+                        }
+                        val movieFav = async {
+                            runCatching { api.getFavoriteItems(authHeader = authHeader, userId = userId, includeItemTypes = "Movie") }.getOrNull()?.items ?: emptyList()
+                        }
+                        val episodeFav = async {
+                            runCatching { api.getFavoriteItems(authHeader = authHeader, userId = userId, includeItemTypes = "Episode") }.getOrNull()?.items ?: emptyList()
+                        }
+                        val allFavDtos = (seriesFav.await() + movieFav.await() + episodeFav.await()).distinctBy { it.id }
                         val favEntities = jellyfinDao.preserveKnownLastPlayedDates(
-                            favResponse.items.map { it.toEntity().copy(isFavorite = true) }
+                            allFavDtos.map { it.toEntity().copy(isFavorite = true) }
                         )
                         if (favEntities.isNotEmpty()) {
                             jellyfinDao.insertOrUpdateAll(favEntities)
+                            val epWithSeries = favEntities.filter { it.type.equals("Episode", ignoreCase = true) && !it.seriesId.isNullOrBlank() }
+                            for (ep in epWithSeries) {
+                                val sId = ep.seriesId!!
+                                jellyfinDao.updateFavoriteStatus(sId, true)
+                                if (jellyfinDao.getItemById(sId) == null) {
+                                    runCatching {
+                                        val seriesDto = api.getItemDetail(authHeader = authHeader, userId = userId, itemId = sId)
+                                        jellyfinDao.insertOrUpdate(seriesDto.toEntity().copy(isFavorite = true))
+                                    }
+                                }
+                            }
                         }
                     } catch (e: Exception) {
                         Log.e("MediaSyncRepository", "Error syncing favorites: ${e.message}", e)

@@ -107,7 +107,7 @@ fun ContinueWatchingCard(
             isLongPressConsumed = true
             lastLongClickTimestamp = android.os.SystemClock.uptimeMillis()
             view.playSoundEffect(android.view.SoundEffectConstants.CLICK)
-            controller.showContextMenu(item)
+            controller.showContextMenu(item, isContinueWatching = true)
         }
     }
 

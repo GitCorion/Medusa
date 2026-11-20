@@ -18,6 +18,7 @@ import tv.medusa.app.domain.model.MediaSource
 import tv.medusa.app.domain.usecase.GetHomeFeedUseCase
 import tv.medusa.app.domain.usecase.GetSeasonalFeedUseCase
 import tv.medusa.app.domain.model.SeasonalEventsManager
+import tv.medusa.app.ui.components.contextmenu.MediaActionHandler
 import tv.medusa.app.util.toOptimizedMediaItem
 import tv.medusa.app.util.AppForeground
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -54,7 +55,8 @@ class HomeViewModel @Inject constructor(
     private val userPreferencesRepository: UserPreferencesRepository,
     private val mediaRepository: MediaRepository,
     private val getHomeFeedUseCase: GetHomeFeedUseCase,
-    private val getSeasonalFeedUseCase: GetSeasonalFeedUseCase
+    private val getSeasonalFeedUseCase: GetSeasonalFeedUseCase,
+    private val mediaActionHandler: MediaActionHandler
 ) : ViewModel() {
 
     companion object {
@@ -120,6 +122,16 @@ class HomeViewModel @Inject constructor(
     private var lastServerIdentity: String? = null
 
     init {
+        viewModelScope.launch {
+            mediaActionHandler.onRemoveFromContinueWatching.collect { item ->
+                removeFromContinueWatching(item)
+            }
+        }
+        viewModelScope.launch {
+            mediaActionHandler.onMediaChanged.collect {
+                refreshContinueWatching()
+            }
+        }
         viewModelScope.launch(Dispatchers.IO) {
             val count = mediaRepository.getLocalCount()
             MediaRepository.checkActiveWorkerSync(context, count)
@@ -538,7 +550,19 @@ class HomeViewModel @Inject constructor(
     }
 
     fun removeFromContinueWatching(item: MediaItem) {
-        updateItemInState(item.id) { it.copy(playbackPositionTicks = 0L) }
+        val current = _uiState.value as? HomeUiState.Success
+        if (current != null) {
+            val updatedSections = current.sections.map { section ->
+                if (section.title.equals("Continuar Viendo", ignoreCase = true) || section.kind == HomeSectionKind.CONTINUE_WATCHING) {
+                    section.copy(items = section.items.filter { it.id != item.id && (item.seriesId.isNullOrBlank() || it.seriesId != item.seriesId) })
+                } else {
+                    section
+                }
+            }.filterNot { (it.title.equals("Continuar Viendo", ignoreCase = true) || it.kind == HomeSectionKind.CONTINUE_WATCHING) && it.items.isEmpty() }
+            _uiState.value = current.copy(sections = updatedSections)
+            lastSections = updatedSections
+            lastStaticSections = updatedSections
+        }
         viewModelScope.launch(Dispatchers.IO) {
             val prefs = userPreferencesRepository.userPreferencesFlow.first()
             mediaRepository.clearPlaybackPosition(
@@ -547,6 +571,14 @@ class HomeViewModel @Inject constructor(
                 token = prefs.jellyfinAccessToken,
                 itemId = item.id
             )
+            if (!item.seriesId.isNullOrBlank()) {
+                mediaRepository.clearPlaybackPosition(
+                    serverUrl = prefs.jellyfinServerUrl,
+                    userId = prefs.jellyfinUserId,
+                    token = prefs.jellyfinAccessToken,
+                    itemId = item.seriesId
+                )
+            }
             refreshContinueWatching()
         }
     }

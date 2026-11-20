@@ -18,13 +18,17 @@ import tv.medusa.app.ui.components.MediaContextMenuDialog
 class ContextMenuController {
     var activeItem by mutableStateOf<MediaItem?>(null)
         private set
+    var isFromContinueWatching by mutableStateOf(false)
+        private set
 
-    fun showContextMenu(item: MediaItem) {
+    fun showContextMenu(item: MediaItem, isContinueWatching: Boolean = false) {
         activeItem = item
+        isFromContinueWatching = isContinueWatching
     }
 
     fun dismiss() {
         activeItem = null
+        isFromContinueWatching = false
     }
 }
 
@@ -55,6 +59,7 @@ fun ContextMenuHost(
                 item = item,
                 accentColorKey = accentColorKey,
                 isMonochrome = isMonochrome,
+                isFromContinueWatching = controller.isFromContinueWatching,
                 onPlayMedia = { id ->
                     controller.dismiss()
                     onPlayMedia(id)

@@ -92,6 +92,7 @@ fun MediaContextMenuDialog(
     item: MediaItem,
     accentColorKey: String,
     isMonochrome: Boolean,
+    isFromContinueWatching: Boolean = false,
     onPlayMedia: (String) -> Unit,
     onPlayFromBeginning: (MediaItem) -> Unit,
     onDetailMedia: (String) -> Unit,
@@ -104,17 +105,25 @@ fun MediaContextMenuDialog(
     val focusColor = if (isMonochrome) Color.White else TvAccent.getColor(accentColorKey)
     val focusContent = if (isMonochrome) Color(0xFF0F172A) else TvAccent.getFocusedContentColor(accentColorKey)
     val dialogOpenedTime = remember { android.os.SystemClock.uptimeMillis() }
-    var isArmed by remember { mutableStateOf(false) }
+    var hasReleasedInitialPress by remember { mutableStateOf(false) }
 
     val firstFocusRequester = remember { FocusRequester() }
 
+    // Dar foco al primer botón al abrir el menú
     LaunchedEffect(Unit) {
-        // Escudo temporal para evitar que soltar la pulsación larga active una opción o cierre el diálogo
-        delay(400)
-        isArmed = true
+        delay(50)
         try {
             firstFocusRequester.requestFocus()
         } catch (_: Exception) {}
+    }
+
+    LaunchedEffect(hasReleasedInitialPress) {
+        if (hasReleasedInitialPress) {
+            delay(50)
+            try {
+                firstFocusRequester.requestFocus()
+            } catch (_: Exception) {}
+        }
     }
 
     BackHandler {
@@ -132,7 +141,7 @@ fun MediaContextMenuDialog(
     val stringRemoveFavorite = stringResource(R.string.context_menu_remove_favorite)
     val stringRemoveFromContinue = stringResource(R.string.context_menu_remove_from_continue)
 
-    val actions = remember(item) {
+    val actions = remember(item, isFromContinueWatching) {
         val list = mutableListOf<ContextActionItem>()
         val hasProgress = item.playbackPositionTicks > 0
         val isEpisode = item.type.equals("Episode", ignoreCase = true)
@@ -226,7 +235,14 @@ fun MediaContextMenuDialog(
             )
         }
 
-        if (hasProgress) {
+        // Quitar de Continuar viendo: se muestra siempre si el item proviene de la fila Continuar Viendo,
+        // o si tiene progreso (>0), o si es un episodio, o si tiene capítulos vistos
+        val canRemoveFromContinue = isFromContinueWatching ||
+                hasProgress ||
+                isEpisode ||
+                (item.playedEpisodes ?: 0) > 0
+
+        if (canRemoveFromContinue) {
             list.add(
                 ContextActionItem(
                     id = "remove_continue",
@@ -243,32 +259,46 @@ fun MediaContextMenuDialog(
 
     Dialog(
         onDismissRequest = {
-            if (isArmed && android.os.SystemClock.uptimeMillis() - dialogOpenedTime > 500L) {
-                onDismiss()
-            }
+            onDismiss()
         },
-        properties = DialogProperties(usePlatformDefaultWidth = false)
+        properties = DialogProperties(
+            dismissOnBackPress = true,
+            dismissOnClickOutside = true,
+            usePlatformDefaultWidth = false
+        )
     ) {
+        BackHandler {
+            onDismiss()
+        }
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .onPreviewKeyEvent { keyEvent ->
                     val native = keyEvent.nativeKeyEvent
+
+                    // Cerrar inmediatamente al pulsar Atrás o Escape
+                    if (native.keyCode == KeyEvent.KEYCODE_BACK || native.keyCode == KeyEvent.KEYCODE_ESCAPE) {
+                        if (native.action == KeyEvent.ACTION_UP) {
+                            onDismiss()
+                        }
+                        return@onPreviewKeyEvent true
+                    }
+
                     val isSelect = native.keyCode == KeyEvent.KEYCODE_DPAD_CENTER ||
                             native.keyCode == KeyEvent.KEYCODE_ENTER ||
                             native.keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER ||
                             native.keyCode == KeyEvent.KEYCODE_BUTTON_A
 
                     if (isSelect) {
-                        if (native.action == KeyEvent.ACTION_UP) {
-                            if (!isArmed || android.os.SystemClock.uptimeMillis() - dialogOpenedTime < 500L) {
-                                isArmed = true
-                                return@onPreviewKeyEvent true // Consumir el KEY_UP de la pulsación larga que abrió el menú
+                        val elapsed = android.os.SystemClock.uptimeMillis() - dialogOpenedTime
+                        val isOpeningGesture = native.downTime <= dialogOpenedTime || elapsed < 350L
+
+                        if (isOpeningGesture) {
+                            if (native.action == KeyEvent.ACTION_UP) {
+                                hasReleasedInitialPress = true
                             }
-                        } else if (native.action == KeyEvent.ACTION_DOWN) {
-                            if (!isArmed || android.os.SystemClock.uptimeMillis() - dialogOpenedTime < 500L) {
-                                return@onPreviewKeyEvent true // Ignorar repeticiones de la pulsación larga
-                            }
+                            return@onPreviewKeyEvent true // Consumir SIEMPRE el evento de la pulsación larga que abrió el menú
                         }
                     }
                     false
@@ -278,7 +308,7 @@ fun MediaContextMenuDialog(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null
                 ) {
-                    if (isArmed && android.os.SystemClock.uptimeMillis() - dialogOpenedTime > 500L) {
+                    if (android.os.SystemClock.uptimeMillis() - dialogOpenedTime > 300L) {
                         onDismiss()
                     }
                 },
@@ -421,7 +451,8 @@ fun MediaContextMenuDialog(
                             val isFirst = index == 0
                             var isBtnFocused by remember { mutableStateOf(false) }
                             val safeActionClick: () -> Unit = {
-                                if (isArmed && android.os.SystemClock.uptimeMillis() - dialogOpenedTime >= 500L) {
+                                val now = android.os.SystemClock.uptimeMillis()
+                                if (now - dialogOpenedTime >= 350L) {
                                     view.playSoundEffect(SoundEffectConstants.CLICK)
                                     actionItem.action()
                                 }

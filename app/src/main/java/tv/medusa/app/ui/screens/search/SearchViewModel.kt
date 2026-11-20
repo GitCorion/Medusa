@@ -173,10 +173,14 @@ class SearchViewModel @Inject constructor(
                 }
 
                 if (remoteResults.isNotEmpty()) {
-                    // 3. Capa 3: Fusión Inteligente y Deduplicación
+                    // 3. Capa 3: Fusión Inteligente y Deduplicación estable
+                    // Mantenemos los resultados locales que el usuario ya está viendo al principio
+                    // para evitar que se inserten elementos encima mientras navega. Los nuevos remotos se añaden al final.
                     val combinedMap = LinkedHashMap<String, JellyfinMediaEntity>()
-                    remoteResults.forEach { combinedMap[it.id] = it }
-                    localResults.forEach { if (!combinedMap.containsKey(it.id)) combinedMap[it.id] = it }
+                    localResults.forEach { combinedMap[it.id] = it }
+                    remoteResults.forEach { remote ->
+                        combinedMap[remote.id] = remote // Actualiza metadatos si ya existía (conservando orden) o lo añade al final
+                    }
 
                     val mergedResults = combinedMap.values.toList()
                     updateUiWithResults(

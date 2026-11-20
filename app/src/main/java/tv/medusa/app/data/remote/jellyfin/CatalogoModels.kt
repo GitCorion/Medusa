@@ -33,7 +33,10 @@ data class CatalogoTorrentStatusDto(
     @SerialName("tracker") val tracker: String? = null,
     @SerialName("buffer_required") val bufferRequired: Long? = null,
     @SerialName("buffer_bytes") val bufferBytes: Long? = null,
-    @SerialName("tail_ready") val tailReady: Boolean? = null
+    @SerialName("tail_ready") val tailReady: Boolean? = null,
+    @SerialName("stream_generation") val streamGeneration: Long? = null,
+    @SerialName("stream_switched_at") val streamSwitchedAt: String? = null,
+    @SerialName("stream_switch_reason") val streamSwitchReason: String? = null
 ) {
     val safeProgress: Float
         get() = (progress ?: 0f).coerceIn(0f, 1f)
@@ -55,6 +58,45 @@ data class CatalogoStatusDto(
     @SerialName("release_id") val releaseId: Long? = null,
     @SerialName("status") val status: CatalogoTorrentStatusDto? = null
 )
+
+@Serializable
+data class CatalogoStatusResponse(
+    @SerialName("is_catalog") val isCatalog: Boolean = false,
+    @SerialName("status") val status: CatalogoTorrentStatusDto? = null
+) {
+    val is_catalog: Boolean get() = isCatalog
+}
+
+@Serializable
+data class CatalogoErrorDto(
+    @SerialName("error") val error: String? = null,
+    @SerialName("message") val message: String? = null,
+    @SerialName("reason") val reason: String? = null,
+    @SerialName("detail") val detail: String? = null,
+    @SerialName("attempts") val attempts: List<CatalogoAttemptDto> = emptyList()
+)
+
+@Serializable
+data class CatalogoAttemptDto(
+    @SerialName("release_id") val releaseId: Long? = null,
+    @SerialName("tracker") val tracker: String? = null,
+    @SerialName("error") val error: String? = null,
+    @SerialName("reason") val reason: String? = null,
+    @SerialName("detail") val detail: String? = null
+)
+
+val catalogoJson: kotlinx.serialization.json.Json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+
+fun catalogoErrorMessage(body: String?): String? = runCatching {
+    if (body.isNullOrBlank()) return null
+    catalogoJson.decodeFromString<CatalogoErrorDto>(body).message
+}.getOrNull()
+
+class CatalogoHttpException(
+    val statusCode: Int,
+    val serverMessage: String?,
+    cause: Throwable? = null
+) : java.io.IOException(serverMessage ?: "Catálogo HTTP $statusCode", cause)
 
 @Serializable
 data class CatalogoPrepareDetailDto(

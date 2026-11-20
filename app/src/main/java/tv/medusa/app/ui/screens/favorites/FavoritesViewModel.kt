@@ -13,6 +13,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -48,15 +49,25 @@ class FavoritesViewModel @Inject constructor(
     private var currentFilter = FavoriteFilter.ALL
 
     init {
+        // Observación reactiva continua de la base de datos Room.
+        // Cualquier cambio (sincronización remota, toggle de favorito en ficha o fondo)
+        // se refleja de inmediato en la pantalla sin necesidad de recargarla a mano.
         viewModelScope.launch {
-            userPreferencesRepository.hideWatched.collect { hide ->
-                val state = _uiState.value as? FavoritesUiState.Success ?: return@collect
-                if (state.hideWatched != hide) {
-                    _uiState.value = state.copy(
-                        hideWatched = hide,
-                        filteredItems = applyFilter(state.allItems, currentFilter, hide)
-                    )
-                }
+            combine(
+                mediaRepository.getFavoritesFlow(),
+                userPreferencesRepository.userPreferencesFlow
+            ) { entities, prefs ->
+                val items = entities.map { it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken) }
+                items to prefs.hideWatched
+            }.collect { (items, hide) ->
+                val isSyncing = (_uiState.value as? FavoritesUiState.Success)?.isSyncing ?: false
+                _uiState.value = FavoritesUiState.Success(
+                    allItems = items,
+                    filteredItems = applyFilter(items, currentFilter, hide),
+                    activeFilter = currentFilter,
+                    hideWatched = hide,
+                    isSyncing = isSyncing
+                )
             }
         }
         loadFavorites()
@@ -64,45 +75,42 @@ class FavoritesViewModel @Inject constructor(
 
     fun loadFavorites() {
         viewModelScope.launch {
-            _uiState.value = FavoritesUiState.Loading
+            val currentState = _uiState.value
+            if (currentState !is FavoritesUiState.Success) {
+                _uiState.value = FavoritesUiState.Loading
+            } else {
+                _uiState.value = currentState.copy(isSyncing = true)
+            }
+
             val prefs = userPreferencesRepository.userPreferencesFlow.first()
             val hide = prefs.hideWatched
 
-            // 1. First observe local DB favorites
-            val local = mediaRepository.getFavoritesLocal()
-            val mediaItems = local.map { it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken) }
-            _uiState.value = FavoritesUiState.Success(
-                allItems = mediaItems,
-                filteredItems = applyFilter(mediaItems, currentFilter, hide),
-                activeFilter = currentFilter,
-                hideWatched = hide,
-                isSyncing = true
-            )
-
-            // 2. Fetch updated favorites from Jellyfin remote API
-            if (prefs.jellyfinServerUrl.isNotBlank() && prefs.jellyfinAccessToken.isNotBlank()) {
-                val remoteResult = mediaRepository.getFavorites(
-                    serverUrl = prefs.jellyfinServerUrl,
-                    userId = prefs.jellyfinUserId,
-                    token = prefs.jellyfinAccessToken
-                )
-                val syncedList = remoteResult.getOrNull() ?: local
-                val syncedItems = syncedList.map { it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken) }
-                _uiState.value = FavoritesUiState.Success(
-                    allItems = syncedItems,
-                    filteredItems = applyFilter(syncedItems, currentFilter, hide),
-                    activeFilter = currentFilter,
-                    hideWatched = hide,
-                    isSyncing = false
-                )
-            } else {
+            // 1. Mostrar de inmediato la base local si el estado aún estaba en Loading
+            if (_uiState.value is FavoritesUiState.Loading) {
+                val local = mediaRepository.getFavoritesLocal()
+                val mediaItems = local.map { it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken) }
                 _uiState.value = FavoritesUiState.Success(
                     allItems = mediaItems,
                     filteredItems = applyFilter(mediaItems, currentFilter, hide),
                     activeFilter = currentFilter,
                     hideWatched = hide,
-                    isSyncing = false
+                    isSyncing = true
                 )
+            }
+
+            // 2. Traer favoritos actualizados del servidor Jellyfin (Series, Películas y Episodios en paralelo)
+            if (prefs.jellyfinServerUrl.isNotBlank() && prefs.jellyfinAccessToken.isNotBlank() && prefs.jellyfinUserId.isNotBlank()) {
+                mediaRepository.getFavorites(
+                    serverUrl = prefs.jellyfinServerUrl,
+                    userId = prefs.jellyfinUserId,
+                    token = prefs.jellyfinAccessToken
+                )
+            }
+
+            // Marcar fin de sincronización
+            val state = _uiState.value as? FavoritesUiState.Success
+            if (state != null) {
+                _uiState.value = state.copy(isSyncing = false)
             }
         }
     }
@@ -127,7 +135,11 @@ class FavoritesViewModel @Inject constructor(
             FavoriteFilter.ALL -> items
             FavoriteFilter.MOVIES -> items.filter { it.type.equals("Movie", ignoreCase = true) }
             FavoriteFilter.SERIES -> items.filter {
-                it.type.equals("Series", ignoreCase = true) || it.type.equals("TvProgram", ignoreCase = true)
+                it.type.equals("Series", ignoreCase = true) ||
+                it.type.equals("TvProgram", ignoreCase = true) ||
+                it.type.equals("Episode", ignoreCase = true) ||
+                it.type.equals("tvshow", ignoreCase = true) ||
+                it.type.equals("show", ignoreCase = true)
             }
         }
         return if (hideWatched) byFormat.filter { !it.isPlayed } else byFormat

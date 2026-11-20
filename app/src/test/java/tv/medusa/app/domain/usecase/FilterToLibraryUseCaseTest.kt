@@ -292,6 +292,9 @@ class FakeJellyfinDao : JellyfinDao {
 
     override suspend fun getContinueWatchingLocalRestricted(limit: Int): List<JellyfinMediaEntity> = getContinueWatchingLocal(limit)
 
+    override suspend fun getKnownFavoriteIds(ids: Collection<String>): List<String> =
+        localDb.filter { it.id in ids && it.isFavorite }.map { it.id }
+
     override suspend fun getKnownLastPlayedTicks(ids: Collection<String>): List<LastPlayedTicksRow> =
         localDb.filter { it.id in ids && it.lastPlayedTicks > 0L }
             .map { LastPlayedTicksRow(id = it.id, lastPlayedTicks = it.lastPlayedTicks) }

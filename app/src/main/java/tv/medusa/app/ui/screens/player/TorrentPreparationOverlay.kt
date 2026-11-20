@@ -375,7 +375,7 @@ fun TorrentPreparationOverlay(
 
                 // Mensaje de error
                 if (state.isError || state.isUnavailable) {
-                    val errText = state.errorMessage ?: state.statusText
+                    val errText = state.errorMessage ?: state.statusText.takeIf { it.isNotBlank() } ?: "No se pudo preparar la descarga."
                     Spacer(modifier = Modifier.height(10.dp))
                     Text(
                         text = errText,
