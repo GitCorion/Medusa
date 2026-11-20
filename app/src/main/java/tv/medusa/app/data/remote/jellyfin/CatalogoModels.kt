@@ -138,5 +138,7 @@ data class TorrentOverlayUiState(
     val isZeroProgressFor10s: Boolean = false,
     val isError: Boolean = false,
     val isUnavailable: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val availableVersions: List<JellyfinMediaSourceDto> = emptyList(),
+    val currentMediaSourceId: String? = null
 )

@@ -422,6 +422,9 @@ fun PlayerScreen(
                 },
                 onRetry = {
                     viewModel.retryTorrentPreparation()
+                },
+                onSelectVersion = { versionId ->
+                    viewModel.selectVersion(versionId)
                 }
             )
         } else {

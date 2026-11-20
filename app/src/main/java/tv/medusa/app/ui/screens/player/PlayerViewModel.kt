@@ -438,12 +438,16 @@ class PlayerViewModel @Inject constructor(
                 val backdropUrl = nowPlaying?.backdropUrl ?: entity?.backdropImageTag?.let { tag ->
                     tv.medusa.app.util.JellyfinImageUtils.getBackdropUrl(baseUrl, playableId, tag, token = effectiveToken)
                 }
-                val releaseIdFromPath = itemDto?.mediaSources?.firstNotNullOfOrNull { ms ->
-                    ms.path?.let { path ->
-                        runCatching {
-                            android.net.Uri.parse(path).getQueryParameter("release")?.toLongOrNull()
-                        }.getOrNull()
-                    }
+                val allSources = itemDto?.mediaSources ?: emptyList()
+                val chosenMsForPrep = if (!preferredMediaSourceId.isNullOrBlank()) {
+                    allSources.firstOrNull { it.id == preferredMediaSourceId } ?: allSources.firstOrNull()
+                } else {
+                    allSources.firstOrNull()
+                }
+                val releaseIdFromPath = chosenMsForPrep?.path?.let { path ->
+                    runCatching {
+                        android.net.Uri.parse(path).getQueryParameter("release")?.toLongOrNull()
+                    }.getOrNull()
                 }
                 val isReady = handleCatalogoTorrentPreparation(
                     api = api,
@@ -451,7 +455,9 @@ class PlayerViewModel @Inject constructor(
                     playableId = playableId,
                     title = itemDto?.name ?: entity?.title ?: "",
                     backdropUrl = backdropUrl,
-                    releaseId = releaseIdFromPath
+                    releaseId = releaseIdFromPath,
+                    availableVersions = allSources,
+                    currentMediaSourceId = chosenMsForPrep?.id
                 )
                 if (!isReady) {
                     Log.i("PlayerViewModel", "Catalogo preparation halted or cancelled for $playableId")
@@ -1417,7 +1423,9 @@ class PlayerViewModel @Inject constructor(
         playableId: String,
         title: String,
         backdropUrl: String?,
-        releaseId: Long? = null
+        releaseId: Long? = null,
+        availableVersions: List<JellyfinMediaSourceDto> = emptyList(),
+        currentMediaSourceId: String? = null
     ): Boolean {
         // 1. Detección del plugin: GET /Catalogo/Capabilities
         val capsRes = runCatching { api.getCatalogoCapabilities() }.getOrNull()
@@ -1466,7 +1474,9 @@ class PlayerViewModel @Inject constructor(
                 state = "ERROR",
                 isError = true,
                 statusText = appContext.getString(R.string.torrent_server_unavailable),
-                errorMessage = appContext.getString(R.string.torrent_server_unavailable)
+                errorMessage = appContext.getString(R.string.torrent_server_unavailable),
+                availableVersions = availableVersions,
+                currentMediaSourceId = currentMediaSourceId
             )
             return false
         }
@@ -1487,14 +1497,14 @@ class PlayerViewModel @Inject constructor(
 
         if (initialStatus?.state.equals("UNAVAILABLE", ignoreCase = true)) {
             Log.w("PlayerViewModel", "Torrent is UNAVAILABLE for $playableId.")
-            updateTorrentOverlay(playableId, title, backdropUrl, initialStatus)
+            updateTorrentOverlay(playableId, title, backdropUrl, initialStatus, availableVersions, currentMediaSourceId)
             return false
         }
 
         // 3. stream_ready == false: mostrar overlay e iniciar descarga sin vídeo
         Log.i("PlayerViewModel", "Torrent not ready for $playableId. Showing overlay and calling Prepare (releaseId=$effectiveReleaseId).")
         torrentZeroProgressStartMs = System.currentTimeMillis()
-        updateTorrentOverlay(playableId, title, backdropUrl, initialStatus)
+        updateTorrentOverlay(playableId, title, backdropUrl, initialStatus, availableVersions, currentMediaSourceId)
 
         // POST /Catalogo/Prepare/{itemId} una sola vez
         runCatching {
@@ -1542,7 +1552,7 @@ class PlayerViewModel @Inject constructor(
             }
 
             val currStatus = pollBody.status ?: continue
-            updateTorrentOverlay(playableId, title, backdropUrl, currStatus)
+            updateTorrentOverlay(playableId, title, backdropUrl, currStatus, availableVersions, currentMediaSourceId)
 
             if (currStatus.streamReady) {
                 Log.i("PlayerViewModel", "Torrent reached stream_ready for $playableId! Starting playback.")
@@ -1576,7 +1586,9 @@ class PlayerViewModel @Inject constructor(
         playableId: String,
         title: String,
         backdropUrl: String?,
-        status: CatalogoTorrentStatusDto?
+        status: CatalogoTorrentStatusDto?,
+        availableVersions: List<JellyfinMediaSourceDto> = emptyList(),
+        currentMediaSourceId: String? = null
     ) {
         if (status == null) {
             _torrentOverlayState.value = TorrentOverlayUiState(
@@ -1585,7 +1597,9 @@ class PlayerViewModel @Inject constructor(
                 backdropUrl = backdropUrl,
                 state = "COLD",
                 statusText = appContext.getString(R.string.torrent_preparing),
-                reasonText = appContext.getString(R.string.torrent_buffering_desc)
+                reasonText = appContext.getString(R.string.torrent_buffering_desc),
+                availableVersions = availableVersions,
+                currentMediaSourceId = currentMediaSourceId
             )
             return
         }
@@ -1681,7 +1695,9 @@ class PlayerViewModel @Inject constructor(
             isZeroProgressFor10s = isZeroProgressFor10s,
             isError = isError,
             isUnavailable = isUnavailable,
-            errorMessage = if (isError || isUnavailable) statusText else null
+            errorMessage = if (isError || isUnavailable) statusText else null,
+            availableVersions = availableVersions,
+            currentMediaSourceId = currentMediaSourceId
         )
     }
 }
