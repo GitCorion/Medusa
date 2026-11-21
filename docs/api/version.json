@@ -1,12 +1,12 @@
 {
-  "versionCode": 1000152,
-  "versionName": "2.3.5-beta",
+  "versionCode": 1000153,
+  "versionName": "2.3.6-beta",
   "minSupportedVersionCode": 1000105,
   "forceUpdate": true,
   "killSwitch": false,
-  "releaseNotes": "v2.3.5: Limpieza exhaustiva de artefactos decorativos. Eliminados degradados dorados forzados, pips de fila innecesarios y blooms artificiales. Respeto estricto del color de acento y tipografía limpia de TV.",
+  "releaseNotes": "v2.3.6: Eliminado halo radial en botones de Hero. Corregida navegación D-pad horizontal para acceder al botón de Info. Eliminado año innecesario dentro del botón de reproducir. Eliminado el temblor horizontal en filas con animación no-bouncy.",
   "apkUrl": "https://medusa-fd388.web.app/Medusa.apk",
-  "apkSha256": "b7e499adbd1c3b18e8085ef8d535770f7140a8608f2f621a31425cde341e8557",
+  "apkSha256": "5cf6b179a12347cc688beee89905c97645946ee71e0c8bce0bf161a4f9a0dbb8",
   "signatures": [
     "26bccb39ed122a69ecf7a8d0b50deeabeb15bc1a4b2a8b77941b47a96fdd3fea",
     "78a588afcc90d8ea59e008c9cbd1e8bbed3b2831518184d5a9935948b9d245ac"
