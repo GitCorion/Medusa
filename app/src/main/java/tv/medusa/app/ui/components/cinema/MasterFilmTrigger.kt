@@ -1,7 +1,7 @@
 package tv.medusa.app.ui.components.cinema
 
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -74,15 +74,9 @@ fun MasterFilmTrigger(
 ) {
     var isFocused by remember { mutableStateOf(false) }
 
-    val bloomAlpha by animateFloatAsState(
-        targetValue = if (isFocused) 0.38f else 0f,
-        animationSpec = tween(durationMillis = 200),
-        label = "bloomAlpha"
-    )
-
     val scale by animateFloatAsState(
-        targetValue = if (isFocused) 1.03f else 1.0f,
-        animationSpec = tween(durationMillis = 200),
+        targetValue = if (isFocused) 1.02f else 1.0f,
+        animationSpec = spring(dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy, stiffness = androidx.compose.animation.core.Spring.StiffnessMedium),
         label = "triggerScale"
     )
 
@@ -90,23 +84,7 @@ fun MasterFilmTrigger(
     val shape = RoundedCornerShape(cornerRadius)
 
     Box(
-        modifier = modifier
-            .scale(scale)
-            .drawBehind {
-                if (bloomAlpha > 0f) {
-                    drawCircle(
-                        brush = Brush.radialGradient(
-                            colors = listOf(
-                                focusColor.copy(alpha = bloomAlpha),
-                                focusColor.copy(alpha = bloomAlpha * 0.4f),
-                                Color.Transparent
-                            ),
-                            radius = size.maxDimension * 0.85f
-                        ),
-                        radius = size.maxDimension * 0.85f
-                    )
-                }
-            }
+        modifier = modifier.scale(scale)
     ) {
         Button(
             onClick = onClick,

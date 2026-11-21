@@ -577,37 +577,18 @@ fun HeroBanner(
                         stringResource(R.string.detail_play)
                     }
                     val actionIcon = if (isSeasonalActive) Icons.AutoMirrored.Rounded.PlaylistPlay else Icons.Rounded.PlayArrow
-                    val technicalSpec = when (currentSlideState) {
-                        is HeroSlideState.Movie -> currentSlideState.item.year?.toString()
-                        else -> null
-                    }
-
                     MasterFilmTrigger(
                         label = playLabel,
-                        technicalSpec = technicalSpec,
+                        technicalSpec = null,
                         icon = actionIcon,
                         focusColor = focusColor,
                         focusContentColor = focusContent,
                         focusRequester = effectiveActionFocusRequester,
                         modifier = Modifier
                             .onPreviewKeyEvent { keyEvent ->
-                                if (keyEvent.type == KeyEventType.KeyDown) {
-                                    if (keyEvent.key == Key.DirectionUp && onUpFromHero != null) {
-                                        onUpFromHero()
-                                        true
-                                    } else if (totalSlides > 1) {
-                                        when (keyEvent.key) {
-                                            Key.DirectionLeft -> {
-                                                carouselIndex = if (carouselIndex > 0) carouselIndex - 1 else totalSlides - 1
-                                                true
-                                            }
-                                            Key.DirectionRight -> {
-                                                carouselIndex = (carouselIndex + 1) % totalSlides
-                                                true
-                                            }
-                                            else -> false
-                                        }
-                                    } else false
+                                if (keyEvent.type == KeyEventType.KeyDown && keyEvent.key == Key.DirectionUp && onUpFromHero != null) {
+                                    onUpFromHero()
+                                    true
                                 } else false
                             },
                         onClick = {
@@ -625,6 +606,12 @@ fun HeroBanner(
                             contentDescription = stringResource(R.string.common_details),
                             focusColor = focusColor,
                             focusContentColor = focusContent,
+                            modifier = Modifier.onPreviewKeyEvent { keyEvent ->
+                                if (keyEvent.type == KeyEventType.KeyDown && keyEvent.key == Key.DirectionUp && onUpFromHero != null) {
+                                    onUpFromHero()
+                                    true
+                                } else false
+                            },
                             onClick = {
                                 onDetailClick(currentSlideState.item)
                             }

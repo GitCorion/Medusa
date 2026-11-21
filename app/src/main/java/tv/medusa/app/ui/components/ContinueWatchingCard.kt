@@ -124,8 +124,8 @@ fun ContinueWatchingCard(
     }
 
     val scale by animateFloatAsState(
-        targetValue = if (isFocused) 1.03f else 1.0f,
-        animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow),
+        targetValue = if (isFocused) 1.02f else 1.0f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium),
         label = "continueCardScale"
     )
 

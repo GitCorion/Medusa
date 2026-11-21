@@ -525,13 +525,6 @@ fun DetailScreen(
                                 }
                                 val playIcon = Icons.Rounded.PlayArrow
 
-                                // Technical film specs for MasterFilmTrigger
-                                val technicalSpec = when {
-                                    isTvSeries && state.nextUpEpisode != null -> state.nextUpEpisode.name.takeIf { it.isNotBlank() }
-                                    entity.productionYear != null -> "${entity.productionYear}"
-                                    else -> null
-                                }
-
                                 Row(
                                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                                     verticalAlignment = Alignment.CenterVertically
@@ -539,7 +532,7 @@ fun DetailScreen(
                                     // 1. Master Film Trigger (Gatillo Principal de Proyección)
                                     MasterFilmTrigger(
                                         label = playLabel,
-                                        technicalSpec = technicalSpec,
+                                        technicalSpec = null,
                                         icon = playIcon,
                                         focusColor = focusColor,
                                         focusContentColor = focusContent,

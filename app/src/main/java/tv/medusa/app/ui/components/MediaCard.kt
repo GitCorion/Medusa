@@ -119,10 +119,10 @@ fun MediaCard(
         }
     }
 
-    // Animaciones de foco y Spotlight (escala cinematográfica 1.04f)
+    // Animaciones de foco y Spotlight (escala sutil 1.02f sin rebote para evitar oscilaciones)
     val scale by animateFloatAsState(
-        targetValue = if (isFocused) 1.04f else 1.0f,
-        animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow),
+        targetValue = if (isFocused) 1.02f else 1.0f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium),
         label = "mediaCardScale"
     )
 
