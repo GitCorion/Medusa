@@ -61,6 +61,9 @@ import tv.medusa.app.ui.components.TvNavTab
 import tv.medusa.app.ui.components.TvTopBar
 import tv.medusa.app.ui.components.sort.CatalogSortButton
 import tv.medusa.app.ui.components.sort.CatalogSortOption
+import tv.medusa.app.ui.components.cinema.MasterFilmTrigger
+import tv.medusa.app.ui.theme.CinematicTypography
+import tv.medusa.app.ui.theme.TextPrimary
 import tv.medusa.app.ui.theme.TvAccent
 import tv.medusa.app.ui.util.handleTouchClick
 import tv.medusa.app.util.DeviceUtils
@@ -201,13 +204,12 @@ private fun GenreLanding(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 48.dp, end = 48.dp, top = 16.dp, bottom = 10.dp)
+                    .padding(start = 48.dp, end = 48.dp, top = 20.dp, bottom = 12.dp)
             ) {
                 Text(
-                    text = state.genreName,
-                    style = MaterialTheme.typography.headlineLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    text = state.genreName.uppercase(),
+                    style = CinematicTypography.HeroDisplay.copy(fontSize = 32.sp, letterSpacing = 2.sp),
+                    color = TextPrimary
                 )
             }
         }
@@ -258,36 +260,16 @@ private fun GenreLanding(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(start = 48.dp, end = 48.dp, top = 16.dp, bottom = 24.dp),
+                        .padding(start = 48.dp, end = 48.dp, top = 20.dp, bottom = 28.dp),
                     horizontalArrangement = Arrangement.Center
                 ) {
-                    Button(
-                        onClick = onOpenAll,
-                        scale = ButtonDefaults.scale(focusedScale = 1.05f),
-                        modifier = Modifier.handleTouchClick { onOpenAll() },
-                        colors = ButtonDefaults.colors(
-                            containerColor = if (isMonochrome) Color(0x22FFFFFF) else TvAccent.getColor(accentColorKey).copy(alpha = 0.18f),
-                            contentColor = Color.White,
-                            focusedContainerColor = accentColor,
-                            focusedContentColor = focusedContent
-                        ),
-                        shape = ButtonDefaults.shape(RoundedCornerShape(10.dp)),
-                        border = ButtonDefaults.border(
-                            border = Border.None,
-                            focusedBorder = Border.None
-                        )
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Apps,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = stringResource(R.string.common_view_all_count, state.allCount),
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
+                    MasterFilmTrigger(
+                        label = stringResource(R.string.common_view_all_count, state.allCount),
+                        icon = Icons.Rounded.Apps,
+                        focusColor = accentColor,
+                        focusContentColor = focusedContent,
+                        onClick = onOpenAll
+                    )
                 }
             }
         }

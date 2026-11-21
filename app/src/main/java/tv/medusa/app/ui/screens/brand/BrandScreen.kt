@@ -70,6 +70,9 @@ import tv.medusa.app.ui.components.TvNavTab
 import tv.medusa.app.ui.components.TvTopBar
 import tv.medusa.app.ui.components.sort.CatalogSortButton
 import tv.medusa.app.ui.components.sort.CatalogSortOption
+import tv.medusa.app.ui.components.cinema.MasterFilmTrigger
+import tv.medusa.app.ui.theme.CinematicTypography
+import tv.medusa.app.ui.theme.TextPrimary
 import tv.medusa.app.ui.theme.TvAccent
 import tv.medusa.app.ui.util.handleTouchClick
 import tv.medusa.app.util.DeviceUtils
@@ -310,18 +313,12 @@ private fun BrandLanding(
                             color = Color(0xFF94A3B8)
                         )
                         Spacer(modifier = Modifier.height(24.dp))
-                        Button(
+                        MasterFilmTrigger(
+                            label = stringResource(R.string.brand_retry_load),
                             onClick = onRetry,
-                            modifier = Modifier.handleTouchClick { onRetry() },
-                            colors = ButtonDefaults.colors(
-                                containerColor = Color(0xFF1E222D),
-                                focusedContainerColor = focusColor,
-                                contentColor = Color.White,
-                                focusedContentColor = focusContent
-                            )
-                        ) {
-                            Text(stringResource(R.string.brand_retry_load))
-                        }
+                            focusColor = focusColor,
+                            focusContentColor = focusContent
+                        )
                     }
                 }
             }
@@ -344,36 +341,16 @@ private fun BrandLanding(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(start = 48.dp, end = 48.dp, top = 16.dp, bottom = 24.dp),
+                            .padding(start = 48.dp, end = 48.dp, top = 20.dp, bottom = 28.dp),
                         horizontalArrangement = Arrangement.Center
                     ) {
-                        Button(
-                            onClick = onOpenAll,
-                            scale = ButtonDefaults.scale(focusedScale = 1.05f),
-                            modifier = Modifier.handleTouchClick { onOpenAll() },
-                            colors = ButtonDefaults.colors(
-                                containerColor = if (isMonochrome) Color(0x22FFFFFF) else brand.accentColor.copy(alpha = 0.18f),
-                                contentColor = Color.White,
-                                focusedContainerColor = focusColor,
-                                focusedContentColor = focusContent
-                            ),
-                            shape = ButtonDefaults.shape(RoundedCornerShape(10.dp)),
-                            border = ButtonDefaults.border(
-                                border = Border.None,
-                                focusedBorder = Border.None
-                            )
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.Apps,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = stringResource(R.string.common_view_all_count, state.allCount),
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
+                        MasterFilmTrigger(
+                            label = stringResource(R.string.common_view_all_count, state.allCount),
+                            icon = Icons.Rounded.Apps,
+                            focusColor = focusColor,
+                            focusContentColor = focusContent,
+                            onClick = onOpenAll
+                        )
                     }
                 }
             }

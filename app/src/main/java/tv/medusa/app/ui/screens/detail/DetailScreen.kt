@@ -659,25 +659,37 @@ fun DetailScreen(
                                     contentType = { "season_chip" }
                                 ) { season ->
                                     val isSelected = season.id == state.selectedSeasonId
+                                    val chipShape = RoundedCornerShape(8.dp)
                                     Button(
                                         onClick = { viewModel.selectSeason(season.id) },
                                         modifier = Modifier.handleTouchClick { viewModel.selectSeason(season.id) },
+                                        scale = ButtonDefaults.scale(scale = 1.0f, focusedScale = 1.05f),
                                         colors = ButtonDefaults.colors(
-                                            containerColor = if (isSelected) (if (isMonochrome) Color(0x33FFFFFF) else focusColor.copy(alpha = 0.22f)) else Color(0x10FFFFFF),
-                                            contentColor = if (isSelected) (if (isMonochrome) Color.White else focusColor) else Color(0xFF94A3B8),
+                                            containerColor = if (isSelected) (if (isMonochrome) Color(0x33FFFFFF) else focusColor.copy(alpha = 0.22f)) else Color(0x0EFFFFFF),
+                                            contentColor = if (isSelected) (if (isMonochrome) Color.White else focusColor) else TextPrimary.copy(alpha = 0.75f),
                                             focusedContainerColor = focusColor,
                                             focusedContentColor = focusContent
                                         ),
                                         border = ButtonDefaults.border(
-                                            border = Border.None,
-                                            focusedBorder = Border.None
+                                            border = Border(
+                                                border = BorderStroke(
+                                                    0.75.dp,
+                                                    if (isSelected) (if (isMonochrome) Color(0x60FFFFFF) else focusColor.copy(alpha = 0.5f)) else Color(0x18FFFFFF)
+                                                ),
+                                                shape = chipShape
+                                            ),
+                                            focusedBorder = Border(
+                                                border = BorderStroke(1.5.dp, Color.White),
+                                                shape = chipShape
+                                            )
                                         ),
-                                        shape = ButtonDefaults.shape(shape = RoundedCornerShape(16.dp))
+                                        shape = ButtonDefaults.shape(shape = chipShape)
                                     ) {
                                         Text(
-                                            text = season.name,
-                                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
-                                            fontSize = 12.sp
+                                            text = season.name.uppercase(),
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                            fontSize = 11.sp,
+                                            letterSpacing = 0.8.sp
                                         )
                                     }
                                 }

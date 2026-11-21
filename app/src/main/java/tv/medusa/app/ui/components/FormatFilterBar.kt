@@ -104,7 +104,7 @@ fun FormatFilterBar(
                         shape = chipShape
                     ),
                     focusedBorder = androidx.tv.material3.Border(
-                        border = BorderStroke(1.dp, Color.White),
+                        border = BorderStroke(1.5.dp, Color.White),
                         shape = chipShape
                     )
                 ),
@@ -170,7 +170,7 @@ fun FormatFilterBar(
                         shape = chipShape
                     ),
                     focusedBorder = androidx.tv.material3.Border(
-                        border = BorderStroke(1.dp, Color.White),
+                        border = BorderStroke(1.5.dp, Color.White),
                         shape = chipShape
                     )
                 ),
