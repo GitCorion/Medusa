@@ -1,12 +1,12 @@
 {
-  "versionCode": 1000151,
-  "versionName": "2.3.4-beta",
+  "versionCode": 1000152,
+  "versionName": "2.3.5-beta",
   "minSupportedVersionCode": 1000105,
   "forceUpdate": true,
   "killSwitch": false,
-  "releaseNotes": "Actualización v2.3.4: Eliminada tipografía decorativa recargada y mayúsculas forzadas en toda la interfaz. Tipografía moderna, sobria y limpia de alta legibilidad para Android TV. Estado de bienvenida y tarjetas con diseño limpio y refinado.",
+  "releaseNotes": "v2.3.5: Limpieza exhaustiva de artefactos decorativos. Eliminados degradados dorados forzados, pips de fila innecesarios y blooms artificiales. Respeto estricto del color de acento y tipografía limpia de TV.",
   "apkUrl": "https://medusa-fd388.web.app/Medusa.apk",
-  "apkSha256": "19c2f78dea64360afbe8bd46201e48e7edb7c3a2f852de41b190e3edbf81889d",
+  "apkSha256": "b7e499adbd1c3b18e8085ef8d535770f7140a8608f2f621a31425cde341e8557",
   "signatures": [
     "26bccb39ed122a69ecf7a8d0b50deeabeb15bc1a4b2a8b77941b47a96fdd3fea",
     "78a588afcc90d8ea59e008c9cbd1e8bbed3b2831518184d5a9935948b9d245ac"
