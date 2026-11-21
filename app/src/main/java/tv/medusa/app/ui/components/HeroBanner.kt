@@ -641,8 +641,14 @@ fun HeroBanner(
                         ),
                         shape = ButtonDefaults.shape(shape = RoundedCornerShape(TvCornerRadius.Card)),
                         border = ButtonDefaults.border(
-                            border = Border.None,
-                            focusedBorder = Border.None
+                            border = androidx.tv.material3.Border(
+                                border = BorderStroke(0.75.dp, Color(0x35FFFFFF)),
+                                shape = RoundedCornerShape(TvCornerRadius.Card)
+                            ),
+                            focusedBorder = androidx.tv.material3.Border(
+                                border = BorderStroke(1.2.dp, Color.White),
+                                shape = RoundedCornerShape(TvCornerRadius.Card)
+                            )
                         )
                     ) {
                         Row(
@@ -663,8 +669,9 @@ fun HeroBanner(
                                 if (showIcons) Spacer(modifier = Modifier.width(8.dp))
                                 Text(
                                     text = actionLabel,
-                                    fontWeight = FontWeight.SemiBold,
-                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp,
+                                    letterSpacing = 0.8.sp,
                                     maxLines = 1,
                                     softWrap = false
                                 )

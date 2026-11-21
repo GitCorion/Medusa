@@ -94,6 +94,13 @@ import tv.medusa.app.ui.components.EpisodeCard
 import tv.medusa.app.ui.components.InAppTrailerPlayer
 import tv.medusa.app.ui.components.MediaCard
 import tv.medusa.app.ui.components.TvBackButton
+import tv.medusa.app.ui.components.cinema.MasterFilmTrigger
+import tv.medusa.app.ui.components.cinema.CinemaOrbitDial
+import tv.medusa.app.ui.components.cinema.CinemaFormatBadge
+import tv.medusa.app.ui.theme.CinematicTypography
+import tv.medusa.app.ui.theme.TextPrimary
+import tv.medusa.app.ui.theme.TextSecondary
+import tv.medusa.app.ui.theme.GoldNitrate
 import tv.medusa.app.ui.theme.TvAccent
 import tv.medusa.app.ui.theme.TvPill
 import tv.medusa.app.ui.theme.TvRatingBadge
@@ -350,8 +357,8 @@ fun DetailScreen(
                             if (state.logoUrl.isNullOrBlank() || !isLogoLoaded) {
                                 Text(
                                     text = entity.title,
-                                    style = MaterialTheme.typography.headlineLarge,
-                                    color = Color.White,
+                                    style = CinematicTypography.HeroDisplay,
+                                    color = TextPrimary,
                                     fontWeight = FontWeight.Bold,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
@@ -365,18 +372,19 @@ fun DetailScreen(
                             }
 
                             if (isEpisode) {
-                                Spacer(modifier = Modifier.height(2.dp))
+                                Spacer(modifier = Modifier.height(4.dp))
                                 Text(
                                     text = stringResource(R.string.detail_season_episode, sNum, eNum),
-                                    color = Color(0xFF94A3B8),
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.SemiBold
+                                    color = TextSecondary,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    letterSpacing = 0.5.sp
                                 )
                             }
 
                             Spacer(modifier = Modifier.height(14.dp))
 
-                            // Metadata Badges Row
+                            // Metadata Badges Row en Cartelas Cinemáticas
                             FlowRow(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -386,10 +394,10 @@ fun DetailScreen(
                                 }
 
                                 if (entity.productionYear != null) {
-                                    TvPill(text = "${entity.productionYear}")
+                                    CinemaFormatBadge(text = "${entity.productionYear}")
                                 }
 
-                                TvPill(
+                                CinemaFormatBadge(
                                     text = when {
                                         state.isCollection -> stringResource(R.string.detail_collection)
                                         isEpisode -> stringResource(R.string.detail_type_episode, sNum, eNum)
@@ -400,7 +408,11 @@ fun DetailScreen(
 
                                 // Age Rating Badge (OfficialRating: PG-13, R, TV-MA, etc.)
                                 if (!entity.officialRating.isNullOrBlank()) {
-                                    TvPill(text = entity.officialRating)
+                                    CinemaFormatBadge(
+                                        text = entity.officialRating,
+                                        isHighlighted = true,
+                                        highlightColor = GoldNitrate
+                                    )
                                 }
 
                                 // Series Status Badge
@@ -435,7 +447,7 @@ fun DetailScreen(
                                     ?: emptyList()
 
                                 genreList.forEach { genre ->
-                                    TvPill(text = genre)
+                                    CinemaFormatBadge(text = genre)
                                 }
 
                                 val totalEps = entity.totalItemCount
@@ -514,252 +526,82 @@ fun DetailScreen(
                                 }
                                 val playIcon = Icons.Rounded.PlayArrow
 
-                                // 1. Play Button
-                                Button(
-                                    onClick = {
-                                        isLaunchingPlayer = true
-                                        if (isTvSeries && state.nextUpEpisode != null) {
-                                            lastPlayedEpisodeId = state.nextUpEpisode.id
-                                        }
-                                        onPlay(playTargetId)
-                                    },
-                                    contentPadding = actionButtonPadding,
-                                    scale = ButtonDefaults.scale(scale = 1.0f, focusedScale = 1.03f),
-                                    colors = ButtonDefaults.colors(
-                                        containerColor = if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.20f),
-                                        contentColor = if (isMonochrome) Color.White else Color(0xFFE0F2FE),
-                                        focusedContainerColor = focusColor,
-                                        focusedContentColor = focusContent
-                                    ),
-                                    border = ButtonDefaults.border(
-                                        border = Border.None,
-                                        focusedBorder = Border.None
-                                    ),
-                                    shape = ButtonDefaults.shape(shape = RoundedCornerShape(10.dp)),
-                                    modifier = Modifier
-                                        .handleTouchClick {
+                                // Technical film specs for MasterFilmTrigger
+                                val technicalSpec = when {
+                                    isTvSeries && state.nextUpEpisode != null -> state.nextUpEpisode.name.takeIf { it.isNotBlank() }
+                                    entity.productionYear != null -> "${entity.productionYear}"
+                                    else -> null
+                                }
+
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    // 1. Master Film Trigger (Gatillo Principal de Proyección)
+                                    MasterFilmTrigger(
+                                        label = playLabel,
+                                        technicalSpec = technicalSpec,
+                                        icon = playIcon,
+                                        focusColor = focusColor,
+                                        focusContentColor = focusContent,
+                                        focusRequester = playButtonFocusRequester,
+                                        onClick = {
                                             isLaunchingPlayer = true
                                             if (isTvSeries && state.nextUpEpisode != null) {
                                                 lastPlayedEpisodeId = state.nextUpEpisode.id
                                             }
                                             onPlay(playTargetId)
                                         }
-                                        .focusRequester(playButtonFocusRequester)
-                                ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        if (showIcons) {
-                                            Icon(
-                                                imageVector = playIcon,
-                                                contentDescription = playLabel,
-                                                modifier = Modifier
-                                                    .size(18.dp)
-                                                    .offset(x = if (!showText) 1.5.dp else 0.5.dp) // Compensación óptica del centro visual del triángulo
-                                            )
-                                        }
-                                        if (showText) {
-                                            if (showIcons) Spacer(modifier = Modifier.width(6.dp))
-                                            Text(
-                                                text = playLabel,
-                                                fontWeight = FontWeight.SemiBold,
-                                                fontSize = 13.sp,
-                                                maxLines = 1,
-                                                softWrap = false,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
-                                        }
-                                    }
-                                }
-
-                                // 2. Go to Series Button (when viewing an episode)
-                                if (isEpisode && !entity.seriesId.isNullOrBlank()) {
-                                    val goToSeriesLabel = if (sName.isNotBlank()) {
-                                        stringResource(R.string.detail_go_to_series_name, sName)
-                                    } else {
-                                        stringResource(R.string.detail_go_to_series)
-                                    }
-                                    Button(
-                                        onClick = {
-                                            onNavigateToDetail(entity.seriesId)
-                                        },
-                                        contentPadding = actionButtonPadding,
-                                        scale = ButtonDefaults.scale(scale = 1.0f, focusedScale = 1.03f),
-                                        shape = ButtonDefaults.shape(shape = RoundedCornerShape(10.dp)),
-                                        border = ButtonDefaults.border(
-                                            border = Border.None,
-                                            focusedBorder = Border.None
-                                        ),
-                                        modifier = Modifier.handleTouchClick { onNavigateToDetail(entity.seriesId) },
-                                        colors = ButtonDefaults.colors(
-                                            containerColor = if (isMonochrome) Color(0x14FFFFFF) else focusColor.copy(alpha = 0.10f),
-                                            contentColor = if (isMonochrome) Color.White else Color(0xFFBAE6FD),
-                                            focusedContainerColor = focusColor,
-                                            focusedContentColor = focusContent
-                                        )
-                                    ) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            if (showIcons) {
-                                                Icon(
-                                                    imageVector = Icons.Rounded.Tv,
-                                                    contentDescription = goToSeriesLabel,
-                                                    modifier = Modifier.size(17.dp)
-                                                )
-                                            }
-                                            if (showText) {
-                                                if (showIcons) Spacer(modifier = Modifier.width(6.dp))
-                                                Text(
-                                                    text = goToSeriesLabel,
-                                                    fontWeight = FontWeight.SemiBold,
-                                                    fontSize = 13.sp,
-                                                    maxLines = 1,
-                                                    softWrap = false,
-                                                    overflow = TextOverflow.Ellipsis
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-
-                                // 3. Favorite Toggle Button
-                                var isFavFocused by remember { mutableStateOf(false) }
-                                val favLabel = if (state.isFavorite) stringResource(R.string.detail_in_favorites) else stringResource(R.string.detail_add_favorites)
-                                Button(
-                                    onClick = { viewModel.toggleFavorite() },
-                                    contentPadding = actionButtonPadding,
-                                    scale = ButtonDefaults.scale(scale = 1.0f, focusedScale = 1.03f),
-                                    shape = ButtonDefaults.shape(shape = RoundedCornerShape(10.dp)),
-                                    border = ButtonDefaults.border(
-                                        border = Border.None,
-                                        focusedBorder = Border.None
-                                    ),
-                                    modifier = Modifier
-                                        .onFocusChanged { isFavFocused = it.isFocused }
-                                        .handleTouchClick { viewModel.toggleFavorite() },
-                                    colors = ButtonDefaults.colors(
-                                        containerColor = if (state.isFavorite) {
-                                            (if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.22f))
-                                        } else {
-                                            (if (isMonochrome) Color(0x14FFFFFF) else focusColor.copy(alpha = 0.10f))
-                                        },
-                                        contentColor = if (isMonochrome) Color.White else Color(0xFFBAE6FD),
-                                        focusedContainerColor = focusColor,
-                                        focusedContentColor = focusContent
                                     )
-                                ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        if (showIcons) {
-                                            Icon(
-                                                imageVector = if (state.isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                                                contentDescription = favLabel,
-                                                tint = if (isFavFocused) focusContent else (if (state.isFavorite && !isMonochrome) Color(0xFFEF4444) else Color.White),
-                                                modifier = Modifier.size(17.dp)
-                                            )
-                                        }
-                                        if (showText) {
-                                            if (showIcons) Spacer(modifier = Modifier.width(6.dp))
-                                            Text(
-                                                text = favLabel,
-                                                color = if (isFavFocused) focusContent else Color.White,
-                                                fontWeight = FontWeight.SemiBold,
-                                                fontSize = 13.sp,
-                                                maxLines = 1,
-                                                softWrap = false,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
-                                        }
-                                    }
-                                }
 
-                                // 4. Trailer Button
-                                if (state.trailerUrl != null) {
-                                    val trailerLabel = stringResource(R.string.detail_watch_trailer)
-                                    Button(
-                                        onClick = { isShowingTrailer = true },
-                                        contentPadding = actionButtonPadding,
-                                        scale = ButtonDefaults.scale(scale = 1.0f, focusedScale = 1.03f),
-                                        shape = ButtonDefaults.shape(shape = RoundedCornerShape(10.dp)),
-                                        border = ButtonDefaults.border(
-                                            border = Border.None,
-                                            focusedBorder = Border.None
-                                        ),
-                                        modifier = Modifier.handleTouchClick { isShowingTrailer = true },
-                                        colors = ButtonDefaults.colors(
-                                            containerColor = if (isMonochrome) Color(0x14FFFFFF) else focusColor.copy(alpha = 0.10f),
-                                            contentColor = if (isMonochrome) Color.White else Color(0xFFBAE6FD),
-                                            focusedContainerColor = focusColor,
-                                            focusedContentColor = focusContent
-                                        )
-                                    ) {
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            if (showIcons) {
-                                                Icon(
-                                                    imageVector = Icons.Rounded.Movie,
-                                                    contentDescription = trailerLabel,
-                                                    modifier = Modifier.size(17.dp)
-                                                )
-                                            }
-                                            if (showText) {
-                                                if (showIcons) Spacer(modifier = Modifier.width(6.dp))
-                                                Text(
-                                                    text = trailerLabel,
-                                                    fontWeight = FontWeight.SemiBold,
-                                                    fontSize = 13.sp,
-                                                    maxLines = 1,
-                                                    softWrap = false,
-                                                    overflow = TextOverflow.Ellipsis
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-
-                                // 5. Mark as Watched / Watched Button
-                                var isWatchedFocused by remember { mutableStateOf(false) }
-                                val watchedLabel = if (state.isPlayed) stringResource(R.string.detail_watched) else stringResource(R.string.detail_mark_watched)
-                                Button(
-                                    onClick = { viewModel.togglePlayed() },
-                                    contentPadding = actionButtonPadding,
-                                    scale = ButtonDefaults.scale(scale = 1.0f, focusedScale = 1.03f),
-                                    shape = ButtonDefaults.shape(shape = RoundedCornerShape(10.dp)),
-                                    border = ButtonDefaults.border(
-                                        border = Border.None,
-                                        focusedBorder = Border.None
-                                    ),
-                                    modifier = Modifier
-                                        .onFocusChanged { isWatchedFocused = it.isFocused }
-                                        .handleTouchClick { viewModel.togglePlayed() },
-                                    colors = ButtonDefaults.colors(
-                                        containerColor = if (state.isPlayed) {
-                                            (if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.22f))
+                                    // 2. Botón Ir a Serie (si es episodio)
+                                    if (isEpisode && !entity.seriesId.isNullOrBlank()) {
+                                        val goToSeriesLabel = if (sName.isNotBlank()) {
+                                            stringResource(R.string.detail_go_to_series_name, sName)
                                         } else {
-                                            (if (isMonochrome) Color(0x14FFFFFF) else focusColor.copy(alpha = 0.10f))
-                                        },
-                                        contentColor = if (isMonochrome) Color.White else Color(0xFFBAE6FD),
-                                        focusedContainerColor = focusColor,
-                                        focusedContentColor = focusContent
-                                    )
-                                ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        if (showIcons) {
-                                            Icon(
-                                                imageVector = if (state.isPlayed) Icons.Rounded.CheckCircle else Icons.Rounded.Check,
-                                                contentDescription = watchedLabel,
-                                                tint = if (isWatchedFocused) focusContent else (if (state.isPlayed && !isMonochrome) Color(0xFF10B981) else Color.White),
-                                                modifier = Modifier.size(17.dp)
-                                            )
+                                            stringResource(R.string.detail_go_to_series)
                                         }
-                                        if (showText) {
-                                            if (showIcons) Spacer(modifier = Modifier.width(6.dp))
-                                            Text(
-                                                text = watchedLabel,
-                                                color = if (isWatchedFocused) focusContent else Color.White,
-                                                fontWeight = FontWeight.SemiBold,
-                                                fontSize = 13.sp,
-                                                maxLines = 1,
-                                                softWrap = false,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
-                                        }
+                                        CinemaOrbitDial(
+                                            icon = Icons.Rounded.Tv,
+                                            contentDescription = goToSeriesLabel,
+                                            onClick = { onNavigateToDetail(entity.seriesId) },
+                                            focusColor = focusColor,
+                                            focusContentColor = focusContent
+                                        )
                                     }
+
+                                    // 3. Pulsador de Favorito (Órbita)
+                                    val favLabel = if (state.isFavorite) stringResource(R.string.detail_in_favorites) else stringResource(R.string.detail_add_favorites)
+                                    CinemaOrbitDial(
+                                        icon = if (state.isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                                        contentDescription = favLabel,
+                                        isActive = state.isFavorite,
+                                        onClick = { viewModel.toggleFavorite() },
+                                        focusColor = focusColor,
+                                        focusContentColor = focusContent
+                                    )
+
+                                    // 4. Pulsador de Tráiler (Órbita)
+                                    if (state.trailerUrl != null) {
+                                        CinemaOrbitDial(
+                                            icon = Icons.Rounded.Movie,
+                                            contentDescription = stringResource(R.string.detail_watch_trailer),
+                                            onClick = { isShowingTrailer = true },
+                                            focusColor = focusColor,
+                                            focusContentColor = focusContent
+                                        )
+                                    }
+
+                                    // 5. Pulsador de Visto / Marcar Visto (Órbita)
+                                    val watchedLabel = if (state.isPlayed) stringResource(R.string.detail_watched) else stringResource(R.string.detail_mark_watched)
+                                    CinemaOrbitDial(
+                                        icon = if (state.isPlayed) Icons.Rounded.CheckCircle else Icons.Rounded.Check,
+                                        contentDescription = watchedLabel,
+                                        isActive = state.isPlayed,
+                                        onClick = { viewModel.togglePlayed() },
+                                        focusColor = focusColor,
+                                        focusContentColor = focusContent
+                                    )
                                 }
                             }
 

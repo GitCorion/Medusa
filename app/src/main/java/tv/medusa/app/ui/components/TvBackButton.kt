@@ -75,8 +75,14 @@ fun TvBackButton(
         ),
         shape = ButtonDefaults.shape(RoundedCornerShape(10.dp)),
         border = ButtonDefaults.border(
-            border = Border.None,
-            focusedBorder = Border.None
+            border = androidx.tv.material3.Border(
+                border = androidx.compose.foundation.BorderStroke(0.75.dp, Color(0x28FFFFFF)),
+                shape = RoundedCornerShape(10.dp)
+            ),
+            focusedBorder = androidx.tv.material3.Border(
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White),
+                shape = RoundedCornerShape(10.dp)
+            )
         ),
         modifier = modifier
             .height(34.dp)

@@ -74,7 +74,7 @@ fun FormatFilterBar(
         PaddingValues(horizontal = 14.dp, vertical = 6.dp)
     }
 
-    val chipShape = RoundedCornerShape(8.dp)
+    val chipShape = RoundedCornerShape(10.dp)
 
     Row(
         modifier = modifier
@@ -87,17 +87,26 @@ fun FormatFilterBar(
             Button(
                 onClick = { onToggleHideWatched() },
                 contentPadding = buttonPadding,
-                scale = ButtonDefaults.scale(scale = 1.0f, focusedScale = 1.03f),
+                scale = ButtonDefaults.scale(scale = 1.0f, focusedScale = 1.04f),
                 colors = ButtonDefaults.colors(
-                    containerColor = if (hideWatched) (if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.20f)) else Color(0x12FFFFFF),
-                    contentColor = if (hideWatched) (if (isMonochrome) Color.White else focusColor) else Color(0xFF94A3B8),
+                    containerColor = if (hideWatched) (if (isMonochrome) Color(0x30FFFFFF) else focusColor.copy(alpha = 0.22f)) else Color(0x14FFFFFF),
+                    contentColor = if (hideWatched) (if (isMonochrome) Color.White else focusColor) else Color(0xFFA39E93),
                     focusedContainerColor = focusColor,
                     focusedContentColor = focusContent
                 ),
                 shape = ButtonDefaults.shape(shape = chipShape),
                 border = ButtonDefaults.border(
-                    border = Border.None,
-                    focusedBorder = Border.None
+                    border = androidx.tv.material3.Border(
+                        border = BorderStroke(
+                            0.6.dp,
+                            if (hideWatched) (if (isMonochrome) Color(0x60FFFFFF) else focusColor.copy(alpha = 0.5f)) else Color(0x1CFFFFFF)
+                        ),
+                        shape = chipShape
+                    ),
+                    focusedBorder = androidx.tv.material3.Border(
+                        border = BorderStroke(1.dp, Color.White),
+                        shape = chipShape
+                    )
                 ),
                 modifier = Modifier
                     .handleTouchClick { onToggleHideWatched() }
@@ -126,7 +135,8 @@ fun FormatFilterBar(
                         Text(
                             text = hideWatchedLabel,
                             fontSize = 12.sp,
-                            fontWeight = if (hideWatched) FontWeight.Bold else FontWeight.Medium
+                            fontWeight = if (hideWatched) FontWeight.Bold else FontWeight.Medium,
+                            letterSpacing = 0.3.sp
                         )
                     }
                 }
@@ -143,17 +153,26 @@ fun FormatFilterBar(
             Button(
                 onClick = { onSelect(format) },
                 contentPadding = buttonPadding,
-                scale = ButtonDefaults.scale(scale = 1.0f, focusedScale = 1.03f),
+                scale = ButtonDefaults.scale(scale = 1.0f, focusedScale = 1.04f),
                 colors = ButtonDefaults.colors(
-                    containerColor = if (isSelected) (if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.20f)) else Color(0x12FFFFFF),
-                    contentColor = if (isSelected) (if (isMonochrome) Color.White else focusColor) else Color(0xFF94A3B8),
+                    containerColor = if (isSelected) (if (isMonochrome) Color(0x30FFFFFF) else focusColor.copy(alpha = 0.22f)) else Color(0x14FFFFFF),
+                    contentColor = if (isSelected) (if (isMonochrome) Color.White else focusColor) else Color(0xFFA39E93),
                     focusedContainerColor = focusColor,
                     focusedContentColor = focusContent
                 ),
                 shape = ButtonDefaults.shape(shape = chipShape),
                 border = ButtonDefaults.border(
-                    border = Border.None,
-                    focusedBorder = Border.None
+                    border = androidx.tv.material3.Border(
+                        border = BorderStroke(
+                            0.6.dp,
+                            if (isSelected) (if (isMonochrome) Color(0x60FFFFFF) else focusColor.copy(alpha = 0.5f)) else Color(0x1CFFFFFF)
+                        ),
+                        shape = chipShape
+                    ),
+                    focusedBorder = androidx.tv.material3.Border(
+                        border = BorderStroke(1.dp, Color.White),
+                        shape = chipShape
+                    )
                 ),
                 modifier = Modifier
                     .handleTouchClick { onSelect(format) }
@@ -186,7 +205,8 @@ fun FormatFilterBar(
                         Text(
                             text = formatLabel,
                             fontSize = 12.sp,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                            letterSpacing = 0.3.sp
                         )
                     }
                 }

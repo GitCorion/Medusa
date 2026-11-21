@@ -357,7 +357,7 @@ fun MediaCard(
                         Text(
                             text = item.year.toString(),
                             style = MaterialTheme.typography.bodySmall,
-                            color = if (isFocused) focusColor else Color(0xFF94A3B8),
+                            color = if (isFocused) focusColor else tv.medusa.app.ui.theme.TextSecondary,
                             fontSize = 11.sp,
                             fontWeight = if (isFocused) FontWeight.SemiBold else FontWeight.Normal
                         )
@@ -366,7 +366,7 @@ fun MediaCard(
                         Text(
                             text = " • ",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFF64748B),
+                            color = tv.medusa.app.ui.theme.TextTertiary,
                             fontSize = 10.sp,
                             modifier = Modifier.clearAndSetSemantics { }
                         )
@@ -377,7 +377,7 @@ fun MediaCard(
                     Text(
                         text = stringResource(if (isTv) R.string.type_series else R.string.type_movie),
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF94A3B8),
+                        color = tv.medusa.app.ui.theme.TextSecondary,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Medium
                     )

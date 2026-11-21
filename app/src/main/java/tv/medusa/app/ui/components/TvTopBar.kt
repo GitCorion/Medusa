@@ -191,22 +191,29 @@ fun TvTopBar(
             }
         }
 
-        // Sección derecha: Pestañas de navegación
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.wrapContentWidth()
+        // Sección derecha: Pestañas de navegación en Lens Carriage Dock
+        Box(
+            modifier = Modifier
+                .background(Color(0x2E070709), RoundedCornerShape(22.dp))
+                .border(0.6.dp, Color(0x22FFFFFF), RoundedCornerShape(22.dp))
+                .padding(horizontal = 4.dp, vertical = 3.dp)
         ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier.wrapContentWidth()
+            ) {
             // 1. Botón Inicio
             val isHomeActive = selectedTab == TvNavTab.HOME
             Button(
                 onClick = onNavigateHome,
+                scale = ButtonDefaults.scale(scale = 1.0f, focusedScale = 1.04f),
                 modifier = Modifier
                     .then(if (homeFocusRequester != null) Modifier.focusRequester(homeFocusRequester) else Modifier)
                     .then(navDownModifier)
                     .handleTouchClick { onNavigateHome() },
                 colors = topBarButtonColors(isHomeActive, isMonochrome, focusColor, focusContent),
-                shape = ButtonDefaults.shape(shape = CircleShape),
+                shape = ButtonDefaults.shape(shape = RoundedCornerShape(18.dp)),
                 border = topBarButtonBorder(isHomeActive, isMonochrome, focusColor)
             ) {
                 Row(
@@ -217,7 +224,7 @@ fun TvTopBar(
                         Icon(
                             imageVector = Icons.Rounded.Home,
                             contentDescription = stringResource(R.string.nav_home),
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(15.dp)
                         )
                     }
                     if (showTopText) {
@@ -225,7 +232,7 @@ fun TvTopBar(
                         Text(
                             text = stringResource(R.string.nav_home),
                             fontWeight = if (isHomeActive) FontWeight.Bold else FontWeight.SemiBold,
-                            fontSize = 13.sp,
+                            fontSize = 12.sp,
                             maxLines = 1,
                             softWrap = false
                         )
@@ -238,6 +245,7 @@ fun TvTopBar(
             var isDiscoverFocused by remember { mutableStateOf(false) }
             Button(
                 onClick = onOpenMedusa,
+                scale = ButtonDefaults.scale(scale = 1.0f, focusedScale = 1.04f),
                 modifier = Modifier
                     .then(if (medusaFocusRequester != null) Modifier.focusRequester(medusaFocusRequester) else Modifier)
                     .then(navDownModifier)
@@ -252,7 +260,7 @@ fun TvTopBar(
                         } else false
                     },
                 colors = topBarButtonColors(isDiscoverActive, isMonochrome, focusColor, focusContent),
-                shape = ButtonDefaults.shape(shape = CircleShape),
+                shape = ButtonDefaults.shape(shape = RoundedCornerShape(18.dp)),
                 border = topBarButtonBorder(isDiscoverActive, isMonochrome, focusColor)
             ) {
                 Row(
@@ -263,7 +271,7 @@ fun TvTopBar(
                         Icon(
                             imageVector = Icons.Rounded.Explore,
                             contentDescription = stringResource(R.string.nav_discover),
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(15.dp)
                         )
                     }
                     if (showTopText) {
@@ -271,7 +279,7 @@ fun TvTopBar(
                         Text(
                             text = stringResource(R.string.nav_discover),
                             fontWeight = if (isDiscoverActive) FontWeight.Bold else FontWeight.SemiBold,
-                            fontSize = 13.sp,
+                            fontSize = 12.sp,
                             maxLines = 1,
                             softWrap = false
                         )
@@ -283,11 +291,12 @@ fun TvTopBar(
             val isFavoritesActive = selectedTab == TvNavTab.FAVORITES
             Button(
                 onClick = onOpenFavorites,
+                scale = ButtonDefaults.scale(scale = 1.0f, focusedScale = 1.04f),
                 modifier = Modifier
                     .then(navDownModifier)
                     .handleTouchClick { onOpenFavorites() },
                 colors = topBarButtonColors(isFavoritesActive, isMonochrome, focusColor, focusContent),
-                shape = ButtonDefaults.shape(shape = CircleShape),
+                shape = ButtonDefaults.shape(shape = RoundedCornerShape(18.dp)),
                 border = topBarButtonBorder(isFavoritesActive, isMonochrome, focusColor)
             ) {
                 Row(
@@ -298,7 +307,7 @@ fun TvTopBar(
                         Icon(
                             imageVector = Icons.Rounded.Favorite,
                             contentDescription = stringResource(R.string.nav_favorites),
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(15.dp)
                         )
                     }
                     if (showTopText) {
@@ -306,7 +315,7 @@ fun TvTopBar(
                         Text(
                             text = stringResource(R.string.nav_favorites),
                             fontWeight = if (isFavoritesActive) FontWeight.Bold else FontWeight.SemiBold,
-                            fontSize = 13.sp,
+                            fontSize = 12.sp,
                             maxLines = 1,
                             softWrap = false
                         )
@@ -318,11 +327,12 @@ fun TvTopBar(
             val isSearchActive = selectedTab == TvNavTab.SEARCH
             Button(
                 onClick = onOpenSearch,
+                scale = ButtonDefaults.scale(scale = 1.0f, focusedScale = 1.04f),
                 modifier = Modifier
                     .then(navDownModifier)
                     .handleTouchClick { onOpenSearch() },
                 colors = topBarButtonColors(isSearchActive, isMonochrome, focusColor, focusContent),
-                shape = ButtonDefaults.shape(shape = CircleShape),
+                shape = ButtonDefaults.shape(shape = RoundedCornerShape(18.dp)),
                 border = topBarButtonBorder(isSearchActive, isMonochrome, focusColor)
             ) {
                 Row(
@@ -333,7 +343,7 @@ fun TvTopBar(
                         Icon(
                             imageVector = Icons.Rounded.Search,
                             contentDescription = stringResource(R.string.nav_search),
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(15.dp)
                         )
                     }
                     if (showTopText) {
@@ -341,7 +351,7 @@ fun TvTopBar(
                         Text(
                             text = stringResource(R.string.nav_search),
                             fontWeight = if (isSearchActive) FontWeight.Bold else FontWeight.SemiBold,
-                            fontSize = 13.sp,
+                            fontSize = 12.sp,
                             maxLines = 1,
                             softWrap = false
                         )
@@ -353,11 +363,12 @@ fun TvTopBar(
             val isSettingsActive = selectedTab == TvNavTab.SETTINGS
             Button(
                 onClick = onOpenSettings,
+                scale = ButtonDefaults.scale(scale = 1.0f, focusedScale = 1.04f),
                 modifier = Modifier
                     .then(navDownModifier)
                     .handleTouchClick { onOpenSettings() },
                 colors = topBarButtonColors(isSettingsActive, isMonochrome, focusColor, focusContent),
-                shape = ButtonDefaults.shape(shape = CircleShape),
+                shape = ButtonDefaults.shape(shape = RoundedCornerShape(18.dp)),
                 border = topBarButtonBorder(isSettingsActive, isMonochrome, focusColor)
             ) {
                 Row(
@@ -368,7 +379,7 @@ fun TvTopBar(
                         Icon(
                             imageVector = Icons.Rounded.Tune,
                             contentDescription = stringResource(R.string.nav_settings),
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(15.dp)
                         )
                     }
                     if (showTopText) {
@@ -376,7 +387,7 @@ fun TvTopBar(
                         Text(
                             text = stringResource(R.string.nav_settings),
                             fontWeight = if (isSettingsActive) FontWeight.Bold else FontWeight.SemiBold,
-                            fontSize = 13.sp,
+                            fontSize = 12.sp,
                             maxLines = 1,
                             softWrap = false
                         )
@@ -399,6 +410,7 @@ fun TvTopBar(
                 }
             }
         }
+        }
     }
 }
 
@@ -410,8 +422,8 @@ private fun topBarButtonColors(
     focusColor: Color,
     focusContent: Color
 ) = ButtonDefaults.colors(
-    containerColor = if (isActive) (if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.20f)) else Color.Transparent,
-    contentColor = if (isActive) (if (isMonochrome) Color.White else focusColor) else Color(0xFF94A3B8),
+    containerColor = if (isActive) (if (isMonochrome) Color(0x30FFFFFF) else focusColor.copy(alpha = 0.22f)) else Color.Transparent,
+    contentColor = if (isActive) (if (isMonochrome) Color.White else focusColor) else Color(0xFFA39E93),
     focusedContainerColor = focusColor,
     focusedContentColor = focusContent
 )
@@ -423,6 +435,14 @@ private fun topBarButtonBorder(
     isMonochrome: Boolean,
     focusColor: Color
 ) = ButtonDefaults.border(
-    border = Border.None,
-    focusedBorder = Border.None
+    border = if (isActive) {
+        androidx.tv.material3.Border(
+            border = BorderStroke(0.6.dp, if (isMonochrome) Color(0x55FFFFFF) else focusColor.copy(alpha = 0.5f)),
+            shape = RoundedCornerShape(18.dp)
+        )
+    } else Border.None,
+    focusedBorder = androidx.tv.material3.Border(
+        border = BorderStroke(1.dp, Color.White),
+        shape = RoundedCornerShape(18.dp)
+    )
 )

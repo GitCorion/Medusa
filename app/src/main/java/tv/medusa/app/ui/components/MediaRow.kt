@@ -22,6 +22,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
@@ -61,10 +62,10 @@ fun MediaRow(
         ) {
             val badgeText = localizedSectionBadge(section.badge)
             if (!badgeText.isNullOrBlank()) {
-                TvPill(
+                tv.medusa.app.ui.components.cinema.CinemaFormatBadge(
                     text = badgeText,
-                    containerColor = if (isMonochrome) Color(0x18FFFFFF) else focusColor.copy(alpha = 0.16f),
-                    textColor = if (isMonochrome) Color(0xFFCBD5E1) else Color(0xFF7DD3FC)
+                    isHighlighted = !isMonochrome,
+                    highlightColor = focusColor
                 )
                 Spacer(modifier = Modifier.width(10.dp))
             }
@@ -72,8 +73,9 @@ fun MediaRow(
             Text(
                 text = localizedSectionTitle(section),
                 style = MaterialTheme.typography.titleLarge,
-                color = Color.White,
-                fontWeight = FontWeight.SemiBold
+                color = tv.medusa.app.ui.theme.TextPrimary,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 0.4.sp
             )
         }
 
