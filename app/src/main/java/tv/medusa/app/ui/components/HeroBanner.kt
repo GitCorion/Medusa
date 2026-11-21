@@ -171,7 +171,7 @@ fun HeroBanner(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(390.dp)
+            .height(430.dp)
             .onFocusChanged { isHeroFocused = it.hasFocus }
             .pointerInput(totalSlides) {
                 if (totalSlides > 1) {
@@ -350,7 +350,7 @@ fun HeroBanner(
             Column(
                 modifier = Modifier
                     .align(Alignment.TopStart)
-                    .padding(start = TvSpacing.ScreenSafeHorizontal, end = 24.dp, top = 68.dp, bottom = 14.dp)
+                    .padding(start = TvSpacing.ScreenSafeHorizontal, end = 24.dp, top = 104.dp, bottom = 14.dp)
                     .fillMaxWidth(0.55f)
             ) {
 

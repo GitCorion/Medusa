@@ -1,6 +1,10 @@
 package tv.medusa.app.ui.components
 
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.graphics.graphicsLayer
 import tv.medusa.app.data.remote.update.AppUpdateManager
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -192,10 +196,29 @@ fun TvTopBar(
         }
 
         // Sección derecha: Pestañas de navegación en Lens Carriage Dock
+        var isDockFocused by remember { mutableStateOf(false) }
+        val dockAlpha by animateFloatAsState(
+            targetValue = if (isDockFocused) 1.0f else 0.55f,
+            animationSpec = tween(300),
+            label = "dockAlpha"
+        )
+        val dockBgColor by animateColorAsState(
+            targetValue = if (isDockFocused) Color(0x3E070709) else Color(0x10070709),
+            animationSpec = tween(300),
+            label = "dockBg"
+        )
+        val dockBorderColor by animateColorAsState(
+            targetValue = if (isDockFocused) Color(0x30FFFFFF) else Color(0x06FFFFFF),
+            animationSpec = tween(300),
+            label = "dockBorder"
+        )
+
         Box(
             modifier = Modifier
-                .background(Color(0x2E070709), RoundedCornerShape(22.dp))
-                .border(0.6.dp, Color(0x22FFFFFF), RoundedCornerShape(22.dp))
+                .onFocusChanged { isDockFocused = it.hasFocus }
+                .graphicsLayer { alpha = dockAlpha }
+                .background(dockBgColor, RoundedCornerShape(22.dp))
+                .border(0.6.dp, dockBorderColor, RoundedCornerShape(22.dp))
                 .padding(horizontal = 4.dp, vertical = 3.dp)
         ) {
             Row(
@@ -212,9 +235,9 @@ fun TvTopBar(
                     .then(if (homeFocusRequester != null) Modifier.focusRequester(homeFocusRequester) else Modifier)
                     .then(navDownModifier)
                     .handleTouchClick { onNavigateHome() },
-                colors = topBarButtonColors(isHomeActive, isMonochrome, focusColor, focusContent),
+                colors = topBarButtonColors(isHomeActive, isMonochrome, focusColor, focusContent, isDockFocused),
                 shape = ButtonDefaults.shape(shape = RoundedCornerShape(18.dp)),
-                border = topBarButtonBorder(isHomeActive, isMonochrome, focusColor)
+                border = topBarButtonBorder(isHomeActive, isMonochrome, focusColor, isDockFocused)
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -259,9 +282,9 @@ fun TvTopBar(
                             } else false
                         } else false
                     },
-                colors = topBarButtonColors(isDiscoverActive, isMonochrome, focusColor, focusContent),
+                colors = topBarButtonColors(isDiscoverActive, isMonochrome, focusColor, focusContent, isDockFocused),
                 shape = ButtonDefaults.shape(shape = RoundedCornerShape(18.dp)),
-                border = topBarButtonBorder(isDiscoverActive, isMonochrome, focusColor)
+                border = topBarButtonBorder(isDiscoverActive, isMonochrome, focusColor, isDockFocused)
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -295,9 +318,9 @@ fun TvTopBar(
                 modifier = Modifier
                     .then(navDownModifier)
                     .handleTouchClick { onOpenFavorites() },
-                colors = topBarButtonColors(isFavoritesActive, isMonochrome, focusColor, focusContent),
+                colors = topBarButtonColors(isFavoritesActive, isMonochrome, focusColor, focusContent, isDockFocused),
                 shape = ButtonDefaults.shape(shape = RoundedCornerShape(18.dp)),
-                border = topBarButtonBorder(isFavoritesActive, isMonochrome, focusColor)
+                border = topBarButtonBorder(isFavoritesActive, isMonochrome, focusColor, isDockFocused)
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -331,9 +354,9 @@ fun TvTopBar(
                 modifier = Modifier
                     .then(navDownModifier)
                     .handleTouchClick { onOpenSearch() },
-                colors = topBarButtonColors(isSearchActive, isMonochrome, focusColor, focusContent),
+                colors = topBarButtonColors(isSearchActive, isMonochrome, focusColor, focusContent, isDockFocused),
                 shape = ButtonDefaults.shape(shape = RoundedCornerShape(18.dp)),
-                border = topBarButtonBorder(isSearchActive, isMonochrome, focusColor)
+                border = topBarButtonBorder(isSearchActive, isMonochrome, focusColor, isDockFocused)
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -367,9 +390,9 @@ fun TvTopBar(
                 modifier = Modifier
                     .then(navDownModifier)
                     .handleTouchClick { onOpenSettings() },
-                colors = topBarButtonColors(isSettingsActive, isMonochrome, focusColor, focusContent),
+                colors = topBarButtonColors(isSettingsActive, isMonochrome, focusColor, focusContent, isDockFocused),
                 shape = ButtonDefaults.shape(shape = RoundedCornerShape(18.dp)),
-                border = topBarButtonBorder(isSettingsActive, isMonochrome, focusColor)
+                border = topBarButtonBorder(isSettingsActive, isMonochrome, focusColor, isDockFocused)
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -420,10 +443,23 @@ private fun topBarButtonColors(
     isActive: Boolean,
     isMonochrome: Boolean,
     focusColor: Color,
-    focusContent: Color
+    focusContent: Color,
+    isDockFocused: Boolean = true
 ) = ButtonDefaults.colors(
-    containerColor = if (isActive) (if (isMonochrome) Color(0x30FFFFFF) else focusColor.copy(alpha = 0.22f)) else Color.Transparent,
-    contentColor = if (isActive) (if (isMonochrome) Color.White else focusColor) else Color(0xFFA39E93),
+    containerColor = if (isActive) {
+        if (isDockFocused) {
+            if (isMonochrome) Color(0x30FFFFFF) else focusColor.copy(alpha = 0.22f)
+        } else {
+            if (isMonochrome) Color(0x18FFFFFF) else focusColor.copy(alpha = 0.12f)
+        }
+    } else Color.Transparent,
+    contentColor = if (isActive) {
+        if (isDockFocused) {
+            if (isMonochrome) Color.White else focusColor
+        } else {
+            if (isMonochrome) Color(0xCCFFFFFF) else focusColor.copy(alpha = 0.85f)
+        }
+    } else Color(0xFFA39E93),
     focusedContainerColor = focusColor,
     focusedContentColor = focusContent
 )
@@ -433,9 +469,10 @@ private fun topBarButtonColors(
 private fun topBarButtonBorder(
     isActive: Boolean,
     isMonochrome: Boolean,
-    focusColor: Color
+    focusColor: Color,
+    isDockFocused: Boolean = true
 ) = ButtonDefaults.border(
-    border = if (isActive) {
+    border = if (isActive && isDockFocused) {
         androidx.tv.material3.Border(
             border = BorderStroke(0.6.dp, if (isMonochrome) Color(0x55FFFFFF) else focusColor.copy(alpha = 0.5f)),
             shape = RoundedCornerShape(18.dp)
