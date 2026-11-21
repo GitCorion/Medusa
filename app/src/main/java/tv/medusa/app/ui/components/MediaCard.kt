@@ -43,6 +43,7 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
@@ -85,6 +86,7 @@ fun MediaCard(
     onFocus: () -> Unit = {},
     onLongClick: (() -> Unit)? = null,
     isRowFocused: Boolean = false,
+    cardWidth: Dp = 150.dp,
     modifier: Modifier = Modifier
 ) {
     var isFocused by remember { mutableStateOf(false) }
@@ -152,7 +154,7 @@ fun MediaCard(
         border = CardDefaults.border(border = Border.None, focusedBorder = Border.None),
         shape = CardDefaults.shape(shape = RoundedCornerShape(0.dp)),
         modifier = modifier
-            .width(150.dp)
+            .width(cardWidth)
             .zIndex(if (isFocused) 10f else 0f)
             .graphicsLayer {
                 scaleX = scale
