@@ -173,25 +173,6 @@ fun HeroBanner(
             .fillMaxWidth()
             .height(390.dp)
             .onFocusChanged { isHeroFocused = it.hasFocus }
-            .onPreviewKeyEvent { keyEvent ->
-                if (keyEvent.type == KeyEventType.KeyDown && totalSlides > 1) {
-                    when (keyEvent.key) {
-                        Key.DirectionLeft -> {
-                            carouselIndex = if (carouselIndex > 0) carouselIndex - 1 else totalSlides - 1
-                            effectiveActionFocusRequester.requestFocus()
-                            true
-                        }
-                        Key.DirectionRight -> {
-                            carouselIndex = (carouselIndex + 1) % totalSlides
-                            effectiveActionFocusRequester.requestFocus()
-                            true
-                        }
-                        else -> false
-                    }
-                } else {
-                    false
-                }
-            }
             .pointerInput(totalSlides) {
                 if (totalSlides > 1) {
                     var dragAccumulator = 0f
@@ -576,6 +557,7 @@ fun HeroBanner(
                     } else {
                         stringResource(R.string.detail_play)
                     }
+                    val hasInfoButton = currentSlideState is HeroSlideState.Movie
                     val actionIcon = if (isSeasonalActive) Icons.AutoMirrored.Rounded.PlaylistPlay else Icons.Rounded.PlayArrow
                     MasterFilmTrigger(
                         label = playLabel,
@@ -586,9 +568,19 @@ fun HeroBanner(
                         focusRequester = effectiveActionFocusRequester,
                         modifier = Modifier
                             .onPreviewKeyEvent { keyEvent ->
-                                if (keyEvent.type == KeyEventType.KeyDown && keyEvent.key == Key.DirectionUp && onUpFromHero != null) {
-                                    onUpFromHero()
-                                    true
+                                if (keyEvent.type == KeyEventType.KeyDown) {
+                                    if (keyEvent.key == Key.DirectionUp && onUpFromHero != null) {
+                                        onUpFromHero()
+                                        true
+                                    } else if (keyEvent.key == Key.DirectionLeft && totalSlides > 1) {
+                                        carouselIndex = if (carouselIndex > 0) carouselIndex - 1 else totalSlides - 1
+                                        effectiveActionFocusRequester.requestFocus()
+                                        true
+                                    } else if (keyEvent.key == Key.DirectionRight && !hasInfoButton && totalSlides > 1) {
+                                        carouselIndex = (carouselIndex + 1) % totalSlides
+                                        effectiveActionFocusRequester.requestFocus()
+                                        true
+                                    } else false
                                 } else false
                             },
                         onClick = {
@@ -600,20 +592,26 @@ fun HeroBanner(
                         }
                     )
 
-                    if (currentSlideState is HeroSlideState.Movie) {
+                    if (hasInfoButton) {
                         CinemaOrbitDial(
                             icon = Icons.Rounded.Info,
                             contentDescription = stringResource(R.string.common_details),
                             focusColor = focusColor,
                             focusContentColor = focusContent,
                             modifier = Modifier.onPreviewKeyEvent { keyEvent ->
-                                if (keyEvent.type == KeyEventType.KeyDown && keyEvent.key == Key.DirectionUp && onUpFromHero != null) {
-                                    onUpFromHero()
-                                    true
+                                if (keyEvent.type == KeyEventType.KeyDown) {
+                                    if (keyEvent.key == Key.DirectionUp && onUpFromHero != null) {
+                                        onUpFromHero()
+                                        true
+                                    } else if (keyEvent.key == Key.DirectionRight && totalSlides > 1) {
+                                        carouselIndex = (carouselIndex + 1) % totalSlides
+                                        effectiveActionFocusRequester.requestFocus()
+                                        true
+                                    } else false
                                 } else false
                             },
                             onClick = {
-                                onDetailClick(currentSlideState.item)
+                                onDetailClick((currentSlideState as HeroSlideState.Movie).item)
                             }
                         )
                     }
