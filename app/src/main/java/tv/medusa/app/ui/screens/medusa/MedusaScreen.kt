@@ -233,7 +233,7 @@ fun MedusaScreen(
                 isMonochrome = isMonochrome,
                 hideWatched = uiState.hideWatched,
                 onToggleHideWatched = { viewModel.toggleHideWatched() },
-                contentPadding = PaddingValues(horizontal = 48.dp, vertical = 2.dp),
+                contentPadding = PaddingValues(horizontal = 48.dp, vertical = 6.dp),
                 modifier = Modifier
                     .onFocusChanged {
                         if (it.hasFocus) {
@@ -261,7 +261,7 @@ fun MedusaScreen(
                     )
                 }
             } else {
-                Spacer(modifier = Modifier.height(2.dp))
+                Spacer(modifier = Modifier.height(6.dp))
 
                 // =========================================================================
                 // 3. ETIQUETAS ACTIVAS SELECCIONADAS (Navegables con mando TV para borrar)
@@ -297,7 +297,7 @@ fun MedusaScreen(
                             )
                         }
                     }
-                    Spacer(modifier = Modifier.height(2.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
                 }
 
                 // =========================================================================
@@ -319,7 +319,7 @@ fun MedusaScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Spacer(modifier = Modifier.height(2.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
                 // =========================================================================
                 // 5. SECCIÓN PROTAGONISTA: PELÍCULAS DESCUBIERTAS
@@ -329,7 +329,6 @@ fun MedusaScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f)
-                            .padding(top = 2.dp)
                     ) {
                         Row(
                             modifier = Modifier
@@ -355,18 +354,17 @@ fun MedusaScreen(
                             )
                         }
 
-                        Spacer(modifier = Modifier.height(2.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
 
                         LazyRow(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .weight(1f)
                                 .onFocusChanged {
                                     if (it.hasFocus) {
                                         isFocusedOnMoviesRow = true
                                     }
                                 },
-                            contentPadding = PaddingValues(start = 48.dp, end = 48.dp, top = 4.dp, bottom = 8.dp),
+                            contentPadding = PaddingValues(start = 48.dp, end = 48.dp, top = 8.dp, bottom = 20.dp),
                             horizontalArrangement = Arrangement.spacedBy(14.dp),
                             verticalAlignment = Alignment.Top
                         ) {
@@ -377,7 +375,7 @@ fun MedusaScreen(
                             ) { _, movie ->
                                 MediaCard(
                                     item = movie,
-                                    cardWidth = 132.dp,
+                                    cardWidth = 148.dp,
                                     onClick = {
                                         onDetailMedia(movie.id)
                                     },
@@ -394,12 +392,7 @@ fun MedusaScreen(
                     Spacer(modifier = Modifier.weight(1f))
                 }
 
-                // Margen inferior respetando la barra de navegación del sistema (gestos Android / tablet)
-                Spacer(
-                    modifier = Modifier
-                        .navigationBarsPadding()
-                        .height(4.dp)
-                )
+                Spacer(modifier = Modifier.height(12.dp))
             }
         }
     }
@@ -519,7 +512,7 @@ private fun SelectedTagBadge(
     Box(
         modifier = Modifier
             .scale(scale)
-            .height(28.dp)
+            .height(32.dp)
             .clip(RoundedCornerShape(8.dp))
             .background(containerColor)
             .clickable(
@@ -527,23 +520,23 @@ private fun SelectedTagBadge(
                 indication = null,
                 onClick = onRemove
             )
-            .padding(horizontal = 10.dp, vertical = 2.dp),
+            .padding(horizontal = 12.dp, vertical = 4.dp),
         contentAlignment = Alignment.Center
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(5.dp)
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Icon(
                 imageVector = Icons.Rounded.Check,
                 contentDescription = null,
                 tint = contentColor,
-                modifier = Modifier.size(12.dp)
+                modifier = Modifier.size(13.dp)
             )
             Text(
                 text = tag.label,
                 color = contentColor,
-                fontSize = 11.sp,
+                fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 fontFamily = FontFamily.SansSerif
             )
@@ -551,7 +544,7 @@ private fun SelectedTagBadge(
                 imageVector = Icons.Rounded.Close,
                 contentDescription = stringResource(R.string.common_delete),
                 tint = contentColor,
-                modifier = Modifier.size(12.dp)
+                modifier = Modifier.size(13.dp)
             )
         }
     }
