@@ -123,12 +123,6 @@ fun ContinueWatchingCard(
         }
     }
 
-    val spotlightAlpha by animateFloatAsState(
-        targetValue = if (isRowFocused && !isFocused) 0.65f else 1.0f,
-        animationSpec = tween(durationMillis = TvMotion.DurationFadeMs),
-        label = "continueSpotlightAlpha"
-    )
-
     val playAlpha by animateFloatAsState(
         targetValue = if (isFocused) 1.0f else 0.0f,
         animationSpec = tween(durationMillis = TvMotion.DurationFadeMs),
@@ -158,9 +152,6 @@ fun ContinueWatchingCard(
         modifier = modifier
             .width(280.dp)
             .zIndex(if (isFocused) 10f else 0f)
-            .graphicsLayer {
-                this.alpha = spotlightAlpha
-            }
             .onFocusChanged {
                 isFocused = it.isFocused
                 if (it.isFocused) {

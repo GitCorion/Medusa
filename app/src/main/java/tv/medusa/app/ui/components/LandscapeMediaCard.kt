@@ -109,12 +109,6 @@ fun LandscapeMediaCard(
         }
     }
 
-    val spotlightAlpha by animateFloatAsState(
-        targetValue = if (isRowFocused && !isFocused) 0.65f else 1.0f,
-        animationSpec = tween(durationMillis = TvMotion.DurationFadeMs),
-        label = "sagaSpotlightAlpha"
-    )
-
     val imageModel = item.backdropUrl ?: item.posterUrl
 
     Card(
@@ -131,9 +125,6 @@ fun LandscapeMediaCard(
             .width(320.dp)
             .height(192.dp)
             .zIndex(if (isFocused) 10f else 0f)
-            .graphicsLayer {
-                this.alpha = spotlightAlpha
-            }
             .onFocusChanged {
                 isFocused = it.isFocused
                 if (it.isFocused) onFocus()

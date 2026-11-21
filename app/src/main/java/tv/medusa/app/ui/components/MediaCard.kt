@@ -121,12 +121,6 @@ fun MediaCard(
         }
     }
 
-    val spotlightAlpha by animateFloatAsState(
-        targetValue = if (isRowFocused && !isFocused) 0.65f else 1.0f,
-        animationSpec = tween(durationMillis = TvMotion.DurationFadeMs),
-        label = "spotlightAlpha"
-    )
-
     val textAlpha by animateFloatAsState(
         targetValue = if (isFocused) 1.0f else 0.75f,
         animationSpec = tween(durationMillis = TvMotion.DurationFadeMs),
@@ -135,7 +129,7 @@ fun MediaCard(
 
     val posterShape = remember { RoundedCornerShape(10.dp) }
 
-    // Contenedor Raíz de TV sin clipping: scale fijado a 1.0f para eliminar temblores horizontales
+    // Contenedor Raíz de TV sin clipping ni oscurecimiento lateral de fondo
     Card(
         onClick = safeOnClick,
         onLongClick = effectiveLongClick,
@@ -149,9 +143,6 @@ fun MediaCard(
         modifier = modifier
             .width(cardWidth)
             .zIndex(if (isFocused) 10f else 0f)
-            .graphicsLayer {
-                this.alpha = spotlightAlpha
-            }
             .onFocusChanged {
                 isFocused = it.isFocused
                 if (it.isFocused) {

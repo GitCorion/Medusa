@@ -122,12 +122,6 @@ fun RankedMediaCard(
         }
     }
 
-    val spotlightAlpha by animateFloatAsState(
-        targetValue = if (isRowFocused && !isFocused) 0.65f else 1.0f,
-        animationSpec = tween(durationMillis = 220),
-        label = "rankedSpotlightAlpha"
-    )
-
     val textAlpha by animateFloatAsState(
         targetValue = if (isFocused) 1.0f else 0.75f,
         animationSpec = tween(durationMillis = 200),
@@ -159,9 +153,6 @@ fun RankedMediaCard(
         modifier = modifier
             .width(215.dp)
             .zIndex(if (isFocused) 10f else 0f)
-            .graphicsLayer {
-                this.alpha = spotlightAlpha
-            }
             .onFocusChanged {
                 isFocused = it.isFocused
                 if (it.isFocused) {
