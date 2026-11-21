@@ -207,9 +207,12 @@ private fun GenreLanding(
                     .padding(start = 48.dp, end = 48.dp, top = 20.dp, bottom = 12.dp)
             ) {
                 Text(
-                    text = state.genreName.uppercase(),
-                    style = CinematicTypography.HeroDisplay.copy(fontSize = 32.sp, letterSpacing = 2.sp),
-                    color = TextPrimary
+                    text = state.genreName,
+                    style = MaterialTheme.typography.headlineMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 26.sp
+                    ),
+                    color = Color.White
                 )
             }
         }

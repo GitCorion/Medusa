@@ -165,10 +165,10 @@ fun MasterFilmTrigger(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = label.uppercase(),
+                        text = label,
                         style = CinematicTypography.TriggerButton,
                         fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.SemiBold,
                         color = if (isFocused) focusContentColor else TextPrimary
                     )
                 }

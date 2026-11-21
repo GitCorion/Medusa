@@ -235,22 +235,26 @@ fun HomeScreen(
                         Icon(
                             imageVector = Icons.Rounded.Dns,
                             contentDescription = null,
-                            tint = GoldNitrate,
-                            modifier = Modifier.size(52.dp)
+                            tint = Color(0xFF64748B),
+                            modifier = Modifier.size(44.dp)
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
                             text = stringResource(R.string.home_welcome),
-                            style = CinematicTypography.HeroDisplay.copy(fontSize = 28.sp),
-                            color = TextPrimary,
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 22.sp
+                            ),
+                            color = Color.White,
                             textAlign = TextAlign.Center
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = stringResource(R.string.home_setup_desc),
                             style = MaterialTheme.typography.bodyMedium,
-                            color = TextSecondary,
-                            textAlign = TextAlign.Center
+                            color = Color(0xFF94A3B8),
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(horizontal = 32.dp)
                         )
                         Spacer(modifier = Modifier.height(24.dp))
                         MasterFilmTrigger(
@@ -271,21 +275,24 @@ fun HomeScreen(
                         Icon(
                             imageVector = Icons.Rounded.Dns,
                             contentDescription = null,
-                            tint = Color(0xFFCBD5E1),
-                            modifier = Modifier.size(52.dp)
+                            tint = Color(0xFF64748B),
+                            modifier = Modifier.size(44.dp)
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
                             text = stringResource(R.string.home_server_connected),
-                            style = CinematicTypography.HeroDisplay.copy(fontSize = 28.sp),
-                            color = TextPrimary,
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 22.sp
+                            ),
+                            color = Color.White,
                             textAlign = TextAlign.Center
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = stringResource(R.string.home_empty_library),
                             style = MaterialTheme.typography.bodyMedium,
-                            color = TextSecondary,
+                            color = Color(0xFF94A3B8),
                             textAlign = TextAlign.Center
                         )
                         Spacer(modifier = Modifier.height(24.dp))

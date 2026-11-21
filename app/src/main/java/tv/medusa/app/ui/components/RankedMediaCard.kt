@@ -41,6 +41,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -189,15 +190,15 @@ fun RankedMediaCard(
                     .fillMaxWidth()
                     .height(218.dp)
             ) {
-                // 1. Número Gigante estilizado a la izquierda en Cinzel imperial
+                // 1. Número Gigante estilizado a la izquierda
                 Text(
                     text = "$rank",
                     style = TextStyle(
-                        fontFamily = CinzelFontFamily,
+                        fontFamily = FontFamily.Default,
                         brush = numberBrush,
                         fontSize = 112.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = (-2).sp
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = (-4).sp
                     ),
                     modifier = Modifier
                         .align(Alignment.BottomStart)

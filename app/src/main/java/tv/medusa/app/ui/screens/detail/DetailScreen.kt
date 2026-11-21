@@ -686,10 +686,9 @@ fun DetailScreen(
                                         shape = ButtonDefaults.shape(shape = chipShape)
                                     ) {
                                         Text(
-                                            text = season.name.uppercase(),
+                                            text = season.name,
                                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                            fontSize = 11.sp,
-                                            letterSpacing = 0.8.sp
+                                            fontSize = 12.sp
                                         )
                                     }
                                 }
