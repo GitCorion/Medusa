@@ -100,7 +100,6 @@ import tv.medusa.app.ui.components.cinema.CinemaFormatBadge
 import tv.medusa.app.ui.theme.CinematicTypography
 import tv.medusa.app.ui.theme.TextPrimary
 import tv.medusa.app.ui.theme.TextSecondary
-import tv.medusa.app.ui.theme.GoldNitrate
 import tv.medusa.app.ui.theme.TvAccent
 import tv.medusa.app.ui.theme.TvPill
 import tv.medusa.app.ui.theme.TvRatingBadge
@@ -411,7 +410,7 @@ fun DetailScreen(
                                     CinemaFormatBadge(
                                         text = entity.officialRating,
                                         isHighlighted = true,
-                                        highlightColor = GoldNitrate
+                                        highlightColor = focusColor
                                     )
                                 }
 

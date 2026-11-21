@@ -22,7 +22,6 @@ import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Icon
 import androidx.tv.material3.Text
 import tv.medusa.app.ui.theme.CinematicTypography
-import tv.medusa.app.ui.theme.GoldNitrate
 import tv.medusa.app.ui.theme.TextPrimary
 import tv.medusa.app.ui.theme.TextSecondary
 
@@ -39,7 +38,7 @@ fun CinemaFormatBadge(
     modifier: Modifier = Modifier,
     icon: ImageVector? = null,
     isHighlighted: Boolean = false,
-    highlightColor: Color = GoldNitrate,
+    highlightColor: Color = Color.White,
     horizontalPad: Dp = 8.dp,
     verticalPad: Dp = 4.dp
 ) {
@@ -67,7 +66,7 @@ fun CinemaFormatBadge(
                 Spacer(modifier = Modifier.width(4.dp))
             }
             Text(
-                text = text.uppercase(),
+                text = text,
                 style = CinematicTypography.FilmCodecBadge,
                 fontSize = 10.sp,
                 color = textColor,

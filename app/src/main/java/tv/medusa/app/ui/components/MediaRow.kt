@@ -36,7 +36,6 @@ import tv.medusa.app.domain.model.HomeSectionKind
 import tv.medusa.app.domain.model.HomeSectionLayout
 import tv.medusa.app.domain.model.MediaItem
 import tv.medusa.app.ui.theme.CinematicTypography
-import tv.medusa.app.ui.theme.GoldNitrate
 import tv.medusa.app.ui.theme.TextPrimary
 import tv.medusa.app.ui.theme.LocalAccentColor
 import tv.medusa.app.ui.theme.LocalIsMonochromeTheme
@@ -74,19 +73,6 @@ fun MediaRow(
                     text = badgeText,
                     isHighlighted = !isMonochrome,
                     highlightColor = focusColor
-                )
-                Spacer(modifier = Modifier.width(10.dp))
-            } else if (!isMonochrome) {
-                // Micro-indicador arquitectónico de celuloide
-                Box(
-                    modifier = Modifier
-                        .size(width = 3.dp, height = 14.dp)
-                        .background(
-                            brush = Brush.verticalGradient(
-                                listOf(GoldNitrate, focusColor)
-                            ),
-                            shape = RoundedCornerShape(1.5.dp)
-                        )
                 )
                 Spacer(modifier = Modifier.width(10.dp))
             }

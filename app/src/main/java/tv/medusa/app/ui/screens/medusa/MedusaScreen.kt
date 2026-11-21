@@ -75,7 +75,6 @@ import tv.medusa.app.ui.components.MediaCard
 import tv.medusa.app.ui.components.TvNavTab
 import tv.medusa.app.ui.components.TvTopBar
 import tv.medusa.app.ui.theme.CinematicTypography
-import tv.medusa.app.ui.theme.GoldNitrate
 import tv.medusa.app.ui.theme.TextPrimary
 import tv.medusa.app.ui.theme.TextSecondary
 import tv.medusa.app.ui.theme.LocalAccentColor
@@ -464,7 +463,7 @@ private fun MedusaMoviesHeader(
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = "${focusedMovie.year}",
-                    color = GoldNitrate,
+                    color = Color(0xFF94A3B8),
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold
                 )

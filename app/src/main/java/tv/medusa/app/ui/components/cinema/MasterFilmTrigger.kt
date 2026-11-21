@@ -45,7 +45,6 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.Text
 import tv.medusa.app.ui.theme.AbyssGlassHighlight
 import tv.medusa.app.ui.theme.CinematicTypography
-import tv.medusa.app.ui.theme.GoldNitrate
 import tv.medusa.app.ui.theme.TextPrimary
 import tv.medusa.app.ui.theme.TextSecondary
 import tv.medusa.app.ui.util.handleTouchClick
@@ -69,7 +68,7 @@ fun MasterFilmTrigger(
     modifier: Modifier = Modifier,
     technicalSpec: String? = null,
     icon: ImageVector = Icons.Rounded.PlayArrow,
-    focusColor: Color = GoldNitrate,
+    focusColor: Color = Color.White,
     focusContentColor: Color = Color(0xFF070709),
     focusRequester: FocusRequester? = null
 ) {

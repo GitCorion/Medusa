@@ -2,7 +2,6 @@ package tv.medusa.app.ui.components
 
 import androidx.compose.ui.graphics.Brush
 import tv.medusa.app.ui.theme.CinematicTypography
-import tv.medusa.app.ui.theme.GoldNitrate
 import tv.medusa.app.ui.theme.TextPrimary
 import tv.medusa.app.ui.theme.TextSecondary
 import tv.medusa.app.ui.theme.LocalAccentColor
@@ -71,17 +70,6 @@ fun GenreRow(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(horizontal = TvSpacing.ScreenSafeHorizontal, vertical = 6.dp)
         ) {
-            if (!isMonochrome) {
-                Box(
-                    modifier = Modifier
-                        .size(width = 3.dp, height = 14.dp)
-                        .background(
-                            brush = Brush.verticalGradient(listOf(GoldNitrate, focusColor)),
-                            shape = RoundedCornerShape(1.5.dp)
-                        )
-                )
-                Spacer(modifier = Modifier.width(10.dp))
-            }
             Text(
                 text = stringResource(R.string.genre_favorites_title),
                 style = CinematicTypography.SectionTitle,

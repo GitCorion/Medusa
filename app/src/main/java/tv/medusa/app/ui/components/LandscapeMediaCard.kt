@@ -47,7 +47,6 @@ import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import tv.medusa.app.data.local.INDICATOR_THEME_MONOCHROME
 import tv.medusa.app.domain.model.MediaItem
-import tv.medusa.app.ui.theme.GoldNitrate
 import tv.medusa.app.ui.theme.TextPrimary
 import tv.medusa.app.ui.theme.TextSecondary
 import tv.medusa.app.ui.theme.LocalAccentColor
@@ -306,7 +305,7 @@ fun LandscapeMediaCard(
 
                             Text(
                                 text = subtitle,
-                                color = if (isFocused) GoldNitrate else TextSecondary,
+                                color = if (isFocused) focusColor else TextSecondary,
                                 fontWeight = FontWeight.SemiBold,
                                 fontSize = 11.sp,
                                 letterSpacing = 0.5.sp,

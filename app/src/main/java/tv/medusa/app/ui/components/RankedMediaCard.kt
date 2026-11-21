@@ -60,8 +60,6 @@ import coil.compose.AsyncImage
 import tv.medusa.app.R
 import tv.medusa.app.data.local.INDICATOR_THEME_MONOCHROME
 import tv.medusa.app.domain.model.MediaItem
-import tv.medusa.app.ui.theme.CinzelFontFamily
-import tv.medusa.app.ui.theme.GoldNitrate
 import tv.medusa.app.ui.theme.TextPrimary
 import tv.medusa.app.ui.theme.TextSecondary
 import tv.medusa.app.ui.theme.LocalAccentColor
@@ -145,9 +143,8 @@ fun RankedMediaCard(
     val numberBrush = remember(focusColor, isFocused) {
         Brush.verticalGradient(
             colors = listOf(
-                if (isFocused) Color.White else GoldNitrate,
-                if (isFocused) GoldNitrate else focusColor.copy(alpha = 0.60f),
-                focusColor.copy(alpha = 0.12f),
+                if (isFocused) Color.White else focusColor,
+                focusColor.copy(alpha = 0.50f),
                 Color.Transparent
             )
         )
@@ -366,7 +363,7 @@ fun RankedMediaCard(
                                 Text(
                                     text = item.year.toString(),
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = if (isFocused) GoldNitrate else TextSecondary,
+                                    color = if (isFocused) focusColor else TextSecondary,
                                     fontSize = 11.sp,
                                     fontWeight = if (isFocused) FontWeight.SemiBold else FontWeight.Normal
                                 )

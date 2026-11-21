@@ -60,7 +60,6 @@ import coil.compose.AsyncImage
 import tv.medusa.app.data.local.INDICATOR_THEME_MONOCHROME
 import tv.medusa.app.domain.model.MediaItem
 import tv.medusa.app.ui.components.cinema.CinemaFormatBadge
-import tv.medusa.app.ui.theme.GoldNitrate
 import tv.medusa.app.ui.theme.TextPrimary
 import tv.medusa.app.ui.theme.TextSecondary
 import tv.medusa.app.ui.theme.LocalAccentColor
@@ -343,7 +342,7 @@ fun ContinueWatchingCard(
                 )
             }
 
-            // Barra de progreso de proyección láser flotando con padding(horizontal = 12.dp, bottom = 10.dp)
+            // Barra de progreso flotando con padding(horizontal = 12.dp, bottom = 10.dp)
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -363,20 +362,12 @@ fun ContinueWatchingCard(
                     }
                 }
 
-                val progressGradient = remember(isFocused, focusColor) {
-                    if (isFocused) {
-                        Brush.horizontalGradient(listOf(Color.White, GoldNitrate))
-                    } else {
-                        Brush.horizontalGradient(listOf(focusColor, GoldNitrate))
-                    }
-                }
-
                 Box(
                     modifier = Modifier
                         .fillMaxWidth(progressFraction)
                         .fillMaxHeight()
                         .clip(RoundedCornerShape(2.dp))
-                        .background(progressGradient)
+                        .background(if (isFocused) Color.White else focusColor)
                 )
             }
         }

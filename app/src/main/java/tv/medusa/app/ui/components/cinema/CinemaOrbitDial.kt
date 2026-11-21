@@ -32,7 +32,6 @@ import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Icon
 import tv.medusa.app.ui.theme.AbyssGlassHighlight
-import tv.medusa.app.ui.theme.GoldNitrate
 import tv.medusa.app.ui.theme.TextPrimary
 import tv.medusa.app.ui.util.handleTouchClick
 
@@ -56,7 +55,7 @@ fun CinemaOrbitDial(
     sizeDp: Dp = 46.dp,
     iconSizeDp: Dp = 20.dp,
     isActive: Boolean = false,
-    focusColor: Color = GoldNitrate,
+    focusColor: Color = Color.White,
     focusContentColor: Color = Color(0xFF070709),
     focusRequester: FocusRequester? = null
 ) {
@@ -75,21 +74,7 @@ fun CinemaOrbitDial(
     )
 
     Box(
-        modifier = modifier
-            .scale(scale)
-            .drawBehind {
-                if (bloomAlpha > 0f) {
-                    drawCircle(
-                        brush = Brush.radialGradient(
-                            colors = listOf(
-                                focusColor.copy(alpha = bloomAlpha),
-                                Color.Transparent
-                            )
-                        ),
-                        radius = size.maxDimension * 0.75f
-                    )
-                }
-            },
+        modifier = modifier.scale(scale),
         contentAlignment = Alignment.Center
     ) {
         Button(

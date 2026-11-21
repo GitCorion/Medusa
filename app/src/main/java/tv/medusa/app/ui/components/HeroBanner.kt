@@ -5,7 +5,6 @@ import tv.medusa.app.ui.components.cinema.CinemaFormatBadge
 import tv.medusa.app.ui.components.cinema.CinemaOrbitDial
 import tv.medusa.app.ui.components.cinema.MasterFilmTrigger
 import tv.medusa.app.ui.theme.CinematicTypography
-import tv.medusa.app.ui.theme.GoldNitrate
 import tv.medusa.app.ui.theme.TextPrimary
 import tv.medusa.app.ui.theme.TextSecondary
 import tv.medusa.app.ui.theme.LocalIndicatorTheme
@@ -676,7 +675,7 @@ fun HeroBanner(
                         runCatching { Color(android.graphics.Color.parseColor(seasonalEvent!!.accentHex)) }
                             .getOrDefault(Color(0xFFEA580C))
                     } else {
-                        GoldNitrate
+                        focusColor
                     }
                     val activeColor = if (isMonochrome) Color.White else eventAccent
                     val indicatorWidth by animateDpAsState(
