@@ -1,6 +1,10 @@
 package tv.medusa.app.ui.components
 
 import androidx.compose.ui.graphics.Brush
+import tv.medusa.app.ui.theme.CinematicTypography
+import tv.medusa.app.ui.theme.GoldNitrate
+import tv.medusa.app.ui.theme.TextPrimary
+import tv.medusa.app.ui.theme.TextSecondary
 import tv.medusa.app.ui.theme.LocalAccentColor
 import tv.medusa.app.ui.theme.LocalIsMonochromeTheme
 import tv.medusa.app.ui.theme.TvAccent
@@ -18,6 +22,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -66,11 +71,21 @@ fun GenreRow(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(horizontal = TvSpacing.ScreenSafeHorizontal, vertical = 6.dp)
         ) {
+            if (!isMonochrome) {
+                Box(
+                    modifier = Modifier
+                        .size(width = 3.dp, height = 14.dp)
+                        .background(
+                            brush = Brush.verticalGradient(listOf(GoldNitrate, focusColor)),
+                            shape = RoundedCornerShape(1.5.dp)
+                        )
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+            }
             Text(
                 text = stringResource(R.string.genre_favorites_title),
-                style = MaterialTheme.typography.titleLarge,
-                color = Color.White,
-                fontWeight = FontWeight.SemiBold
+                style = CinematicTypography.SectionTitle,
+                color = TextPrimary
             )
         }
 
@@ -104,34 +119,42 @@ private fun GenreChip(
     val focusContent = if (isMonochrome) Color(0xFF0F172A) else TvAccent.getFocusedContentColor(accentKey)
     var isFocused by remember { mutableStateOf(false) }
 
+    val chipShape = RoundedCornerShape(8.dp)
+
     Surface(
         onClick = onClick,
         modifier = Modifier
             .onFocusChanged { isFocused = it.isFocused }
             .handleTouchClick { onClick() },
-        shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(TvCornerRadius.Card)),
+        shape = ClickableSurfaceDefaults.shape(shape = chipShape),
         colors = ClickableSurfaceDefaults.colors(
-            containerColor = Color(0x14FFFFFF),
+            containerColor = Color(0xFF11141C),
             focusedContainerColor = focusColor,
-            contentColor = Color(0xFFF1F5F9),
+            contentColor = TextSecondary,
             focusedContentColor = focusContent
         ),
         border = ClickableSurfaceDefaults.border(
-            border = Border.None,
-            focusedBorder = Border.None
+            border = Border(
+                border = BorderStroke(0.75.dp, Color(0x22FFFFFF)),
+                shape = chipShape
+            ),
+            focusedBorder = Border(
+                border = BorderStroke(1.5.dp, Color.White),
+                shape = chipShape
+            )
         ),
-        scale = ClickableSurfaceDefaults.scale(scale = 1.0f, focusedScale = 1.02f)
+        scale = ClickableSurfaceDefaults.scale(scale = 1.0f, focusedScale = 1.04f)
     ) {
         Box(
-            modifier = Modifier.padding(horizontal = 22.dp, vertical = 12.dp),
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 11.dp),
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = genreName,
-                color = if (isFocused) focusContent else Color(0xFFF1F5F9),
-                fontWeight = if (isFocused) FontWeight.Bold else FontWeight.SemiBold,
-                fontSize = 13.sp,
-                letterSpacing = 0.5.sp
+                text = genreName.uppercase(),
+                color = if (isFocused) focusContent else TextPrimary,
+                fontWeight = FontWeight.Bold,
+                fontSize = 11.sp,
+                letterSpacing = 1.2.sp
             )
         }
     }

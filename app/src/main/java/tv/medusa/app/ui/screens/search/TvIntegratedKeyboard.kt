@@ -415,23 +415,31 @@ private fun TvKeyButton(
     onFocused: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    val keyShape = RoundedCornerShape(7.dp)
+
     Button(
         onClick = onClick,
         enabled = isEnabled,
         contentPadding = PaddingValues(0.dp),
-        shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
-        scale = ButtonDefaults.scale(focusedScale = 1.15f),
+        shape = ButtonDefaults.shape(keyShape),
+        scale = ButtonDefaults.scale(focusedScale = 1.14f),
         colors = ButtonDefaults.colors(
-            containerColor = Color(0xFF0C1017),
-            contentColor = Color(0xFFE2E8F0),
+            containerColor = Color(0xFF10131B),
+            contentColor = Color(0xFFF1EDE6),
             focusedContainerColor = focusColor,
             focusedContentColor = focusContentColor,
             disabledContainerColor = Color(0xFF0F111A).copy(alpha = 0.20f),
             disabledContentColor = Color(0xFF334155).copy(alpha = 0.20f)
         ),
         border = ButtonDefaults.border(
-            border = Border.None,
-            focusedBorder = Border.None,
+            border = Border(
+                border = BorderStroke(0.75.dp, Color(0x1CFFFFFF)),
+                shape = keyShape
+            ),
+            focusedBorder = Border(
+                border = BorderStroke(1.5.dp, Color.White),
+                shape = keyShape
+            ),
             disabledBorder = Border.None
         ),
         modifier = modifier

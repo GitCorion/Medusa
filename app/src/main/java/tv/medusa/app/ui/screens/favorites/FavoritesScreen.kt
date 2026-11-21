@@ -76,6 +76,9 @@ import tv.medusa.app.data.local.BUTTON_STYLE_TEXT_ONLY
 import tv.medusa.app.ui.components.MediaCard
 import tv.medusa.app.ui.components.sort.CatalogSortButton
 import tv.medusa.app.ui.components.sort.CatalogSortOption
+import tv.medusa.app.ui.theme.CinematicTypography
+import tv.medusa.app.ui.theme.TextPrimary
+import tv.medusa.app.ui.theme.TextSecondary
 import tv.medusa.app.ui.theme.TvAccent
 
 @OptIn(ExperimentalTvMaterial3Api::class)
@@ -225,9 +228,8 @@ fun FavoritesScreen(
                                     } else {
                                         stringResource(R.string.favorites_empty_filter_title)
                                     },
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = Color.White,
-                                    fontWeight = FontWeight.Bold
+                                    style = CinematicTypography.SectionTitle,
+                                    color = TextPrimary
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(
@@ -237,7 +239,7 @@ fun FavoritesScreen(
                                         stringResource(R.string.favorites_filter_hint)
                                     },
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = Color(0xFF94A3B8),
+                                    color = TextSecondary,
                                     textAlign = TextAlign.Center
                                 )
                             }

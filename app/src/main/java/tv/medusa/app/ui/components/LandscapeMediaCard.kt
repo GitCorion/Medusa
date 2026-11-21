@@ -47,6 +47,9 @@ import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import tv.medusa.app.data.local.INDICATOR_THEME_MONOCHROME
 import tv.medusa.app.domain.model.MediaItem
+import tv.medusa.app.ui.theme.GoldNitrate
+import tv.medusa.app.ui.theme.TextPrimary
+import tv.medusa.app.ui.theme.TextSecondary
 import tv.medusa.app.ui.theme.LocalAccentColor
 import tv.medusa.app.ui.theme.LocalIndicatorTheme
 import tv.medusa.app.ui.theme.LocalIsMonochromeTheme
@@ -171,18 +174,22 @@ fun LandscapeMediaCard(
                     .background(if (isFocused) focusColor.copy(alpha = 0.35f) else Color(0x28FFFFFF))
             )
 
+            val cardShape = remember { RoundedCornerShape(10.dp) }
+
             // Tarjeta Frontal Principal (320 x 180 dp)
             Box(
                 modifier = Modifier
                     .width(320.dp)
                     .height(180.dp)
                     .align(Alignment.BottomCenter)
-                    .clip(RoundedCornerShape(TvCornerRadius.Card))
+                    .clip(cardShape)
                     .background(if (isFocused) Color(0xFF141B26) else Color(0xFF0C1017))
                     .then(
                         if (isFocused) {
-                            Modifier.border(2.dp, focusColor, RoundedCornerShape(TvCornerRadius.Card))
-                        } else Modifier
+                            Modifier.border(1.5.dp, focusColor, cardShape)
+                        } else {
+                            Modifier.border(0.75.dp, Color(0x22FFFFFF), cardShape)
+                        }
                     )
             ) {
                 var isImageError by remember(item.id, imageModel) { mutableStateOf(false) }
@@ -272,9 +279,10 @@ fun LandscapeMediaCard(
                                 .replace(" Colección", "", ignoreCase = true)
                             Text(
                                 text = cleanTitle,
-                                color = Color.White,
+                                color = if (isFocused) Color.White else TextPrimary,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 14.sp,
+                                letterSpacing = 0.2.sp,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.then(
@@ -298,7 +306,7 @@ fun LandscapeMediaCard(
 
                             Text(
                                 text = subtitle,
-                                color = if (isFocused) focusColor else Color(0xCC94A3B8),
+                                color = if (isFocused) GoldNitrate else TextSecondary,
                                 fontWeight = FontWeight.SemiBold,
                                 fontSize = 11.sp,
                                 letterSpacing = 0.5.sp,

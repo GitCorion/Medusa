@@ -700,10 +700,8 @@ fun DetailScreen(
                             }
                             Text(
                                 text = stringResource(R.string.detail_episodes_count, state.episodes.size),
-                                color = if (!isMonochrome) Color(0xFFCBD5E1) else Color(0xFF94A3B8),
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                letterSpacing = 1.sp
+                                style = CinematicTypography.SectionTitle,
+                                color = TextPrimary
                             )
                         }
                         Spacer(modifier = Modifier.height(12.dp))
@@ -779,10 +777,8 @@ fun DetailScreen(
                             }
                             Text(
                                 text = stringResource(R.string.detail_collection_titles, state.collectionItems.size),
-                                style = MaterialTheme.typography.titleMedium,
-                                color = Color.White,
-                                fontWeight = FontWeight.SemiBold,
-                                letterSpacing = 0.5.sp
+                                style = CinematicTypography.SectionTitle,
+                                color = TextPrimary
                             )
                         }
                         Spacer(modifier = Modifier.height(12.dp))
@@ -839,10 +835,8 @@ fun DetailScreen(
                                 }
                                 Text(
                                     text = stringResource(R.string.detail_similar_titles),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = Color.White,
-                                    fontWeight = FontWeight.SemiBold,
-                                    letterSpacing = 0.5.sp
+                                    style = CinematicTypography.SectionTitle,
+                                    color = TextPrimary
                                 )
                             }
                             Spacer(modifier = Modifier.height(12.dp))
@@ -888,10 +882,8 @@ fun DetailScreen(
                                 }
                                 Text(
                                     text = stringResource(R.string.detail_more_from_genre, state.genreName!!.uppercase()),
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = Color.White,
-                                    fontWeight = FontWeight.SemiBold,
-                                    letterSpacing = 0.5.sp
+                                    style = CinematicTypography.SectionTitle,
+                                    color = TextPrimary
                                 )
                             }
                             Spacer(modifier = Modifier.height(12.dp))

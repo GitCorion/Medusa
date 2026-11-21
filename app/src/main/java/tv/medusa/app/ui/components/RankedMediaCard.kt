@@ -59,6 +59,10 @@ import coil.compose.AsyncImage
 import tv.medusa.app.R
 import tv.medusa.app.data.local.INDICATOR_THEME_MONOCHROME
 import tv.medusa.app.domain.model.MediaItem
+import tv.medusa.app.ui.theme.CinzelFontFamily
+import tv.medusa.app.ui.theme.GoldNitrate
+import tv.medusa.app.ui.theme.TextPrimary
+import tv.medusa.app.ui.theme.TextSecondary
 import tv.medusa.app.ui.theme.LocalAccentColor
 import tv.medusa.app.ui.theme.LocalIndicatorTheme
 import tv.medusa.app.ui.theme.LocalIsMonochromeTheme
@@ -120,8 +124,8 @@ fun RankedMediaCard(
     }
 
     val scale by animateFloatAsState(
-        targetValue = if (isFocused) 1.02f else 1.0f,
-        animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow),
+        targetValue = if (isFocused) 1.04f else 1.0f,
+        animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow),
         label = "rankedCardScale"
     )
 
@@ -132,7 +136,7 @@ fun RankedMediaCard(
     )
 
     val textAlpha by animateFloatAsState(
-        targetValue = if (isFocused) 1.0f else 0.40f,
+        targetValue = if (isFocused) 1.0f else 0.75f,
         animationSpec = tween(durationMillis = 200),
         label = "rankedTextAlpha"
     )
@@ -140,13 +144,15 @@ fun RankedMediaCard(
     val numberBrush = remember(focusColor, isFocused) {
         Brush.verticalGradient(
             colors = listOf(
-                if (isFocused) Color.White else focusColor,
-                focusColor.copy(alpha = 0.55f),
-                focusColor.copy(alpha = 0.08f),
+                if (isFocused) Color.White else GoldNitrate,
+                if (isFocused) GoldNitrate else focusColor.copy(alpha = 0.60f),
+                focusColor.copy(alpha = 0.12f),
                 Color.Transparent
             )
         )
     }
+
+    val posterShape = remember { RoundedCornerShape(10.dp) }
 
     Card(
         onClick = safeOnClick,
@@ -183,15 +189,15 @@ fun RankedMediaCard(
                     .fillMaxWidth()
                     .height(218.dp)
             ) {
-                // 1. Número Gigante estilizado a la izquierda (fondo)
+                // 1. Número Gigante estilizado a la izquierda en Cinzel imperial
                 Text(
                     text = "$rank",
                     style = TextStyle(
+                        fontFamily = CinzelFontFamily,
                         brush = numberBrush,
-                        fontSize = 110.sp,
-                        fontWeight = FontWeight.Black,
-                        fontStyle = FontStyle.Italic,
-                        letterSpacing = (-4).sp
+                        fontSize = 112.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = (-2).sp
                     ),
                     modifier = Modifier
                         .align(Alignment.BottomStart)
@@ -199,19 +205,21 @@ fun RankedMediaCard(
                         .zIndex(1f)
                 )
 
-                // 2. Póster vertical a la derecha solapándose por encima del número
+                // 2. Póster vertical a la derecha solapándose por encima del número con bisel
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .width(145.dp)
                         .aspectRatio(2f / 3f)
                         .zIndex(2f)
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(posterShape)
                         .background(Color(0xFF0C1017))
                         .then(
                             if (isFocused) {
-                                Modifier.border(2.dp, focusColor, RoundedCornerShape(12.dp))
-                            } else Modifier
+                                Modifier.border(1.5.dp, focusColor, posterShape)
+                            } else {
+                                Modifier.border(0.75.dp, Color(0x20FFFFFF), posterShape)
+                            }
                         )
                 ) {
                     var isImageError by remember(item.id, item.posterUrl) { mutableStateOf(false) }
@@ -332,8 +340,10 @@ fun RankedMediaCard(
                         Text(
                             text = item.title,
                             style = MaterialTheme.typography.labelMedium,
-                            color = if (isFocused) Color.White else Color(0xFFE2E8F0),
+                            color = if (isFocused) Color.White else TextPrimary,
                             fontWeight = FontWeight.SemiBold,
+                            fontSize = 12.sp,
+                            letterSpacing = 0.2.sp,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.then(
@@ -355,7 +365,7 @@ fun RankedMediaCard(
                                 Text(
                                     text = item.year.toString(),
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = if (isFocused) focusColor else Color(0xFF94A3B8),
+                                    color = if (isFocused) GoldNitrate else TextSecondary,
                                     fontSize = 11.sp,
                                     fontWeight = if (isFocused) FontWeight.SemiBold else FontWeight.Normal
                                 )
@@ -364,7 +374,7 @@ fun RankedMediaCard(
                                 Text(
                                     text = " • ",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = Color(0xFF64748B),
+                                    color = tv.medusa.app.ui.theme.TextTertiary,
                                     fontSize = 10.sp
                                 )
                             }
@@ -374,7 +384,7 @@ fun RankedMediaCard(
                             Text(
                                 text = stringResource(if (isTv) R.string.type_series else R.string.type_movie),
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Color(0xFF94A3B8),
+                                color = TextSecondary,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Medium
                             )

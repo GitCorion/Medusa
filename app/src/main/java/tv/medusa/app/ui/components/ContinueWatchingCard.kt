@@ -59,6 +59,10 @@ import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import tv.medusa.app.data.local.INDICATOR_THEME_MONOCHROME
 import tv.medusa.app.domain.model.MediaItem
+import tv.medusa.app.ui.components.cinema.CinemaFormatBadge
+import tv.medusa.app.ui.theme.GoldNitrate
+import tv.medusa.app.ui.theme.TextPrimary
+import tv.medusa.app.ui.theme.TextSecondary
 import tv.medusa.app.ui.theme.LocalAccentColor
 import tv.medusa.app.ui.theme.LocalIndicatorTheme
 import tv.medusa.app.ui.theme.LocalIsMonochromeTheme
@@ -121,8 +125,8 @@ fun ContinueWatchingCard(
     }
 
     val scale by animateFloatAsState(
-        targetValue = if (isFocused) 1.02f else 1.0f,
-        animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow),
+        targetValue = if (isFocused) 1.03f else 1.0f,
+        animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow),
         label = "continueCardScale"
     )
 
@@ -140,14 +144,13 @@ fun ContinueWatchingCard(
 
     val isEpisode = item.type.equals("Episode", ignoreCase = true) || !item.seriesId.isNullOrEmpty()
 
-    // Para la fila panorámica 16:9 de Continuar Viendo, priorizamos la imagen panorámica (backdrop / still del episodio)
-    // para que encaje de forma natural en el formato 16:9 sin recortar verticalmente el póster de la serie.
-    // Si no dispone de backdrop, se utiliza el póster como fallback.
     val preferredImage = item.backdropUrl ?: item.posterUrl
 
     var currentImageModel by remember(item.id, preferredImage) { mutableStateOf(preferredImage) }
     var isFallbackAttempted by remember(item.id) { mutableStateOf(false) }
     var isImageError by remember(item.id) { mutableStateOf(false) }
+
+    val cardShape = remember { RoundedCornerShape(10.dp) }
 
     Card(
         onClick = safeOnClick,
@@ -179,12 +182,14 @@ fun ContinueWatchingCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(16f / 9f)
-                .clip(RoundedCornerShape(TvCornerRadius.Card))
+                .clip(cardShape)
                 .background(Color(0xFF0C1017))
                 .then(
                     if (isFocused) {
-                        Modifier.border(2.dp, focusColor, RoundedCornerShape(TvCornerRadius.Card))
-                    } else Modifier
+                        Modifier.border(1.5.dp, focusColor, cardShape)
+                    } else {
+                        Modifier.border(0.75.dp, Color(0x20FFFFFF), cardShape)
+                    }
                 )
         ) {
             if (!isImageError && !currentImageModel.isNullOrBlank()) {
@@ -302,41 +307,27 @@ fun ContinueWatchingCard(
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     if (episodeCode != null) {
-                        Box(
-                            modifier = Modifier
-                                .background(
-                                    if (isFocused) focusColor else focusColor.copy(alpha = 0.20f),
-                                    RoundedCornerShape(4.dp)
-                                )
-                                .padding(horizontal = 5.dp, vertical = 1.5.dp)
-                        ) {
-                            Text(
-                                text = episodeCode,
-                                color = if (isFocused) Color(0xFF06080D) else focusColor,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 0.5.sp
-                            )
-                        }
+                        CinemaFormatBadge(
+                            text = episodeCode,
+                            isHighlighted = isFocused,
+                            highlightColor = focusColor
+                        )
                     } else {
                         val isTv = item.type.equals("Series", ignoreCase = true) || item.type.equals("Episode", ignoreCase = true)
-                        Text(
-                            text = if (isTv) "SERIE" else "PELÍCULA",
-                            color = Color(0xFF94A3B8),
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 0.5.sp
+                        CinemaFormatBadge(
+                            text = if (isTv) "SERIE" else "PELÍCULA"
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(2.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
                     text = displayTitle,
-                    color = Color.White,
+                    color = if (isFocused) Color.White else TextPrimary,
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.sp,
+                    letterSpacing = 0.2.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.then(
@@ -352,7 +343,7 @@ fun ContinueWatchingCard(
                 )
             }
 
-            // Barra de progreso cian flotando con padding(horizontal = 12.dp, bottom = 10.dp)
+            // Barra de progreso de proyección láser flotando con padding(horizontal = 12.dp, bottom = 10.dp)
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -360,7 +351,7 @@ fun ContinueWatchingCard(
                     .padding(start = 12.dp, end = 12.dp, bottom = 10.dp)
                     .height(3.5.dp)
                     .clip(RoundedCornerShape(2.dp))
-                    .background(Color(0x60000000))
+                    .background(Color(0x80000000))
             ) {
                 val progressFraction = remember(item) {
                     when {
@@ -372,12 +363,20 @@ fun ContinueWatchingCard(
                     }
                 }
 
+                val progressGradient = remember(isFocused, focusColor) {
+                    if (isFocused) {
+                        Brush.horizontalGradient(listOf(Color.White, GoldNitrate))
+                    } else {
+                        Brush.horizontalGradient(listOf(focusColor, GoldNitrate))
+                    }
+                }
+
                 Box(
                     modifier = Modifier
                         .fillMaxWidth(progressFraction)
                         .fillMaxHeight()
                         .clip(RoundedCornerShape(2.dp))
-                        .background(if (isFocused) Color.White else focusColor)
+                        .background(progressGradient)
                 )
             }
         }

@@ -1,15 +1,19 @@
 package tv.medusa.app.ui.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -19,6 +23,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -30,6 +35,9 @@ import tv.medusa.app.domain.model.HomeSection
 import tv.medusa.app.domain.model.HomeSectionKind
 import tv.medusa.app.domain.model.HomeSectionLayout
 import tv.medusa.app.domain.model.MediaItem
+import tv.medusa.app.ui.theme.CinematicTypography
+import tv.medusa.app.ui.theme.GoldNitrate
+import tv.medusa.app.ui.theme.TextPrimary
 import tv.medusa.app.ui.theme.LocalAccentColor
 import tv.medusa.app.ui.theme.LocalIsMonochromeTheme
 import tv.medusa.app.ui.theme.TvAccent
@@ -68,14 +76,25 @@ fun MediaRow(
                     highlightColor = focusColor
                 )
                 Spacer(modifier = Modifier.width(10.dp))
+            } else if (!isMonochrome) {
+                // Micro-indicador arquitectónico de celuloide
+                Box(
+                    modifier = Modifier
+                        .size(width = 3.dp, height = 14.dp)
+                        .background(
+                            brush = Brush.verticalGradient(
+                                listOf(GoldNitrate, focusColor)
+                            ),
+                            shape = RoundedCornerShape(1.5.dp)
+                        )
+                )
+                Spacer(modifier = Modifier.width(10.dp))
             }
 
             Text(
                 text = localizedSectionTitle(section),
-                style = MaterialTheme.typography.titleLarge,
-                color = tv.medusa.app.ui.theme.TextPrimary,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 0.4.sp
+                style = CinematicTypography.SectionTitle,
+                color = TextPrimary
             )
         }
 

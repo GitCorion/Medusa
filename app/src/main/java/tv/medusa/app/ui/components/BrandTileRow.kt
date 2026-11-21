@@ -113,29 +113,43 @@ private fun BrandCard(
     val accentColor = TvAccent.getColor(accentKey)
     val focusColor = if (isMonochrome) Color.White else accentColor
 
+    val cardShape = RoundedCornerShape(10.dp)
+
     Card(
         onClick = onClick,
         colors = CardDefaults.colors(
-            containerColor = Color(0xFF0C1017),
-            focusedContainerColor = Color(0xFF141B26)
+            containerColor = Color.Transparent,
+            focusedContainerColor = Color.Transparent
         ),
-        scale = CardDefaults.scale(scale = 1.0f, focusedScale = 1.02f),
+        scale = CardDefaults.scale(scale = 1.0f, focusedScale = 1.04f),
         modifier = modifier
             .handleTouchClick { onClick() }
-            .width(132.dp)
+            .width(136.dp)
             .height(64.dp)
             .onFocusChanged { isFocused = it.isFocused }
-            .clip(RoundedCornerShape(10.dp))
+            .clip(cardShape)
             .then(
                 if (isFocused) {
-                    Modifier.border(2.dp, focusColor, RoundedCornerShape(10.dp))
-                } else Modifier
+                    Modifier.border(1.5.dp, focusColor, cardShape)
+                } else {
+                    Modifier.border(0.75.dp, Color(0x25FFFFFF), cardShape)
+                }
             )
     ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(if (isFocused) Color(0xFF181F2C) else Color(0xFF0C1017))
+                .background(
+                    if (isFocused) {
+                        androidx.compose.ui.graphics.Brush.verticalGradient(
+                            listOf(Color(0xFF222B3D), Color(0xFF121722))
+                        )
+                    } else {
+                        androidx.compose.ui.graphics.Brush.verticalGradient(
+                            listOf(Color(0xFF141822), Color(0xFF0A0D14))
+                        )
+                    }
+                )
                 .padding(horizontal = 14.dp, vertical = 8.dp)
         ) {
             Image(

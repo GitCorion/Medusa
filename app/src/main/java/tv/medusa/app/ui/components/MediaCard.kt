@@ -57,6 +57,9 @@ import coil.compose.AsyncImage
 import tv.medusa.app.R
 import tv.medusa.app.data.local.INDICATOR_THEME_MONOCHROME
 import tv.medusa.app.domain.model.MediaItem
+import tv.medusa.app.ui.theme.GoldNitrate
+import tv.medusa.app.ui.theme.TextPrimary
+import tv.medusa.app.ui.theme.TextSecondary
 import tv.medusa.app.ui.theme.LocalAccentColor
 import tv.medusa.app.ui.theme.LocalIndicatorTheme
 import tv.medusa.app.ui.theme.LocalIsMonochromeTheme
@@ -117,10 +120,10 @@ fun MediaCard(
         }
     }
 
-    // Animaciones de foco y Spotlight (escala sutil 1.02f para evitar recortes laterales)
+    // Animaciones de foco y Spotlight (escala cinematográfica 1.04f)
     val scale by animateFloatAsState(
-        targetValue = if (isFocused) 1.02f else 1.0f,
-        animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow),
+        targetValue = if (isFocused) 1.04f else 1.0f,
+        animationSpec = spring(dampingRatio = 0.82f, stiffness = Spring.StiffnessMediumLow),
         label = "mediaCardScale"
     )
 
@@ -135,6 +138,8 @@ fun MediaCard(
         animationSpec = tween(durationMillis = TvMotion.DurationFadeMs),
         label = "textAlpha"
     )
+
+    val posterShape = remember { RoundedCornerShape(10.dp) }
 
     // Contenedor Raíz de TV sin clipping: scale y zIndex aplicados ANTES de cualquier clip
     Card(
@@ -166,17 +171,19 @@ fun MediaCard(
         Column(
             modifier = Modifier.fillMaxWidth()
         ) {
-            // Póster vertical (2:3) 100% arte a sangre con esquinas redondeadas
+            // Póster vertical (2:3) con bisel de lente cinematográfica
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(2f / 3f)
-                    .clip(RoundedCornerShape(TvCornerRadius.Card))
+                    .clip(posterShape)
                     .background(Color(0xFF0C1017))
                     .then(
                         if (isFocused) {
-                            Modifier.border(2.dp, focusColor, RoundedCornerShape(TvCornerRadius.Card))
-                        } else Modifier
+                            Modifier.border(1.5.dp, focusColor, posterShape)
+                        } else {
+                            Modifier.border(0.75.dp, Color(0x1EFFFFFF), posterShape)
+                        }
                     )
             ) {
                 var isImageError by remember(item.id, item.posterUrl) { mutableStateOf(false) }
@@ -332,8 +339,10 @@ fun MediaCard(
                 Text(
                     text = item.title,
                     style = MaterialTheme.typography.labelMedium,
-                    color = if (isFocused) Color.White else Color(0xFFE2E8F0),
+                    color = if (isFocused) Color.White else TextPrimary,
                     fontWeight = FontWeight.SemiBold,
+                    fontSize = 12.sp,
+                    letterSpacing = 0.2.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.then(
@@ -357,7 +366,7 @@ fun MediaCard(
                         Text(
                             text = item.year.toString(),
                             style = MaterialTheme.typography.bodySmall,
-                            color = if (isFocused) focusColor else tv.medusa.app.ui.theme.TextSecondary,
+                            color = if (isFocused) GoldNitrate else TextSecondary,
                             fontSize = 11.sp,
                             fontWeight = if (isFocused) FontWeight.SemiBold else FontWeight.Normal
                         )
@@ -377,7 +386,7 @@ fun MediaCard(
                     Text(
                         text = stringResource(if (isTv) R.string.type_series else R.string.type_movie),
                         style = MaterialTheme.typography.bodySmall,
-                        color = tv.medusa.app.ui.theme.TextSecondary,
+                        color = TextSecondary,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Medium
                     )

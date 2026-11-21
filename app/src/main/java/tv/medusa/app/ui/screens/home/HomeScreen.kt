@@ -13,6 +13,11 @@ import tv.medusa.app.ui.components.JellyLoadingIndicator
 import tv.medusa.app.ui.components.MedusaProDialog
 import tv.medusa.app.ui.components.TvNavTab
 import tv.medusa.app.ui.components.TvTopBar
+import tv.medusa.app.ui.components.cinema.MasterFilmTrigger
+import tv.medusa.app.ui.theme.CinematicTypography
+import tv.medusa.app.ui.theme.GoldNitrate
+import tv.medusa.app.ui.theme.TextPrimary
+import tv.medusa.app.ui.theme.TextSecondary
 import tv.medusa.app.ui.theme.LocalBillingManager
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -230,49 +235,32 @@ fun HomeScreen(
                         Icon(
                             imageVector = Icons.Rounded.Dns,
                             contentDescription = null,
-                            tint = Color(0xFFCBD5E1),
+                            tint = GoldNitrate,
                             modifier = Modifier.size(52.dp)
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
                             text = stringResource(R.string.home_welcome),
-                            style = MaterialTheme.typography.headlineSmall,
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold
+                            style = CinematicTypography.HeroDisplay.copy(fontSize = 28.sp),
+                            color = TextPrimary,
+                            textAlign = TextAlign.Center
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = stringResource(R.string.home_setup_desc),
                             style = MaterialTheme.typography.bodyMedium,
-                            color = Color(0xFF94A3B8),
+                            color = TextSecondary,
                             textAlign = TextAlign.Center
                         )
-                        Spacer(modifier = Modifier.height(20.dp))
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(14.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Button(
-                                onClick = onOpenSettings,
-                                modifier = Modifier.handleTouchClick { onOpenSettings() },
-                                colors = ButtonDefaults.colors(
-                                    containerColor = Color(0x22FFFFFF),
-                                    contentColor = Color.White,
-                                    focusedContainerColor = focusColor,
-                                    focusedContentColor = focusContent
-                                )
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.Tune,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(text = stringResource(R.string.home_config_button), fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
-                                }
-                            }
-                        }
+                        Spacer(modifier = Modifier.height(24.dp))
+                        MasterFilmTrigger(
+                            label = stringResource(R.string.home_config_button),
+                            icon = Icons.Rounded.Tune,
+                            focusColor = focusColor,
+                            focusContentColor = focusContent,
+                            focusRequester = heroActionFocusRequester,
+                            onClick = onOpenSettings
+                        )
                     }
                 }
             }
@@ -289,52 +277,30 @@ fun HomeScreen(
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
                             text = stringResource(R.string.home_server_connected),
-                            style = MaterialTheme.typography.headlineSmall,
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold
+                            style = CinematicTypography.HeroDisplay.copy(fontSize = 28.sp),
+                            color = TextPrimary,
+                            textAlign = TextAlign.Center
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             text = stringResource(R.string.home_empty_library),
                             style = MaterialTheme.typography.bodyMedium,
-                            color = Color(0xFF94A3B8),
+                            color = TextSecondary,
                             textAlign = TextAlign.Center
                         )
-                        Spacer(modifier = Modifier.height(20.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                            Button(
-                                onClick = { viewModel.loadHomeFeed() },
-                                modifier = Modifier.handleTouchClick { viewModel.loadHomeFeed() },
-                                colors = ButtonDefaults.colors(
-                                    containerColor = Color(0x22FFFFFF),
-                                    contentColor = Color.White,
-                                    focusedContainerColor = focusColor,
-                                    focusedContentColor = focusContent
-                                )
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.Refresh,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(text = stringResource(R.string.home_sync), fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
-                                }
-                            }
-
-                            Button(
-                                onClick = onOpenSettings,
-                                modifier = Modifier.handleTouchClick { onOpenSettings() },
-                                colors = ButtonDefaults.colors(
-                                    containerColor = Color(0x18FFFFFF),
-                                    contentColor = Color.White,
-                                    focusedContainerColor = focusColor,
-                                    focusedContentColor = focusContent
-                                )
-                            ) {
-                                Text(text = stringResource(R.string.nav_settings), fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false)
-                            }
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(14.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            MasterFilmTrigger(
+                                label = stringResource(R.string.home_sync),
+                                icon = Icons.Rounded.Refresh,
+                                focusColor = focusColor,
+                                focusContentColor = focusContent,
+                                focusRequester = heroActionFocusRequester,
+                                onClick = { viewModel.loadHomeFeed() }
+                            )
                         }
                     }
                 }

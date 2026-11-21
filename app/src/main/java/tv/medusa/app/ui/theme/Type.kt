@@ -94,6 +94,15 @@ object CinematicTypography {
         color = TextPrimary
     )
 
+    val SectionTitle = TextStyle(
+        fontFamily = CinzelFontFamily,
+        fontWeight = FontWeight.Bold,
+        fontSize = 18.sp,
+        lineHeight = 24.sp,
+        letterSpacing = 1.2.sp,
+        color = TextPrimary
+    )
+
     val SectionArchitectural = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Bold,

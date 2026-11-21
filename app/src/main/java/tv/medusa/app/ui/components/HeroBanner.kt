@@ -1,6 +1,13 @@
 package tv.medusa.app.ui.components
 
 import tv.medusa.app.data.local.INDICATOR_THEME_MONOCHROME
+import tv.medusa.app.ui.components.cinema.CinemaFormatBadge
+import tv.medusa.app.ui.components.cinema.CinemaOrbitDial
+import tv.medusa.app.ui.components.cinema.MasterFilmTrigger
+import tv.medusa.app.ui.theme.CinematicTypography
+import tv.medusa.app.ui.theme.GoldNitrate
+import tv.medusa.app.ui.theme.TextPrimary
+import tv.medusa.app.ui.theme.TextSecondary
 import tv.medusa.app.ui.theme.LocalIndicatorTheme
 import tv.medusa.app.ui.theme.LocalIsMonochromeTheme
 import androidx.compose.animation.Crossfade
@@ -41,6 +48,7 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowForwardIos
 import androidx.compose.material.icons.automirrored.rounded.PlaylistPlay
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Movie
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -355,6 +363,10 @@ fun HeroBanner(
 
 
         if (currentSlideState !is HeroSlideState.Empty) {
+            val isMonochrome = LocalIsMonochromeTheme.current
+            val focusColor = if (isMonochrome) Color.White else TvAccent.getColor(accentColor)
+            val focusContent = if (isMonochrome) Color(0xFF0F172A) else TvAccent.getFocusedContentColor(accentColor)
+
             Column(
                 modifier = Modifier
                     .align(Alignment.TopStart)
@@ -377,18 +389,16 @@ fun HeroBanner(
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = event.title,
-                                style = MaterialTheme.typography.headlineLarge.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 32.sp,
-                                    lineHeight = 38.sp,
-                                    letterSpacing = (-0.5).sp,
+                                style = CinematicTypography.HeroDisplay.copy(
+                                    fontSize = 30.sp,
+                                    lineHeight = 36.sp,
                                     shadow = Shadow(
                                         color = Color(0xCC000000),
-                                        blurRadius = 12f,
+                                        blurRadius = 14f,
                                         offset = Offset(0f, 2f)
                                     )
                                 ),
-                                color = Color.White,
+                                color = TextPrimary,
                                 maxLines = 2,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -419,17 +429,16 @@ fun HeroBanner(
                                 if (!isLogoLoaded) {
                                     Text(
                                         text = effectiveItem.title,
-                                        style = MaterialTheme.typography.headlineLarge.copy(
-                                            fontWeight = FontWeight.ExtraBold,
-                                            fontSize = 32.sp,
-                                            lineHeight = 38.sp,
+                                        style = CinematicTypography.HeroDisplay.copy(
+                                            fontSize = 30.sp,
+                                            lineHeight = 36.sp,
                                             shadow = Shadow(
                                                 color = Color.Black,
                                                 blurRadius = 18f,
                                                 offset = Offset(2f, 3f)
                                             )
                                         ),
-                                        color = Color.White,
+                                        color = TextPrimary,
                                         maxLines = 2,
                                         overflow = TextOverflow.Ellipsis
                                     )
@@ -438,17 +447,16 @@ fun HeroBanner(
                         } else {
                             Text(
                                 text = effectiveItem.title,
-                                style = MaterialTheme.typography.headlineLarge.copy(
-                                    fontWeight = FontWeight.ExtraBold,
-                                    fontSize = 32.sp,
-                                    lineHeight = 38.sp,
+                                style = CinematicTypography.HeroDisplay.copy(
+                                    fontSize = 30.sp,
+                                    lineHeight = 36.sp,
                                     shadow = Shadow(
                                         color = Color.Black,
                                         blurRadius = 18f,
                                         offset = Offset(2f, 3f)
                                     )
                                 ),
-                                color = Color.White,
+                                color = TextPrimary,
                                 maxLines = 2,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -479,29 +487,23 @@ fun HeroBanner(
                     is HeroSlideState.Movie -> {
                         val effectiveItem = currentSlideState.item
                         // Metadata Row (Typographic hierarchy with clean delimiters)
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
                             if (effectiveItem.rating != null && effectiveItem.rating > 0f) {
                                 TvRatingBadge(rating = effectiveItem.rating, compact = false)
-                                Spacer(modifier = Modifier.width(10.dp))
+                            }
+
+                            if (effectiveItem.year != null) {
+                                CinemaFormatBadge(text = "${effectiveItem.year}")
                             }
 
                             val isTv = effectiveItem.type.equals("Series", ignoreCase = true) ||
                                     effectiveItem.type.equals("TvProgram", ignoreCase = true) ||
                                     effectiveItem.type.equals("Episode", ignoreCase = true)
                             val typeText = stringResource(if (isTv) R.string.type_series else R.string.type_movie)
-                            val metaParts = listOfNotNull(
-                                effectiveItem.year?.toString(),
-                                typeText
-                            ).joinToString("  •  ")
-
-                            if (metaParts.isNotBlank()) {
-                                Text(
-                                    text = metaParts,
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = Color(0xFFCBD5E1),
-                                    fontWeight = FontWeight.Medium
-                                )
-                            }
+                            CinemaFormatBadge(text = typeText.uppercase())
 
                             val hasEpisodeProgress = !effectiveItem.isPlayed &&
                                     isTv &&
@@ -513,36 +515,32 @@ fun HeroBanner(
 
                             if (hasEpisodeProgress) {
                                 val progressText = if (effectiveItem.totalEpisodes != null && effectiveItem.totalEpisodes > 0) {
-                                    "${effectiveItem.playedEpisodes}/${effectiveItem.totalEpisodes} caps"
+                                    "${effectiveItem.playedEpisodes}/${effectiveItem.totalEpisodes} CAPS"
                                 } else {
-                                    "${effectiveItem.playedEpisodes} caps"
+                                    "${effectiveItem.playedEpisodes} CAPS"
                                 }
-                                Spacer(modifier = Modifier.width(10.dp))
-                                TvPill(
+                                CinemaFormatBadge(
                                     text = progressText,
-                                    containerColor = Color(0x2238BDF8),
-                                    textColor = if (isMonochrome) Color.White else Color(0xFF38BDF8)
+                                    isHighlighted = true,
+                                    highlightColor = focusColor
                                 )
                             } else if (hasMovieProgress) {
-                                Spacer(modifier = Modifier.width(10.dp))
-                                TvPill(
-                                    text = stringResource(R.string.badge_in_progress),
-                                    containerColor = Color(0x2238BDF8),
-                                    textColor = if (isMonochrome) Color.White else Color(0xFF38BDF8)
+                                CinemaFormatBadge(
+                                    text = stringResource(R.string.badge_in_progress).uppercase(),
+                                    isHighlighted = true,
+                                    highlightColor = focusColor
                                 )
                             } else if (effectiveItem.isPlayed) {
-                                Spacer(modifier = Modifier.width(10.dp))
-                                TvPill(
-                                    text = stringResource(R.string.badge_watched),
-                                    containerColor = Color(0x2210B981),
-                                    textColor = if (isMonochrome) Color.White else Color(0xFF6EE7B7)
+                                CinemaFormatBadge(
+                                    text = stringResource(R.string.badge_watched).uppercase(),
+                                    isHighlighted = true,
+                                    highlightColor = Color(0xFF10B981)
                                 )
                             } else if (effectiveItem.isFavorite) {
-                                Spacer(modifier = Modifier.width(10.dp))
-                                TvPill(
-                                    text = stringResource(R.string.badge_favorite),
-                                    containerColor = Color(0x22EF4444),
-                                    textColor = if (isMonochrome) Color.White else Color(0xFFF87171)
+                                CinemaFormatBadge(
+                                    text = stringResource(R.string.badge_favorite).uppercase(),
+                                    isHighlighted = true,
+                                    highlightColor = Color(0xFFF43F5E)
                                 )
                             }
                         }
@@ -566,53 +564,33 @@ fun HeroBanner(
                     HeroSlideState.Empty -> {}
                 }
 
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(18.dp))
 
-                // Action button: single stable instance across ALL slides
-                val isMonochrome = LocalIsMonochromeTheme.current
-                val focusColor = if (isMonochrome) Color.White else TvAccent.getColor(accentColor)
-                val focusContent = if (isMonochrome) Color(0xFF0F172A) else TvAccent.getFocusedContentColor(accentColor)
-                val showIcons = buttonStyle != BUTTON_STYLE_TEXT_ONLY
-                val showText = buttonStyle != BUTTON_STYLE_ICONS_ONLY
                 val isSeasonalActive = currentSlideState is HeroSlideState.Seasonal
 
-                val buttonContainerColor = if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.20f)
-                val buttonFocusedContainerColor = if (isMonochrome) Color.White else focusColor
-                val buttonContentColor = if (isMonochrome) Color.White else Color(0xFFE0F2FE)
-                val buttonFocusedContentColor = if (isMonochrome) Color(0xFF0F172A) else focusContent
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    val playLabel = if (isSeasonalActive) {
+                        stringResource(R.string.seasonal_view_collection)
+                    } else {
+                        stringResource(R.string.detail_play)
+                    }
+                    val actionIcon = if (isSeasonalActive) Icons.AutoMirrored.Rounded.PlaylistPlay else Icons.Rounded.PlayArrow
+                    val technicalSpec = when (currentSlideState) {
+                        is HeroSlideState.Movie -> currentSlideState.item.year?.toString()
+                        else -> null
+                    }
 
-                val buttonPadding = if (!showText) {
-                    PaddingValues(horizontal = 14.dp, vertical = 10.dp)
-                } else {
-                    // Balance óptico de icono + texto según better-ui
-                    if (showIcons) PaddingValues(start = 14.dp, end = 18.dp, top = 10.dp, bottom = 10.dp)
-                    else PaddingValues(horizontal = 20.dp, vertical = 10.dp)
-                }
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Button(
-                        onClick = {
-                            when (currentSlideState) {
-                                is HeroSlideState.Seasonal -> onExploreSeasonal?.invoke()
-                                is HeroSlideState.Movie -> onDetailClick(currentSlideState.item)
-                                HeroSlideState.Empty -> {}
-                            }
-                        },
-                        contentPadding = buttonPadding,
-                        scale = ButtonDefaults.scale(scale = 1.0f, focusedScale = 1.03f),
+                    MasterFilmTrigger(
+                        label = playLabel,
+                        technicalSpec = technicalSpec,
+                        icon = actionIcon,
+                        focusColor = focusColor,
+                        focusContentColor = focusContent,
+                        focusRequester = effectiveActionFocusRequester,
                         modifier = Modifier
-                            .handleTouchClick {
-                                when (currentSlideState) {
-                                    is HeroSlideState.Seasonal -> onExploreSeasonal?.invoke()
-                                    is HeroSlideState.Movie -> onDetailClick(currentSlideState.item)
-                                    HeroSlideState.Empty -> {}
-                                }
-                            }
-                            .focusRequester(effectiveActionFocusRequester)
-                            .focusProperties {
-                                left = FocusRequester.Cancel
-                                right = FocusRequester.Cancel
-                            }
                             .onPreviewKeyEvent { keyEvent ->
                                 if (keyEvent.type == KeyEventType.KeyDown) {
                                     if (keyEvent.key == Key.DirectionUp && onUpFromHero != null) {
@@ -633,50 +611,25 @@ fun HeroBanner(
                                     } else false
                                 } else false
                             },
-                        colors = ButtonDefaults.colors(
-                            containerColor = buttonContainerColor,
-                            contentColor = buttonContentColor,
-                            focusedContainerColor = buttonFocusedContainerColor,
-                            focusedContentColor = buttonFocusedContentColor
-                        ),
-                        shape = ButtonDefaults.shape(shape = RoundedCornerShape(TvCornerRadius.Card)),
-                        border = ButtonDefaults.border(
-                            border = androidx.tv.material3.Border(
-                                border = BorderStroke(0.75.dp, Color(0x35FFFFFF)),
-                                shape = RoundedCornerShape(TvCornerRadius.Card)
-                            ),
-                            focusedBorder = androidx.tv.material3.Border(
-                                border = BorderStroke(1.2.dp, Color.White),
-                                shape = RoundedCornerShape(TvCornerRadius.Card)
-                            )
-                        )
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            val actionIcon = if (isSeasonalActive) Icons.AutoMirrored.Rounded.PlaylistPlay else Icons.Rounded.Info
-                            val actionLabel = if (isSeasonalActive) stringResource(R.string.seasonal_view_collection) else stringResource(R.string.common_details)
-
-                            if (showIcons) {
-                                Icon(
-                                    imageVector = actionIcon,
-                                    contentDescription = actionLabel,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                            if (showText) {
-                                if (showIcons) Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = actionLabel,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 13.sp,
-                                    letterSpacing = 0.8.sp,
-                                    maxLines = 1,
-                                    softWrap = false
-                                )
+                        onClick = {
+                            when (currentSlideState) {
+                                is HeroSlideState.Seasonal -> onExploreSeasonal?.invoke()
+                                is HeroSlideState.Movie -> onPlayClick(currentSlideState.item)
+                                HeroSlideState.Empty -> {}
                             }
                         }
+                    )
+
+                    if (currentSlideState is HeroSlideState.Movie) {
+                        CinemaOrbitDial(
+                            icon = Icons.Rounded.Info,
+                            contentDescription = stringResource(R.string.common_details),
+                            focusColor = focusColor,
+                            focusContentColor = focusContent,
+                            onClick = {
+                                onDetailClick(currentSlideState.item)
+                            }
+                        )
                     }
                 }
             }
@@ -723,20 +676,20 @@ fun HeroBanner(
                         runCatching { Color(android.graphics.Color.parseColor(seasonalEvent!!.accentHex)) }
                             .getOrDefault(Color(0xFFEA580C))
                     } else {
-                        focusColor
+                        GoldNitrate
                     }
                     val activeColor = if (isMonochrome) Color.White else eventAccent
                     val indicatorWidth by animateDpAsState(
-                        targetValue = if (isActive) 24.dp else 6.dp,
+                        targetValue = if (isActive) 26.dp else 8.dp,
                         animationSpec = tween(durationMillis = 350),
                         label = "carouselIndicatorWidth"
                     )
                     Box(
                         modifier = Modifier
-                            .height(6.dp)
+                            .height(3.dp)
                             .width(indicatorWidth)
-                            .clip(CircleShape)
-                            .background(if (isActive) activeColor else Color(0x44FFFFFF))
+                            .clip(RoundedCornerShape(1.5.dp))
+                            .background(if (isActive) activeColor else Color(0x35FFFFFF))
                             .focusProperties { canFocus = false }
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },

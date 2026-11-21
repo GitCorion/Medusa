@@ -74,6 +74,10 @@ import tv.medusa.app.ui.components.FormatFilterBar
 import tv.medusa.app.ui.components.MediaCard
 import tv.medusa.app.ui.components.TvNavTab
 import tv.medusa.app.ui.components.TvTopBar
+import tv.medusa.app.ui.theme.CinematicTypography
+import tv.medusa.app.ui.theme.GoldNitrate
+import tv.medusa.app.ui.theme.TextPrimary
+import tv.medusa.app.ui.theme.TextSecondary
 import tv.medusa.app.ui.theme.LocalAccentColor
 import tv.medusa.app.ui.theme.LocalIsMonochromeTheme
 import tv.medusa.app.ui.theme.TvAccent
@@ -442,11 +446,8 @@ private fun MedusaMoviesHeader(
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(
             text = "$movieCount ${formatNounPlural.uppercase()}",
-            color = Color.White.copy(alpha = 0.90f),
-            fontSize = 11.sp,
-            fontWeight = FontWeight.SemiBold,
-            letterSpacing = 1.2.sp,
-            fontFamily = FontFamily.SansSerif
+            style = CinematicTypography.SectionTitle.copy(fontSize = 14.sp),
+            color = TextPrimary
         )
 
         if (focusedMovie != null) {
@@ -462,9 +463,10 @@ private fun MedusaMoviesHeader(
             if (focusedMovie.year != null) {
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "(${focusedMovie.year})",
-                    color = Color(0x8094A3B8),
-                    fontSize = 11.sp
+                    text = "${focusedMovie.year}",
+                    color = GoldNitrate,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold
                 )
             }
             if (focusedMovie.rating != null && focusedMovie.rating > 0f) {

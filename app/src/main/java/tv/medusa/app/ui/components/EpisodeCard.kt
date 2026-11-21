@@ -50,6 +50,8 @@ import tv.medusa.app.ui.util.handleTouchClick
 import coil.compose.AsyncImage
 import tv.medusa.app.R
 import tv.medusa.app.domain.model.EpisodeItem
+import tv.medusa.app.ui.theme.TextPrimary
+import tv.medusa.app.ui.theme.TextSecondary
 import tv.medusa.app.ui.theme.LocalAccentColor
 import tv.medusa.app.ui.theme.LocalIsMonochromeTheme
 import tv.medusa.app.ui.theme.TvAccent
@@ -70,19 +72,24 @@ fun EpisodeCard(
     val focusContent = if (isMonochrome) Color(0xFF0F172A) else TvAccent.getFocusedContentColor(effectiveAccent)
     var isFocused by remember { mutableStateOf(false) }
 
+    val cardShape = remember { RoundedCornerShape(10.dp) }
+
     Card(
         onClick = onClick,
         colors = CardDefaults.colors(
             containerColor = Color(0xFF0C1017),
             focusedContainerColor = Color(0xFF141B26)
         ),
-        scale = CardDefaults.scale(scale = 1.0f, focusedScale = 1.02f),
-        shape = CardDefaults.shape(shape = RoundedCornerShape(TvCornerRadius.Card)),
+        scale = CardDefaults.scale(scale = 1.0f, focusedScale = 1.03f),
+        shape = CardDefaults.shape(shape = cardShape),
         border = CardDefaults.border(
-            border = Border.None,
+            border = Border(
+                border = BorderStroke(0.75.dp, Color(0x20FFFFFF)),
+                shape = cardShape
+            ),
             focusedBorder = Border(
-                border = BorderStroke(2.dp, focusColor),
-                shape = RoundedCornerShape(TvCornerRadius.Card)
+                border = BorderStroke(1.5.dp, focusColor),
+                shape = cardShape
             )
         ),
         modifier = modifier
@@ -237,7 +244,7 @@ fun EpisodeCard(
                     text = "${episode.episodeNumber}. ${episode.name}",
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.SemiBold,
-                    color = if (isFocused) Color.White else Color(0xFFE2E8F0),
+                    color = if (isFocused) Color.White else TextPrimary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -247,7 +254,7 @@ fun EpisodeCard(
                     Text(
                         text = episode.overview,
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF94A3B8),
+                        color = TextSecondary,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                         lineHeight = 16.sp
