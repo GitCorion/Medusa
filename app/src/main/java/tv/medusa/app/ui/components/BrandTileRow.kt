@@ -121,7 +121,7 @@ private fun BrandCard(
             containerColor = Color.Transparent,
             focusedContainerColor = Color.Transparent
         ),
-        scale = CardDefaults.scale(scale = 1.0f, focusedScale = 1.04f),
+        scale = CardDefaults.scale(scale = 1.0f, focusedScale = 1.0f),
         modifier = modifier
             .handleTouchClick { onClick() }
             .width(136.dp)

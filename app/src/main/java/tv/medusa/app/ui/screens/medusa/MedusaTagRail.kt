@@ -195,12 +195,6 @@ fun MedusaTagPill(
         onFocusChange(isFocused)
     }
 
-    val scale by animateFloatAsState(
-        targetValue = if (isFocused) 1.08f else 1.0f,
-        animationSpec = spring(dampingRatio = 0.8f, stiffness = 500f),
-        label = "pillScale"
-    )
-
     val focusColor = if (isMonochrome) Color.White else accentColor
 
     val containerColor = when {
@@ -217,7 +211,6 @@ fun MedusaTagPill(
 
     Box(
         modifier = modifier
-            .scale(scale)
             .height(32.dp)
             .clip(RoundedCornerShape(8.dp))
             .background(containerColor)

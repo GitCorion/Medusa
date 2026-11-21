@@ -491,12 +491,6 @@ private fun SelectedTagBadge(
         onFocusChange(isFocused)
     }
 
-    val scale by animateFloatAsState(
-        targetValue = if (isFocused) 1.08f else 1.0f,
-        animationSpec = spring(dampingRatio = 0.8f, stiffness = 500f),
-        label = "badgeScale"
-    )
-
     val containerColor = if (isFocused) {
         accentColor
     } else {
@@ -511,7 +505,6 @@ private fun SelectedTagBadge(
 
     Box(
         modifier = Modifier
-            .scale(scale)
             .height(32.dp)
             .clip(RoundedCornerShape(8.dp))
             .background(containerColor)

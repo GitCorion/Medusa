@@ -122,12 +122,6 @@ fun RankedMediaCard(
         }
     }
 
-    val scale by animateFloatAsState(
-        targetValue = if (isFocused) 1.02f else 1.0f,
-        animationSpec = spring(dampingRatio = androidx.compose.animation.core.Spring.DampingRatioNoBouncy, stiffness = androidx.compose.animation.core.Spring.StiffnessMedium),
-        label = "rankedCardScale"
-    )
-
     val spotlightAlpha by animateFloatAsState(
         targetValue = if (isRowFocused && !isFocused) 0.65f else 1.0f,
         animationSpec = tween(durationMillis = 220),
@@ -166,8 +160,6 @@ fun RankedMediaCard(
             .width(215.dp)
             .zIndex(if (isFocused) 10f else 0f)
             .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
                 this.alpha = spotlightAlpha
             }
             .onFocusChanged {

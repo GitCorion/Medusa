@@ -121,13 +121,6 @@ fun MediaCard(
         }
     }
 
-    // Animaciones de foco y Spotlight (escala sutil 1.02f sin rebote para evitar oscilaciones)
-    val scale by animateFloatAsState(
-        targetValue = if (isFocused) 1.02f else 1.0f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium),
-        label = "mediaCardScale"
-    )
-
     val spotlightAlpha by animateFloatAsState(
         targetValue = if (isRowFocused && !isFocused) 0.65f else 1.0f,
         animationSpec = tween(durationMillis = TvMotion.DurationFadeMs),
@@ -142,7 +135,7 @@ fun MediaCard(
 
     val posterShape = remember { RoundedCornerShape(10.dp) }
 
-    // Contenedor Raíz de TV sin clipping: scale y zIndex aplicados ANTES de cualquier clip
+    // Contenedor Raíz de TV sin clipping: scale fijado a 1.0f para eliminar temblores horizontales
     Card(
         onClick = safeOnClick,
         onLongClick = effectiveLongClick,
@@ -157,8 +150,6 @@ fun MediaCard(
             .width(cardWidth)
             .zIndex(if (isFocused) 10f else 0f)
             .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
                 this.alpha = spotlightAlpha
             }
             .onFocusChanged {

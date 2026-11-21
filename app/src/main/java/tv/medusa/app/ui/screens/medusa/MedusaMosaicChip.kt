@@ -84,12 +84,6 @@ fun MedusaMosaicChip(
         onFocusChange(isFocused)
     }
 
-    val scale by animateFloatAsState(
-        targetValue = if (isFocused) 1.07f else 1.0f,
-        animationSpec = spring(dampingRatio = 0.8f, stiffness = 450f),
-        label = "mosaicChipScale"
-    )
-
     val categoryColor = remember(tag.category, isMonochrome) {
         MedusaCategoryColors.getColorFor(tag.category, isMonochrome)
     }
@@ -102,7 +96,6 @@ fun MedusaMosaicChip(
 
     Box(
         modifier = modifier
-            .scale(scale)
             .height(44.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(backgroundColor)

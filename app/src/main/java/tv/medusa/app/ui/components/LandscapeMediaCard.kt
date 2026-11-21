@@ -109,12 +109,6 @@ fun LandscapeMediaCard(
         }
     }
 
-    val scale by animateFloatAsState(
-        targetValue = if (isFocused) 1.02f else 1.0f,
-        animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow),
-        label = "sagaCardScale"
-    )
-
     val spotlightAlpha by animateFloatAsState(
         targetValue = if (isRowFocused && !isFocused) 0.65f else 1.0f,
         animationSpec = tween(durationMillis = TvMotion.DurationFadeMs),
@@ -138,8 +132,6 @@ fun LandscapeMediaCard(
             .height(192.dp)
             .zIndex(if (isFocused) 10f else 0f)
             .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
                 this.alpha = spotlightAlpha
             }
             .onFocusChanged {

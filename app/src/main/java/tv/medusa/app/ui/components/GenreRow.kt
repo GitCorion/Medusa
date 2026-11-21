@@ -131,7 +131,7 @@ private fun GenreChip(
                 shape = chipShape
             )
         ),
-        scale = ClickableSurfaceDefaults.scale(scale = 1.0f, focusedScale = 1.04f)
+        scale = ClickableSurfaceDefaults.scale(scale = 1.0f, focusedScale = 1.0f)
     ) {
         Box(
             modifier = Modifier.padding(horizontal = 20.dp, vertical = 11.dp),
