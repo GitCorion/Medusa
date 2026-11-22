@@ -362,7 +362,7 @@
     <string name="settings_subtitles_preview_sample">Winter is coming. — House Stark</string>
 
     <!-- 5. Interface & Display -->
-    <string name="settings_theme_desc">Choose between the original bioluminescent Medusa Neon or high-contrast Monochrome for OLED displays.</string>
+    <string name="settings_theme_desc">Choose between Medusa Neon, Cinema Amber or high-contrast Monochrome for OLED displays.</string>
     <string name="settings_buttons_desc">Choose button presentation style (Play, Trailer, Watched) on media detail screens.</string>
     <string name="settings_perf_desc">Control background particles and effects. Choose battery saver for low-power HDMI sticks.</string>
 

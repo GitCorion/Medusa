@@ -29,13 +29,16 @@ fun rememberAppWindowSize(): AppWindowSize {
 
 val LocalAppWindowSize = compositionLocalOf { AppWindowSize.EXPANDED }
 
-/** Columna del teclado 10-foot: más estrecha en pantallas compactas. */
+/**
+ * Columna del teclado 10-foot. Las filas tienen 7 teclas de 48 dp + 6 huecos de 4 dp
+ * = 360 dp, así que 320 dp recortaba la última tecla en pantalla real.
+ */
 @Composable
 fun Modifier.adaptiveKeyboardColumnWidth(): Modifier =
     if (LocalAppWindowSize.current == AppWindowSize.COMPACT) {
-        this.width(280.dp)
+        this.width(360.dp)
     } else {
-        this.width(320.dp)
+        this.width(380.dp)
     }
 
 /** Ancho de diálogo que se adapta a móvil/tablet en vez de desbordarse. */

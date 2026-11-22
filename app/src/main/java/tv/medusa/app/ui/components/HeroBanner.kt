@@ -140,6 +140,7 @@ fun HeroBanner(
     var carouselIndex by remember { mutableIntStateOf(0) }
     var isHeroFocused by remember { mutableStateOf(false) }
     var isCarouselFocused by remember { mutableStateOf(false) }
+    val carouselFocusRequester = remember { FocusRequester() }
     val internalActionButtonFocusRequester = remember { FocusRequester() }
     val effectiveActionFocusRequester = actionFocusRequester ?: internalActionButtonFocusRequester
 
@@ -577,6 +578,11 @@ fun HeroBanner(
                                     if (keyEvent.key == Key.DirectionUp && onUpFromHero != null) {
                                         onUpFromHero()
                                         true
+                                    } else if (keyEvent.key == Key.DirectionDown && totalSlides > 1) {
+                                        // El carrusel está en otra rama: el foco geomérico saltaba
+                                        // a los chips de género. Lo enlazamos explícitamente.
+                                        carouselFocusRequester.requestFocus()
+                                        true
                                     } else if (keyEvent.key == Key.DirectionLeft && totalSlides > 1) {
                                         carouselIndex = if (carouselIndex > 0) carouselIndex - 1 else totalSlides - 1
                                         effectiveActionFocusRequester.requestFocus()
@@ -607,6 +613,9 @@ fun HeroBanner(
                                 if (keyEvent.type == KeyEventType.KeyDown) {
                                     if (keyEvent.key == Key.DirectionUp && onUpFromHero != null) {
                                         onUpFromHero()
+                                        true
+                                    } else if (keyEvent.key == Key.DirectionDown && totalSlides > 1) {
+                                        carouselFocusRequester.requestFocus()
                                         true
                                     } else if (keyEvent.key == Key.DirectionRight && totalSlides > 1) {
                                         carouselIndex = (carouselIndex + 1) % totalSlides
@@ -643,6 +652,7 @@ fun HeroBanner(
                     .align(Alignment.BottomEnd)
                     .padding(end = TvSpacing.ScreenSafeHorizontal, bottom = 24.dp)
                     .focusable()
+                    .focusRequester(carouselFocusRequester)
                     .onFocusChanged { isCarouselFocused = it.isFocused }
                     .onKeyEvent { keyEvent ->
                         if (keyEvent.type != KeyEventType.KeyDown) {
@@ -651,6 +661,10 @@ fun HeroBanner(
                             when (keyEvent.key) {
                                 Key.DirectionLeft -> { goPrevious(); true }
                                 Key.DirectionRight -> { goNext(); true }
+                                Key.DirectionUp -> {
+                                    effectiveActionFocusRequester.requestFocus()
+                                    true
+                                }
                                 else -> false
                             }
                         }

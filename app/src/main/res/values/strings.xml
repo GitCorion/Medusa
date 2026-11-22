@@ -362,7 +362,7 @@
     <string name="settings_subtitles_preview_sample">El invierno se acerca. — Casa Stark</string>
 
     <!-- 5. Interfaz y Pantalla -->
-    <string name="settings_theme_desc">Elige entre la estética original Medusa Neón o el modo Monocromático para paneles OLED.</string>
+    <string name="settings_theme_desc">Elige entre Medusa Neón, Ámbar Cine o Monocromático para paneles OLED.</string>
     <string name="settings_buttons_desc">Formato visual de los botones de acción (Reproducir, Trailer, Visto) en las fichas de detalle.</string>
     <string name="settings_perf_desc">Controla las partículas y efectos de GPU. Elige ahorro si usas un stick HDMI o TV de baja potencia.</string>
 
