@@ -11,7 +11,6 @@ import tv.medusa.app.ui.theme.LocalIndicatorTheme
 import tv.medusa.app.ui.theme.LocalIsMonochromeTheme
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -19,6 +18,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.ui.res.painterResource
@@ -62,12 +62,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
@@ -77,6 +77,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -137,14 +139,17 @@ fun HeroBanner(
     val cleanFeatured = remember(featuredItems) { featuredItems.take(6) }
     var carouselIndex by remember { mutableIntStateOf(0) }
     var isHeroFocused by remember { mutableStateOf(false) }
+    var isCarouselFocused by remember { mutableStateOf(false) }
     val internalActionButtonFocusRequester = remember { FocusRequester() }
     val effectiveActionFocusRequester = actionFocusRequester ?: internalActionButtonFocusRequester
 
     val hasSeasonalSlide = seasonalEvent != null
     val totalSlides = cleanFeatured.size + (if (hasSeasonalSlide) 1 else 0)
 
-    LaunchedEffect(item, totalSlides, isHeroFocused, carouselIndex) {
-        if (item == null && !isHeroFocused && totalSlides > 1) {
+    // WCAG 2.2.2: la rotación automática se detiene en cuanto el usuario enfoca
+    // el hero o el propio carrusel. El foco actúa como pausa explícita.
+    LaunchedEffect(item, totalSlides, isHeroFocused, isCarouselFocused, carouselIndex) {
+        if (item == null && !isHeroFocused && !isCarouselFocused && totalSlides > 1) {
             delay(12000L)
             carouselIndex = (carouselIndex + 1) % totalSlides
         }
@@ -620,39 +625,61 @@ fun HeroBanner(
         }
 
         // Carousel Indicators & Subtle Navigation Chevrons (Bottom Right)
+        // Un único objetivo de foco: las flechas y los puntos aislados tenían
+        // canFocus = false y eran inalcanzables con D-Pad y TalkBack.
         if (item == null && totalSlides > 1) {
             val focusColor = TvAccent.getColor(accentColor)
-            val chevronAlpha by animateFloatAsState(
-                targetValue = if (isHeroFocused) 0.85f else 0.40f,
-                animationSpec = tween(250),
-                label = "chevronAlpha"
-            )
+            val carouselFocusColor = if (isMonochrome) Color.White else focusColor
+            val carouselFocusContent = tv.medusa.app.ui.theme.CyanFocusedContent
+            val carouselContentDescription = stringResource(R.string.hero_carousel_cd)
+            val goPrevious = {
+                carouselIndex = if (carouselIndex > 0) carouselIndex - 1 else totalSlides - 1
+            }
+            val goNext = { carouselIndex = (carouselIndex + 1) % totalSlides }
+            val currentActiveIdx = if (totalSlides > 0) carouselIndex % totalSlides else 0
 
             Row(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(end = TvSpacing.ScreenSafeHorizontal, bottom = 24.dp),
+                    .padding(end = TvSpacing.ScreenSafeHorizontal, bottom = 24.dp)
+                    .focusable()
+                    .onFocusChanged { isCarouselFocused = it.isFocused }
+                    .onKeyEvent { keyEvent ->
+                        if (keyEvent.type != KeyEventType.KeyDown) {
+                            false
+                        } else {
+                            when (keyEvent.key) {
+                                Key.DirectionLeft -> { goPrevious(); true }
+                                Key.DirectionRight -> { goNext(); true }
+                                else -> false
+                            }
+                        }
+                    }
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = goNext
+                    )
+                    .background(
+                        color = if (isCarouselFocused) carouselFocusColor else Color(0x10070709),
+                        shape = RoundedCornerShape(16.dp)
+                    )
+                    .border(
+                        width = if (isCarouselFocused) 0.dp else 0.6.dp,
+                        color = if (isCarouselFocused) Color.Transparent else Color(0x1CFFFFFF),
+                        shape = RoundedCornerShape(16.dp)
+                    )
+                    .padding(horizontal = 10.dp, vertical = 7.dp)
+                    .semantics { contentDescription = carouselContentDescription },
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Subtle previous arrow
                 Icon(
                     imageVector = Icons.AutoMirrored.Rounded.ArrowBackIos,
-                    contentDescription = "Anterior",
-                    tint = Color.White.copy(alpha = chevronAlpha),
-                    modifier = Modifier
-                        .size(11.dp)
-                        .focusProperties { canFocus = false }
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null
-                        ) {
-                            carouselIndex = if (carouselIndex > 0) carouselIndex - 1 else totalSlides - 1
-                            effectiveActionFocusRequester.requestFocus()
-                        }
+                    contentDescription = null,
+                    tint = if (isCarouselFocused) carouselFocusContent else Color.White.copy(alpha = 0.60f),
+                    modifier = Modifier.size(11.dp)
                 )
-
-                val currentActiveIdx = if (totalSlides > 0) carouselIndex % totalSlides else 0
                 repeat(totalSlides) { idx ->
                     val isActive = idx == currentActiveIdx
                     val isEventSlide = hasSeasonalSlide && idx == 0
@@ -673,33 +700,21 @@ fun HeroBanner(
                             .height(3.dp)
                             .width(indicatorWidth)
                             .clip(RoundedCornerShape(1.5.dp))
-                            .background(if (isActive) activeColor else Color(0x35FFFFFF))
-                            .focusProperties { canFocus = false }
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null
-                            ) {
-                                carouselIndex = idx
-                                effectiveActionFocusRequester.requestFocus()
-                            }
+                            .background(
+                                when {
+                                    !isActive && isCarouselFocused -> carouselFocusContent.copy(alpha = 0.40f)
+                                    isActive && isCarouselFocused -> carouselFocusContent
+                                    isActive -> activeColor
+                                    else -> Color(0x35FFFFFF)
+                                }
+                            )
                     )
                 }
-
-                // Subtle next arrow
                 Icon(
                     imageVector = Icons.AutoMirrored.Rounded.ArrowForwardIos,
-                    contentDescription = "Siguiente",
-                    tint = Color.White.copy(alpha = chevronAlpha),
-                    modifier = Modifier
-                        .size(11.dp)
-                        .focusProperties { canFocus = false }
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null
-                        ) {
-                            carouselIndex = (carouselIndex + 1) % totalSlides
-                            effectiveActionFocusRequester.requestFocus()
-                        }
+                    contentDescription = null,
+                    tint = if (isCarouselFocused) carouselFocusContent else Color.White.copy(alpha = 0.60f),
+                    modifier = Modifier.size(11.dp)
                 )
             }
         }

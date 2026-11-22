@@ -19,7 +19,7 @@ Medusa TV is a native, high-performance Android TV streaming client engineered t
 Unlike sluggish web-based Jellyfin wrappers, Medusa TV is built 100% natively in Kotlin and Jetpack Compose TV. It features:
 - **Locked 60 FPS Performance:** By strictly banning real-time GPU blur shaders (`Modifier.blur()` / `RenderEffect`), it runs smoothly even on entry-level Android TV dongles.
 - **Pure Full-Bleed Artwork:** Eliminates generic grey card text containers, letting cover art breathe on an OLED-grade pitch-black canvas.
-- **Inescapable 3-Meter Focus:** Active elements illuminate in electric cyan with deep ink text, while inactive carousel items dim to 65% opacity.
+- **Inescapable 3-Meter Focus:** Active elements illuminate in electric cyan with deep ink text, lift to `zIndex(10f)` and gain a 1.5dp accent border on the artwork. Since v2.3.12 inactive carousel items keep full opacity (the per-card spotlight was removed for stable 60 FPS), so focus is carried by elevation, border and title brightness instead.
 - **Ecosystem Integration:** Connects seamlessly with Jellyfin servers, Trakt.tv scrobbling, and TMDB enriched metadata.
 
 ## Operating Context

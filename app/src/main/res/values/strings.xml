@@ -61,6 +61,7 @@
     <!-- Tráiler -->
     <string name="trailer_load_error">No se pudo cargar el tráiler del contenido.</string>
     <string name="trailer_close_back">Cerrar Tráiler (Atrás)</string>
+    <string name="hero_carousel_cd">Destacados. Usa izquierda y derecha para cambiar de título, o pulsa para avanzar.</string>
 
     <!-- Géneros -->
     <string name="genre_favorites_title">Géneros Favoritos</string>
@@ -290,6 +291,7 @@
     <!-- Apariencia -->
     <string name="settings_section_theme">TEMA</string>
     <string name="settings_theme_neon">Medusa</string>
+    <string name="settings_theme_amber">Ámbar Cine</string>
     <string name="settings_theme_monochrome">Monocromático</string>
     <string name="settings_section_buttons">BOTONES EN FICHAS</string>
     <string name="settings_btn_style_icons">Solo iconos</string>

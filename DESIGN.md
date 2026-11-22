@@ -92,7 +92,7 @@ components:
 
 Medusa TV es una interfaz de streaming 10-foot real para Android TV y pantallas OLED. El diseño no se basa en marcos complejos, cajas grises ni metáforas literarias, sino en **lo que realmente se renderiza en pantalla**: carátulas cinematográficas a sangre, navegación por iconos compactos, foco de alto contraste instantáneo y cero elementos superfluos.
 
-Toda la aplicación vive sobre un fondo negro cinematográfico puro (`#06080D`). El foco activo es inequívoco: exactamente un elemento en pantalla se ilumina en `Cyan` (`#00F2FE`) con iconos/texto oscuros `#06080D` para lectura perfecta a 3 metros, mientras que las tarjetas inactivas de la fila en foco se atenúan al `65%` de opacidad.
+Toda la aplicación vive sobre un fondo negro cinematográfico puro (`#06080D`). El foco activo es inequívoco: exactamente un elemento en pantalla se ilumina en `Cyan` (`#00F2FE`) con iconos/texto oscuros `#06080D` para lectura perfecta a 3 metros. Desde v2.3.12 las tarjetas inactivas **mantienen su opacidad y luminosidad al 100%** (se eliminó el spotlight por coste de GPU); el foco se señala mediante `zIndex(10f)`, un borde de acento de `1.5.dp` sobre el póster y el texto del título que pasa de `0.75f` a `1.0f`.
 
 **Pilares reales de la interfaz:**
 - **Barra Superior Minimalista:** Logotipo de Medusa a la izquierda y 5 iconos circulares a la derecha (Inicio, Brújula/Descubrir, Corazón/Favoritos, Lupa/Buscar, Ajustes). Sin etiquetas de texto ruidosas.
@@ -106,7 +106,7 @@ Toda la aplicación vive sobre un fondo negro cinematográfico puro (`#06080D`).
 La paleta real extraída directamente del código fuente y los temas de la app:
 
 ### Foco y Acento Principal
-- **Focus Cyan** (`#00F2FE`): El color del mando. Borde exterior de 2dp en tarjetas activas, relleno sólido en iconos de navegación seleccionados y barra de progreso de reproducción.
+- **Focus Cyan** (`#00F2FE`): El color del mando. Borde de `1.5.dp` sobre el póster de la tarjeta activa, relleno sólido en iconos de navegación seleccionados y barra de progreso de reproducción.
 - **Focus Dark Content** (`#06080D`): Tinta negra profunda utilizada dentro de botones e iconos con fondo cian para garantizar máximo contraste (15.8:1).
 
 ### Secundarios y Calificaciones
@@ -173,7 +173,7 @@ Tipografía nativa del sistema (Inter / Roboto) renderizada con contraste nítid
 - **Botones y Filtros:** `10.dp` de radio. Fondo cristal `0x18FFFFFF` en reposo; cian sólido en foco.
 - **Pósteres y Carátulas:** `12.dp` de radio. Arte 100% a sangre sin marcos.
 - **Colecciones:** `14.dp` con efecto visual de doble solapa superior que indica que es una saga múltiple.
-- **Foco Z-Index:** Al hacer foco, la tarjeta escala a `1.05f`, asigna `zIndex(10f)` y muestra borde cian de `2.dp`. Las demás tarjetas de la fila bajan su opacidad a `0.65f`.
+- **Foco Z-Index:** Al hacer foco, la tarjeta asigna `zIndex(10f)` y muestra un borde de acento de `1.5.dp` sobre el póster. **No hay escalado (`focusedScale = 1.0f`) ni atenuación de hermanos**: la decisión v2.3.12 priorizó 60 FPS estables y evitar temblores horizontales en carruseles. El título dentro de la tarjeta sí pasa de `alpha 0.75f` a `1.0f`.
 - **Cero Blur en tiempo real:** Prohibido usar `Modifier.blur()` o `RenderEffect` para garantizar 60 FPS estables en Android TV.
 
 ## Do's y Don'ts
@@ -182,7 +182,7 @@ Tipografía nativa del sistema (Inter / Roboto) renderizada con contraste nítid
 - **Do** usar la tecla física `BACK` del mando de TV para cualquier acción de retroceso.
 - **Do** mantener la barra superior como una fila de iconos circulares limpios en la esquina derecha.
 - **Do** colocar el título y metadatos de las tarjetas fuera de la imagen del póster sobre el fondo negro.
-- **Do** atenuar las tarjetas no enfocadas de la fila activa (`alpha = 0.65f`) para resaltar el elemento enfocado.
+- **Do** mantener las tarjetas no enfocadas a opacidad completa y apoyar el foco en `zIndex(10f)` + borde de acento de `1.5.dp`.
 - **Do** aplicar autoscroll marquee en títulos largos solo cuando la tarjeta tiene el foco del D-Pad.
 
 ### Don't:
@@ -190,4 +190,5 @@ Tipografía nativa del sistema (Inter / Roboto) renderizada con contraste nítid
 - **Don't** añadir bordes grises de 1px a tarjetas o botones en reposo (*cero border slop*).
 - **Don't** meter los pósteres dentro de cajones rectangulares grises con textos incrustados.
 - **Don't** usar efectos de desenfoque (`blur`) pesados que bajen los FPS en el hardware de la televisión.
+- **Don't** reintroducir animaciones de `alpha` por tarjeta (spotlight `0.65f`) ni escalados en los carruseles: se eliminaron en v2.3.12 por coste de composición y temblor horizontal.
 - **Don't** usar textos largos o etiquetas descriptivas en los iconos del menú superior en TV.

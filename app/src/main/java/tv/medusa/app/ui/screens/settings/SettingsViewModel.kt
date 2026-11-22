@@ -5,6 +5,7 @@ import android.util.Log
 import java.net.ConnectException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
+import tv.medusa.app.data.local.ACCENT_AMBER
 import tv.medusa.app.data.local.ACCENT_CYAN
 import tv.medusa.app.data.local.ACCENT_WHITE
 import tv.medusa.app.data.local.APP_THEME_MONOCHROME
@@ -536,8 +537,15 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             userPreferencesRepository.setAppTheme(theme)
             val isMono = theme == APP_THEME_MONOCHROME
+            // Respetar el acento elegido (Cian / Ámbar Cine) al volver de Monocromático,
+            // en lugar de forzar siempre Cian. Monocromático sigue bloqueando a Blanco.
+            val nextAccent = when {
+                isMono -> ACCENT_WHITE
+                theme == ACCENT_AMBER -> ACCENT_AMBER
+                else -> ACCENT_CYAN
+            }
             _uiState.value = _uiState.value.copy(
-                accentColor = if (isMono) ACCENT_WHITE else ACCENT_CYAN,
+                accentColor = nextAccent,
                 indicatorTheme = if (isMono) INDICATOR_THEME_MONOCHROME else INDICATOR_THEME_COLOR,
                 platformLogoStyle = if (isMono) PLATFORM_LOGO_MONOCHROME else PLATFORM_LOGO_COLOR
             )

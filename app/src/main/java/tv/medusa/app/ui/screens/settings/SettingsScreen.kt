@@ -105,7 +105,8 @@ import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import tv.medusa.app.R
 import tv.medusa.app.data.local.APP_THEME_MONOCHROME
-import tv.medusa.app.data.local.APP_THEME_ORIGINAL
+import tv.medusa.app.data.local.ACCENT_AMBER
+import tv.medusa.app.data.local.ACCENT_CYAN
 import tv.medusa.app.data.local.BUTTON_STYLE_ICONS_AND_TEXT
 import tv.medusa.app.data.local.BUTTON_STYLE_ICONS_ONLY
 import tv.medusa.app.data.local.BUTTON_STYLE_TEXT_ONLY
@@ -1256,10 +1257,15 @@ private fun AppearanceCategory(
             title = stringResource(R.string.settings_section_theme),
             description = stringResource(R.string.settings_theme_desc),
             options = listOf(
-                APP_THEME_ORIGINAL to stringResource(R.string.settings_theme_neon),
+                ACCENT_CYAN to stringResource(R.string.settings_theme_neon),
+                ACCENT_AMBER to stringResource(R.string.settings_theme_amber),
                 APP_THEME_MONOCHROME to stringResource(R.string.settings_theme_monochrome)
             ),
-            selectedOption = if (uiState.isMonochrome) APP_THEME_MONOCHROME else APP_THEME_ORIGINAL,
+            selectedOption = when {
+                uiState.isMonochrome -> APP_THEME_MONOCHROME
+                uiState.accentColor == ACCENT_AMBER -> ACCENT_AMBER
+                else -> ACCENT_CYAN
+            },
             onOptionSelected = { viewModel.setAppTheme(it) },
             focusColor = focusColor,
             focusContent = focusContent

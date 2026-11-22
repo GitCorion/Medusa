@@ -31,11 +31,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onKeyEvent
-import androidx.compose.ui.input.key.type
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -112,13 +112,10 @@ fun MedusaMosaicChip(
                 onClick = onClick
             )
             .focusable(interactionSource = interactionSource)
-            .onKeyEvent { keyEvent ->
-                if (keyEvent.type == KeyEventType.KeyDown &&
-                    (keyEvent.key == Key.DirectionCenter || keyEvent.key == Key.Enter)
-                ) {
-                    onClick()
-                    true
-                } else false
+            .semantics {
+                role = Role.Checkbox
+                selected = tag.isSelected
+                contentDescription = tag.label
             }
             .padding(horizontal = 12.dp),
         contentAlignment = Alignment.CenterStart

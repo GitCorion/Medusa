@@ -61,6 +61,7 @@
     <!-- Trailer -->
     <string name="trailer_load_error">Could not load the trailer for this title.</string>
     <string name="trailer_close_back">Close trailer (Back)</string>
+    <string name="hero_carousel_cd">Featured titles. Use left and right to change title, or press to advance.</string>
 
     <!-- Genres -->
     <string name="genre_favorites_title">Favorite Genres</string>
@@ -290,6 +291,7 @@
     <!-- Appearance -->
     <string name="settings_section_theme">THEME</string>
     <string name="settings_theme_neon">Medusa</string>
+    <string name="settings_theme_amber">Cinema Amber</string>
     <string name="settings_theme_monochrome">Monochrome</string>
     <string name="settings_section_buttons">BUTTONS ON CARDS</string>
     <string name="settings_btn_style_icons">Icons only</string>

@@ -76,7 +76,7 @@ import tv.medusa.app.ui.util.handleTouchClick
  * - Cero cajón gris inferior de plantilla: el póster es 100% arte a sangre con esquinas suaves (12.dp).
  * - Título y metadatos ubicados FUERA del póster, directamente sobre el fondo abisal, con iluminación selectiva.
  * - Escalado y zIndex aplicados en el contenedor raíz exterior antes de cualquier clip para evitar recortes de badges o bordes.
- * - Efecto Spotlight: atenúa las tarjetas inactivas de la fila enfocada (0.65f) para resaltar la tarjeta en foco.
+ * - Foco sin spotlight: desde v2.3.12 las tarjetas hermanas conservan su opacidad; el foco se señala con zIndex(10f), borde de acento de 1.5.dp y título a plena luminosidad.
  */
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
