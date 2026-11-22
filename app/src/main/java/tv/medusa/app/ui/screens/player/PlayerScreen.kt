@@ -374,6 +374,8 @@ fun PlayerScreen(
     // Load intro markers + next episode once stream is ready
     val introMarker by viewModel.introMarker.collectAsStateWithLifecycle()
     val creditsMarker by viewModel.creditsMarker.collectAsStateWithLifecycle()
+    val recapMarker by viewModel.recapMarker.collectAsStateWithLifecycle()
+    val previewMarker by viewModel.previewMarker.collectAsStateWithLifecycle()
     val nextEpisode by viewModel.nextEpisode.collectAsStateWithLifecycle()
 
     val context = LocalContext.current
@@ -398,6 +400,8 @@ fun PlayerScreen(
                 viewModel = viewModel,
                 introMarker = introMarker,
                 creditsMarker = creditsMarker,
+                recapMarker = recapMarker,
+                previewMarker = previewMarker,
                 nextEpisode = nextEpisode,
                 onBack = onBack,
                 onPlayNextEpisode = { nextEp ->
@@ -466,6 +470,8 @@ private fun PlayerContent(
     viewModel: PlayerViewModel,
     introMarker: SkipMarker? = null,
     creditsMarker: SkipMarker? = null,
+    recapMarker: SkipMarker? = null,
+    previewMarker: SkipMarker? = null,
     nextEpisode: NextEpisodeInfo? = null,
     onBack: () -> Unit,
     onPlayNextEpisode: (NextEpisodeInfo) -> Unit = {}
@@ -506,11 +512,15 @@ private fun PlayerContent(
         lastInteractionTrigger = System.currentTimeMillis()
     }
 
-    // Intro / Credits skip banner visibility
+    // Skip banners: intro, resumen, avance y créditos (TheIntroDB / MediaSegments)
     var showSkipIntroBanner by remember { mutableStateOf(false) }
     var showSkipCreditsBanner by remember { mutableStateOf(false) }
+    var showSkipRecapBanner by remember { mutableStateOf(false) }
+    var showSkipPreviewBanner by remember { mutableStateOf(false) }
     var introSkippedOrDismissed by remember(introMarker) { mutableStateOf(false) }
     var creditsSkippedOrDismissed by remember(creditsMarker) { mutableStateOf(false) }
+    var recapSkippedOrDismissed by remember(recapMarker) { mutableStateOf(false) }
+    var previewSkippedOrDismissed by remember(previewMarker) { mutableStateOf(false) }
 
     // Next-episode / movie overlay & auto exit state
     var showNextEpisodeOverlay by remember { mutableStateOf(false) }
@@ -1196,6 +1206,8 @@ private fun PlayerContent(
         activeModalTab,
         showSkipIntroBanner,
         showSkipCreditsBanner,
+        showSkipRecapBanner,
+        showSkipPreviewBanner,
         showNextEpisodeOverlay
     ) {
         if (showResumeDialog) return@LaunchedEffect
@@ -1214,6 +1226,8 @@ private fun PlayerContent(
             activeModalTab == PlayerModalTab.NONE &&
             !showSkipIntroBanner &&
             !showSkipCreditsBanner &&
+            !showSkipRecapBanner &&
+            !showSkipPreviewBanner &&
             !showNextEpisodeOverlay
         ) {
             delay(50L)
@@ -1247,11 +1261,15 @@ private fun PlayerContent(
             } else {
                 nextEpisodeCountdown = -1
             }
-        } else if (showSkipIntroBanner || showSkipCreditsBanner) {
+        } else if (showSkipIntroBanner || showSkipCreditsBanner || showSkipRecapBanner || showSkipPreviewBanner) {
             introSkippedOrDismissed = true
             creditsSkippedOrDismissed = true
+            recapSkippedOrDismissed = true
+            previewSkippedOrDismissed = true
             showSkipIntroBanner = false
             showSkipCreditsBanner = false
+            showSkipRecapBanner = false
+            showSkipPreviewBanner = false
         } else if (isScrubbing) {
             isScrubbing = false
             scrubDeltaMs = 0L
@@ -1279,7 +1297,7 @@ private fun PlayerContent(
     // de 500 ms vivo durante toda la reproducción. Solo hace falta con HUD, scrubbing,
     // marcadores activos del plugin o cuenta atrás del siguiente episodio visible.
     val needsLivePosition = showOverlayControls || isScrubbing || showNextEpisodeOverlay ||
-            introMarker != null || creditsMarker != null
+            introMarker != null || creditsMarker != null || recapMarker != null || previewMarker != null
     LaunchedEffect(exoPlayer, needsLivePosition) {
         if (!needsLivePosition) return@LaunchedEffect
         while (isActive) {
@@ -1459,6 +1477,32 @@ private fun PlayerContent(
             if (nextEpisode == null && inWindow != showSkipCreditsBanner) {
                 showSkipCreditsBanner = inWindow
             }
+        }
+    }
+
+    LaunchedEffect(recapMarker) {
+        val marker = recapMarker
+        if (marker == null) {
+            showSkipRecapBanner = false
+            return@LaunchedEffect
+        }
+        snapshotFlow { currentPosition }.collect { pos ->
+            if (pos < marker.showAtMs) recapSkippedOrDismissed = false
+            val inWindow = !recapSkippedOrDismissed && pos >= marker.showAtMs && pos < marker.hideAtMs
+            if (inWindow != showSkipRecapBanner) showSkipRecapBanner = inWindow
+        }
+    }
+
+    LaunchedEffect(previewMarker) {
+        val marker = previewMarker
+        if (marker == null) {
+            showSkipPreviewBanner = false
+            return@LaunchedEffect
+        }
+        snapshotFlow { currentPosition }.collect { pos ->
+            if (pos < marker.showAtMs) previewSkippedOrDismissed = false
+            val inWindow = !previewSkippedOrDismissed && pos >= marker.showAtMs && pos < marker.hideAtMs
+            if (inWindow != showSkipPreviewBanner) showSkipPreviewBanner = inWindow
         }
     }
 
@@ -1999,6 +2043,8 @@ private fun PlayerContent(
                             focusRequester = progressBarFocusRequester,
                             introMarker = introMarker,
                             creditsMarker = creditsMarker,
+                            recapMarker = recapMarker,
+                            previewMarker = previewMarker,
                             onSeekRelative = { deltaSign ->
                                 scrubStep(deltaSign)
                             },
@@ -2319,33 +2365,35 @@ private fun PlayerContent(
             )
         }
 
-        // ─── Skip Intro Banner (bottom-right, Netflix-style) ─────────────────
-        AnimatedVisibility(
-            visible = showSkipIntroBanner && !showResumeDialog && activeModalTab == PlayerModalTab.NONE,
-            enter = fadeIn() + scaleIn(initialScale = 0.92f),
-            exit = fadeOut() + scaleOut(targetScale = 0.92f),
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(end = 48.dp, bottom = 120.dp)
-        ) {
-            SkipIntroBanner(
-                isMonochrome = isMonochrome,
-                focusColor = focusColor,
-                focusContent = focusContent,
-                onSkip = {
-                    // skipToMs = IntroEnd del plugin, el campo exacto para saltar
-                    val skipTo = introMarker?.skipToMs ?: return@SkipIntroBanner
-                    introSkippedOrDismissed = true
-                    showSkipIntroBanner = false
-                    performSeek(skipTo)
-                    notifyInteraction()
-                }
-            )
+        // ─── Skip Banner (bottom-right, Netflix-style) ───────────────────────
+        // Un solo banner activo por prioridad: los segmentos de TheIntroDB pueden solaparse
+        // y dos Surface enfocables en la misma esquina romperían la navegación con el mando.
+        val activeSkipMarker: SkipMarker?
+        val activeSkipLabel: String
+        when {
+            showSkipIntroBanner && introMarker != null -> {
+                activeSkipMarker = introMarker
+                activeSkipLabel = stringResource(R.string.player_skip_intro)
+            }
+            showSkipRecapBanner && recapMarker != null -> {
+                activeSkipMarker = recapMarker
+                activeSkipLabel = stringResource(R.string.player_skip_recap)
+            }
+            showSkipPreviewBanner && previewMarker != null -> {
+                activeSkipMarker = previewMarker
+                activeSkipLabel = stringResource(R.string.player_skip_preview)
+            }
+            showSkipCreditsBanner && creditsMarker != null -> {
+                activeSkipMarker = creditsMarker
+                activeSkipLabel = stringResource(R.string.player_skip_credits)
+            }
+            else -> {
+                activeSkipMarker = null
+                activeSkipLabel = ""
+            }
         }
-
-        // ─── Skip Credits Banner ──────────────────────────────────────────────
         AnimatedVisibility(
-            visible = showSkipCreditsBanner && !showResumeDialog && activeModalTab == PlayerModalTab.NONE,
+            visible = activeSkipMarker != null && !showResumeDialog && activeModalTab == PlayerModalTab.NONE,
             enter = fadeIn() + scaleIn(initialScale = 0.92f),
             exit = fadeOut() + scaleOut(targetScale = 0.92f),
             modifier = Modifier
@@ -2353,15 +2401,21 @@ private fun PlayerContent(
                 .padding(end = 48.dp, bottom = 120.dp)
         ) {
             SkipIntroBanner(
-                label = stringResource(R.string.player_skip_credits),
+                label = activeSkipLabel,
                 isMonochrome = isMonochrome,
                 focusColor = focusColor,
                 focusContent = focusContent,
                 onSkip = {
-                    // skipToMs = EndPositionTicks del segmento Outro
-                    val skipTo = creditsMarker?.skipToMs ?: return@SkipIntroBanner
+                    // skipToMs viene del servidor (EndPositionTicks / IntroEnd), nunca se inventa.
+                    val skipTo = activeSkipMarker?.skipToMs ?: return@SkipIntroBanner
+                    introSkippedOrDismissed = true
                     creditsSkippedOrDismissed = true
+                    recapSkippedOrDismissed = true
+                    previewSkippedOrDismissed = true
+                    showSkipIntroBanner = false
                     showSkipCreditsBanner = false
+                    showSkipRecapBanner = false
+                    showSkipPreviewBanner = false
                     performSeek(skipTo)
                     notifyInteraction()
                 }
@@ -4008,6 +4062,8 @@ private fun TvProgressBar(
     focusRequester: FocusRequester,
     introMarker: SkipMarker? = null,
     creditsMarker: SkipMarker? = null,
+    recapMarker: SkipMarker? = null,
+    previewMarker: SkipMarker? = null,
     onSeekRelative: (deltaSign: Int) -> Unit,
     onSeekTo: (targetMs: Long) -> Unit,
     onScrubStart: (targetMs: Long) -> Unit,
@@ -4152,6 +4208,28 @@ private fun TvProgressBar(
                             color = Color(0xFF64B5F6).copy(alpha = 0.7f),
                             topLeft = Offset(startX, 0f),
                             size = Size(4f, size.height)
+                        )
+                    }
+                }
+                recapMarker?.let { recap ->
+                    if (recap.showAtMs in 0..durationMs && recap.skipToMs > recap.showAtMs) {
+                        val startX = (recap.showAtMs.toFloat() / durationMs.toFloat()) * size.width
+                        val endX = (recap.skipToMs.toFloat() / durationMs.toFloat()).coerceAtMost(size.width)
+                        drawRect(
+                            color = Color(0xFF81C784).copy(alpha = 0.55f),
+                            topLeft = Offset(startX, 0f),
+                            size = Size((endX - startX).coerceAtLeast(3f), size.height)
+                        )
+                    }
+                }
+                previewMarker?.let { preview ->
+                    if (preview.showAtMs in 0..durationMs && preview.skipToMs > preview.showAtMs) {
+                        val startX = (preview.showAtMs.toFloat() / durationMs.toFloat()) * size.width
+                        val endX = (preview.skipToMs.toFloat() / durationMs.toFloat()).coerceAtMost(size.width)
+                        drawRect(
+                            color = Color(0xFFBA68C8).copy(alpha = 0.55f),
+                            topLeft = Offset(startX, 0f),
+                            size = Size((endX - startX).coerceAtLeast(3f), size.height)
                         )
                     }
                 }

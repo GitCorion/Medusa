@@ -273,6 +273,14 @@ class PlayerViewModel @Inject constructor(
     private val _creditsMarker = MutableStateFlow<SkipMarker?>(null)
     val creditsMarker: StateFlow<SkipMarker?> = _creditsMarker.asStateFlow()
 
+    /** TheIntroDB / MediaSegments: resumen del episodio anterior. */
+    private val _recapMarker = MutableStateFlow<SkipMarker?>(null)
+    val recapMarker: StateFlow<SkipMarker?> = _recapMarker.asStateFlow()
+
+    /** TheIntroDB / MediaSegments: avance del siguiente episodio. */
+    private val _previewMarker = MutableStateFlow<SkipMarker?>(null)
+    val previewMarker: StateFlow<SkipMarker?> = _previewMarker.asStateFlow()
+
     // ─── Next episode / media info & recommended list ────────────────────
     private val _nextEpisode = MutableStateFlow<NextEpisodeInfo?>(null)
     val nextEpisode: StateFlow<NextEpisodeInfo?> = _nextEpisode.asStateFlow()
@@ -347,6 +355,8 @@ class PlayerViewModel @Inject constructor(
             torrentZeroProgressStartMs = null
             _introMarker.value = null
             _creditsMarker.value = null
+            _recapMarker.value = null
+            _previewMarker.value = null
             _nextEpisode.value = null
             val prefs = userPreferencesRepository.userPreferencesFlow.first()
             val baseUrl = prefs.jellyfinServerUrl
@@ -1199,6 +1209,8 @@ class PlayerViewModel @Inject constructor(
             // Reset previous state
             _introMarker.value = null
             _creditsMarker.value = null
+            _recapMarker.value = null
+            _previewMarker.value = null
             _nextEpisode.value = null
             _recommendedList.value = emptyList()
 
@@ -1233,6 +1245,24 @@ class PlayerViewModel @Inject constructor(
                                     skipToMs = endMs
                                 )
                                 Log.i("PlayerViewModel", "MediaSegments Outro: ${startMs}ms → ${endMs}ms")
+                            }
+                            "recap" -> {
+                                // TheIntroDB: resumen del episodio anterior. Mismo contrato que intro.
+                                _recapMarker.value = SkipMarker(
+                                    showAtMs = startMs,
+                                    hideAtMs = endMs,
+                                    skipToMs = endMs
+                                )
+                                Log.i("PlayerViewModel", "MediaSegments Recap: ${startMs}ms → ${endMs}ms")
+                            }
+                            "preview" -> {
+                                // TheIntroDB: avance del siguiente episodio.
+                                _previewMarker.value = SkipMarker(
+                                    showAtMs = startMs,
+                                    hideAtMs = endMs,
+                                    skipToMs = endMs
+                                )
+                                Log.i("PlayerViewModel", "MediaSegments Preview: ${startMs}ms → ${endMs}ms")
                             }
                             else -> Log.d("PlayerViewModel", "MediaSegments segment type '${seg.type}' ignored")
                         }

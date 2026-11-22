@@ -154,6 +154,9 @@
     <string name="player_audio">Audio</string>
     <string name="player_subtitles">Subtítulos</string>
     <string name="player_skip_credits">Omitir créditos</string>
+    <string name="player_skip_intro">Omitir intro</string>
+    <string name="player_skip_recap">Omitir resumen</string>
+    <string name="player_skip_preview">Omitir avance</string>
     <string name="player_play_now">Reproducir ahora</string>
     <string name="player_no_audio_tracks">No se detectaron pistas de audio adicionales.</string>
     <string name="player_disabled">Desactivados</string>
