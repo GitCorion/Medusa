@@ -81,6 +81,12 @@ jobs:
           OTA_RELEASE_NOTES: ${{ inputs.release_notes }}
         run: SKIP_BUILD=1 ./scripts/publish-ota.sh
 
+      # action-gh-release no renombra con "origen:destino": copiamos el APK con el
+      # nombre final que espera el manifiesto OTA (Medusa.apk).
+      - name: Prepare release asset
+        if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.publish)
+        run: cp app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/Medusa.apk"
+
       - name: Create GitHub Release with APK asset
         if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.publish)
         uses: softprops/action-gh-release@v2
@@ -88,7 +94,7 @@ jobs:
           tag_name: ${{ github.ref_name }}
           name: Medusa ${{ github.ref_name }}
           body: ${{ inputs.release_notes || 'Publicado desde GitHub Actions. Cambios en docs/api/version.json.' }}
-          files: app/build/outputs/apk/release/app-release.apk:Medusa.apk
+          files: ${{ runner.temp }}/Medusa.apk
           fail_on_unmatched_files: true
 
       - name: Publish manifest to main (OTA + GitHub Pages)
