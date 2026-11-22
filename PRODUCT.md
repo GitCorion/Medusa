@@ -27,6 +27,7 @@ Unlike sluggish web-based Jellyfin wrappers, Medusa TV is built 100% natively in
 - **Primary:** Living room Smart TVs, Google TV, Fire TV, and Android TV boxes at 1080p and 4K resolutions, operated via D-Pad remote control.
 - **Secondary:** Android tablets operated via touchscreen.
 - **Network:** Home LAN and remote server streaming, supporting offline demo mode and background catalog synchronization.
+- **Distribution:** Public GitHub repository with releases; the app self-updates from the signed APK attached to each GitHub Release. No Firebase, analytics, crash reporting, or Play Store dependency. TMDB lookups use a user-supplied API key configured in Settings.
 
 ## Capabilities and Constraints
 

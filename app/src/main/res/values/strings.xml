@@ -198,6 +198,10 @@
     <string name="settings_field_trakt_token_placeholder">Access Token de Trakt</string>
     <string name="settings_field_watch_region">Región de Catálogo</string>
     <string name="settings_field_watch_region_placeholder">ES</string>
+    <string name="settings_field_tmdb_api_key">Clave API de TMDB</string>
+    <string name="settings_field_tmdb_api_key_placeholder">Pega tu clave de themoviedb.org</string>
+    <string name="settings_tmdb_key_set">Configurada</string>
+    <string name="settings_tmdb_key_unset">No configurada</string>
 
     <!-- Navegación lateral -->
     <string name="settings_title">AJUSTES</string>
@@ -382,7 +386,7 @@
     <string name="settings_status_up_to_date">Al día</string>
     <string name="settings_section_updates">ACTUALIZACIONES</string>
     <string name="settings_channel_vip">Beta Privada (Servidor Autorizado)</string>
-    <string name="settings_channel_ota">Beta Privada (Firebase OTA)</string>
+    <string name="settings_channel_ota">GitHub Releases (público)</string>
     <string name="settings_row_channel">Canal</string>
     <string name="settings_btn_checking">Comprobando…</string>
     <string name="settings_btn_check_updates">Buscar actualizaciones</string>

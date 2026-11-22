@@ -24,14 +24,12 @@ import java.io.File
 import java.io.FileOutputStream
 
 /**
- * Manifiesto OTA servido por Firebase Hosting en
- * `https://medusa-fd388.web.app/api/version.json`.
- *
- * El repositorio de GitHub es privado, por lo que los assets de sus Releases no son descargables
- * sin autenticación: el canal público de actualización es Firebase.
+ * Manifiesto de actualizaciones publicado en el repositorio público, junto al APK de cada
+ * GitHub Release. La app lo lee desde `docs/api/version.json` y descarga el asset firmado
+ * del Release. No hay backend propio ni servicios de terceros implicados.
  */
 @Serializable
-data class FirebaseVersionDto(
+data class UpdateManifestDto(
     @SerialName("versionCode") val versionCode: Long = 0L,
     @SerialName("versionName") val versionName: String = "",
     @SerialName("minSupportedVersionCode") val minSupportedVersionCode: Long = 0L,
@@ -44,9 +42,9 @@ data class FirebaseVersionDto(
     @SerialName("signatures") val signatures: List<String> = emptyList()
 )
 
-interface FirebaseUpdateApiService {
+interface UpdateManifestApiService {
     @GET("api/version.json")
-    suspend fun getLatestVersion(): FirebaseVersionDto
+    suspend fun getLatestVersion(): UpdateManifestDto
 }
 
 data class UpdateInfo(
@@ -62,8 +60,8 @@ data class UpdateInfo(
 
 class AppUpdateManager(private val context: Context) {
 
-    private val firebaseApi: FirebaseUpdateApiService =
-        NetworkClientFactory.createService(ApiConfig.FIREBASE_OTA_BASE_URL, FirebaseUpdateApiService::class.java)
+    private val manifestApi: UpdateManifestApiService =
+        NetworkClientFactory.createService(ApiConfig.UPDATE_MANIFEST_BASE_URL, UpdateManifestApiService::class.java)
 
     companion object {
         private const val CHECK_RETRIES = 3
@@ -111,7 +109,7 @@ class AppUpdateManager(private val context: Context) {
         val currentVer = pInfo.versionName ?: "1.0"
         val currentVersionCode = PackageInfoCompat.getLongVersionCode(pInfo)
 
-        val remoteVersion = firebaseApi.getLatestVersion()
+        val remoteVersion = manifestApi.getLatestVersion()
         if (remoteVersion.signatures.isNotEmpty()) {
             ServerVerificationUtils.updateSignatures(remoteVersion.signatures)
         }
@@ -134,15 +132,11 @@ class AppUpdateManager(private val context: Context) {
 
         val hasValidUrl = !remoteVersion.apkUrl.isNullOrBlank()
 
-        // El manifiesto OTA describe la beta. La build de Play NO debe interpretar su
-        // versionCode/apkUrl como una actualización: solo comparte el kill-switch y la versión
-        // mínima soportada. Si no, Play vería la beta (1_000_091) como "más nueva" y ofrecería
-        // descargar un APK de Firebase, que es justo lo que Play prohíbe.
+        // Distribución pública por GitHub Releases: el manifiesto publicado por el workflow
+        // describe siempre la última release y su asset APK.
         val hasUpdate = if (BuildConfig.ENABLE_IN_APP_UPDATER) {
             isKillSwitch || ((isNewer || isForceUpdate) && hasValidUrl)
         } else {
-            // Play: solo bloqueos globales (kill-switch o versión mínima). Nunca "hay una
-            // versión nueva" basada en el manifiesto de la beta.
             isForceUpdate
         }
 
@@ -178,9 +172,8 @@ class AppUpdateManager(private val context: Context) {
         expectedSha256: String? = null,
         onProgress: (Float) -> Unit = {}
     ): Result<Unit> {
-        // Defensa en profundidad: la build de Play nunca debe descargar/instalar un APK propio.
         if (!BuildConfig.ENABLE_IN_APP_UPDATER) {
-            return Result.failure(IllegalStateException("Self-update disabled in Play flavor"))
+            return Result.failure(IllegalStateException("Self-update disabled in this build"))
         }
         _isDownloading.value = true
         _downloadProgress.value = 0f
@@ -195,7 +188,7 @@ class AppUpdateManager(private val context: Context) {
                         apkUrl.contains("/download", ignoreCase = true)
 
                 if (!isDirectApk) {
-                    // Portal externo (p. ej. Firebase App Distribution): abrir en navegador.
+                    // Enlace no directo (p. ej. página de releases): abrir en navegador.
                     val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(apkUrl)).apply {
                         flags = Intent.FLAG_ACTIVITY_NEW_TASK
                     }

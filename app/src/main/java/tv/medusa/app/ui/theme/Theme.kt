@@ -1,7 +1,5 @@
 package tv.medusa.app.ui.theme
 
-import androidx.compose.runtime.staticCompositionLocalOf
-import tv.medusa.app.data.billing.BillingManager
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.tv.material3.ExperimentalTvMaterial3Api
@@ -16,8 +14,6 @@ private val DeepBackground = AbyssVoid
 private val SurfaceDark = AbyssSurface
 private val TextWhite = TextPrimary
 private val TextMuted = TextSecondary
-
-val LocalBillingManager = staticCompositionLocalOf<BillingManager?> { null }
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable

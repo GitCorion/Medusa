@@ -13,8 +13,8 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Descarga los catálogos de descubrimiento ya preparados desde Firebase Hosting
- * (`/catalogs/<REGION>/...`), en lugar de pedir miles de páginas a TMDB desde cada dispositivo.
+ * Descarga los catálogos de descubrimiento ya preparados desde el repositorio público
+ * (`docs/catalogs/<REGION>/...`), en lugar de pedir miles de páginas a TMDB desde cada dispositivo.
  *
  * Formato compacto de cada fichero: `{ "v": 1, "items": [[id, isTv, popularity, title, year], ...] }`.
  * El índice de región (`index.json`) indica los ficheros disponibles y su versión de contenido.
@@ -34,12 +34,6 @@ class CatalogRemoteDataSource @Inject constructor() {
     private val client = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
-        .build()
-
-    /** Cliente corto para disparar la generación on-demand sin bloquear el arranque. */
-    private val triggerClient = OkHttpClient.Builder()
-        .connectTimeout(3, TimeUnit.SECONDS)
-        .readTimeout(5, TimeUnit.SECONDS)
         .build()
 
     private val requestedRegions = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
@@ -73,26 +67,21 @@ class CatalogRemoteDataSource @Inject constructor() {
             Log.w("CatalogRemote", "manifest $regionKey: ${it.message}")
         }.getOrNull()
 
-        // Región sin catálogo pre-generado: pedimos al backend que la genere (best effort).
-        // Esta sesión sigue con el fallback del proxy; en el siguiente arranque ya descarga
-        // el catálogo estático.
+        // Región sin catálogo pre-generado: esta sesión usa el fallback de TMDB en vivo
+        // (si hay clave configurada). El workflow de CI publicará el catálogo en el próximo release.
         if (manifest == null && requestedRegions.add(regionKey)) {
             requestGeneration(regionKey)
         }
         manifest
     }
 
+    /**
+     * Ya no hay backend de generación bajo demanda: los catálogos se generan en CI y se
+     * versionan en el repositorio. Una región sin catálogo simplemente usa el fallback
+     * de TMDB en vivo (si el usuario configuró su clave) hasta el siguiente release.
+     */
     private fun requestGeneration(region: String) {
-        runCatching {
-            val url = ApiConfig.FIREBASE_OTA_BASE_URL.trimEnd('/') +
-                "/api/catalog/request?region=$region"
-            Log.d("CatalogRemote", "requestGeneration $url")
-            triggerClient.newCall(Request.Builder().url(url).get().build()).execute().use { response ->
-                if (!response.isSuccessful) {
-                    Log.w("CatalogRemote", "requestGeneration HTTP ${response.code}")
-                }
-            }
-        }
+        Log.d("CatalogRemote", "Sin catálogo pre-generado para $region; se usa TMDB en vivo")
     }
 
     suspend fun fetchItems(region: String, relativePath: String): List<TmdbItemDto>? =
@@ -128,7 +117,7 @@ class CatalogRemoteDataSource @Inject constructor() {
         }
 
     private fun get(relativePath: String): String? {
-        val url = ApiConfig.FIREBASE_CATALOG_BASE_URL.trimEnd('/') + "/" + relativePath
+        val url = ApiConfig.CATALOG_BASE_URL.trimEnd('/') + "/" + relativePath
         Log.d("CatalogRemote", "GET $url")
         val request = Request.Builder().url(url).get().build()
         client.newCall(request).execute().use { response ->

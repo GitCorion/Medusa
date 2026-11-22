@@ -1,30 +1,24 @@
 name: Refresh discovery catalogs
 
-# Genera a diario los catálogos de descubrimiento (plataformas, tendencias y popular regional)
-# con la clave TMDB del servidor y los publica en Firebase Hosting. La app solo descarga el
-# JSON de su región; la clave nunca viaja en el APK.
-#
-# Secretos necesarios:
-#   TMDB_API_KEY   → clave de TMDB (la misma que usa el build, pero aquí vive en servidor)
-#   FIREBASE_TOKEN → token de CI (`firebase login:ci`)
+# Genera diariamente los catálogos de descubrimiento (tendencias, popular y plataformas por
+# región) usando la clave TMDB del repositorio y los versiona en docs/catalogs. La app los
+# descarga como JSON estático; la clave nunca viaja en el APK ni se publica.
 
 on:
   schedule:
     - cron: '17 3 * * *'
   workflow_dispatch:
 
-# Una sola ejecución a la vez: si llega otro disparo, espera en cola en vez de duplicar.
 concurrency:
   group: refresh-discovery-catalogs
   cancel-in-progress: false
 
 permissions:
-  contents: read
-  id-token: write
+  contents: write
 
 jobs:
   refresh:
-    name: Generate & publish catalogs
+    name: Generate & commit catalogs
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -35,10 +29,9 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Check secrets
+      - name: Check TMDB secret
         id: secrets
-        run: |
-          echo "tmdb=${{ secrets.TMDB_API_KEY != '' }}" >> "$GITHUB_OUTPUT"
+        run: echo "tmdb=${{ secrets.TMDB_API_KEY != '' }}" >> "$GITHUB_OUTPUT"
 
       - name: Generate catalogs
         if: steps.secrets.outputs.tmdb == 'true'
@@ -46,17 +39,15 @@ jobs:
           TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
         run: node scripts/catalog/generate-catalogs.mjs
 
-      - name: Install Firebase CLI
+      - name: Commit refreshed catalogs
         if: steps.secrets.outputs.tmdb == 'true'
-        run: npm install -g firebase-tools
-
-      - name: Authenticate to Google Cloud (Workload Identity Federation)
-        if: steps.secrets.outputs.tmdb == 'true'
-        uses: google-github-actions/auth@v2
-        with:
-          workload_identity_provider: 'projects/497957809148/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
-          service_account: 'medusa-fd388@appspot.gserviceaccount.com'
-
-      - name: Deploy to Firebase Hosting
-        if: steps.secrets.outputs.tmdb == 'true'
-        run: firebase deploy --only hosting:catalogs --project medusa-fd388 --non-interactive
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/catalogs
+          if git diff --cached --quiet; then
+            echo "Catálogos sin cambios"
+          else
+            git commit -m "chore(catalogs): refrescar catálogos de descubrimiento"
+            git push origin HEAD:main
+          fi

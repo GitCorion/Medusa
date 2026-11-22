@@ -1,9 +1,7 @@
 package tv.medusa.app
 
 import android.app.Activity
-import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.os.SystemClock
 import android.util.Log
 import android.view.KeyEvent
@@ -15,7 +13,6 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalContext
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
-import tv.medusa.app.data.billing.BillingManager
 import tv.medusa.app.data.local.ACCENT_WHITE
 import tv.medusa.app.data.local.INDICATOR_THEME_MONOCHROME
 import tv.medusa.app.data.local.PLATFORM_LOGO_MONOCHROME
@@ -23,7 +20,6 @@ import tv.medusa.app.data.local.UserPreferencesRepository
 import tv.medusa.app.data.remote.NetworkClientFactory
 import tv.medusa.app.data.remote.update.AppUpdateManager
 import tv.medusa.app.ui.theme.LocalAccentColor
-import tv.medusa.app.ui.theme.LocalBillingManager
 import tv.medusa.app.ui.theme.LocalIndicatorTheme
 import tv.medusa.app.ui.theme.LocalIsMonochromeTheme
 import tv.medusa.app.ui.theme.TvAccent
@@ -104,9 +100,6 @@ import tv.medusa.app.util.AppForeground
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     @javax.inject.Inject
-    lateinit var billingManager: BillingManager
-
-    @javax.inject.Inject
     lateinit var userPreferencesRepository: UserPreferencesRepository
 
     @javax.inject.Inject
@@ -185,8 +178,7 @@ class MainActivity : ComponentActivity() {
                         LocalIsMonochromeTheme provides isMonochrome,
                         LocalIndicatorTheme provides indicatorTheme,
                         LocalPlatformLogoStyle provides platformLogoStyle,
-                        LocalAccentColor provides accentColor,
-                        LocalBillingManager provides billingManager
+                        LocalAccentColor provides accentColor
                     ) {
                         MedusaApp(
                             pendingPlayItemId = pendingPlayItemId,
@@ -211,8 +203,6 @@ class MainActivity : ComponentActivity() {
         super.onStart()
         // El trabajo de fondo (enriquecido de metadatos) baja su ritmo mientras hay app delante.
         AppForeground.isVisible = true
-        billingManager.startBillingConnection()
-        billingManager.queryPurchases()
     }
 
     override fun onStop() {
@@ -276,21 +266,6 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-/**
- * En el flavor `play` no se descarga ningún APK: se abre la ficha oficial de la tienda.
- * En el flavor `beta` este helper no se usa (la actualización llega por Firebase OTA).
- */
-private fun openPlayStoreListing(context: Context) {
-    val packageName = context.packageName
-    val marketIntent = Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$packageName"))
-    val webIntent = Intent(
-        Intent.ACTION_VIEW,
-        Uri.parse("https://play.google.com/store/apps/details?id=$packageName")
-    )
-    runCatching { context.startActivity(marketIntent) }
-        .onFailure { runCatching { context.startActivity(webIntent) } }
-}
-
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 fun MedusaApp(
@@ -325,9 +300,8 @@ fun MedusaApp(
     val updateButtonFocusRequester = remember { FocusRequester() }
 
     LaunchedEffect(Unit) {
-        // El manifiesto OTA se consulta SIEMPRE, en todos los flavors: de él dependen el
-        // kill-switch global y la lista VIP familiar, que deben aplicarse en cualquier versión
-        // (no solo en la beta distribuida por Firebase).
+        // El manifiesto OTA publicado en el repositorio se consulta siempre: de él dependen
+        // el kill-switch y la versión mínima soportada, que aplican a todas las instalaciones.
         appUpdateManager.checkAutomatically()
     }
 
@@ -335,8 +309,7 @@ fun MedusaApp(
         val info = updateInfo
         val forced = info?.isForceUpdate == true
         val enforcedEverywhere = info?.isKillSwitch == true || forced
-        // El aviso de "hay actualización" normal solo se muestra en el flavor con updater propio;
-        // el kill-switch y la actualización obligatoria se aplican siempre.
+        // El kill-switch y la actualización obligatoria se aplican siempre.
         if (info?.hasUpdate == true &&
             (enforcedEverywhere || (BuildConfig.ENABLE_IN_APP_UPDATER && !updateDismissed))
         ) {
@@ -740,16 +713,12 @@ fun MedusaApp(
                             if (canUpdate) {
                                 Button(
                                     onClick = {
-                                        if (BuildConfig.ENABLE_IN_APP_UPDATER) {
-                                            val info = updateInfo
-                                            val apkUrl = info?.apkUrl
-                                            if (apkUrl != null) {
-                                                coroutineScope.launch {
-                                                    appUpdateManager.downloadAndInstall(apkUrl, info?.apkSha256)
-                                                }
+                                        val info = updateInfo
+                                        val apkUrl = info?.apkUrl
+                                        if (apkUrl != null) {
+                                            coroutineScope.launch {
+                                                appUpdateManager.downloadAndInstall(apkUrl, info?.apkSha256)
                                             }
-                                        } else {
-                                            openPlayStoreListing(context)
                                         }
                                     },
                                     enabled = !isDownloading,

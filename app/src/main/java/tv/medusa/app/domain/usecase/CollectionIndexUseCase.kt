@@ -61,7 +61,7 @@ class CollectionIndexUseCase @Inject constructor(
             val region = (prefs.watchRegion.takeIf { it.isNotBlank() }
                 ?: ApiConfig.TMDB_WATCH_REGION).uppercase()
 
-            // 1. Catálogo centralizado en Firebase Hosting. Si está disponible, el dispositivo
+            // 1. Catálogo centralizado en el repositorio público. Si está disponible, el dispositivo
             //    no llama a TMDB: descarga el fichero ya preparado y solo cruza con su biblioteca.
             val manifest = catalogRemote.fetchManifest(region)
             if (apiKey.isBlank() && manifest == null) return 0

@@ -10,14 +10,12 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import java.util.Calendar
 import kotlinx.coroutines.delay
 import tv.medusa.app.ui.components.JellyLoadingIndicator
-import tv.medusa.app.ui.components.MedusaProDialog
 import tv.medusa.app.ui.components.TvNavTab
 import tv.medusa.app.ui.components.TvTopBar
 import tv.medusa.app.ui.components.cinema.MasterFilmTrigger
 import tv.medusa.app.ui.theme.CinematicTypography
 import tv.medusa.app.ui.theme.TextPrimary
 import tv.medusa.app.ui.theme.TextSecondary
-import tv.medusa.app.ui.theme.LocalBillingManager
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -126,11 +124,9 @@ fun HomeScreen(
     val isMonochrome by viewModel.isMonochrome.collectAsStateWithLifecycle()
     val buttonStyleKey by viewModel.buttonStyle.collectAsStateWithLifecycle()
     val selectedPlatforms by viewModel.selectedPlatforms.collectAsStateWithLifecycle()
-    val isProUser by viewModel.isProUser.collectAsStateWithLifecycle()
     val seasonalAudioEnabled by viewModel.seasonalAudioEnabled.collectAsStateWithLifecycle()
     val particleScale by viewModel.particleScale.collectAsStateWithLifecycle()
     val watchRegion by viewModel.watchRegion.collectAsStateWithLifecycle()
-    var showProDialog by remember { mutableStateOf(false) }
     val showTopIcons = buttonStyleKey != BUTTON_STYLE_TEXT_ONLY
     val showTopText = buttonStyleKey != BUTTON_STYLE_ICONS_ONLY
 
@@ -519,14 +515,6 @@ fun HomeScreen(
         }
 
 
-
-        val billingManager = LocalBillingManager.current
-        if (showProDialog && billingManager != null) {
-            MedusaProDialog(
-                billingManager = billingManager,
-                onDismiss = { showProDialog = false }
-            )
-        }
     }
 }
 

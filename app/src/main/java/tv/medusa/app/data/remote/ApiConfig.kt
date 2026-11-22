@@ -9,24 +9,26 @@ import java.util.Locale
  * No incluye la URL del servidor Jellyfin: esa es dinámica (la aporta el usuario).
  */
 object ApiConfig {
-    /** TMDB (The Movie Database) a través del proxy propio en Firebase.
-     *  La clave real vive solo en el servidor (Cloud Functions + Secret Manager). */
-    const val TMDB_BASE_URL = "https://medusa-fd388.web.app/api/tmdb/"
+    /** Contenido estático publicado en el repositorio público (raw.githubusercontent.com). */
+    private const val REPO_RAW_BASE = "https://raw.githubusercontent.com/GitCorion/Medusa/main/"
 
-    /** Token no secreto que mantiene activas las comprobaciones de disponibilidad de TMDB. */
-    const val TMDB_PROXY_TOKEN = "proxy"
+    /** TMDB directo. La clave la aporta el usuario en Ajustes; nunca se comparte ni se sube. */
+    const val TMDB_BASE_URL = "https://api.themoviedb.org/3/"
 
     /** Trakt.tv. */
     const val TRAKT_BASE_URL = "https://api.trakt.tv/"
 
-    /** Backend propio de distribución OTA (Firebase Hosting, `version.json`). */
-    const val FIREBASE_OTA_BASE_URL = "https://medusa-fd388.web.app/"
+    /** Manifiesto de actualizaciones publicado junto a cada GitHub Release. */
+    const val UPDATE_MANIFEST_BASE_URL = REPO_RAW_BASE + "docs/"
 
-    /** Catálogos de descubrimiento centralizados (sitio de Hosting independiente del OTA). */
-    const val FIREBASE_CATALOG_BASE_URL = "https://medusa-catalogs.web.app/"
+    /** Catálogos de descubrimiento pre-generados, versionados en el repositorio. */
+    const val CATALOG_BASE_URL = REPO_RAW_BASE + "docs/catalogs/"
 
-    /** Política de privacidad pública (Firebase Hosting). */
-    const val PRIVACY_POLICY_URL = "https://medusa-fd388.web.app/privacy.html"
+    /** Política de privacidad servida por GitHub Pages desde /docs. */
+    const val PRIVACY_POLICY_URL = "https://gitcorion.github.io/Medusa/privacy.html"
+
+    /** Página de las releases públicas (para el enlace "Ver changelog" de Ajustes). */
+    const val RELEASES_URL = "https://github.com/GitCorion/Medusa/releases"
 
     /** Base de imágenes de TMDB (pósters). */
     const val TMDB_IMAGE_BASE_W500 = "https://image.tmdb.org/t/p/w500"

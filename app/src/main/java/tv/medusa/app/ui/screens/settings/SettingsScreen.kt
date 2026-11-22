@@ -7,8 +7,6 @@ import java.net.URLEncoder
 import java.util.Locale
 import tv.medusa.app.BuildConfig
 import tv.medusa.app.data.remote.ApiConfig
-import tv.medusa.app.ui.components.MedusaProDialog
-import tv.medusa.app.ui.theme.LocalBillingManager
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -148,7 +146,6 @@ fun SettingsScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val focusColor = if (uiState.isMonochrome) Color.White else TvAccent.getColor(uiState.accentColor)
     val focusContent = if (uiState.isMonochrome) Color(0xFF0F172A) else TvAccent.getFocusedContentColor(uiState.accentColor)
-    var showProDialog by remember { mutableStateOf(false) }
     var showPrivacyPolicyDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(uiState.isSuccess) {
@@ -323,7 +320,6 @@ fun SettingsScreen(
                                 viewModel = viewModel,
                                 focusColor = focusColor,
                                 focusContent = focusContent,
-                                onOpenProDialog = { showProDialog = true },
                                 onOpenPrivacyPolicy = { showPrivacyPolicyDialog = true }
                             )
                         }
@@ -370,14 +366,6 @@ fun SettingsScreen(
                 onDismiss = { viewModel.dismissDialog() },
                 focusColor = focusColor,
                 focusContent = focusContent
-            )
-        }
-
-        val billingManager = LocalBillingManager.current
-        if (showProDialog && billingManager != null) {
-            MedusaProDialog(
-                billingManager = billingManager,
-                onDismiss = { showProDialog = false }
             )
         }
 
@@ -992,6 +980,15 @@ private fun PlatformsCategory(
         onClick = { viewModel.openEditDialog(SettingField.WATCH_REGION) }
     )
 
+    TvSettingRow(
+        title = stringResource(R.string.settings_field_tmdb_api_key),
+        value = stringResource(
+            if (uiState.tmdbApiKey.isBlank()) R.string.settings_tmdb_key_unset
+            else R.string.settings_tmdb_key_set
+        ),
+        onClick = { viewModel.openEditDialog(SettingField.TMDB_API_KEY) }
+    )
+
     // Accesos directos rápidos para cambiar de país con un solo clic de mando
     Row(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -1316,7 +1313,6 @@ private fun AboutCategory(
     viewModel: SettingsViewModel,
     focusColor: Color,
     focusContent: Color,
-    onOpenProDialog: () -> Unit,
     onOpenPrivacyPolicy: () -> Unit
 ) {
     val updateInfo = uiState.updateInfo

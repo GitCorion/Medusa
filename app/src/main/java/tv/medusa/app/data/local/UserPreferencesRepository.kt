@@ -32,13 +32,11 @@ val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "me
 // Claves por defecto para TMDB/Trakt. Provienen de BuildConfig (inyectables en build-time vía
 // env/keystore.properties); ya no hay literales hardcodeados en el código fuente.
 /**
- * La app ya no lleva la clave de TMDB: todas las llamadas pasan por el proxy de Firebase
- * (`ApiConfig.TMDB_BASE_URL`). Este valor no es secreto; solo mantiene activas las
- * comprobaciones de "TMDB disponible" del código existente.
+ * Clave de TMDB. En la distribución pública no hay proxy ni clave embebida: el usuario
+ * introduce su propia clave en Ajustes. El BuildConfig solo permite una inyección opcional
+ * en builds propios; si está vacía, las funciones que dependen de TMDB se desactivan.
  */
-val DEFAULT_TMDB_API_KEY: String =
-    BuildConfig.DEFAULT_TMDB_API_KEY.takeIf { it.isNotBlank() }
-        ?: tv.medusa.app.data.remote.ApiConfig.TMDB_PROXY_TOKEN
+val DEFAULT_TMDB_API_KEY: String = BuildConfig.DEFAULT_TMDB_API_KEY
 val DEFAULT_TRAKT_CLIENT_ID: String = BuildConfig.DEFAULT_TRAKT_CLIENT_ID
 val DEFAULT_TRAKT_CLIENT_SECRET: String = BuildConfig.DEFAULT_TRAKT_CLIENT_SECRET
 
@@ -171,8 +169,8 @@ class UserPreferencesRepository(context: Context) {
         val SELECTED_PLATFORMS = stringPreferencesKey("selected_platforms")
         val HIDDEN_TRAKT_LISTS = stringPreferencesKey("hidden_trakt_lists")
         val HAS_COMPLETED_ONBOARDING = stringPreferencesKey("has_completed_onboarding")
-        // Estado de COMPRA (Google Play Billing). Se mantiene la clave original "is_pro_user"
-        // para no invalidar instalaciones existentes.
+        // Estado heredado de la antigua licencia de pago. La distribución pública no factura:
+        // se mantiene la clave original "is_pro_user" para no invalidar instalaciones existentes.
         val HAS_PURCHASED_PRO = stringPreferencesKey("is_pro_user")
         // Desbloqueo por código promocional, independiente de la compra.
         val HAS_PROMO_UNLOCK = stringPreferencesKey("has_promo_unlock")

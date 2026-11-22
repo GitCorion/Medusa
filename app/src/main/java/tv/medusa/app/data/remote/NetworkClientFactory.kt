@@ -150,7 +150,7 @@ object NetworkClientFactory {
     /**
      * Registra el host exacto del servidor Jellyfin y, si el usuario lo autorizó
      * explícitamente, el fingerprint SHA-256 del certificado autofirmado. El resto de hosts
-     * (TMDB, Trakt, Firebase, CDNs) sigue usando validación TLS estricta del sistema.
+     * (TMDB, Trakt, GitHub, CDNs) sigue usando validación TLS estricta del sistema.
      */
     fun setTrustedServer(
         serverUrl: String?,
@@ -320,18 +320,6 @@ object NetworkClientFactory {
 
             val requestBuilder = original.newBuilder()
                 .header("User-Agent", "Mozilla/5.0 (Linux; Android 14; Google TV) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-
-            // Las llamadas a TMDB pasan por nuestro proxy: no enviar nunca al servidor una clave
-            // guardada en el dispositivo. El proxy inyecta la clave real server-side.
-            if (original.url.host.contains("medusa-fd388.web.app", ignoreCase = true) &&
-                original.url.encodedPath.startsWith("/api/tmdb/")
-            ) {
-                requestBuilder.url(
-                    original.url.newBuilder()
-                        .setQueryParameter("api_key", ApiConfig.TMDB_PROXY_TOKEN)
-                        .build()
-                )
-            }
 
             // Solo forzar Accept: application/json en llamadas API de datos, NUNCA en vídeo ni en imágenes
             if (!isMediaRequest && !isImageRequest && original.header("Accept").isNullOrBlank()) {

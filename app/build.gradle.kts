@@ -6,8 +6,6 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.hilt.android)
     alias(libs.plugins.androidx.baselineprofile)
-    alias(libs.plugins.google.services)
-    alias(libs.plugins.firebase.crashlytics)
     alias(libs.plugins.ksp)
 }
 
@@ -26,9 +24,12 @@ android {
     compileSdk = 36
 
     defaultConfig {
+        // Se conserva el applicationId de la beta pública para que los usuarios ya
+        // instalados reciban las actualizaciones de GitHub Releases como tales.
+        applicationId = "tv.medusa.app.beta"
         minSdk = 26
         targetSdk = 36
-        versionCode = 159
+        versionCode = 1_000_159
         versionName = "2.3.12"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -36,38 +37,19 @@ android {
         // Claves para TMDB/Trakt. Los valores reales se inyectan en build-time vía variables de
         // entorno o keystore.properties (gitignored); aquí solo hay defaults vacíos. Si falta una
         // clave, el campo queda vacío y la funcionalidad correspondiente se desactiva en runtime.
-        // La app ya no lleva la clave TMDB: todas las llamadas pasan por el proxy de Firebase.
+        // Sin clave TMDB embebida: el usuario introduce la suya en Ajustes.
         // Este token no es secreto y solo mantiene activas las comprobaciones de disponibilidad.
         buildConfigField("String", "DEFAULT_TMDB_API_KEY", "\"\"")
         buildConfigField("String", "DEFAULT_TRAKT_CLIENT_ID", "\"${envOr("TRAKT_CLIENT_ID", "")}\"")
         buildConfigField("String", "DEFAULT_TRAKT_CLIENT_SECRET", "\"${envOr("TRAKT_CLIENT_SECRET", "")}\"")
-    }
-
-    flavorDimensions += "distribution"
-
-    productFlavors {
-        create("beta") {
-            dimension = "distribution"
-            // Package propio: la beta y la versión de Play conviven en el mismo dispositivo,
-            // con datos, firma y actualizaciones independientes.
-            applicationIdSuffix = ".beta"
-            // Offset de 1.000.000 para distinguir el canal en soporte/Crashlytics.
-            versionCode = 1_000_159
-            versionNameSuffix = "-beta"
-            buildConfigField("boolean", "ENABLE_IN_APP_UPDATER", "true")
-        }
-        create("play") {
-            dimension = "distribution"
-            applicationId = "tv.medusa.app"
-            // Usa el versionCode base de `defaultConfig` (93, 94…): nunca actualiza fuera de Play.
-            buildConfigField("boolean", "ENABLE_IN_APP_UPDATER", "false")
-        }
+        // Distribución pública: la app se actualiza a sí misma desde GitHub Releases.
+        buildConfigField("boolean", "ENABLE_IN_APP_UPDATER", "true")
     }
 
     signingConfigs {
         create("release") {
             // Sin fallback a debug.keystore: si no hay keystore de release configurado, el build
-            // de release debe fallar en lugar de firmarse con la clave de debug (prohibido en Play).
+            // de release debe fallar en lugar de firmarse con la clave de debug.
             val storeFilePath = envOr("KEYSTORE_PATH", "")
             storeFile = if (storeFilePath.isNotBlank()) {
                 if (file(storeFilePath).exists()) file(storeFilePath) else rootProject.file(storeFilePath)
@@ -176,14 +158,6 @@ dependencies {
     ksp(libs.hilt.compiler)
     ksp(libs.hilt.androidx.compiler)
 
-    // Firebase (Analytics, Crashlytics)
-    implementation(platform(libs.firebase.bom))
-    implementation(libs.firebase.analytics)
-    implementation(libs.firebase.crashlytics)
-
-    // Google Play In-App Billing (Medusa Pro)
-    implementation(libs.play.billing)
-
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
     testImplementation(libs.okhttp.mockwebserver)
@@ -200,8 +174,8 @@ dependencies {
 // Evita que un `assembleRelease`/`bundleRelease` se firme silenciosamente con una
 // clave incorrecta cuando falta keystore.properties. Se comprueba en configuración
 // a partir de los nombres de tarea solicitados; los builds de debug no se ven afectados.
-// Solo las tareas que realmente firman/empaquetan necesitan keystore. `lintPlayRelease`
-// o `testPlayReleaseUnitTest` no deben fallar por configuración de firma.
+// Solo las tareas que realmente firman/empaquetan necesitan keystore. `lintRelease`
+// o `testReleaseUnitTest` no deben fallar por configuración de firma.
 val signingTaskPrefixes = listOf("assemble", "bundle", "package", "install")
 val buildingRelease = gradle.startParameter.taskNames.any { task ->
     task.contains("Release", ignoreCase = true) &&

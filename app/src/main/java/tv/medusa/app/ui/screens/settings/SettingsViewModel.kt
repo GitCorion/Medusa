@@ -33,6 +33,7 @@ import tv.medusa.app.data.local.BUTTON_STYLE_ICONS_ONLY
 import tv.medusa.app.data.local.DEFAULT_TRAKT_CLIENT_ID
 import tv.medusa.app.data.local.DEFAULT_TRAKT_CLIENT_SECRET
 import tv.medusa.app.data.local.UserPreferencesRepository
+import tv.medusa.app.data.repository.MediaCaches
 import tv.medusa.app.data.remote.ApiConfig
 import tv.medusa.app.data.remote.NetworkClientFactory
 import tv.medusa.app.data.remote.update.AppUpdateManager
@@ -96,6 +97,11 @@ enum class SettingField(
     WATCH_REGION(
         R.string.settings_field_watch_region,
         R.string.settings_field_watch_region_placeholder
+    ),
+    TMDB_API_KEY(
+        R.string.settings_field_tmdb_api_key,
+        R.string.settings_field_tmdb_api_key_placeholder,
+        isPassword = true
     )
 }
 
@@ -591,6 +597,7 @@ class SettingsViewModel @Inject constructor(
             SettingField.TRAKT_CLIENT_SECRET -> _uiState.value.traktClientSecret
             SettingField.TRAKT_MANUAL_TOKEN -> _uiState.value.traktToken
             SettingField.WATCH_REGION -> _uiState.value.watchRegion
+            SettingField.TMDB_API_KEY -> _uiState.value.tmdbApiKey
         }
         _uiState.value = _uiState.value.copy(
             activeDialogField = field,
@@ -674,6 +681,16 @@ class SettingsViewModel @Inject constructor(
                         apiKey = _uiState.value.tmdbApiKey,
                         region = region
                     )
+                }
+            }
+            SettingField.TMDB_API_KEY -> {
+                _uiState.value = _uiState.value.copy(tmdbApiKey = value)
+                viewModelScope.launch {
+                    userPreferencesRepository.updateTmdbConfig(
+                        apiKey = value,
+                        region = _uiState.value.watchRegion
+                    )
+                    MediaCaches.invalidateServerCaches()
                 }
             }
         }
