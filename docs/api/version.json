@@ -6,6 +6,6 @@
   "killSwitch": false,
   "releaseNotes": "Distribución pública desde GitHub Releases. Sin Firebase ni Play Store.",
   "apkUrl": "https://github.com/GitCorion/Medusa/releases/download/v2.3.12/Medusa.apk",
-  "apkSha256": "",
+  "apkSha256": "ee0554a4b2c4d04dfe2939c7e915af021e4be33db3ddb9316b97d25a45025f28",
   "signatures": []
 }
