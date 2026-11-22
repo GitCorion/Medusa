@@ -32,7 +32,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -71,6 +70,7 @@ import tv.medusa.app.R
 import tv.medusa.app.domain.model.MediaFormatFilter
 import tv.medusa.app.domain.model.MediaItem
 import tv.medusa.app.ui.components.FormatFilterBar
+import tv.medusa.app.ui.components.JellyLoadingIndicator
 import tv.medusa.app.ui.components.MediaCard
 import tv.medusa.app.ui.components.TvNavTab
 import tv.medusa.app.ui.components.TvTopBar
@@ -254,11 +254,7 @@ fun MedusaScreen(
 
             if (uiState.isLoading) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(
-                        color = accentColor,
-                        strokeWidth = 1.5.dp,
-                        modifier = Modifier.size(32.dp)
-                    )
+                    JellyLoadingIndicator(size = 84.dp, isMonochrome = isMonochrome)
                 }
             } else {
                 Spacer(modifier = Modifier.height(6.dp))

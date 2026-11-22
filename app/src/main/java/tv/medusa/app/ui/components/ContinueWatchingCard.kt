@@ -167,13 +167,7 @@ fun ContinueWatchingCard(
                 .aspectRatio(16f / 9f)
                 .clip(cardShape)
                 .background(Color(0xFF0C1017))
-                .then(
-                    if (isFocused) {
-                        Modifier.border(1.5.dp, focusColor, cardShape)
-                    } else {
-                        Modifier.border(0.75.dp, Color(0x20FFFFFF), cardShape)
-                    }
-                )
+                .then(if (isFocused) Modifier.border(1.5.dp, focusColor, cardShape) else Modifier)
         ) {
             if (!isImageError && !currentImageModel.isNullOrBlank()) {
                 AsyncImage(

@@ -441,21 +441,11 @@ fun PlayerScreen(
                     .background(Color.Black),
                 contentAlignment = Alignment.Center
             ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    CircularProgressIndicator(
-                        color = if (isMonochrome) Color.White else focusColor,
-                        strokeWidth = 3.dp,
-                        modifier = Modifier.size(36.dp)
-                    )
-                    Text(
-                        text = stringResource(R.string.player_loading),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = tv.medusa.app.ui.theme.TvPalette.TextSecondaryCool
-                    )
-                }
+                JellyLoadingIndicator(
+                    size = 84.dp,
+                    message = stringResource(R.string.player_loading),
+                    isMonochrome = isMonochrome
+                )
             }
         }
     }

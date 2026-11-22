@@ -83,10 +83,7 @@ fun EpisodeCard(
         scale = CardDefaults.scale(scale = 1.0f, focusedScale = 1.03f),
         shape = CardDefaults.shape(shape = cardShape),
         border = CardDefaults.border(
-            border = Border(
-                border = BorderStroke(0.75.dp, Color(0x20FFFFFF)),
-                shape = cardShape
-            ),
+            border = Border.None,
             focusedBorder = Border(
                 border = BorderStroke(1.5.dp, focusColor),
                 shape = cardShape

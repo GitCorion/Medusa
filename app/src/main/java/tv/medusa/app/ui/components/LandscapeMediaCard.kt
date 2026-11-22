@@ -167,13 +167,7 @@ fun LandscapeMediaCard(
                     .align(Alignment.BottomCenter)
                     .clip(cardShape)
                     .background(if (isFocused) Color(0xFF141B26) else Color(0xFF0C1017))
-                    .then(
-                        if (isFocused) {
-                            Modifier.border(1.5.dp, focusColor, cardShape)
-                        } else {
-                            Modifier.border(0.75.dp, tv.medusa.app.ui.theme.TvPalette.GlassRaised, cardShape)
-                        }
-                    )
+                    .then(if (isFocused) Modifier.border(1.5.dp, focusColor, cardShape) else Modifier)
             ) {
                 var isImageError by remember(item.id, imageModel) { mutableStateOf(false) }
 

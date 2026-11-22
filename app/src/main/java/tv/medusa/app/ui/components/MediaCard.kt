@@ -162,13 +162,9 @@ fun MediaCard(
                     .aspectRatio(2f / 3f)
                     .clip(posterShape)
                     .background(Color(0xFF0C1017))
-                    .then(
-                        if (isFocused) {
-                            Modifier.border(1.5.dp, focusColor, posterShape)
-                        } else {
-                            Modifier.border(0.75.dp, Color(0x1EFFFFFF), posterShape)
-                        }
-                    )
+                    // Cero contorno en reposo: el arte respira sobre el vacío; solo el foco
+                    // dibuja el borde de acento.
+                    .then(if (isFocused) Modifier.border(1.5.dp, focusColor, posterShape) else Modifier)
             ) {
                 var isImageError by remember(item.id, item.posterUrl) { mutableStateOf(false) }
 

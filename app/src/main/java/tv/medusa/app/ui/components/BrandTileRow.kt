@@ -128,13 +128,7 @@ private fun BrandCard(
             .height(64.dp)
             .onFocusChanged { isFocused = it.isFocused }
             .clip(cardShape)
-            .then(
-                if (isFocused) {
-                    Modifier.border(1.5.dp, focusColor, cardShape)
-                } else {
-                    Modifier.border(0.75.dp, Color(0x25FFFFFF), cardShape)
-                }
-            )
+            .then(if (isFocused) Modifier.border(1.5.dp, focusColor, cardShape) else Modifier)
     ) {
         Box(
             modifier = Modifier

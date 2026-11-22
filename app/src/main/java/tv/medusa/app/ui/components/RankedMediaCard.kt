@@ -196,13 +196,7 @@ fun RankedMediaCard(
                         .zIndex(2f)
                         .clip(posterShape)
                         .background(Color(0xFF0C1017))
-                        .then(
-                            if (isFocused) {
-                                Modifier.border(1.5.dp, focusColor, posterShape)
-                            } else {
-                                Modifier.border(0.75.dp, Color(0x20FFFFFF), posterShape)
-                            }
-                        )
+                        .then(if (isFocused) Modifier.border(1.5.dp, focusColor, posterShape) else Modifier)
                 ) {
                     var isImageError by remember(item.id, item.posterUrl) { mutableStateOf(false) }
 
