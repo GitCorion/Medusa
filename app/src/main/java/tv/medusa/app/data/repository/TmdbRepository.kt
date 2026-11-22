@@ -99,27 +99,30 @@ class TmdbRepository(
             return TmdbVoteStats(voteCount = cached.voteCount, voteAverage = cached.voteAverage)
         }
 
-        // 2. Cache miss o expirado → ir a red
-        return runCatching {
-            val api = NetworkClientFactory.createService(ApiConfig.TMDB_BASE_URL, TmdbApiService::class.java)
-            val stats = if (isTv) {
-                val d = api.getTvDetails(seriesId = tmdbId, apiKey = apiKey)
-                TmdbVoteStats(voteCount = d.voteCount ?: 0, voteAverage = d.voteAverage ?: 0f)
-            } else {
-                val d = api.getMovieDetails(movieId = tmdbId, apiKey = apiKey)
-                TmdbVoteStats(voteCount = d.voteCount ?: 0, voteAverage = d.voteAverage ?: 0f)
-            }
-            // Guardar en caché para las próximas 24h
-            tmdbVoteCacheDao?.upsert(
-                TmdbVoteCacheEntity(
-                    tmdbId = tmdbId,
-                    isTv = isTv,
-                    voteAverage = stats.voteAverage,
-                    voteCount = stats.voteCount
+        // 2. Cache miss o expirado → ir a red, pero agrupando los N+1 concurrentes
+        //    (200 tarjetas pidiendo el mismo TMDB id al arrancar) en una sola llamada.
+        val fetched: Result<TmdbVoteStats?> = MediaCaches.remoteFetchFlight.run("vote|$isTv|$tmdbId") {
+            runCatching {
+                val api = NetworkClientFactory.createService(ApiConfig.TMDB_BASE_URL, TmdbApiService::class.java)
+                val stats = if (isTv) {
+                    val d = api.getTvDetails(seriesId = tmdbId, apiKey = apiKey)
+                    TmdbVoteStats(voteCount = d.voteCount ?: 0, voteAverage = d.voteAverage ?: 0f)
+                } else {
+                    val d = api.getMovieDetails(movieId = tmdbId, apiKey = apiKey)
+                    TmdbVoteStats(voteCount = d.voteCount ?: 0, voteAverage = d.voteAverage ?: 0f)
+                }
+                tmdbVoteCacheDao?.upsert(
+                    TmdbVoteCacheEntity(
+                        tmdbId = tmdbId,
+                        isTv = isTv,
+                        voteAverage = stats.voteAverage,
+                        voteCount = stats.voteCount
+                    )
                 )
-            )
-            stats
-        }.getOrNull()
+                stats
+            }
+        }
+        return fetched.getOrNull()
     }
 
     suspend fun getTmdbTrailerUrl(apiKey: String, tmdbId: Long, isTv: Boolean = false): String? {

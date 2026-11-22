@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.Transaction
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
@@ -31,6 +32,16 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun allowedMediaDao(): AllowedMediaDao
     abstract fun seasonalDao(): SeasonalDao
     abstract fun collectionDao(): CollectionDao
+
+    /** Limpia todo el catálogo en una sola transacción: nunca se ve un estado a medias. */
+    @Transaction
+    suspend fun clearAllCatalogData() {
+        jellyfinDao().clearAll()
+        allowedMediaDao().clearAll()
+        homeSectionCacheDao().clearAll()
+        seasonalDao().clearAll()
+        collectionDao().clearAll()
+    }
 
     companion object {
         @Volatile
@@ -290,7 +301,8 @@ abstract class AppDatabase : RoomDatabase() {
                         MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21
                         , MIGRATION_21_22
                     )
-                    .fallbackToDestructiveMigration()
+                    // Sin fallback destructivo: una migración olvidada debe fallar en alto,
+                    // no borrar silenciosamente favoritos, progreso y catálogo del usuario.
                     .build()
                 INSTANCE = instance
                 instance

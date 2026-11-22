@@ -351,7 +351,12 @@ class MediaSyncRepository(
                         val allEntities = jellyfinDao.preserveKnownLastPlayedDates(
                             continueWatchingEntitiesToPersist(
                                 items = resumeEntities + nextUpEntities,
-                                seriesDates = seriesLastPlayedDates(resumeEntities, nextUpEntities, knownFromDb)
+                                seriesDates = seriesLastPlayedDates(
+                                    resume = resumeEntities,
+                                    nextUp = nextUpEntities,
+                                    knownFromDb = knownFromDb,
+                                    allowSyntheticPriority = false
+                                )
                             )
                         )
                         if (allEntities.isNotEmpty()) {

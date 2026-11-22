@@ -77,10 +77,15 @@ class MediaRepository(
      */
     suspend fun clearLocalCatalog() {
         withContext(Dispatchers.IO) {
-            jellyfinDao.clearAll()
-            allowedMediaDao?.clearAll()
-            appDatabase?.homeSectionCacheDao()?.clearAll()
-            appDatabase?.seasonalDao()?.clearAll()
+            if (appDatabase != null) {
+                appDatabase.clearAllCatalogData()
+            } else {
+                jellyfinDao.clearAll()
+                allowedMediaDao?.clearAll()
+                appDatabase?.homeSectionCacheDao()?.clearAll()
+                appDatabase?.seasonalDao()?.clearAll()
+                appDatabase?.collectionDao()?.clearAll()
+            }
             accessPolicy.resetCaches()
 
             appContext?.filesDir?.listFiles()?.forEach { file ->

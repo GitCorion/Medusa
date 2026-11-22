@@ -84,7 +84,9 @@ internal fun seriesLastPlayedDates(
     nextUp: List<JellyfinMediaEntity>,
     knownFromDb: Map<String, Long> = emptyMap(),
     recentlyPlayed: List<JellyfinMediaEntity> = emptyList(),
-    nowMs: Long = System.currentTimeMillis()
+    nowMs: Long = System.currentTimeMillis(),
+    /** false para las fechas que se van a persistir: "ahora" es solo una clave de ordenación. */
+    allowSyntheticPriority: Boolean = true
 ): Map<String, Long> {
     val dates = HashMap<String, Long>()
 
@@ -121,13 +123,15 @@ internal fun seriesLastPlayedDates(
     val maxResumeTime = resume.maxOfOrNull { it.lastPlayedTicks } ?: 0L
     val priorityTopTime = maxOf(nowMs, maxResumeTime + 1000L)
 
-    nextUp.forEach { item ->
-        val seriesId = item.seriesId ?: return@forEach
-        val lastPlayed = dates[seriesId] ?: 0L
-        if (item.isNewSeasonOrPremiere(lastPlayed, nowMs)) {
-            val epPremiere = item.premiereDateMs?.takeIf { it in (lastPlayed + 1)..nowMs }
-            val resolvedDate = epPremiere ?: priorityTopTime
-            dates[seriesId] = maxOf(dates[seriesId] ?: 0L, resolvedDate)
+    if (allowSyntheticPriority) {
+        nextUp.forEach { item ->
+            val seriesId = item.seriesId ?: return@forEach
+            val lastPlayed = dates[seriesId] ?: 0L
+            if (item.isNewSeasonOrPremiere(lastPlayed, nowMs)) {
+                val epPremiere = item.premiereDateMs?.takeIf { it in (lastPlayed + 1)..nowMs }
+                val resolvedDate = epPremiere ?: priorityTopTime
+                dates[seriesId] = maxOf(dates[seriesId] ?: 0L, resolvedDate)
+            }
         }
     }
 

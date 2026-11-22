@@ -2,8 +2,10 @@ package tv.medusa.app.util
 
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -60,7 +62,14 @@ class SingleFlight {
             deferred.completeExceptionally(t)
             throw t
         } finally {
-            mutex.withLock { inFlight.remove(key) }
+            // La limpieza debe ejecutarse aunque la coroutine propietaria haya sido cancelada:
+            // `mutex.withLock` es suspendible y, sin NonCancellable, la entrada quedaría colgada
+            // para siempre y todos los llamadores posteriores esperarían un deferred incompleto.
+            withContext(NonCancellable) {
+                mutex.withLock {
+                    if (inFlight[key] === deferred) inFlight.remove(key)
+                }
+            }
         }
     }
 }

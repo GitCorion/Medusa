@@ -108,10 +108,12 @@ class LocalMediaRepository(
 
     suspend fun getItemsByIds(ids: List<String>): List<JellyfinMediaEntity> {
         if (ids.isEmpty()) return emptyList()
-        return if (restrictionsActive()) {
-            jellyfinDao.getItemsByIdsRestricted(ids)
-        } else {
-            jellyfinDao.getItemsByIds(ids)
+        // SQLite admite ~999 variables: por encima, la consulta lanza y el caller
+        // devolvía un mapa vacío (Home en blanco al restaurar cachés antiguas).
+        val restricted = restrictionsActive()
+        return ids.distinct().chunked(500).flatMap { chunk ->
+            if (restricted) jellyfinDao.getItemsByIdsRestricted(chunk)
+            else jellyfinDao.getItemsByIds(chunk)
         }
     }
 

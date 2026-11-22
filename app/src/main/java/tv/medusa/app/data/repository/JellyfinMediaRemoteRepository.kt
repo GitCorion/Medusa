@@ -173,7 +173,8 @@ class JellyfinMediaRemoteRepository(
                     resume = resumeEntities,
                     nextUp = nextUpEntities,
                     recentlyPlayed = recentlyPlayedEntities,
-                    knownFromDb = knownFromDb
+                    knownFromDb = knownFromDb,
+                    allowSyntheticPriority = false
                 )
 
                 // Guardar en Room con la fecha real (propia o heredada de la serie) y sin pisar con un
@@ -185,7 +186,15 @@ class JellyfinMediaRemoteRepository(
                     jellyfinDao.insertOrUpdateAll(toPersist)
                 }
 
-                val deduplicated = mergeContinueWatching(resumeEntities, nextUpEntities, seriesDates)
+                // La fecha sintética "ahora" solo existe en memoria para ordenar NextUp al frente.
+                val displaySeriesDates = seriesLastPlayedDates(
+                    resume = resumeEntities,
+                    nextUp = nextUpEntities,
+                    recentlyPlayed = recentlyPlayedEntities,
+                    knownFromDb = knownFromDb,
+                    allowSyntheticPriority = true
+                )
+                val deduplicated = mergeContinueWatching(resumeEntities, nextUpEntities, displaySeriesDates)
                     .deduplicateMediaEntities()
                 if (deduplicated.isNotEmpty()) {
                     MediaCaches.serverContinueWatchingCache.put(cacheKey, deduplicated)
