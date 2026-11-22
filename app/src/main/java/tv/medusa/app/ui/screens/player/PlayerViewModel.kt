@@ -202,6 +202,10 @@ class PlayerViewModel @Inject constructor(
     @Volatile
     private var lastReportedPositionMs = 0L
     @Volatile
+    private var lastDispatchedPositionMs = -1L
+    @Volatile
+    private var progressJob: Job? = null
+    @Volatile
     private var lastDurationMs = 0L
 
     private var audioFallbackAttempts = 0
@@ -969,7 +973,7 @@ class PlayerViewModel @Inject constructor(
         hasReportedStart = true
         lastReportedPositionMs = positionMs
 
-        viewModelScope.launch(Dispatchers.IO) {
+        reportScope.launch {
             runCatching {
                 val api = NetworkClientFactory.createJellyfinService(jellyfinBaseUrl, JellyfinApiService::class.java)
                 val ticks = positionMs * 10_000L
@@ -1004,8 +1008,14 @@ class PlayerViewModel @Inject constructor(
 
         lastReportedPositionMs = positionMs
         if (durationMs > 0L) lastDurationMs = durationMs
+        // Coalescencia: en servidores lentos varios reportes podían terminar fuera de orden y
+        // hacer que Jellyfin retrocediera el punto de reanudación. position=0 es un reinicio
+        // legítimo (por ejemplo al cambiar de fuente del addon Catalogo) y nunca se descarta.
+        if (positionMs > 0L && lastDispatchedPositionMs >= 0L && positionMs < lastDispatchedPositionMs) return
+        progressJob?.cancel()
+        lastDispatchedPositionMs = positionMs
 
-        viewModelScope.launch(Dispatchers.IO) {
+        progressJob = reportScope.launch {
             nowPlaying?.let { item ->
                 if (positionMs > 0L && durationMs > 0L) {
                     runCatching { TvChannelManager.publishToWatchNext(appContext, item, positionMs, durationMs) }
@@ -1033,6 +1043,11 @@ class PlayerViewModel @Inject constructor(
                 Log.w("PlayerViewModel", "Failed to report PlaybackProgress: ${e.message}")
             }
         }
+    }
+
+    /** Pausa explícita con el mando: Jellyfin debe verla aunque sigamos dentro de la app. */
+    fun reportPaused(positionMs: Long) {
+        reportProgress(positionMs, isPaused = true, durationMs = lastDurationMs)
     }
 
     /**
@@ -1069,6 +1084,9 @@ class PlayerViewModel @Inject constructor(
     fun finishPlayback(positionMs: Long, durationMs: Long = 0L) {
         generationJob?.cancel()
         generationJob = null
+        // Que ningún progreso en vuelo llegue DESPUÉS del Stopped y reescriba la posición final.
+        progressJob?.cancel()
+        progressJob = null
         if (sessionFinished) return
         val itemId = currentPlayableId
         if (itemId.isBlank()) return
@@ -1154,6 +1172,8 @@ class PlayerViewModel @Inject constructor(
         super.onCleared()
         generationJob?.cancel()
         generationJob = null
+        progressJob?.cancel()
+        progressJob = null
         if (!sessionFinished && hasReportedStart && currentPlayableId.isNotBlank() && jellyfinBaseUrl.isNotBlank()) {
             finishPlayback(lastReportedPositionMs, lastDurationMs)
         }
@@ -1843,13 +1863,13 @@ class PlayerViewModel @Inject constructor(
             currentMediaSourceId = activeMediaSourceId.takeIf { it.isNotBlank() }
         )
         catalogoStreamGeneration = status.streamGeneration
-        viewModelScope.launch {
-            loadStreamUrl(
-                itemId = currentPlayableId,
-                preferredMediaSourceId = activeMediaSourceId.takeIf { it.isNotBlank() },
-                reuseSessionId = true
-            )
-        }
+        // loadStreamUrl ya cancela y reemplaza su propio loadStreamJob: un launch exterior
+        // añadía un segundo coroutine sin seguimiento en cada cambio de generación del addon.
+        loadStreamUrl(
+            itemId = currentPlayableId,
+            preferredMediaSourceId = activeMediaSourceId.takeIf { it.isNotBlank() },
+            reuseSessionId = true
+        )
     }
 }
 

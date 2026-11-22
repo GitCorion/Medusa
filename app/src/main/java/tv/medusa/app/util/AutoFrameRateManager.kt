@@ -76,6 +76,9 @@ object AutoFrameRateManager {
                     window.attributes = params
                     Log.i(TAG, "Tasa de refresco restaurada a modo original: $originalModeId")
                 }
+                // Olvidar el modo: si el usuario cambia la tasa desde los ajustes de la TV,
+                // la próxima sesión debe tomar el nuevo valor como original.
+                originalModeId = 0
             }
         } catch (t: Throwable) {
             Log.w(TAG, "Error restaurando tasa de refresco: ${t.message}")

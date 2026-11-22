@@ -173,12 +173,12 @@ class AudioGainProcessor : BaseAudioProcessor() {
         val encoding = inputAudioFormat.encoding
 
         try {
-            if (encoding == C.ENCODING_PCM_16BIT) {
-                processPcm16(inputBuffer, output, mult, night)
-            } else if (encoding == C.ENCODING_PCM_FLOAT) {
-                processPcmFloat(inputBuffer, output, mult, night)
-            } else {
-                output.put(inputBuffer)
+            when (encoding) {
+                C.ENCODING_PCM_16BIT -> processPcm16(inputBuffer, output, mult, night)
+                C.ENCODING_PCM_FLOAT -> processPcmFloat(inputBuffer, output, mult, night)
+                C.ENCODING_PCM_24BIT -> processPcm24(inputBuffer, output, mult, night)
+                C.ENCODING_PCM_32BIT -> processPcm32(inputBuffer, output, mult, night)
+                else -> output.put(inputBuffer)
             }
         } catch (_: Throwable) {
             output.clear()
@@ -269,6 +269,65 @@ class AudioGainProcessor : BaseAudioProcessor() {
         while (input.hasRemaining()) {
             output.put(input.get())
         }
+    }
+
+    /** Compresión nocturna, ganancia y limitador suave compartidos por todos los formatos. */
+    private fun shape(sample: Float, gain: Float, nightMode: Int): Float {
+        var value = sample
+        if (nightMode > 0) {
+            val absNorm = abs(value)
+            if (absNorm < 0.25f) {
+                value *= if (nightMode == 2) 1.5f else 1.25f
+            } else if (absNorm > 0.70f) {
+                val compress = if (nightMode == 2) 0.80f else 0.90f
+                value = sign(value) * (0.70f + (absNorm - 0.70f) * compress)
+            }
+        }
+        val boosted = value * gain
+        return when {
+            boosted > 0.95f -> 0.95f + (boosted - 0.95f) * 0.15f
+            boosted < -0.95f -> -0.95f + (boosted + 0.95f) * 0.15f
+            else -> boosted
+        }.coerceIn(-1.0f, 1.0f)
+    }
+
+    /** PCM de 24 bits empaquetado (3 bytes por muestra, little-endian). */
+    private fun processPcm24(
+        input: ByteBuffer,
+        output: ByteBuffer,
+        gain: Float,
+        nightMode: Int
+    ) {
+        while (input.remaining() >= 3) {
+            val b0 = input.get().toInt() and 0xFF
+            val b1 = input.get().toInt() and 0xFF
+            val b2 = input.get().toInt() and 0xFF
+            var sample = b0 or (b1 shl 8) or (b2 shl 16)
+            if (b2 and 0x80 != 0) sample = sample or (0xFF shl 24)
+            val limited = shape(sample / 8388608.0f, gain, nightMode)
+            val out = (limited * 8388607.0f).toInt().coerceIn(-8388608, 8388607)
+            output.put((out and 0xFF).toByte())
+            output.put(((out ushr 8) and 0xFF).toByte())
+            output.put(((out ushr 16) and 0xFF).toByte())
+        }
+        while (input.hasRemaining()) output.put(input.get())
+    }
+
+    /** PCM de 32 bits (4 bytes por muestra, little-endian). */
+    private fun processPcm32(
+        input: ByteBuffer,
+        output: ByteBuffer,
+        gain: Float,
+        nightMode: Int
+    ) {
+        input.order(ByteOrder.LITTLE_ENDIAN)
+        output.order(ByteOrder.LITTLE_ENDIAN)
+        while (input.remaining() >= 4) {
+            val sample = input.getInt()
+            val limited = shape(sample / 2147483648.0f, gain, nightMode)
+            output.putInt((limited * 2147483647.0f).toInt().coerceIn(Int.MIN_VALUE, Int.MAX_VALUE))
+        }
+        while (input.hasRemaining()) output.put(input.get())
     }
 }
 

@@ -471,6 +471,7 @@ private fun PlayerContent(
     onPlayNextEpisode: (NextEpisodeInfo) -> Unit = {}
 ) {
     val context = LocalContext.current
+    val playerLifecycleOwner = LocalLifecycleOwner.current
     val activity = remember(context) { context.findActivity() }
     val isProUser by viewModel.isProUser.collectAsStateWithLifecycle()
     val nightModeAudio by viewModel.nightModeAudio.collectAsStateWithLifecycle()
@@ -789,6 +790,9 @@ private fun PlayerContent(
                         isPlaying = playing
                         if (playing) {
                             viewModel.reportStart(currentPosition.coerceAtLeast(0L))
+                        } else if (playerLifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+                            // Pausa del usuario con el mando, sin salir del reproductor.
+                            viewModel.reportPaused(currentPosition.coerceAtLeast(0L))
                         }
                     }
 
@@ -1271,8 +1275,11 @@ private fun PlayerContent(
     // Posición/buffer/duración en vivo para el HUD, los banners y la cuenta atrás del siguiente
     // episodio. Sólo late mientras la UI consume esos valores; en reposo (sin overlay ni
     // marcadores) no escribe estado y, por tanto, no provoca recomposición.
-    val needsLivePosition = showOverlayControls ||
-            introMarker != null || creditsMarker != null || nextEpisode != null
+    // nextEpisode suele estar presente desde el inicio: usarlo aquí mantenía el bucle
+    // de 500 ms vivo durante toda la reproducción. Solo hace falta con HUD, scrubbing,
+    // marcadores activos del plugin o cuenta atrás del siguiente episodio visible.
+    val needsLivePosition = showOverlayControls || isScrubbing || showNextEpisodeOverlay ||
+            introMarker != null || creditsMarker != null
     LaunchedEffect(exoPlayer, needsLivePosition) {
         if (!needsLivePosition) return@LaunchedEffect
         while (isActive) {
