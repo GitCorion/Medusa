@@ -1222,9 +1222,9 @@ class PlayerViewModel @Inject constructor(
                 )
                 if (segmentsResponse.items.isNotEmpty()) {
                     for (seg in segmentsResponse.items) {
-                        // MediaSegments usa ticks; los convertimos a ms directamente
-                        val startMs = seg.startPositionTicks / 10_000L
-                        val endMs   = seg.endPositionTicks   / 10_000L
+                        // MediaSegments usa ticks; StartTicks/EndTicks (o los alias legacy).
+                        val startMs = seg.effectiveStartTicks / 10_000L
+                        val endMs   = seg.effectiveEndTicks   / 10_000L
                         if (endMs <= startMs || startMs < 0) continue
 
                         when (seg.type.trim().lowercase()) {

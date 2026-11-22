@@ -324,15 +324,25 @@ data class JellyfinIntroTimestamps(
     @SerialName("HideSkipPromptAt") val hideSkipPromptAt: Double? = null
 )
 
-// ─── Jellyfin 10.10+ Native MediaSegments API: /MediaSegments/{ItemId} ───────
+// ─── Jellyfin MediaSegments API: /MediaSegments/{ItemId} ─────────────────────
+/**
+ * El modelo real de Jellyfin (MediaBrowser.Model.MediaSegments.MediaSegmentDto) expone
+ * `StartTicks`/`EndTicks`. TheIntroDB construye exactamente ese DTO. Las variantes
+ * `StartPositionTicks` se conservan para servidores 10.10 que usaron otro nombre.
+ */
 @Serializable
 data class JellyfinMediaSegmentDto(
-    @SerialName("StartPositionTicks") val startPositionTicks: Long = 0L,
-    @SerialName("EndPositionTicks") val endPositionTicks: Long = 0L,
-    @SerialName("Type") val type: String = "", // "Intro", "Outro", "Recap", "Preview", "Commercial"
+    @SerialName("StartTicks") val startTicks: Long = 0L,
+    @SerialName("EndTicks") val endTicks: Long = 0L,
+    @SerialName("StartPositionTicks") val legacyStartTicks: Long = 0L,
+    @SerialName("EndPositionTicks") val legacyEndTicks: Long = 0L,
+    @SerialName("Type") val type: String = "", // "Intro", "Outro", "Recap", "Preview" (enum de Jellyfin)
     @SerialName("TypeIndex") val typeIndex: Int = 0,
     @SerialName("ItemId") val itemId: String? = null
-)
+) {
+    val effectiveStartTicks: Long get() = if (startTicks != 0L) startTicks else legacyStartTicks
+    val effectiveEndTicks: Long get() = if (endTicks != 0L) endTicks else legacyEndTicks
+}
 
 @Serializable
 data class JellyfinMediaSegmentsResponse(
