@@ -152,7 +152,10 @@ fun DetailScreen(
     var lastPlayedEpisodeId by rememberSaveable { mutableStateOf<String?>(null) }
     var hasRequestedInitialFocus by rememberSaveable { mutableStateOf(false) }
 
-    LaunchedEffect(uiState, lastPlayedEpisodeId) {
+    // No usar todo `uiState` como clave: cada metadato que llega robaba el foco al episodio.
+    val episodeSignature = (uiState as? DetailUiState.Success)
+        ?.episodes?.joinToString { it.id }?.hashCode() ?: 0
+    LaunchedEffect(lastPlayedEpisodeId, episodeSignature) {
         if (uiState is DetailUiState.Success) {
             val success = uiState as DetailUiState.Success
             val targetEpisodeIndex = if (lastPlayedEpisodeId != null) {

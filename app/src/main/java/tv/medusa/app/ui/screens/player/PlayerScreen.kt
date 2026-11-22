@@ -660,7 +660,8 @@ private fun PlayerContent(
         val effectiveAuth = defaultHeaders["Authorization"] ?: defaultHeaders["X-Emby-Authorization"]
         val extractorsFactory = SeekableExtractorsFactory(
             fallbackDurationMs = info.durationMs,
-            authHeader = effectiveAuth
+            authHeader = effectiveAuth,
+            trustedHost = runCatching { android.net.Uri.parse(candidates.first()).host }.getOrNull()
         )
         val mediaSourceFactory = DefaultMediaSourceFactory(resolvingDataSourceFactory, extractorsFactory)
 
@@ -753,8 +754,26 @@ private fun PlayerContent(
                 }
                 Log.i("PlayerScreen", "ExoPlayer configured (passthroughMode=$audioPassthroughMode, extMode=$extensionRendererMode)")
 
+                // Subtítulos sidecar de Jellyfin: sin esto el menú no ofrece ninguna pista
+                // externa y el usuario solo ve las incrustadas en el contenedor.
+                val subtitleConfigurations = info.subtitles.mapNotNull { sub ->
+                    val mimeType = when (sub.codec.trim().lowercase()) {
+                        "vtt", "webvtt" -> MimeTypes.TEXT_VTT
+                        "ass", "ssa" -> MimeTypes.TEXT_SSA
+                        else -> MimeTypes.APPLICATION_SUBRIP
+                    }
+                    runCatching {
+                        MediaItem.SubtitleConfiguration.Builder(android.net.Uri.parse(sub.url))
+                            .setMimeType(mimeType)
+                            .setLanguage(sub.language.ifBlank { null })
+                            .setLabel(sub.title.ifBlank { null })
+                            .setSelectionFlags(if (sub.isDefault) C.SELECTION_FLAG_DEFAULT else 0)
+                            .build()
+                    }.getOrNull()
+                }
                 val mediaItem = MediaItem.Builder()
                     .setUri(candidates.first())
+                    .setSubtitleConfigurations(subtitleConfigurations)
                     .setMediaMetadata(
                         MediaMetadata.Builder()
                             .setTitle(info.title)

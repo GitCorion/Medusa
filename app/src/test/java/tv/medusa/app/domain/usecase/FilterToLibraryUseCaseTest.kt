@@ -189,6 +189,21 @@ class FakeJellyfinDao : JellyfinDao {
         insertOrUpdate(item.copy(isFavorite = isFavorite))
     }
 
+    override suspend fun clearAllFavoriteFlags() {
+        localDb.replaceAll { it.copy(isFavorite = false) }
+    }
+
+    override suspend fun updateFavoriteStatusForIds(ids: List<String>, value: Boolean) {
+        ids.forEach { id ->
+            val item = getItemById(id) ?: return@forEach
+            insertOrUpdate(item.copy(isFavorite = value))
+        }
+    }
+
+    override suspend fun deleteByIds(ids: List<String>) {
+        localDb.removeAll { it.id in ids }
+    }
+
     override suspend fun updatePlayedStatus(itemId: String, isPlayed: Boolean) {
         val item = getItemById(itemId) ?: return
         insertOrUpdate(item.copy(isPlayed = isPlayed, playbackPositionTicks = 0L))

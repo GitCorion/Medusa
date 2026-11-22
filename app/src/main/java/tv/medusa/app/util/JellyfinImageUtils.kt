@@ -1,5 +1,6 @@
 package tv.medusa.app.util
 
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import tv.medusa.app.data.remote.ApiConfig
 import tv.medusa.app.data.local.db.JellyfinMediaEntity
 import tv.medusa.app.domain.model.MediaItem
@@ -29,7 +30,7 @@ object JellyfinImageUtils {
         quality: Int = 85
     ): String? {
         if (!imageTag.isNullOrBlank() && (imageTag.startsWith("http://") || imageTag.startsWith("https://"))) {
-            return imageTag
+            return trustedAbsolute(baseUrl, imageTag)
         }
         if (!imageTag.isNullOrBlank() && imageTag.startsWith("tmdb:")) {
             val path = imageTag.removePrefix("tmdb:")
@@ -63,7 +64,7 @@ object JellyfinImageUtils {
         quality: Int = 80
     ): String? {
         if (!imageTag.isNullOrBlank() && (imageTag.startsWith("http://") || imageTag.startsWith("https://"))) {
-            return imageTag
+            return trustedAbsolute(baseUrl, imageTag)
         }
         if (!imageTag.isNullOrBlank() && imageTag.startsWith("tmdb:")) {
             val path = imageTag.removePrefix("tmdb:")
@@ -110,7 +111,7 @@ object JellyfinImageUtils {
         quality: Int = 80
     ): String? {
         if (!imageTag.isNullOrBlank() && (imageTag.startsWith("http://") || imageTag.startsWith("https://"))) {
-            return imageTag
+            return trustedAbsolute(baseUrl, imageTag)
         }
         if (baseUrl.isBlank() || itemId.isBlank()) return null
 
@@ -145,6 +146,16 @@ object JellyfinImageUtils {
 
         val query = params.joinToString("&")
         return "$cleanBase/Items/$itemId/Images/Logo?$query"
+    }
+
+    /** Solo acepta URLs absolutas del mismo servidor configurado (esquema, host y puerto). */
+    private fun trustedAbsolute(baseUrl: String, url: String): String? {
+        val absolute = url.toHttpUrlOrNull() ?: return null
+        val base = baseUrl.toHttpUrlOrNull() ?: return null
+        return if (absolute.host.equals(base.host, ignoreCase = true) &&
+            absolute.port == base.port &&
+            absolute.scheme.equals(base.scheme, ignoreCase = true)
+        ) url else null
     }
 }
 

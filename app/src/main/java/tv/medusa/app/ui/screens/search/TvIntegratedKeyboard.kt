@@ -243,7 +243,7 @@ fun TvIntegratedKeyboard(
                     focusedContainerColor = focusColor,
                     focusedContentColor = focusContentColor,
                     disabledContainerColor = Color(0xFF10121A).copy(alpha = 0.35f),
-                    disabledContentColor = Color(0xFF475569).copy(alpha = 0.35f)
+                    disabledContentColor = Color(0xFFA39E93)
                 ),
                 border = ButtonDefaults.border(
                     border = Border.None,
@@ -300,7 +300,7 @@ fun TvIntegratedKeyboard(
                     focusedContainerColor = focusColor,
                     focusedContentColor = focusContentColor,
                     disabledContainerColor = Color(0xFF10121A).copy(alpha = 0.35f),
-                    disabledContentColor = Color(0xFF475569).copy(alpha = 0.35f)
+                    disabledContentColor = Color(0xFFA39E93)
                 ),
                 border = ButtonDefaults.border(
                     border = Border.None,
@@ -353,7 +353,7 @@ fun TvIntegratedKeyboard(
                     focusedContainerColor = focusColor,
                     focusedContentColor = focusContentColor,
                     disabledContainerColor = Color(0xFF10121A).copy(alpha = 0.35f),
-                    disabledContentColor = Color(0xFF475569).copy(alpha = 0.35f)
+                    disabledContentColor = Color(0xFFA39E93)
                 ),
                 border = ButtonDefaults.border(
                     border = Border.None,
@@ -429,7 +429,7 @@ private fun TvKeyButton(
             focusedContainerColor = focusColor,
             focusedContentColor = focusContentColor,
             disabledContainerColor = Color(0xFF0F111A).copy(alpha = 0.20f),
-            disabledContentColor = Color(0xFF334155).copy(alpha = 0.20f)
+            disabledContentColor = Color(0xFF827D73)
         ),
         border = ButtonDefaults.border(
             border = Border(

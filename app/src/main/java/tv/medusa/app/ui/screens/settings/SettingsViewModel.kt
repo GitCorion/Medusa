@@ -33,6 +33,7 @@ import tv.medusa.app.data.local.BUTTON_STYLE_ICONS_ONLY
 import tv.medusa.app.data.local.DEFAULT_TRAKT_CLIENT_ID
 import tv.medusa.app.data.local.DEFAULT_TRAKT_CLIENT_SECRET
 import tv.medusa.app.data.local.UserPreferencesRepository
+import tv.medusa.app.data.local.HomeSnapshotFileStore
 import tv.medusa.app.data.repository.MediaCaches
 import tv.medusa.app.data.remote.ApiConfig
 import tv.medusa.app.data.remote.NetworkClientFactory
@@ -742,6 +743,7 @@ class SettingsViewModel @Inject constructor(
         GenreViewModel.clearAllCaches()
         BrandViewModel.clearCache()
         GetHomeFeedUseCase.clearMemorySnapshot()
+        runCatching { HomeSnapshotFileStore(context).clear() }
         runCatching { database.collectionDao().clearAll() }
         return true
     }
@@ -762,6 +764,7 @@ class SettingsViewModel @Inject constructor(
         GenreViewModel.clearAllCaches()
         BrandViewModel.clearCache()
         GetHomeFeedUseCase.clearMemorySnapshot()
+        runCatching { HomeSnapshotFileStore(context).clear() }
         runCatching { database.collectionDao().clearAll() }
     }
 

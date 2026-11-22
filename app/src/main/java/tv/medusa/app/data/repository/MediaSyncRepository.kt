@@ -538,6 +538,8 @@ class MediaSyncRepository(
                         var deltaOffset = 0
                         var deltaTotal = 0
                         var deltaPages = 0
+                        // Una sola lectura de la caché de sinopsis por vista, no por página.
+                        val cachedOverviews = jellyfinDao.getCachedOverviews().associateBy { it.id }
                         do {
                             val deltaResponse = runCatching {
                                 try {
@@ -580,7 +582,6 @@ class MediaSyncRepository(
                             }
                             val deltaItems = deltaResponse?.items ?: emptyList()
                             if (deltaItems.isNotEmpty()) {
-                                val cachedOverviews = jellyfinDao.getCachedOverviews().associateBy { it.id }
                                 val entities = deltaItems.map { dto ->
                                     val entity = dto.toEntity()
                                     val cached = cachedOverviews[entity.id]

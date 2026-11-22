@@ -7,11 +7,9 @@ package tv.medusa.app.domain.model
  * (build debug, CPU A35). Este formato separado por caracteres de control se parsea con
  * `split` y evita reflexión/objetos intermedios: el objetivo es pintar la Home en <100 ms.
  *
- * Formato:
- * - campos separados por `\u001F`
- * - tarjetas separadas por `\u001E`
- * - nulos/ausentes = cadena vacía
- * - booleanos = `1` / `0`
+ * Formato v2 (los registros antiguos de 19 campos siguen siendo válidos):
+ * - campos separados por `\u001F`, tarjetas por `\u001E`
+ * - los caracteres de control dentro de textos se sustituyen por espacios al codificar
  */
 object MediaItemSnapshotCodec {
     private const val FIELD = '\u001F'
@@ -45,6 +43,7 @@ object MediaItemSnapshotCodec {
             appendField(sb, item.trailerUrl)
             appendField(sb, item.seriesId)
             appendField(sb, item.seriesName)
+            appendField(sb, item.premiereDateMs?.toString())
         }
         return sb.toString()
     }
@@ -77,7 +76,8 @@ object MediaItemSnapshotCodec {
                     playedEpisodes = f[15].toIntOrNull(),
                     trailerUrl = f[16].ifBlank { null },
                     seriesId = f[17].ifBlank { null },
-                    seriesName = f[18].ifBlank { null }
+                    seriesName = f[18].ifBlank { null },
+                    premiereDateMs = f.getOrNull(19)?.toLongOrNull()
                 )
             )
         }
@@ -85,7 +85,11 @@ object MediaItemSnapshotCodec {
     }
 
     private fun appendField(sb: StringBuilder, value: String?) {
-        if (value != null) sb.append(value)
+        if (value != null) {
+            for (char in value) {
+                sb.append(if (char.code < 0x20) ' ' else char)
+            }
+        }
         sb.append(FIELD)
     }
 }

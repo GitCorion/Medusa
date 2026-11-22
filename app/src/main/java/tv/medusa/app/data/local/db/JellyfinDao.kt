@@ -811,6 +811,17 @@ interface JellyfinDao {
     @Query("DELETE FROM jellyfin_media")
     suspend fun clearAll()
 
+    /** Quita todas las marcas de favorito antes de aplicar el conjunto autoritativo del servidor. */
+    @Query("UPDATE jellyfin_media SET isFavorite = 0 WHERE isFavorite = 1")
+    suspend fun clearAllFavoriteFlags()
+
+    @Query("UPDATE jellyfin_media SET isFavorite = :value WHERE id IN (:ids)")
+    suspend fun updateFavoriteStatusForIds(ids: List<String>, value: Boolean)
+
+    /** Borra de la caché los ítems eliminados en el servidor (por tandas desde el repositorio). */
+    @Query("DELETE FROM jellyfin_media WHERE id IN (:ids)")
+    suspend fun deleteByIds(ids: List<String>)
+
     @Query("SELECT id, overview, backdropImageTag FROM jellyfin_media WHERE overview IS NOT NULL")
     suspend fun getCachedOverviews(): List<CachedOverviewDto>
 

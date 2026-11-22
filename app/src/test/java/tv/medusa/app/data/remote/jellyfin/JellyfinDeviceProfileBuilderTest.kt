@@ -85,12 +85,23 @@ class JellyfinDeviceProfileBuilderTest {
     }
 
     @Test
-    fun combineBaseUrlAndPath_keepsAbsoluteUrl() {
-        val absolute = "https://cdn.example.com/video.m3u8?token=abc"
+    fun combineBaseUrlAndPath_keepsAbsoluteUrlFromConfiguredServer() {
+        val absolute = "http://192.168.1.10:8096/Videos/42/stream?static=true"
         assertEquals(
             absolute,
             JellyfinDeviceProfileBuilder.combineBaseUrlAndPath("http://192.168.1.10:8096", absolute)
         )
+    }
+
+    @Test
+    fun combineBaseUrlAndPath_rewritesForeignAbsoluteUrl() {
+        val foreign = "https://cdn.example.com/video.m3u8?token=abc"
+        val result = JellyfinDeviceProfileBuilder.combineBaseUrlAndPath(
+            "http://192.168.1.10:8096",
+            foreign
+        )
+        // Nunca devolvemos un host ajeno: el token de Jellyfin viajaría a ese host.
+        assertEquals("http://192.168.1.10:8096/video.m3u8?token=abc", result)
     }
 
     @Test

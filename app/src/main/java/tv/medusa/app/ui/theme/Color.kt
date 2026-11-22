@@ -26,5 +26,5 @@ val PlatinumSilver = Color(0xFFE2E4E9)         // Monocromo platino de alta cost
 // =============================================================================
 val TextPrimary = Color(0xFFF7F5F0)            // Blanco marfil cálido para lectura descansada a 3m
 val TextSecondary = Color(0xFFA39E93)          // Gris pergamino cinematográfico
-val TextTertiary = Color(0xFF6B665E)           // Grafito atenuado para micro-metadatos
+val TextTertiary = Color(0xFF827D73)           // Grafito atenuado para micro-metadatos (4.9:1 sobre abismo, WCAG AA)
 val TextGold = Color(0xFFE5C07B)               // Oro suave para clasificaciones y distinciones

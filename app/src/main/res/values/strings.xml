@@ -693,6 +693,7 @@
     <string name="torrent_buffer_ready">¡Búfer listo! Iniciando reproducción…</string>
     <string name="torrent_paused">Descarga pausada; reintentando…</string>
     <string name="torrent_ready">Listo</string>
+    <string name="torrent_timeout">La preparación de la descarga ha tardado demasiado. Comprueba la fuente o inténtalo de nuevo.</string>
     <string name="torrent_error">Error al preparar el torrent</string>
     <string name="torrent_unavailable">Fuente no disponible</string>
     <string name="torrent_server_unavailable">Servidor de descargas no disponible</string>

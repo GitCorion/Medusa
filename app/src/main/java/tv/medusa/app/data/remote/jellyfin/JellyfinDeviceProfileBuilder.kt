@@ -321,7 +321,20 @@ object JellyfinDeviceProfileBuilder {
      */
     fun combineBaseUrlAndPath(baseUrl: String, pathOrUrl: String): String {
         if (pathOrUrl.startsWith("http://", ignoreCase = true) || pathOrUrl.startsWith("https://", ignoreCase = true)) {
-            return pathOrUrl
+            val base = baseUrl.toHttpUrlOrNull()
+            val absolute = pathOrUrl.toHttpUrlOrNull()
+            if (base != null && absolute != null &&
+                absolute.host.equals(base.host, ignoreCase = true) &&
+                absolute.port == base.port &&
+                absolute.scheme.equals(base.scheme, ignoreCase = true)
+            ) {
+                return pathOrUrl
+            }
+            // El servidor entregó una URL absoluta a otro host: NUNCA le enviamos el token.
+            // Conservamos solo la ruta y la resolvemos contra el servidor configurado.
+            val safePath = absolute?.encodedPath.orEmpty().ifBlank { "/" } +
+                (absolute?.query?.let { "?$it" }.orEmpty())
+            return combineBaseUrlAndPath(baseUrl, safePath)
         }
         val cleanBase = baseUrl.trimEnd('/')
         val cleanPath = if (pathOrUrl.startsWith("/")) pathOrUrl else "/$pathOrUrl"

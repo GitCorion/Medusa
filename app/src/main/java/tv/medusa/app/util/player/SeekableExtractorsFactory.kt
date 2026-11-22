@@ -32,6 +32,7 @@ import tv.medusa.app.data.remote.NetworkClientFactory
 class SeekableExtractorsFactory(
     private val fallbackDurationMs: Long = 0L,
     private val authHeader: String? = null,
+    private val trustedHost: String? = null,
     private val okHttpClient: OkHttpClient = NetworkClientFactory.okHttpClient
 ) : ExtractorsFactory {
 
@@ -54,6 +55,7 @@ class SeekableExtractorsFactory(
             fallbackDurationMs = fallbackDurationMs,
             streamUrl = streamUrl,
             authHeader = authHeader,
+            trustedHost = trustedHost,
             okHttpClient = okHttpClient,
             backgroundScope = backgroundScope
         )
@@ -64,6 +66,7 @@ class SeekableExtractorsFactory(
         private val fallbackDurationMs: Long,
         private val streamUrl: String?,
         private val authHeader: String?,
+        private val trustedHost: String?,
         private val okHttpClient: OkHttpClient,
         private val backgroundScope: CoroutineScope
     ) : Extractor {
@@ -72,6 +75,7 @@ class SeekableExtractorsFactory(
         private var reportedSeekMap: SeekMap? = null
         private var currentOutput: ExtractorOutput? = null
         private var cuesFetchAttempted = false
+        private var isReleased = false
 
         override fun sniff(input: ExtractorInput): Boolean = delegate.sniff(input)
 
@@ -134,6 +138,8 @@ class SeekableExtractorsFactory(
         }
 
         override fun release() {
+            isReleased = true
+            currentOutput = null
             delegate.release()
         }
 
@@ -152,7 +158,11 @@ class SeekableExtractorsFactory(
                         .url(streamUrl)
                         .header("Range", "bytes=$startOffset-$endOffset")
 
-                    if (!authHeader.isNullOrBlank()) {
+                    // Nunca enviar credenciales a un host distinto al del stream original.
+                    val requestHost = reqBuilder.build().url.host
+                    if (!authHeader.isNullOrBlank() &&
+                        (trustedHost.isNullOrBlank() || requestHost.equals(trustedHost, ignoreCase = true))
+                    ) {
                         reqBuilder.header("Authorization", authHeader)
                         reqBuilder.header("X-Emby-Authorization", authHeader)
                     }
@@ -167,7 +177,7 @@ class SeekableExtractorsFactory(
                                 segmentDataOffset = 52L,
                                 totalDurationUs = durationUs
                             )
-                            if (chunkIndex != null) {
+                            if (chunkIndex != null && !isReleased) {
                                 currentOutput?.let { out ->
                                     Log.i("SeekableExtractor", "SeekMap actualizado a ChunkIndex con tabla Cues exacta de EOF")
                                     out.seekMap(chunkIndex)

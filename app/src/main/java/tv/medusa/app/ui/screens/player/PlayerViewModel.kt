@@ -94,6 +94,8 @@ data class PlayerStreamInfo(
     val isStrm: Boolean = false
 )
 
+private const val TORRENT_PREP_TIMEOUT_MS = 15L * 60 * 1000
+
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
     @ApplicationContext private val appContext: Context,
@@ -1581,9 +1583,20 @@ class PlayerViewModel @Inject constructor(
             return false
         }
 
-        // 4. Polling cada 1.5 s
+        // 4. Polling cada 1.5 s, con límite total para no dejar la UI colgada para siempre.
+        var elapsedMs = 0L
         while (coroutineContext.isActive) {
             delay(1500L)
+            elapsedMs += 1500L
+            if (elapsedMs >= TORRENT_PREP_TIMEOUT_MS) {
+                val message = appContext.getString(R.string.torrent_timeout)
+                _torrentOverlayState.value = _torrentOverlayState.value?.copy(
+                    isError = true,
+                    statusText = message,
+                    errorMessage = message
+                )
+                return false
+            }
 
             val pollRes = runCatching { api.getCatalogoStatus(authHeader = authHeader, itemId = playableId, releaseId = effectiveReleaseId) }.getOrNull()
             if (pollRes == null) {

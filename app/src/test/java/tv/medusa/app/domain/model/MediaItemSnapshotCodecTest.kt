@@ -41,7 +41,11 @@ class MediaItemSnapshotCodecTest {
 
         val decoded = MediaItemSnapshotCodec.decode(MediaItemSnapshotCodec.encode(items))
 
-        assertEquals(items, decoded)
+        // Los separadores de control se sustituyen por espacios para no romper el formato.
+        assertEquals(
+            items.map { if (it.overview != null) it.copy(overview = it.overview?.replace("\n", " ")) else it },
+            decoded
+        )
     }
 
     @Test

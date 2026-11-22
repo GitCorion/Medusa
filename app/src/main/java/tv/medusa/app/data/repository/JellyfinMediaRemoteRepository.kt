@@ -202,7 +202,7 @@ class JellyfinMediaRemoteRepository(
             val response = api.getNextUpItems(authHeader = authHeader, userId = userId)
             val entities = response.items.map { it.toEntity() }
             if (entities.isNotEmpty()) {
-                jellyfinDao.insertOrUpdateAll(entities)
+                jellyfinDao.insertOrUpdateAll(jellyfinDao.preserveKnownLastPlayedDates(entities))
             }
             entities.deduplicateMediaEntities()
         }
@@ -229,7 +229,7 @@ class JellyfinMediaRemoteRepository(
             val response = api.getLatestItems(authHeader = authHeader, userId = userId)
             val entities = response.map { it.toEntity() }
             if (entities.isNotEmpty()) {
-                jellyfinDao.insertOrUpdateAll(entities)
+                jellyfinDao.insertOrUpdateAll(jellyfinDao.preserveKnownLastPlayedDates(entities))
             }
             val deduplicated = entities.deduplicateMediaEntities()
             if (deduplicated.isNotEmpty()) {
@@ -308,7 +308,7 @@ class JellyfinMediaRemoteRepository(
             val response = api.getRecentlyPlayedItems(authHeader = authHeader, userId = userId)
             val entities = response.items.map { it.toEntity() }
             if (entities.isNotEmpty()) {
-                jellyfinDao.insertOrUpdateAll(entities)
+                jellyfinDao.insertOrUpdateAll(jellyfinDao.preserveKnownLastPlayedDates(entities))
                 MediaCaches.serverRecentlyPlayedCache.put(cacheKey, entities)
             }
             entities
@@ -345,14 +345,22 @@ class JellyfinMediaRemoteRepository(
                 }
 
                 val entities = allFavoriteDtos.map { it.toEntity().copy(isFavorite = true) }
+                // Reconciliación: quitar la marca a lo que ya no es favorito en el servidor.
+                // Una lista vacía es un estado válido (el usuario vació sus favoritos).
+                val episodesWithSeries = entities.filter {
+                    it.type.equals("Episode", ignoreCase = true) && !it.seriesId.isNullOrBlank()
+                }
+                val keepIds = (entities.map { it.id } + episodesWithSeries.mapNotNull { it.seriesId })
+                    .distinct()
+                    .chunked(500)
+                jellyfinDao.clearAllFavoriteFlags()
+                keepIds.forEach { jellyfinDao.updateFavoriteStatusForIds(it, true) }
                 if (entities.isNotEmpty()) {
-                    jellyfinDao.insertOrUpdateAll(entities)
+                    jellyfinDao.insertOrUpdateAll(jellyfinDao.preserveKnownLastPlayedDates(entities))
 
                     // Si hay episodios favoritos, asegurar que la serie padre también está en favoritos
-                    val episodesWithSeries = entities.filter { it.type.equals("Episode", ignoreCase = true) && !it.seriesId.isNullOrBlank() }
                     for (ep in episodesWithSeries) {
-                        val sId = ep.seriesId!!
-                        jellyfinDao.updateFavoriteStatus(sId, true)
+                        val sId = ep.seriesId ?: continue
                         if (jellyfinDao.getItemById(sId) == null) {
                             runCatching {
                                 val seriesDto = api.getItemDetail(authHeader = authHeader, userId = userId, itemId = sId)
@@ -361,6 +369,7 @@ class JellyfinMediaRemoteRepository(
                         }
                     }
                 }
+                MediaCaches.invalidateServerCaches()
                 jellyfinDao.getFavorites().deduplicateMediaEntities()
             } catch (e: Exception) {
                 Log.e("JellyfinMediaRemoteRepo", "Error fetching favorites: ${e.message}", e)
@@ -371,32 +380,29 @@ class JellyfinMediaRemoteRepository(
 
     suspend fun toggleFavorite(serverUrl: String, userId: String, token: String, itemId: String, makeFavorite: Boolean): Result<Boolean> {
         return runCatching {
-            jellyfinDao.updateFavoriteStatus(itemId, makeFavorite)
+            // Remoto primero: si falla, el estado local no se aparta del servidor.
             if (serverUrl.isNotBlank() && token.isNotBlank() && userId.isNotBlank()) {
                 val api = NetworkClientFactory.createJellyfinService(serverUrl, JellyfinApiService::class.java)
                 val authHeader = buildJellyfinAuthHeader(token = token)
-                if (makeFavorite) {
-                    api.markFavorite(authHeader, userId, itemId)
-                } else {
-                    api.unmarkFavorite(authHeader, userId, itemId)
-                }
+                if (makeFavorite) api.markFavorite(authHeader, userId, itemId)
+                else api.unmarkFavorite(authHeader, userId, itemId)
             }
+            jellyfinDao.updateFavoriteStatus(itemId, makeFavorite)
+            MediaCaches.invalidateServerCaches()
             makeFavorite
         }
     }
 
     suspend fun togglePlayed(serverUrl: String, userId: String, token: String, itemId: String, makePlayed: Boolean): Result<Boolean> {
         return runCatching {
-            jellyfinDao.updatePlayedStatus(itemId, makePlayed)
             if (serverUrl.isNotBlank() && token.isNotBlank() && userId.isNotBlank()) {
                 val api = NetworkClientFactory.createJellyfinService(serverUrl, JellyfinApiService::class.java)
                 val authHeader = buildJellyfinAuthHeader(token = token)
-                if (makePlayed) {
-                    api.markPlayed(authHeader, userId, itemId)
-                } else {
-                    api.unmarkPlayed(authHeader, userId, itemId)
-                }
+                if (makePlayed) api.markPlayed(authHeader, userId, itemId)
+                else api.unmarkPlayed(authHeader, userId, itemId)
             }
+            jellyfinDao.updatePlayedStatus(itemId, makePlayed)
+            MediaCaches.invalidateServerCaches()
             makePlayed
         }
     }

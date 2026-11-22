@@ -45,8 +45,6 @@ class GetHomeFeedUseCase(
 ) {
     private val snapshotFileStore = appContext?.let { HomeSnapshotFileStore(it) }
 
-    @Volatile private var memorySnapshot: List<HomeSection>? = null
-    @Volatile private var memorySnapshotAt: Long = 0L
     companion object {
         @Volatile
         private var cachedHomeFeed: List<HomeSection>? = null
@@ -1000,8 +998,9 @@ class GetHomeFeedUseCase(
         val dao = homeSectionCacheDao ?: return
         if (sections.isEmpty()) return
         val version = "${prefs.jellyfinLastSync}|${runCatching { mediaRepository.getLocalCount() }.getOrDefault(0)}"
+        val identity = "${prefs.jellyfinServerUrl}|${prefs.jellyfinUserId}"
         // El fichero es la vía rápida de arranque; Room queda como respaldo estructurado.
-        withContext(Dispatchers.IO) { snapshotFileStore?.write(sections) }
+        withContext(Dispatchers.IO) { snapshotFileStore?.write(sections, identity) }
         memorySnapshot = sections.toList()
         memorySnapshotAt = System.currentTimeMillis()
         runCatching {
@@ -1018,7 +1017,9 @@ class GetHomeFeedUseCase(
                         isRanked = section.isRanked,
                         sortOrder = index,
                         catalogVersion = version,
-                        payload = runCatching { MediaItemSnapshotCodec.encode(section.items) }.getOrDefault("")
+                        payload = runCatching {
+                            tv.medusa.app.util.CryptoUtils.encrypt(MediaItemSnapshotCodec.encode(section.items))
+                        }.getOrDefault("")
                     )
                 )
             }
@@ -1044,8 +1045,12 @@ class GetHomeFeedUseCase(
         previewOnly: Boolean = false
     ): Boolean {
         // Vía rápida: un único fichero, sin abrir Room ni consultar IDs aleatorios.
+        val identity = "${prefs.jellyfinServerUrl}|${prefs.jellyfinUserId}"
         val fileSections = withContext(Dispatchers.IO) {
-            snapshotFileStore?.read(if (previewOnly) 4 else Int.MAX_VALUE).orEmpty()
+            snapshotFileStore?.read(
+                maxSections = if (previewOnly) 4 else Int.MAX_VALUE,
+                expectedIdentity = identity
+            ).orEmpty()
         }
         if (fileSections.isNotEmpty()) {
             fileSections.forEach { section ->
@@ -1079,6 +1084,7 @@ class GetHomeFeedUseCase(
         val dao = homeSectionCacheDao ?: return false
         val cached = runCatching { dao.getAllSections() }.getOrDefault(emptyList())
         if (cached.isEmpty()) return false
+        val currentVersion = "${prefs.jellyfinLastSync}|${runCatching { mediaRepository.getLocalCount() }.getOrDefault(0)}"
 
         val rawPayloadEntries = mutableListOf<Pair<HomeSectionCacheEntity, String>>()
         val idFallbackEntries = mutableListOf<Pair<HomeSectionCacheEntity, List<String>>>()
@@ -1089,6 +1095,11 @@ class GetHomeFeedUseCase(
                 continue
             }
             if (entry.isExpired(HomeSectionCacheEntity.TTL_MAX_STALE)) {
+                runCatching { dao.delete(entry.sectionKey) }
+                continue
+            }
+            // El catálogo cambió (sync nueva): descartar la fila en vez de servirla 48 h.
+            if (entry.catalogVersion.isNotBlank() && entry.catalogVersion != currentVersion) {
                 runCatching { dao.delete(entry.sectionKey) }
                 continue
             }
@@ -1108,7 +1119,7 @@ class GetHomeFeedUseCase(
         // aprovecha mejor el JIT en la TV).
         val payloadEntries = withContext(Dispatchers.Default) {
             rawPayloadEntries.mapNotNull { (entry, payload) ->
-                runCatching { entry to MediaItemSnapshotCodec.decode(payload) }
+                runCatching { entry to MediaItemSnapshotCodec.decode(tv.medusa.app.util.CryptoUtils.decryptStored(payload)) }
                     .onFailure { android.util.Log.e("HomeVM", "codec fallo ${entry.title}", it) }
                     .getOrNull()
             }
