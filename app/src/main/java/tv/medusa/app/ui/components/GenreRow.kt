@@ -104,7 +104,7 @@ private fun GenreChip(
     val isMonochrome = LocalIsMonochromeTheme.current
     val accentKey = LocalAccentColor.current
     val focusColor = if (isMonochrome) Color.White else TvAccent.getColor(accentKey)
-    val focusContent = if (isMonochrome) Color(0xFF0F172A) else TvAccent.getFocusedContentColor(accentKey)
+    val focusContent = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else TvAccent.getFocusedContentColor(accentKey)
     var isFocused by remember { mutableStateOf(false) }
 
     val chipShape = RoundedCornerShape(8.dp)
@@ -123,7 +123,7 @@ private fun GenreChip(
         ),
         border = ClickableSurfaceDefaults.border(
             border = Border(
-                border = BorderStroke(0.75.dp, Color(0x22FFFFFF)),
+                border = BorderStroke(0.75.dp, tv.medusa.app.ui.theme.TvPalette.GlassRaised),
                 shape = chipShape
             ),
             focusedBorder = Border(

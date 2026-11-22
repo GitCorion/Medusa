@@ -63,7 +63,7 @@ fun FormatFilterBar(
     modifier: Modifier = Modifier
 ) {
     val focusColor = if (isMonochrome) Color.White else TvAccent.getColor(accentColorKey)
-    val focusContent = if (isMonochrome) Color(0xFF0F172A) else TvAccent.getFocusedContentColor(accentColorKey)
+    val focusContent = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else TvAccent.getFocusedContentColor(accentColorKey)
 
     val showIcons = buttonStyleKey != BUTTON_STYLE_TEXT_ONLY
     val showText = buttonStyleKey != BUTTON_STYLE_ICONS_ONLY
@@ -89,7 +89,7 @@ fun FormatFilterBar(
                 contentPadding = buttonPadding,
                 scale = ButtonDefaults.scale(scale = 1.0f, focusedScale = 1.04f),
                 colors = ButtonDefaults.colors(
-                    containerColor = if (hideWatched) (if (isMonochrome) Color(0x30FFFFFF) else focusColor.copy(alpha = 0.22f)) else Color(0x14FFFFFF),
+                    containerColor = if (hideWatched) (if (isMonochrome) Color(0x30FFFFFF) else focusColor.copy(alpha = 0.22f)) else tv.medusa.app.ui.theme.TvPalette.GlassSubtle,
                     contentColor = if (hideWatched) (if (isMonochrome) Color.White else focusColor) else Color(0xFFA39E93),
                     focusedContainerColor = focusColor,
                     focusedContentColor = focusContent
@@ -114,7 +114,7 @@ fun FormatFilterBar(
                         role = Role.Switch
                         toggleableState = ToggleableState(hideWatched)
                     }
-                    .height(34.dp)
+                    .height(48.dp)
                     .then(if (!showText) Modifier.width(38.dp) else Modifier)
             ) {
                 Row(
@@ -155,7 +155,7 @@ fun FormatFilterBar(
                 contentPadding = buttonPadding,
                 scale = ButtonDefaults.scale(scale = 1.0f, focusedScale = 1.04f),
                 colors = ButtonDefaults.colors(
-                    containerColor = if (isSelected) (if (isMonochrome) Color(0x30FFFFFF) else focusColor.copy(alpha = 0.22f)) else Color(0x14FFFFFF),
+                    containerColor = if (isSelected) (if (isMonochrome) Color(0x30FFFFFF) else focusColor.copy(alpha = 0.22f)) else tv.medusa.app.ui.theme.TvPalette.GlassSubtle,
                     contentColor = if (isSelected) (if (isMonochrome) Color.White else focusColor) else Color(0xFFA39E93),
                     focusedContainerColor = focusColor,
                     focusedContentColor = focusContent
@@ -180,7 +180,7 @@ fun FormatFilterBar(
                         role = Role.Tab
                         this.selected = isSelected
                     }
-                    .height(34.dp)
+                    .height(48.dp)
                     .then(if (!showText) Modifier.width(38.dp) else Modifier)
             ) {
                 Row(

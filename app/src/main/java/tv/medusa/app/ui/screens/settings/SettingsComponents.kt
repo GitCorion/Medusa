@@ -118,7 +118,7 @@ fun TvSettingSwitchRow(
         shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(10.dp)),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = Color.Transparent,
-            focusedContainerColor = Color(0x22FFFFFF)
+            focusedContainerColor = tv.medusa.app.ui.theme.TvPalette.GlassRaised
         ),
         border = ClickableSurfaceDefaults.border(
             border = Border.None,
@@ -148,7 +148,7 @@ fun TvSettingSwitchRow(
                     Text(
                         text = description,
                         fontSize = 12.sp,
-                        color = Color(0xFF94A3B8),
+                        color = tv.medusa.app.ui.theme.TvPalette.TextSecondaryCool,
                         lineHeight = 16.sp
                     )
                 }
@@ -156,7 +156,7 @@ fun TvSettingSwitchRow(
 
             // Switch visual de TV
             val switchTrackColor by animateColorAsState(
-                targetValue = if (checked) (if (isFocused) focusContent else focusColor) else Color(0x28FFFFFF),
+                targetValue = if (checked) (if (isFocused) focusContent else focusColor) else tv.medusa.app.ui.theme.TvPalette.GlassSelected,
                 animationSpec = tween(durationMillis = 200),
                 label = "switchTrack"
             )
@@ -180,7 +180,7 @@ fun TvSettingSwitchRow(
                         .offset(x = thumbOffset)
                         .size(20.dp)
                         .clip(CircleShape)
-                        .background(if (checked) (if (isFocused) focusColor else Color(0xFF0F172A)) else Color(0xFFCBD5E1))
+                        .background(if (checked) (if (isFocused) focusColor else tv.medusa.app.ui.theme.TvPalette.FocusInk) else tv.medusa.app.ui.theme.TvPalette.TextMuted)
                 )
             }
         }
@@ -215,7 +215,7 @@ fun TvSettingActionRow(
             shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(10.dp)),
             colors = ClickableSurfaceDefaults.colors(
                 containerColor = Color.Transparent,
-                focusedContainerColor = Color(0x22FFFFFF)
+                focusedContainerColor = tv.medusa.app.ui.theme.TvPalette.GlassRaised
             ),
             border = ClickableSurfaceDefaults.border(
                 border = Border.None,
@@ -233,7 +233,7 @@ fun TvSettingActionRow(
                     Icon(
                         imageVector = icon,
                         contentDescription = null,
-                        tint = if (isFocused) focusColor else Color(0xFF94A3B8),
+                        tint = if (isFocused) focusColor else tv.medusa.app.ui.theme.TvPalette.TextSecondaryCool,
                         modifier = Modifier
                             .size(20.dp)
                             .padding(end = 12.dp)
@@ -256,7 +256,7 @@ fun TvSettingActionRow(
                         Text(
                             text = description,
                             fontSize = 12.sp,
-                            color = Color(0xFF94A3B8),
+                            color = tv.medusa.app.ui.theme.TvPalette.TextSecondaryCool,
                             lineHeight = 16.sp
                         )
                     }
@@ -266,7 +266,7 @@ fun TvSettingActionRow(
                     Text(
                         text = value,
                         fontSize = 13.sp,
-                        color = if (isFocused) focusColor else Color(0xFF94A3B8),
+                        color = if (isFocused) focusColor else tv.medusa.app.ui.theme.TvPalette.TextSecondaryCool,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.padding(end = 6.dp)
@@ -276,7 +276,7 @@ fun TvSettingActionRow(
                 Icon(
                     imageVector = Icons.Rounded.ChevronRight,
                     contentDescription = null,
-                    tint = if (isFocused) focusColor else Color(0xFF64748B),
+                    tint = if (isFocused) focusColor else tv.medusa.app.ui.theme.TvPalette.Placeholder,
                     modifier = Modifier.size(16.dp)
                 )
             }
@@ -297,14 +297,14 @@ fun TvSettingActionRow(
                     text = title,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
-                    color = Color(0xFFCBD5E1)
+                    color = tv.medusa.app.ui.theme.TvPalette.TextMuted
                 )
                 if (!description.isNullOrBlank()) {
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = description,
                         fontSize = 12.sp,
-                        color = Color(0xFF64748B),
+                        color = tv.medusa.app.ui.theme.TvPalette.Placeholder,
                         lineHeight = 16.sp
                     )
                 }
@@ -314,7 +314,7 @@ fun TvSettingActionRow(
                 Text(
                     text = value,
                     fontSize = 13.sp,
-                    color = Color(0xFF94A3B8),
+                    color = tv.medusa.app.ui.theme.TvPalette.TextSecondaryCool,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -356,7 +356,7 @@ fun <T> TvSettingsSegmentedRow(
             Text(
                 text = description,
                 fontSize = 12.sp,
-                color = Color(0xFF94A3B8),
+                color = tv.medusa.app.ui.theme.TvPalette.TextSecondaryCool,
                 lineHeight = 16.sp
             )
         }
@@ -386,7 +386,7 @@ fun <T> TvSettingsSegmentedRow(
                     colors = ClickableSurfaceDefaults.colors(
                         containerColor = if (isSelected) (if (isMonochrome) Color(0x30FFFFFF) else focusColor.copy(alpha = 0.20f)) else Color.Transparent,
                         focusedContainerColor = focusColor,
-                        contentColor = if (isSelected) (if (isMonochrome) Color.White else focusColor) else Color(0xFFCBD5E1),
+                        contentColor = if (isSelected) (if (isMonochrome) Color.White else focusColor) else tv.medusa.app.ui.theme.TvPalette.TextMuted,
                         focusedContentColor = focusContent
                     ),
                     border = ClickableSurfaceDefaults.border(
@@ -416,7 +416,7 @@ fun <T> TvSettingsSegmentedRow(
                             text = label,
                             fontSize = 13.sp,
                             fontWeight = if (isSelected || isFocused) FontWeight.SemiBold else FontWeight.Normal,
-                            color = if (isFocused) focusContent else (if (isSelected) (if (isMonochrome) Color.White else focusColor) else Color(0xFFCBD5E1)),
+                            color = if (isFocused) focusContent else (if (isSelected) (if (isMonochrome) Color.White else focusColor) else tv.medusa.app.ui.theme.TvPalette.TextMuted),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -451,10 +451,10 @@ fun TvSubtitlePreviewBox(
             .clip(RoundedCornerShape(12.dp))
             .background(
                 Brush.verticalGradient(
-                    colors = listOf(Color(0xFF0F172A), Color(0xFF050811))
+                    colors = listOf(tv.medusa.app.ui.theme.TvPalette.FocusInk, Color(0xFF050811))
                 )
             )
-            .border(0.5.dp, Color(0x18FFFFFF), RoundedCornerShape(12.dp))
+            .border(0.5.dp, tv.medusa.app.ui.theme.TvPalette.GlassIdle, RoundedCornerShape(12.dp))
             .padding(16.dp),
         contentAlignment = Alignment.BottomCenter
     ) {

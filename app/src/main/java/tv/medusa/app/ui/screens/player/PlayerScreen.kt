@@ -96,7 +96,10 @@ import tv.medusa.app.data.local.SUBTITLE_SIZE_SMALL
 import tv.medusa.app.data.local.SUBTITLE_SIZE_NORMAL
 import tv.medusa.app.data.local.SUBTITLE_SIZE_LARGE
 import android.media.AudioFormat
+import android.app.PictureInPictureParams
+import android.content.pm.PackageManager
 import android.os.Build
+import android.util.Rational
 import androidx.media3.exoplayer.audio.AudioCapabilities
 import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
@@ -369,7 +372,7 @@ fun PlayerScreen(
     val isMonochrome by viewModel.isMonochrome.collectAsStateWithLifecycle()
     val accentColorKey by viewModel.accentColor.collectAsStateWithLifecycle()
     val focusColor = if (isMonochrome) Color.White else TvAccent.getColor(accentColorKey)
-    val focusContent = if (isMonochrome) Color(0xFF0F172A) else TvAccent.getFocusedContentColor(accentColorKey)
+    val focusContent = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else TvAccent.getFocusedContentColor(accentColorKey)
 
     // Load intro markers + next episode once stream is ready
     val introMarker by viewModel.introMarker.collectAsStateWithLifecycle()
@@ -450,7 +453,7 @@ fun PlayerScreen(
                     Text(
                         text = stringResource(R.string.player_loading),
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF94A3B8)
+                        color = tv.medusa.app.ui.theme.TvPalette.TextSecondaryCool
                     )
                 }
             }
@@ -1028,7 +1031,20 @@ private fun PlayerContent(
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
                 Lifecycle.Event.ON_PAUSE -> {
-                    if (exoPlayer.isPlaying) {
+                    // En tablets/móvil, el background entra en PiP y la reproducción continúa.
+                    // En TV no se activa: allí la app nunca se "minimiza" y el mando manda.
+                    val canUsePip = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+                        tv.medusa.app.util.DeviceUtils.isTouchDevice(context) &&
+                        context.packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE) &&
+                        activity?.isInPictureInPictureMode == false
+                    if (canUsePip && exoPlayer.isPlaying) {
+                        runCatching {
+                            val params = PictureInPictureParams.Builder()
+                                .setAspectRatio(Rational(16, 9))
+                                .build()
+                            activity?.enterPictureInPictureMode(params)
+                        }
+                    } else if (exoPlayer.isPlaying) {
                         exoPlayer.pause()
                         isPlaying = false
                         val pos = exoPlayer.currentPosition.coerceAtLeast(0L)
@@ -1846,7 +1862,7 @@ private fun PlayerContent(
                                 }
                                 .focusRequester(retryFocusRequester),
                             colors = ButtonDefaults.colors(
-                                containerColor = Color(0x22FFFFFF),
+                                containerColor = tv.medusa.app.ui.theme.TvPalette.GlassRaised,
                                 contentColor = Color.White,
                                 focusedContainerColor = focusColor,
                                 focusedContentColor = focusContent
@@ -1858,7 +1874,7 @@ private fun PlayerContent(
                             onClick = onBack,
                             modifier = Modifier.handleTouchClick { exitPlayer() },
                             colors = ButtonDefaults.colors(
-                                containerColor = Color(0x14FFFFFF),
+                                containerColor = tv.medusa.app.ui.theme.TvPalette.GlassSubtle,
                                 contentColor = Color.White,
                                 focusedContainerColor = focusColor,
                                 focusedContentColor = focusContent
@@ -1884,7 +1900,7 @@ private fun PlayerContent(
                 modifier = Modifier
                     .clip(RoundedCornerShape(16.dp))
                     .background(Color(0xF2080A14))
-                    .border(0.75.dp, if (isMonochrome) Color(0x33FFFFFF) else focusColor.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
+                    .border(0.75.dp, if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.GlassDivider else focusColor.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
                     .padding(horizontal = 18.dp, vertical = 10.dp)
             ) {
                 if (isScrubbing) {
@@ -1908,7 +1924,7 @@ private fun PlayerContent(
                             modifier = Modifier
                                 .width(1.dp)
                                 .height(14.dp)
-                                .background(Color(0x33FFFFFF))
+                                .background(tv.medusa.app.ui.theme.TvPalette.GlassDivider)
                         )
                         Text(
                             text = formatTime(scrubTargetPosition),
@@ -1975,14 +1991,14 @@ private fun PlayerContent(
                             .handleTouchClick { exitPlayer() }
                             .size(44.dp),
                         colors = ButtonDefaults.colors(
-                            containerColor = Color(0x33FFFFFF),
+                            containerColor = tv.medusa.app.ui.theme.TvPalette.GlassDivider,
                             contentColor = Color.White,
                             focusedContainerColor = focusColor,
                             focusedContentColor = focusContent
                         ),
                         shape = ButtonDefaults.shape(CircleShape),
                         border = ButtonDefaults.border(
-                            border = Border(border = BorderStroke(1.dp, Color(0x33FFFFFF)), shape = CircleShape),
+                            border = Border(border = BorderStroke(1.dp, tv.medusa.app.ui.theme.TvPalette.GlassDivider), shape = CircleShape),
                             focusedBorder = Border.None
                         )
                     ) {
@@ -2094,10 +2110,10 @@ private fun PlayerContent(
                                     contentDescription = stringResource(R.string.player_rewind_10),
                                     size = 42.dp,
                                     iconSize = 20.dp,
-                                    containerColor = Color(0x22FFFFFF),
+                                    containerColor = tv.medusa.app.ui.theme.TvPalette.GlassRaised,
                                     focusedContainerColor = if (isMonochrome) Color.White else focusColor,
                                     contentColor = Color.White,
-                                    focusedContentColor = if (isMonochrome) Color(0xFF0F172A) else focusContent,
+                                    focusedContentColor = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else focusContent,
                                     isMonochrome = isMonochrome,
                                     focusColor = focusColor,
                                     focusRequester = rewindFocusRequester,
@@ -2123,8 +2139,8 @@ private fun PlayerContent(
                                     iconSize = 26.dp,
                                     containerColor = if (isMonochrome) Color.White else focusColor,
                                     focusedContainerColor = if (isMonochrome) Color.White else focusColor,
-                                    contentColor = if (isMonochrome) Color(0xFF0F172A) else focusContent,
-                                    focusedContentColor = if (isMonochrome) Color(0xFF0F172A) else focusContent,
+                                    contentColor = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else focusContent,
+                                    focusedContentColor = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else focusContent,
                                     isMonochrome = isMonochrome,
                                     focusColor = focusColor,
                                     focusRequester = playPauseFocusRequester,
@@ -2145,10 +2161,10 @@ private fun PlayerContent(
                                     contentDescription = stringResource(R.string.player_forward_10),
                                     size = 42.dp,
                                     iconSize = 20.dp,
-                                    containerColor = Color(0x22FFFFFF),
+                                    containerColor = tv.medusa.app.ui.theme.TvPalette.GlassRaised,
                                     focusedContainerColor = if (isMonochrome) Color.White else focusColor,
                                     contentColor = Color.White,
-                                    focusedContentColor = if (isMonochrome) Color(0xFF0F172A) else focusContent,
+                                    focusedContentColor = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else focusContent,
                                     isMonochrome = isMonochrome,
                                     focusColor = focusColor,
                                     focusRequester = fastForwardFocusRequester,
@@ -2164,7 +2180,7 @@ private fun PlayerContent(
                                 // Time Indicator
                                 Text(
                                     text = "${formatTime(displayPos)} / ${formatTime(duration)}",
-                                    color = if ((isScrubbing || isProgressBarFocused) && !isMonochrome) focusColor else Color(0xFFCBD5E1),
+                                    color = if ((isScrubbing || isProgressBarFocused) && !isMonochrome) focusColor else tv.medusa.app.ui.theme.TvPalette.TextMuted,
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.SemiBold
                                 )
@@ -2488,7 +2504,7 @@ private fun SkipIntroBanner(
     label: String = "Omitir intro",
     isMonochrome: Boolean = false,
     focusColor: Color = Color.White,
-    focusContent: Color = Color(0xFF0F172A),
+    focusContent: Color = tv.medusa.app.ui.theme.TvPalette.FocusInk,
     onSkip: () -> Unit
 ) {
     val skipFocusRequester = remember { FocusRequester() }
@@ -2505,7 +2521,7 @@ private fun SkipIntroBanner(
             containerColor = Color(0xEE1A1C2E),
             focusedContainerColor = if (isMonochrome) Color.White else focusColor,
             contentColor = Color.White,
-            focusedContentColor = if (isMonochrome) Color(0xFF0F172A) else focusContent
+            focusedContentColor = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else focusContent
         ),
         border = ClickableSurfaceDefaults.border(
             border = Border(
@@ -2546,7 +2562,7 @@ private fun PostCreditsBoard(
     countdown: Int,
     isMonochrome: Boolean = false,
     focusColor: Color = Color.White,
-    focusContent: Color = Color(0xFF0F172A),
+    focusContent: Color = tv.medusa.app.ui.theme.TvPalette.FocusInk,
     onPlayNow: (NextEpisodeInfo) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -2569,7 +2585,7 @@ private fun PostCreditsBoard(
                 .width(420.dp)
                 .clip(RoundedCornerShape(22.dp))
                 .background(Color(0xF00D0F1D))
-                .border(1.5.dp, if (isMonochrome) Color(0x33FFFFFF) else focusColor.copy(alpha = 0.5f), RoundedCornerShape(22.dp))
+                .border(1.5.dp, if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.GlassDivider else focusColor.copy(alpha = 0.5f), RoundedCornerShape(22.dp))
                 .padding(20.dp)
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -2597,7 +2613,7 @@ private fun PostCreditsBoard(
                             modifier = Modifier
                                 .size(36.dp)
                                 .clip(CircleShape)
-                                .background(if (isMonochrome) Color(0x22FFFFFF) else focusColor.copy(alpha = 0.2f))
+                                .background(if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.GlassRaised else focusColor.copy(alpha = 0.2f))
                                 .border(1.5.dp, if (isMonochrome) Color.White else focusColor, CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
@@ -2622,7 +2638,7 @@ private fun PostCreditsBoard(
                             modifier = Modifier
                                 .size(width = 110.dp, height = 66.dp)
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(Color(0x33FFFFFF))
+                                .background(tv.medusa.app.ui.theme.TvPalette.GlassDivider)
                         ) {
                             AsyncImage(
                                 model = imageUrl,
@@ -2674,8 +2690,8 @@ private fun PostCreditsBoard(
                         colors = ClickableSurfaceDefaults.colors(
                             containerColor = if (isMonochrome) Color.White else focusColor,
                             focusedContainerColor = if (isMonochrome) Color(0xFFE0E7FF) else focusColor,
-                            contentColor = if (isMonochrome) Color(0xFF0F172A) else focusContent,
-                            focusedContentColor = if (isMonochrome) Color(0xFF0F172A) else focusContent
+                            contentColor = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else focusContent,
+                            focusedContentColor = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else focusContent
                         ),
                         modifier = Modifier
                             .focusRequester(playFocusRequester)
@@ -2704,7 +2720,7 @@ private fun PostCreditsBoard(
                         onClick = onDismiss,
                         shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(12.dp)),
                         colors = ClickableSurfaceDefaults.colors(
-                            containerColor = Color(0x22FFFFFF),
+                            containerColor = tv.medusa.app.ui.theme.TvPalette.GlassRaised,
                             focusedContainerColor = Color(0x44FFFFFF),
                             contentColor = Color.White,
                             focusedContentColor = Color.White
@@ -2754,11 +2770,11 @@ private fun PostCreditsBoard(
                                 containerColor = Color(0xF0111422),
                                 focusedContainerColor = if (isMonochrome) Color.White else focusColor,
                                 contentColor = Color.White,
-                                focusedContentColor = if (isMonochrome) Color(0xFF0F172A) else focusContent
+                                focusedContentColor = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else focusContent
                             ),
                             border = ClickableSurfaceDefaults.border(
                                 border = Border(
-                                    border = BorderStroke(1.dp, Color(0x33FFFFFF)),
+                                    border = BorderStroke(1.dp, tv.medusa.app.ui.theme.TvPalette.GlassDivider),
                                     shape = RoundedCornerShape(14.dp)
                                 ),
                                 focusedBorder = Border(
@@ -2779,7 +2795,7 @@ private fun PostCreditsBoard(
                                         modifier = Modifier
                                             .size(width = 48.dp, height = 48.dp)
                                             .clip(RoundedCornerShape(8.dp))
-                                            .background(Color(0x33FFFFFF))
+                                            .background(tv.medusa.app.ui.theme.TvPalette.GlassDivider)
                                     ) {
                                         AsyncImage(
                                             model = altImage,
@@ -2823,10 +2839,10 @@ private fun TvCircularIconButton(
     contentDescription: String,
     size: Dp = 44.dp,
     iconSize: Dp = 20.dp,
-    containerColor: Color = Color(0x22FFFFFF),
+    containerColor: Color = tv.medusa.app.ui.theme.TvPalette.GlassRaised,
     focusedContainerColor: Color = Color.White,
     contentColor: Color = Color.White,
-    focusedContentColor: Color = Color(0xFF0F172A),
+    focusedContentColor: Color = tv.medusa.app.ui.theme.TvPalette.FocusInk,
     isMonochrome: Boolean = false,
     focusColor: Color = Color.White,
     modifier: Modifier = Modifier,
@@ -2843,7 +2859,7 @@ private fun TvCircularIconButton(
             focusedContentColor = focusedContentColor
         ),
         border = ClickableSurfaceDefaults.border(
-            border = Border(border = BorderStroke(1.dp, Color(0x18FFFFFF)), shape = CircleShape),
+            border = Border(border = BorderStroke(1.dp, tv.medusa.app.ui.theme.TvPalette.GlassIdle), shape = CircleShape),
             focusedBorder = Border(border = BorderStroke(1.5.dp, if (isMonochrome) Color.White else focusColor), shape = CircleShape)
         ),
         modifier = modifier
@@ -2877,7 +2893,7 @@ private fun TvPillButton(
     buttonStyle: String = BUTTON_STYLE_ICONS_AND_TEXT,
     isMonochrome: Boolean = false,
     focusColor: Color = Color.White,
-    focusContent: Color = Color(0xFF0F172A),
+    focusContent: Color = tv.medusa.app.ui.theme.TvPalette.FocusInk,
     modifier: Modifier = Modifier
 ) {
     var isFocused by remember { mutableStateOf(false) }
@@ -2889,10 +2905,10 @@ private fun TvPillButton(
         shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(10.dp)),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1.05f),
         colors = ClickableSurfaceDefaults.colors(
-            containerColor = if (isSelected) (if (isMonochrome) Color(0x35FFFFFF) else focusColor.copy(alpha = 0.22f)) else Color(0x18FFFFFF),
+            containerColor = if (isSelected) (if (isMonochrome) Color(0x35FFFFFF) else focusColor.copy(alpha = 0.22f)) else tv.medusa.app.ui.theme.TvPalette.GlassIdle,
             focusedContainerColor = if (isMonochrome) Color.White else focusColor,
             contentColor = Color.White,
-            focusedContentColor = if (isMonochrome) Color(0xFF0F172A) else focusContent
+            focusedContentColor = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else focusContent
         ),
         border = ClickableSurfaceDefaults.border(
             border = Border(
@@ -2916,7 +2932,7 @@ private fun TvPillButton(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            val currentContentColor = if (isFocused) (if (isMonochrome) Color(0xFF0F172A) else focusContent) else Color.White
+            val currentContentColor = if (isFocused) (if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else focusContent) else Color.White
             if (showIcons) {
                 if (!flagEmoji.isNullOrBlank()) {
                     Text(
@@ -2978,7 +2994,7 @@ private fun PlayerCustomModalSheet(
     onClose: () -> Unit,
     isMonochrome: Boolean = false,
     focusColor: Color = Color.White,
-    focusContent: Color = Color(0xFF0F172A)
+    focusContent: Color = tv.medusa.app.ui.theme.TvPalette.FocusInk
 ) {
     val firstItemFocusRequester = remember { FocusRequester() }
 
@@ -3023,7 +3039,7 @@ private fun PlayerCustomModalSheet(
                 }
                 .border(
                     1.dp,
-                    if (isMonochrome) Color(0x22FFFFFF) else focusColor.copy(alpha = 0.25f),
+                    if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.GlassRaised else focusColor.copy(alpha = 0.25f),
                     RoundedCornerShape(topStart = 24.dp, bottomStart = 24.dp)
                 ),
             shape = RoundedCornerShape(topStart = 24.dp, bottomStart = 24.dp),
@@ -3097,10 +3113,10 @@ private fun PlayerCustomModalSheet(
                             .handleTouchClick { onClose() }
                             .size(34.dp),
                         colors = ButtonDefaults.colors(
-                            containerColor = Color(0x18FFFFFF),
+                            containerColor = tv.medusa.app.ui.theme.TvPalette.GlassIdle,
                             contentColor = Color.White,
                             focusedContainerColor = if (isMonochrome) Color.White else focusColor,
-                            focusedContentColor = if (isMonochrome) Color(0xFF0F172A) else focusContent
+                            focusedContentColor = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else focusContent
                         )
                     ) {
                         Icon(
@@ -3122,7 +3138,7 @@ private fun PlayerCustomModalSheet(
                             item {
                                 Text(
                                     text = stringResource(R.string.player_audio_tracks),
-                                    color = Color(0xFFCBD5E1),
+                                    color = tv.medusa.app.ui.theme.TvPalette.TextMuted,
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold,
                                     modifier = Modifier.padding(bottom = 2.dp)
@@ -3314,7 +3330,7 @@ private fun PlayerCustomModalSheet(
                             item {
                                 Text(
                                     text = stringResource(R.string.player_version_choose),
-                                    color = Color(0xFFCBD5E1),
+                                    color = tv.medusa.app.ui.theme.TvPalette.TextMuted,
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold,
                                     modifier = Modifier.padding(bottom = 2.dp)
@@ -3443,7 +3459,7 @@ private fun TrackOptionItem(
     buttonStyle: String = BUTTON_STYLE_ICONS_AND_TEXT,
     isMonochrome: Boolean = false,
     focusColor: Color = Color.White,
-    focusContent: Color = Color(0xFF0F172A),
+    focusContent: Color = tv.medusa.app.ui.theme.TvPalette.FocusInk,
     focusRequester: FocusRequester? = null,
     onClick: () -> Unit
 ) {
@@ -3456,13 +3472,13 @@ private fun TrackOptionItem(
         colors = ClickableSurfaceDefaults.colors(
             containerColor = if (isSelected) (if (isMonochrome) Color(0x35FFFFFF) else focusColor.copy(alpha = 0.22f)) else Color(0x12FFFFFF),
             focusedContainerColor = if (isMonochrome) Color.White else focusColor,
-            focusedContentColor = if (isMonochrome) Color(0xFF0F172A) else focusContent
+            focusedContentColor = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else focusContent
         ),
         border = ClickableSurfaceDefaults.border(
             border = Border(
                 border = BorderStroke(
                     1.dp,
-                    if (isSelected) (if (isMonochrome) Color(0x66FFFFFF) else focusColor.copy(alpha = 0.5f)) else Color(0x14FFFFFF)
+                    if (isSelected) (if (isMonochrome) Color(0x66FFFFFF) else focusColor.copy(alpha = 0.5f)) else tv.medusa.app.ui.theme.TvPalette.GlassSubtle
                 ),
                 shape = RoundedCornerShape(10.dp)
             ),
@@ -3500,14 +3516,14 @@ private fun TrackOptionItem(
                             imageVector = icon,
                             contentDescription = null,
                             modifier = Modifier.size(18.dp),
-                            tint = if (isSelected) (if (isMonochrome) Color.White else focusColor) else Color(0xFF94A3B8)
+                            tint = if (isSelected) (if (isMonochrome) Color.White else focusColor) else tv.medusa.app.ui.theme.TvPalette.TextSecondaryCool
                         )
                     } else if (fallbackIcon != null) {
                         Icon(
                             imageVector = fallbackIcon,
                             contentDescription = null,
                             modifier = Modifier.size(18.dp),
-                            tint = if (isSelected) (if (isMonochrome) Color.White else focusColor) else Color(0xFF94A3B8)
+                            tint = if (isSelected) (if (isMonochrome) Color.White else focusColor) else tv.medusa.app.ui.theme.TvPalette.TextSecondaryCool
                         )
                     }
                 }
@@ -3543,7 +3559,7 @@ private fun TvToggleOptionRow(
     onToggle: (Boolean) -> Unit,
     isMonochrome: Boolean = false,
     focusColor: Color = Color.White,
-    focusContent: Color = Color(0xFF0F172A),
+    focusContent: Color = tv.medusa.app.ui.theme.TvPalette.FocusInk,
     firstFocusRequester: FocusRequester? = null
 ) {
     val showIcons = buttonStyle != BUTTON_STYLE_TEXT_ONLY
@@ -3554,7 +3570,7 @@ private fun TvToggleOptionRow(
         shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(12.dp)),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1.02f),
         colors = ClickableSurfaceDefaults.colors(
-            containerColor = if (isChecked) (if (isMonochrome) Color(0x2EFFFFFF) else focusColor.copy(alpha = 0.20f)) else Color(0x14FFFFFF),
+            containerColor = if (isChecked) (if (isMonochrome) Color(0x2EFFFFFF) else focusColor.copy(alpha = 0.20f)) else tv.medusa.app.ui.theme.TvPalette.GlassSubtle,
             focusedContainerColor = if (isMonochrome) Color.White else focusColor,
             pressedContainerColor = if (isMonochrome) Color(0x55FFFFFF) else focusColor.copy(alpha = 0.45f)
         ),
@@ -3562,7 +3578,7 @@ private fun TvToggleOptionRow(
             border = Border(
                 border = BorderStroke(
                     1.dp,
-                    if (isChecked) (if (isMonochrome) Color(0x44FFFFFF) else focusColor.copy(alpha = 0.35f)) else Color(0x18FFFFFF)
+                    if (isChecked) (if (isMonochrome) Color(0x44FFFFFF) else focusColor.copy(alpha = 0.35f)) else tv.medusa.app.ui.theme.TvPalette.GlassIdle
                 ),
                 shape = RoundedCornerShape(12.dp)
             ),
@@ -3598,16 +3614,16 @@ private fun TvToggleOptionRow(
                         contentDescription = null,
                         modifier = Modifier.size(18.dp),
                         tint = if (isFocused) {
-                            if (isMonochrome) Color(0xFF0F172A) else focusContent
+                            if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else focusContent
                         } else if (isChecked) {
                             if (isMonochrome) Color.White else focusColor
-                        } else Color(0xFF94A3B8)
+                        } else tv.medusa.app.ui.theme.TvPalette.TextSecondaryCool
                     )
                 }
                 Column {
                     Text(
                         text = title,
-                        color = if (isFocused) (if (isMonochrome) Color(0xFF0F172A) else focusContent) else Color.White,
+                        color = if (isFocused) (if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else focusContent) else Color.White,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
@@ -3637,12 +3653,12 @@ private fun TvToggleOptionRow(
                     if (isChecked) {
                         if (isFocused) (if (isMonochrome) Color(0x660F172A) else focusContent.copy(alpha = 0.3f))
                         else (if (isMonochrome) Color.White.copy(alpha = 0.6f) else focusColor.copy(alpha = 0.7f))
-                    } else Color(0x22FFFFFF)
+                    } else tv.medusa.app.ui.theme.TvPalette.GlassRaised
                 )
             ) {
                 Text(
                     text = if (isChecked) stringResource(R.string.settings_seasonal_audio_enabled) else stringResource(R.string.player_night_mode_off),
-                    color = if (isFocused) (if (isMonochrome) Color(0xFF0F172A) else focusContent)
+                    color = if (isFocused) (if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else focusContent)
                             else if (isChecked && !isMonochrome) focusColor else Color.White,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
@@ -3694,7 +3710,7 @@ private fun TvAudioVolumeSliderRow(
         colors = ClickableSurfaceDefaults.colors(
             containerColor = if (isBoosted) {
                 if (isMonochrome) Color(0x2EFFFFFF) else focusColor.copy(alpha = 0.20f)
-            } else Color(0x14FFFFFF),
+            } else tv.medusa.app.ui.theme.TvPalette.GlassSubtle,
             focusedContainerColor = if (isMonochrome) Color(0x40FFFFFF) else focusColor.copy(alpha = 0.35f),
             pressedContainerColor = if (isMonochrome) Color(0x55FFFFFF) else focusColor.copy(alpha = 0.45f)
         ),
@@ -3704,7 +3720,7 @@ private fun TvAudioVolumeSliderRow(
                     1.dp,
                     if (isBoosted) {
                         if (isMonochrome) Color(0x44FFFFFF) else focusColor.copy(alpha = 0.35f)
-                    } else Color(0x18FFFFFF)
+                    } else tv.medusa.app.ui.theme.TvPalette.GlassIdle
                 ),
                 shape = RoundedCornerShape(10.dp)
             ),
@@ -3773,7 +3789,7 @@ private fun TvAudioVolumeSliderRow(
                             modifier = Modifier.size(18.dp),
                             tint = if (isBoosted) {
                                 if (isMonochrome) Color.White else focusColor
-                            } else Color(0xFF94A3B8)
+                            } else tv.medusa.app.ui.theme.TvPalette.TextSecondaryCool
                         )
                     }
                     Text(
@@ -3796,7 +3812,7 @@ private fun TvAudioVolumeSliderRow(
                         1.dp,
                         if (isBoosted) {
                             if (isMonochrome) Color.White.copy(alpha = 0.6f) else focusColor.copy(alpha = 0.7f)
-                        } else Color(0x22FFFFFF)
+                        } else tv.medusa.app.ui.theme.TvPalette.GlassRaised
                     )
                 ) {
                     Text(
@@ -3834,7 +3850,7 @@ private fun TvAudioVolumeSliderRow(
                         fontSize = 10.sp,
                         color = if (localDb > 0) {
                             if (isFocused) (if (isMonochrome) Color.White else focusColor) else Color.White
-                        } else Color(0x33FFFFFF)
+                        } else tv.medusa.app.ui.theme.TvPalette.GlassDivider
                     )
                 }
 
@@ -3854,7 +3870,7 @@ private fun TvAudioVolumeSliderRow(
                             .fillMaxWidth()
                             .height(6.dp)
                             .clip(RoundedCornerShape(3.dp))
-                            .background(Color(0x33FFFFFF))
+                            .background(tv.medusa.app.ui.theme.TvPalette.GlassDivider)
                     )
 
                     if (animatedFraction > 0f) {
@@ -3885,7 +3901,7 @@ private fun TvAudioVolumeSliderRow(
                             )
                             .border(
                                 1.5.dp,
-                                if (isFocused) (if (isMonochrome) Color(0xFF0F172A) else focusColor) else Color(0x99FFFFFF),
+                                if (isFocused) (if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else focusColor) else Color(0x99FFFFFF),
                                 CircleShape
                             )
                     )
@@ -3910,7 +3926,7 @@ private fun TvAudioVolumeSliderRow(
                         fontSize = 10.sp,
                         color = if (localDb < maxDb) {
                             if (isFocused) (if (isMonochrome) Color.White else focusColor) else Color.White
-                        } else Color(0x33FFFFFF)
+                        } else tv.medusa.app.ui.theme.TvPalette.GlassDivider
                     )
                 }
             }
@@ -3949,7 +3965,7 @@ private fun <T> TvSegmentedControlRow(
     onOptionSelected: (T) -> Unit,
     isMonochrome: Boolean = false,
     focusColor: Color = Color.White,
-    focusContent: Color = Color(0xFF0F172A),
+    focusContent: Color = tv.medusa.app.ui.theme.TvPalette.FocusInk,
     firstFocusRequester: FocusRequester? = null,
     modifier: Modifier = Modifier
 ) {
@@ -3960,7 +3976,7 @@ private fun <T> TvSegmentedControlRow(
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
             .background(Color(0x12FFFFFF))
-            .border(1.dp, Color(0x18FFFFFF), RoundedCornerShape(14.dp))
+            .border(1.dp, tv.medusa.app.ui.theme.TvPalette.GlassIdle, RoundedCornerShape(14.dp))
             .padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
@@ -4014,7 +4030,7 @@ private fun <T> TvSegmentedControlRow(
                             if (isMonochrome) Color(0x40FFFFFF) else focusColor.copy(alpha = 0.28f)
                         } else Color(0x12FFFFFF),
                         focusedContainerColor = if (isMonochrome) Color.White else focusColor,
-                        focusedContentColor = if (isMonochrome) Color(0xFF0F172A) else focusContent
+                        focusedContentColor = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else focusContent
                     ),
                     border = ClickableSurfaceDefaults.border(
                         border = Border(
@@ -4022,7 +4038,7 @@ private fun <T> TvSegmentedControlRow(
                                 if (isSelected) 1.5.dp else 0.5.dp,
                                 if (isSelected) {
                                     if (isMonochrome) Color(0x88FFFFFF) else focusColor.copy(alpha = 0.7f)
-                                } else Color(0x18FFFFFF)
+                                } else tv.medusa.app.ui.theme.TvPalette.GlassIdle
                             ),
                             shape = RoundedCornerShape(8.dp)
                         ),
@@ -4175,7 +4191,7 @@ private fun TvProgressBar(
                 .fillMaxWidth()
                 .height(trackHeight)
                 .clip(RoundedCornerShape(trackHeight / 2))
-                .background(Color(0x33FFFFFF))
+                .background(tv.medusa.app.ui.theme.TvPalette.GlassDivider)
                 .then(
                     if (isFocused) {
                         Modifier.border(1.dp, (if (isMonochrome) Color.White else focusColor).copy(alpha = 0.5f), RoundedCornerShape(trackHeight / 2))
@@ -4521,7 +4537,7 @@ private fun ResumePlaybackDialog(
     onStartOver: () -> Unit,
     isMonochrome: Boolean = false,
     focusColor: Color = Color.White,
-    focusContent: Color = Color(0xFF0F172A)
+    focusContent: Color = tv.medusa.app.ui.theme.TvPalette.FocusInk
 ) {
     val resumeFocusRequester = remember { FocusRequester() }
 

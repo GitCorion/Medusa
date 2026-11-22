@@ -123,6 +123,11 @@ La paleta real extraída directamente del código fuente y los temas de la app:
 - **Text Secondary** (`#94A3B8`): Gris pizarra para metadatos (año, género, temporadas) e iconos en reposo.
 - **Text Tertiary** (`#64748B`): Gris atenuado para etiquetas secundarias e indicadores.
 
+> **Tokens en código:** `ui/theme/Color.kt` define la paleta cálida de marca (marfil `#F7F5F0`,
+> pergamino `#A39E93`, grafito `#827D73`, ya en AA). `TvPalette` centraliza los neutros fríos
+> que usan los cromos de UI (cristales, `#94A3B8`, `#CBD5E1`, `#64748B`). Los valores de arriba
+> son la referencia visual; donde difieran, manda `Color.kt`/`TvPalette`, que es lo que renderiza.
+
 ## Typography
 
 Tipografía nativa del sistema (Inter / Roboto) renderizada con contraste nítido para 1080p y 4K:

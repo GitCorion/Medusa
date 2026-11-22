@@ -157,7 +157,7 @@ fun TvIntegratedKeyboard(
     }
 
     Column(
-        modifier = modifier.width(320.dp),
+        modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(4.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -215,7 +215,7 @@ fun TvIntegratedKeyboard(
                         onClick = { onKeyClick(char) },
                         onFocused = { currentFocusedChar = char },
                         modifier = Modifier
-                            .size(width = 40.dp, height = 36.dp)
+                            .size(width = 48.dp, height = 48.dp)
                             .then(if (requester != null) Modifier.focusRequester(requester) else Modifier)
                             .then(if (isInitialTarget) Modifier.focusRequester(initialFocusRequester) else Modifier)
                     )
@@ -239,7 +239,7 @@ fun TvIntegratedKeyboard(
                 scale = ButtonDefaults.scale(focusedScale = 1.08f),
                 colors = ButtonDefaults.colors(
                     containerColor = Color(0xFF141B26),
-                    contentColor = Color(0xFFE2E8F0),
+                    contentColor = tv.medusa.app.ui.theme.TvPalette.TextSoft,
                     focusedContainerColor = focusColor,
                     focusedContentColor = focusContentColor,
                     disabledContainerColor = Color(0xFF10121A).copy(alpha = 0.35f),
@@ -253,7 +253,7 @@ fun TvIntegratedKeyboard(
                 modifier = Modifier
                     .handleTouchClick(enabled = isSpaceEnabled) { onKeyClick(' ') }
                     .weight(1.2f)
-                    .height(36.dp)
+                    .height(48.dp)
                     .focusRequester(spaceFocusRequester)
                     .focusProperties {
                         canFocus = isSpaceEnabled
@@ -296,7 +296,7 @@ fun TvIntegratedKeyboard(
                 scale = ButtonDefaults.scale(focusedScale = 1.08f),
                 colors = ButtonDefaults.colors(
                     containerColor = Color(0xFF141B26),
-                    contentColor = Color(0xFFE2E8F0),
+                    contentColor = tv.medusa.app.ui.theme.TvPalette.TextSoft,
                     focusedContainerColor = focusColor,
                     focusedContentColor = focusContentColor,
                     disabledContainerColor = Color(0xFF10121A).copy(alpha = 0.35f),
@@ -310,7 +310,7 @@ fun TvIntegratedKeyboard(
                 modifier = Modifier
                     .handleTouchClick(enabled = isBackspaceEnabled) { onBackspace() }
                     .weight(1.0f)
-                    .height(36.dp)
+                    .height(48.dp)
                     .focusRequester(backspaceFocusRequester)
                     .focusProperties {
                         canFocus = isBackspaceEnabled
@@ -349,7 +349,7 @@ fun TvIntegratedKeyboard(
                 scale = ButtonDefaults.scale(focusedScale = 1.08f),
                 colors = ButtonDefaults.colors(
                     containerColor = Color(0xFF141B26),
-                    contentColor = Color(0xFFE2E8F0),
+                    contentColor = tv.medusa.app.ui.theme.TvPalette.TextSoft,
                     focusedContainerColor = focusColor,
                     focusedContentColor = focusContentColor,
                     disabledContainerColor = Color(0xFF10121A).copy(alpha = 0.35f),
@@ -363,7 +363,7 @@ fun TvIntegratedKeyboard(
                 modifier = Modifier
                     .handleTouchClick(enabled = isClearEnabled) { onClear() }
                     .weight(0.9f)
-                    .height(36.dp)
+                    .height(48.dp)
                     .focusRequester(clearFocusRequester)
                     .focusProperties {
                         canFocus = isClearEnabled
@@ -455,7 +455,7 @@ private fun TvKeyButton(
             .alpha(if (isEnabled) 1f else 0.12f)
     ) {
         Box(
-            modifier = Modifier.size(width = 40.dp, height = 36.dp),
+            modifier = Modifier.size(width = 48.dp, height = 48.dp),
             contentAlignment = Alignment.Center
         ) {
             Text(

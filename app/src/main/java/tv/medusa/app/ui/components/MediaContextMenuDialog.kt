@@ -74,6 +74,7 @@ import kotlinx.coroutines.delay
 import tv.medusa.app.R
 import tv.medusa.app.domain.model.MediaItem
 import tv.medusa.app.ui.theme.TvAccent
+import tv.medusa.app.ui.theme.adaptiveDialogWidth
 import tv.medusa.app.ui.theme.TvPill
 import tv.medusa.app.ui.theme.TvRatingBadge
 import java.util.Locale
@@ -103,7 +104,7 @@ fun MediaContextMenuDialog(
 ) {
     val view = LocalView.current
     val focusColor = if (isMonochrome) Color.White else TvAccent.getColor(accentColorKey)
-    val focusContent = if (isMonochrome) Color(0xFF0F172A) else TvAccent.getFocusedContentColor(accentColorKey)
+    val focusContent = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else TvAccent.getFocusedContentColor(accentColorKey)
     val dialogOpenedTime = remember { android.os.SystemClock.uptimeMillis() }
     var hasReleasedInitialPress by remember { mutableStateOf(false) }
 
@@ -316,7 +317,7 @@ fun MediaContextMenuDialog(
         ) {
             Box(
                 modifier = Modifier
-                    .width(620.dp)
+                    .adaptiveDialogWidth(620.dp)
                     .clip(RoundedCornerShape(18.dp))
                     .background(Color(0xF2090B14))
                     .border(
@@ -399,7 +400,7 @@ fun MediaContextMenuDialog(
                             Text(
                                 text = item.seriesName,
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Color(0xFF94A3B8),
+                                color = tv.medusa.app.ui.theme.TvPalette.TextSecondaryCool,
                                 fontSize = 12.sp,
                                 textAlign = TextAlign.Center,
                                 maxLines = 1,
@@ -416,9 +417,9 @@ fun MediaContextMenuDialog(
                             if (item.year != null && item.year > 0) {
                                 TvPill(
                                     text = item.year.toString(),
-                                    containerColor = Color(0x18FFFFFF),
-                                    textColor = Color(0xFFCBD5E1),
-                                    borderColor = Color(0x22FFFFFF)
+                                    containerColor = tv.medusa.app.ui.theme.TvPalette.GlassIdle,
+                                    textColor = tv.medusa.app.ui.theme.TvPalette.TextMuted,
+                                    borderColor = tv.medusa.app.ui.theme.TvPalette.GlassRaised
                                 )
                             }
 
@@ -441,7 +442,7 @@ fun MediaContextMenuDialog(
                         Text(
                             text = stringResource(R.string.context_menu_options),
                             style = MaterialTheme.typography.labelSmall,
-                            color = Color(0xFF64748B),
+                            color = tv.medusa.app.ui.theme.TvPalette.Placeholder,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 1.sp,
                             modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)
@@ -460,14 +461,14 @@ fun MediaContextMenuDialog(
                             Button(
                                 onClick = safeActionClick,
                                 colors = ButtonDefaults.colors(
-                                    containerColor = Color(0x18FFFFFF),
+                                    containerColor = tv.medusa.app.ui.theme.TvPalette.GlassIdle,
                                     contentColor = Color.White,
                                     focusedContainerColor = focusColor,
                                     focusedContentColor = focusContent
                                 ),
                                 border = ButtonDefaults.border(
                                     border = Border(
-                                        border = BorderStroke(0.5.dp, Color(0x18FFFFFF)),
+                                        border = BorderStroke(0.5.dp, tv.medusa.app.ui.theme.TvPalette.GlassIdle),
                                         shape = RoundedCornerShape(10.dp)
                                     ),
                                     focusedBorder = Border.None

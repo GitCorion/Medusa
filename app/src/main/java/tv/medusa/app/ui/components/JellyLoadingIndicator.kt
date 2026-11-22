@@ -199,7 +199,7 @@ fun JellyLoadingIndicator(
             Text(
                 text = message,
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color(0xFFCBD5E1),
+                color = tv.medusa.app.ui.theme.TvPalette.TextMuted,
                 fontWeight = FontWeight.Medium,
                 letterSpacing = 0.5.sp
             )

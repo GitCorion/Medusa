@@ -99,7 +99,7 @@ fun FavoritesScreen(
     val buttonStyleKey by viewModel.buttonStyle.collectAsStateWithLifecycle()
     val isMonochrome = LocalIsMonochromeTheme.current
     val focusColor = if (isMonochrome) Color.White else TvAccent.getColor(accentColorKey)
-    val focusContent = if (isMonochrome) Color(0xFF0F172A) else TvAccent.getFocusedContentColor(accentColorKey)
+    val focusContent = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else TvAccent.getFocusedContentColor(accentColorKey)
 
     val showIcons = buttonStyleKey != BUTTON_STYLE_TEXT_ONLY
     val showText = buttonStyleKey != BUTTON_STYLE_ICONS_ONLY
@@ -143,7 +143,7 @@ fun FavoritesScreen(
                         Text(
                             text = stringResource(R.string.favorites_syncing),
                             style = MaterialTheme.typography.bodyLarge,
-                            color = Color(0xFFE2E8F0)
+                            color = tv.medusa.app.ui.theme.TvPalette.TextSoft
                         )
                     }
                 }
@@ -162,7 +162,7 @@ fun FavoritesScreen(
                             onClick = { viewModel.loadFavorites() },
                             modifier = Modifier.handleTouchClick { viewModel.loadFavorites() },
                             colors = ButtonDefaults.colors(
-                                containerColor = Color(0x22FFFFFF),
+                                containerColor = tv.medusa.app.ui.theme.TvPalette.GlassRaised,
                                 contentColor = Color.White,
                                 focusedContainerColor = focusColor,
                                 focusedContentColor = focusContent
@@ -218,7 +218,7 @@ fun FavoritesScreen(
                                 Icon(
                                     imageVector = Icons.Rounded.FavoriteBorder,
                                     contentDescription = null,
-                                    tint = Color(0xFF64748B),
+                                    tint = tv.medusa.app.ui.theme.TvPalette.Placeholder,
                                     modifier = Modifier.size(64.dp)
                                 )
                                 Spacer(modifier = Modifier.height(16.dp))

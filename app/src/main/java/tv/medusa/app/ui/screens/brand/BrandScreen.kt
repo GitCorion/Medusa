@@ -310,7 +310,7 @@ private fun BrandLanding(
                         Text(
                             text = stringResource(R.string.brand_no_titles_hint),
                             style = MaterialTheme.typography.bodyMedium,
-                            color = Color(0xFF94A3B8)
+                            color = tv.medusa.app.ui.theme.TvPalette.TextSecondaryCool
                         )
                         Spacer(modifier = Modifier.height(24.dp))
                         MasterFilmTrigger(
@@ -376,7 +376,7 @@ private fun BrandAllGrid(
     onLoadMore: () -> Unit
 ) {
     val focusColor = if (isMonochrome) Color.White else TvAccent.getColor(accentColorKey)
-    val focusContent = if (isMonochrome) Color(0xFF0F172A) else TvAccent.getFocusedContentColor(accentColorKey)
+    val focusContent = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else TvAccent.getFocusedContentColor(accentColorKey)
     val context = LocalContext.current
     val isTouchDevice = remember(context) { DeviceUtils.isTouchDevice(context) }
     val gridState = rememberLazyGridState()

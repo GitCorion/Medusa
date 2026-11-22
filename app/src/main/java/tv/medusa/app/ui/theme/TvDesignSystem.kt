@@ -132,8 +132,8 @@ fun TvRatingBadge(
 fun TvPill(
     text: String,
     modifier: Modifier = Modifier,
-    containerColor: Color = Color(0x18FFFFFF),
-    textColor: Color = Color(0xFFE2E8F0),
+    containerColor: Color = tv.medusa.app.ui.theme.TvPalette.GlassIdle,
+    textColor: Color = tv.medusa.app.ui.theme.TvPalette.TextSoft,
     borderColor: Color? = null,
     fontSizeSp: Int = 10,
     horizontalPadDp: Dp = TvSpacing.BadgeHorizontalPad,
@@ -217,7 +217,7 @@ fun currentFocusColor(
 fun currentFocusContentColor(
     isMonochrome: Boolean = LocalIsMonochromeTheme.current,
     accentKey: String = LocalAccentColor.current
-): Color = if (isMonochrome) Color(0xFF0F172A) else TvAccent.getFocusedContentColor(accentKey)
+): Color = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else TvAccent.getFocusedContentColor(accentKey)
 
 object TvButtonDefaults {
     @OptIn(ExperimentalTvMaterial3Api::class)
@@ -225,7 +225,7 @@ object TvButtonDefaults {
     fun primaryColors(
         focusColor: Color = currentFocusColor(),
         focusContent: Color = currentFocusContentColor(),
-        containerColor: Color = Color(0x22FFFFFF),
+        containerColor: Color = tv.medusa.app.ui.theme.TvPalette.GlassRaised,
         contentColor: Color = Color.White
     ) = androidx.tv.material3.ButtonDefaults.colors(
         containerColor = containerColor,
@@ -239,7 +239,7 @@ object TvButtonDefaults {
     fun subtleColors(
         focusColor: Color = currentFocusColor(),
         focusContent: Color = currentFocusContentColor(),
-        containerColor: Color = Color(0x14FFFFFF),
+        containerColor: Color = tv.medusa.app.ui.theme.TvPalette.GlassSubtle,
         contentColor: Color = Color.White
     ) = androidx.tv.material3.ButtonDefaults.colors(
         containerColor = containerColor,

@@ -350,7 +350,7 @@ fun HeroBanner(
         if (currentSlideState !is HeroSlideState.Empty) {
             val isMonochrome = LocalIsMonochromeTheme.current
             val focusColor = if (isMonochrome) Color.White else TvAccent.getColor(accentColor)
-            val focusContent = if (isMonochrome) Color(0xFF0F172A) else TvAccent.getFocusedContentColor(accentColor)
+            val focusContent = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else TvAccent.getFocusedContentColor(accentColor)
 
             Column(
                 modifier = Modifier
@@ -368,7 +368,7 @@ fun HeroBanner(
                                 text = stringResource(R.string.seasonal_thematic_collection),
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
-                                color = if (isMonochrome) Color(0xFF94A3B8) else Color(0xFFFDBA74),
+                                color = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.TextSecondaryCool else Color(0xFFFDBA74),
                                 letterSpacing = 1.4.sp
                             )
                             Spacer(modifier = Modifier.height(4.dp))
@@ -463,7 +463,7 @@ fun HeroBanner(
                                 lineHeight = 21.sp,
                                 letterSpacing = 0.2.sp
                             ),
-                            color = Color(0xFFCBD5E1),
+                            color = tv.medusa.app.ui.theme.TvPalette.TextMuted,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.fillMaxWidth()
@@ -539,7 +539,7 @@ fun HeroBanner(
                                     fontSize = 14.sp,
                                     lineHeight = 22.sp
                                 ),
-                                color = Color(0xFFCBD5E1),
+                                color = tv.medusa.app.ui.theme.TvPalette.TextMuted,
                                 maxLines = 3,
                                 overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.fillMaxWidth()

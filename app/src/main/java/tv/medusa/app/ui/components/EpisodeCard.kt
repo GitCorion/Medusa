@@ -69,7 +69,7 @@ fun EpisodeCard(
     val isMonochrome = LocalIsMonochromeTheme.current
     val effectiveAccent = if (accentColor.isNotBlank()) accentColor else LocalAccentColor.current
     val focusColor = if (isMonochrome) Color.White else TvAccent.getColor(effectiveAccent)
-    val focusContent = if (isMonochrome) Color(0xFF0F172A) else TvAccent.getFocusedContentColor(effectiveAccent)
+    val focusContent = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else TvAccent.getFocusedContentColor(effectiveAccent)
     var isFocused by remember { mutableStateOf(false) }
 
     val cardShape = remember { RoundedCornerShape(10.dp) }
@@ -225,7 +225,7 @@ fun EpisodeCard(
                         Icon(
                             imageVector = Icons.Rounded.PlayArrow,
                             contentDescription = stringResource(R.string.common_play),
-                            tint = Color(0xFF0F172A),
+                            tint = tv.medusa.app.ui.theme.TvPalette.FocusInk,
                             modifier = Modifier
                                 .size(22.dp)
                                 .padding(start = 2.dp) // Optical center compensation for triangle

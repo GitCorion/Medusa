@@ -199,14 +199,14 @@ fun MedusaTagPill(
 
     val containerColor = when {
         isFocused -> focusColor
-        tag.isSelected -> if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.22f)
+        tag.isSelected -> if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.GlassSelected else focusColor.copy(alpha = 0.22f)
         else -> Color(0x0EFFFFFF)
     }
 
     val contentColor = when {
         isFocused -> Color(0xFF06080D)
         tag.isSelected -> if (isMonochrome) Color.White else focusColor
-        else -> Color(0xFFCBD5E1)
+        else -> tv.medusa.app.ui.theme.TvPalette.TextMuted
     }
 
     Box(

@@ -215,7 +215,7 @@ fun DetailScreen(
                         Button(
                             onClick = onBack,
                             colors = ButtonDefaults.colors(
-                                containerColor = Color(0x22FFFFFF),
+                                containerColor = tv.medusa.app.ui.theme.TvPalette.GlassRaised,
                                 contentColor = Color.White,
                                 focusedContainerColor = errFocusColor,
                                 focusedContentColor = errFocusContent
@@ -230,7 +230,7 @@ fun DetailScreen(
             is DetailUiState.Success -> {
                 val entity = state.entity
                 val focusColor = if (isMonochrome) Color.White else TvAccent.getColor(state.accentColor)
-                val focusContent = if (isMonochrome) Color(0xFF0F172A) else TvAccent.getFocusedContentColor(state.accentColor)
+                val focusContent = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else TvAccent.getFocusedContentColor(state.accentColor)
                 val isTv = entity.type.equals("Series", ignoreCase = true) || entity.type.equals("Episode", ignoreCase = true)
                 val isTvSeries = entity.type.equals("Series", ignoreCase = true)
                 val isEpisode = entity.type.equals("Episode", ignoreCase = true)
@@ -427,10 +427,10 @@ fun DetailScreen(
                                     }
                                     if (statusLabel.isNotBlank()) {
                                         val (statusBg, statusBorder, statusText) = when {
-                                            isMonochrome -> Triple(Color(0x18FFFFFF), Color(0x22FFFFFF), Color(0xFFCBD5E1))
+                                            isMonochrome -> Triple(tv.medusa.app.ui.theme.TvPalette.GlassIdle, tv.medusa.app.ui.theme.TvPalette.GlassRaised, tv.medusa.app.ui.theme.TvPalette.TextMuted)
                                             state.seriesStatus.type == SeriesStatusType.CONTINUING -> Triple(Color(0x2010B981), Color(0x3510B981), Color(0xFF6EE7B7))
                                             state.seriesStatus.type == SeriesStatusType.CANCELED -> Triple(Color(0x20EF4444), Color(0x35EF4444), Color(0xFFFCA5A5))
-                                            else -> Triple(Color(0x18FFFFFF), Color(0x22FFFFFF), Color(0xFFCBD5E1))
+                                            else -> Triple(tv.medusa.app.ui.theme.TvPalette.GlassIdle, tv.medusa.app.ui.theme.TvPalette.GlassRaised, tv.medusa.app.ui.theme.TvPalette.TextMuted)
                                         }
                                         TvPill(
                                             text = statusLabel,
@@ -462,7 +462,7 @@ fun DetailScreen(
                                 if (hasSeriesProgress) {
                                     TvPill(
                                         text = stringResource(R.string.detail_progress, playedEps, totalEps ?: 0),
-                                        containerColor = if (isMonochrome) Color(0x22FFFFFF) else focusColor.copy(alpha = 0.16f),
+                                        containerColor = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.GlassRaised else focusColor.copy(alpha = 0.16f),
                                         textColor = if (isMonochrome) Color.White else focusColor
                                     )
                                 }
@@ -470,7 +470,7 @@ fun DetailScreen(
                                 if (hasItemProgress) {
                                     TvPill(
                                         text = stringResource(R.string.badge_in_progress),
-                                        containerColor = if (isMonochrome) Color(0x22FFFFFF) else focusColor.copy(alpha = 0.16f),
+                                        containerColor = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.GlassRaised else focusColor.copy(alpha = 0.16f),
                                         textColor = if (isMonochrome) Color.White else focusColor
                                     )
                                 }
@@ -478,16 +478,16 @@ fun DetailScreen(
                                 if (state.isFavorite) {
                                     TvPill(
                                         text = stringResource(R.string.badge_favorite),
-                                        containerColor = if (isMonochrome) Color(0x18FFFFFF) else Color(0x20F43F5E),
-                                        textColor = if (isMonochrome) Color(0xFFE2E8F0) else Color(0xFFFDA4AF)
+                                        containerColor = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.GlassIdle else Color(0x20F43F5E),
+                                        textColor = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.TextSoft else Color(0xFFFDA4AF)
                                     )
                                 }
 
                                 if (isSeriesFinished && !hasSeriesProgress && !hasItemProgress) {
                                     TvPill(
                                         text = stringResource(R.string.badge_watched),
-                                        containerColor = if (isMonochrome) Color(0x18FFFFFF) else Color(0x2010B981),
-                                        textColor = if (isMonochrome) Color(0xFFE2E8F0) else Color(0xFF6EE7B7)
+                                        containerColor = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.GlassIdle else Color(0x2010B981),
+                                        textColor = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.TextSoft else Color(0xFF6EE7B7)
                                     )
                                 }
                             }
@@ -609,7 +609,7 @@ fun DetailScreen(
                                     style = MaterialTheme.typography.bodyMedium.copy(
                                         lineHeight = 24.sp
                                     ),
-                                    color = Color(0xFFCBD5E1),
+                                    color = tv.medusa.app.ui.theme.TvPalette.TextMuted,
                                     maxLines = 5,
                                     overflow = TextOverflow.Ellipsis
                                 )
@@ -636,7 +636,7 @@ fun DetailScreen(
                                 }
                                 Text(
                                     text = stringResource(R.string.detail_seasons),
-                                    color = if (!isMonochrome) Color(0xFFCBD5E1) else Color(0xFF94A3B8),
+                                    color = if (!isMonochrome) tv.medusa.app.ui.theme.TvPalette.TextMuted else tv.medusa.app.ui.theme.TvPalette.TextSecondaryCool,
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     letterSpacing = 1.sp
@@ -660,7 +660,7 @@ fun DetailScreen(
                                         modifier = Modifier.handleTouchClick { viewModel.selectSeason(season.id) },
                                         scale = ButtonDefaults.scale(scale = 1.0f, focusedScale = 1.05f),
                                         colors = ButtonDefaults.colors(
-                                            containerColor = if (isSelected) (if (isMonochrome) Color(0x33FFFFFF) else focusColor.copy(alpha = 0.22f)) else Color(0x0EFFFFFF),
+                                            containerColor = if (isSelected) (if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.GlassDivider else focusColor.copy(alpha = 0.22f)) else Color(0x0EFFFFFF),
                                             contentColor = if (isSelected) (if (isMonochrome) Color.White else focusColor) else TextPrimary.copy(alpha = 0.75f),
                                             focusedContainerColor = focusColor,
                                             focusedContentColor = focusContent
@@ -669,7 +669,7 @@ fun DetailScreen(
                                             border = Border(
                                                 border = BorderStroke(
                                                     0.75.dp,
-                                                    if (isSelected) (if (isMonochrome) Color(0x60FFFFFF) else focusColor.copy(alpha = 0.5f)) else Color(0x18FFFFFF)
+                                                    if (isSelected) (if (isMonochrome) Color(0x60FFFFFF) else focusColor.copy(alpha = 0.5f)) else tv.medusa.app.ui.theme.TvPalette.GlassIdle
                                                 ),
                                                 shape = chipShape
                                             ),
@@ -721,14 +721,14 @@ fun DetailScreen(
                             ) {
                                 Text(
                                     text = stringResource(R.string.detail_loading_episodes),
-                                    color = Color(0xFF94A3B8),
+                                    color = tv.medusa.app.ui.theme.TvPalette.TextSecondaryCool,
                                     fontSize = 13.sp
                                 )
                             }
                         } else if (state.episodes.isEmpty()) {
                             Text(
                                 text = stringResource(R.string.detail_no_episodes),
-                                color = Color(0xFF64748B),
+                                color = tv.medusa.app.ui.theme.TvPalette.Placeholder,
                                 fontSize = 13.sp,
                                 modifier = Modifier.padding(horizontal = TvSpacing.ScreenSafeHorizontal)
                             )
@@ -821,7 +821,7 @@ fun DetailScreen(
                                 .fillMaxWidth()
                                 .padding(horizontal = TvSpacing.ScreenSafeHorizontal)
                                 .height(1.dp)
-                                .background(Color(0x18FFFFFF))
+                                .background(tv.medusa.app.ui.theme.TvPalette.GlassIdle)
                         )
                         Spacer(modifier = Modifier.height(28.dp))
 
@@ -944,7 +944,7 @@ fun DetailScreen(
                             .align(Alignment.TopStart)
                             .statusBarsPadding()
                             .padding(start = 28.dp, top = 22.dp)
-                            .size(38.dp)
+                            .size(48.dp)
                             .clip(CircleShape)
                             .background(Color(0x40000000))
                             .focusProperties { canFocus = false }

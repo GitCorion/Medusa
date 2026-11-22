@@ -43,8 +43,8 @@ fun CinemaFormatBadge(
     verticalPad: Dp = 4.dp
 ) {
     val shape = RoundedCornerShape(4.dp)
-    val bgColor = if (isHighlighted) highlightColor.copy(alpha = 0.16f) else Color(0x18FFFFFF)
-    val borderColor = if (isHighlighted) highlightColor.copy(alpha = 0.55f) else Color(0x22FFFFFF)
+    val bgColor = if (isHighlighted) highlightColor.copy(alpha = 0.16f) else tv.medusa.app.ui.theme.TvPalette.GlassIdle
+    val borderColor = if (isHighlighted) highlightColor.copy(alpha = 0.55f) else tv.medusa.app.ui.theme.TvPalette.GlassRaised
     val textColor = if (isHighlighted) highlightColor else TextPrimary
 
     Box(

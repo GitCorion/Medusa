@@ -131,7 +131,7 @@ fun HomeScreen(
     val showTopText = buttonStyleKey != BUTTON_STYLE_ICONS_ONLY
 
     val focusColor = if (isMonochrome) Color.White else TvAccent.getColor(accentColorKey)
-    val focusContent = if (isMonochrome) Color(0xFF0F172A) else TvAccent.getFocusedContentColor(accentColorKey)
+    val focusContent = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else TvAccent.getFocusedContentColor(accentColorKey)
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -230,7 +230,7 @@ fun HomeScreen(
                         Icon(
                             imageVector = Icons.Rounded.Dns,
                             contentDescription = null,
-                            tint = Color(0xFF64748B),
+                            tint = tv.medusa.app.ui.theme.TvPalette.Placeholder,
                             modifier = Modifier.size(44.dp)
                         )
                         Spacer(modifier = Modifier.height(16.dp))
@@ -247,7 +247,7 @@ fun HomeScreen(
                         Text(
                             text = stringResource(R.string.home_setup_desc),
                             style = MaterialTheme.typography.bodyMedium,
-                            color = Color(0xFF94A3B8),
+                            color = tv.medusa.app.ui.theme.TvPalette.TextSecondaryCool,
                             textAlign = TextAlign.Center,
                             modifier = Modifier.padding(horizontal = 32.dp)
                         )
@@ -270,7 +270,7 @@ fun HomeScreen(
                         Icon(
                             imageVector = Icons.Rounded.Dns,
                             contentDescription = null,
-                            tint = Color(0xFF64748B),
+                            tint = tv.medusa.app.ui.theme.TvPalette.Placeholder,
                             modifier = Modifier.size(44.dp)
                         )
                         Spacer(modifier = Modifier.height(16.dp))
@@ -287,7 +287,7 @@ fun HomeScreen(
                         Text(
                             text = stringResource(R.string.home_empty_library),
                             style = MaterialTheme.typography.bodyMedium,
-                            color = Color(0xFF94A3B8),
+                            color = tv.medusa.app.ui.theme.TvPalette.TextSecondaryCool,
                             textAlign = TextAlign.Center
                         )
                         Spacer(modifier = Modifier.height(24.dp))
@@ -314,7 +314,7 @@ fun HomeScreen(
                         Icon(
                             imageVector = Icons.Rounded.WarningAmber,
                             contentDescription = null,
-                            tint = Color(0xFFE2E8F0),
+                            tint = tv.medusa.app.ui.theme.TvPalette.TextSoft,
                             modifier = Modifier.size(48.dp)
                         )
                         Spacer(modifier = Modifier.height(12.dp))
@@ -328,7 +328,7 @@ fun HomeScreen(
                             onClick = { viewModel.loadHomeFeed() },
                             modifier = Modifier.handleTouchClick { viewModel.loadHomeFeed() },
                             colors = ButtonDefaults.colors(
-                                containerColor = Color(0x22FFFFFF),
+                                containerColor = tv.medusa.app.ui.theme.TvPalette.GlassRaised,
                                 contentColor = Color.White,
                                 focusedContainerColor = focusColor,
                                 focusedContentColor = focusContent

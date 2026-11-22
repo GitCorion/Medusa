@@ -458,7 +458,7 @@ private fun MedusaMoviesHeader(
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = "${focusedMovie.year}",
-                    color = Color(0xFF94A3B8),
+                    color = tv.medusa.app.ui.theme.TvPalette.TextSecondaryCool,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -494,7 +494,7 @@ private fun SelectedTagBadge(
     val containerColor = if (isFocused) {
         accentColor
     } else {
-        if (isMonochrome) Color(0x28FFFFFF) else accentColor.copy(alpha = 0.22f)
+        if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.GlassSelected else accentColor.copy(alpha = 0.22f)
     }
 
     val contentColor = if (isFocused) {

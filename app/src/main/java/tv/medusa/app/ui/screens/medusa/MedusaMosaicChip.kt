@@ -90,7 +90,7 @@ fun MedusaMosaicChip(
 
     val backgroundColor = when {
         isFocused -> Color(0xFF1E222D)
-        tag.isSelected -> Color(0x28FFFFFF)
+        tag.isSelected -> tv.medusa.app.ui.theme.TvPalette.GlassSelected
         else -> Color(0x10FFFFFF)
     }
 
@@ -141,7 +141,7 @@ fun MedusaMosaicChip(
                         Icon(
                             imageVector = Icons.Rounded.Check,
                             contentDescription = null,
-                            tint = Color(0xFF0F172A),
+                            tint = tv.medusa.app.ui.theme.TvPalette.FocusInk,
                             modifier = Modifier.size(12.dp)
                         )
                     }
@@ -161,7 +161,7 @@ fun MedusaMosaicChip(
                     color = when {
                         isFocused -> Color.White
                         tag.isSelected -> Color.White
-                        else -> Color(0xFFE2E8F0)
+                        else -> tv.medusa.app.ui.theme.TvPalette.TextSoft
                     },
                     fontSize = 13.sp,
                     fontWeight = if (tag.isSelected || isFocused) FontWeight.SemiBold else FontWeight.Medium,
@@ -182,7 +182,7 @@ fun MedusaMosaicChip(
             ) {
                 Text(
                     text = "${tag.movieCount}",
-                    color = if (isFocused) Color.White else Color(0xFF94A3B8),
+                    color = if (isFocused) Color.White else tv.medusa.app.ui.theme.TvPalette.TextSecondaryCool,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold,
                     fontFamily = FontFamily.SansSerif

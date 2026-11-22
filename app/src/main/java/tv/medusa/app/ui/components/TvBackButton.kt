@@ -55,7 +55,7 @@ fun TvBackButton(
 ) {
     val effectiveAccent = if (accentColorKey.isNotBlank()) accentColorKey else LocalAccentColor.current
     val focusColor = if (isMonochrome) Color.White else TvAccent.getColor(effectiveAccent)
-    val focusContent = if (isMonochrome) Color(0xFF0F172A) else TvAccent.getFocusedContentColor(effectiveAccent)
+    val focusContent = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else TvAccent.getFocusedContentColor(effectiveAccent)
 
     var isFocused by remember { mutableStateOf(false) }
 
@@ -68,15 +68,15 @@ fun TvBackButton(
             PaddingValues(horizontal = 10.dp, vertical = 6.dp)
         },
         colors = ButtonDefaults.colors(
-            containerColor = Color(0x18FFFFFF),
-            contentColor = Color(0xFFCBD5E1),
+            containerColor = tv.medusa.app.ui.theme.TvPalette.GlassIdle,
+            contentColor = tv.medusa.app.ui.theme.TvPalette.TextMuted,
             focusedContainerColor = focusColor,
             focusedContentColor = focusContent
         ),
         shape = ButtonDefaults.shape(RoundedCornerShape(10.dp)),
         border = ButtonDefaults.border(
             border = androidx.tv.material3.Border(
-                border = androidx.compose.foundation.BorderStroke(0.75.dp, Color(0x28FFFFFF)),
+                border = androidx.compose.foundation.BorderStroke(0.75.dp, tv.medusa.app.ui.theme.TvPalette.GlassSelected),
                 shape = RoundedCornerShape(10.dp)
             ),
             focusedBorder = androidx.tv.material3.Border(
@@ -85,7 +85,7 @@ fun TvBackButton(
             )
         ),
         modifier = modifier
-            .height(34.dp)
+            .height(48.dp)
             .onFocusChanged { isFocused = it.isFocused }
             .handleTouchClick { onClick() }
     ) {
@@ -96,7 +96,7 @@ fun TvBackButton(
             Icon(
                 imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                 contentDescription = stringResource(R.string.common_back),
-                tint = if (isFocused) focusContent else Color(0xFFCBD5E1),
+                tint = if (isFocused) focusContent else tv.medusa.app.ui.theme.TvPalette.TextMuted,
                 modifier = Modifier.size(16.dp)
             )
             if (showLabel) {

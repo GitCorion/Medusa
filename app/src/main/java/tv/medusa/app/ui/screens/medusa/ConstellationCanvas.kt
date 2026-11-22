@@ -865,7 +865,7 @@ private fun DrawScope.drawSunCoreNode(
     // 2. Anillo orbital primario rotatorio punteado (Disco de Acreción Exterior)
     val ringRadius1 = coreRadius * 1.65f
     val ringColor1 = if (isMonochrome) {
-        if (isFocused) Color.White else Color(0xFFE2E8F0)
+        if (isFocused) Color.White else tv.medusa.app.ui.theme.TvPalette.TextSoft
     } else {
         if (isFocused) Color(0xFF00E5FF) else (if (node.movieCount > 0) Color(0xFF38BDF8) else Color(0xFFFBBF24))
     }
@@ -906,8 +906,8 @@ private fun DrawScope.drawSunCoreNode(
     val coreColors = if (isMonochrome) {
         listOf(
             Color.White,
-            if (isFocused) Color.White else Color(0xFFCBD5E1),
-            if (isFocused) Color(0xFF94A3B8) else Color(0xFF334155)
+            if (isFocused) Color.White else tv.medusa.app.ui.theme.TvPalette.TextMuted,
+            if (isFocused) tv.medusa.app.ui.theme.TvPalette.TextSecondaryCool else Color(0xFF334155)
         )
     } else {
         if (node.movieCount > 0) {
@@ -1002,7 +1002,7 @@ private fun DrawScope.drawSunCoreNode(
 
 private fun getCategoryColor(category: String, isMonochrome: Boolean = false): Color {
     if (isMonochrome) {
-        val monoPalette = listOf(Color(0xFFE2E8F0), Color(0xFFFFFFFF), Color(0xFFCBD5E1), Color(0xFF94A3B8))
+        val monoPalette = listOf(tv.medusa.app.ui.theme.TvPalette.TextSoft, Color(0xFFFFFFFF), tv.medusa.app.ui.theme.TvPalette.TextMuted, tv.medusa.app.ui.theme.TvPalette.TextSecondaryCool)
         return monoPalette[abs(category.hashCode()) % monoPalette.size]
     }
     val palette = listOf(

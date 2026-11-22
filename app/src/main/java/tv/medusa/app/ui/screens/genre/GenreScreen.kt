@@ -197,7 +197,7 @@ private fun GenreLanding(
     onItemFocus: (MediaItem) -> Unit
 ) {
     val accentColor = if (isMonochrome) Color.White else TvAccent.getColor(accentColorKey)
-    val focusedContent = if (isMonochrome) Color(0xFF0F172A) else TvAccent.getFocusedContentColor(accentColorKey)
+    val focusedContent = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else TvAccent.getFocusedContentColor(accentColorKey)
 
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         item(key = "genre_header", contentType = "header") {
@@ -296,7 +296,7 @@ private fun GenreAllGrid(
     onDetailMedia: (String) -> Unit
 ) {
     val accentColor = if (isMonochrome) Color.White else TvAccent.getColor(accentColorKey)
-    val focusedContent = if (isMonochrome) Color(0xFF0F172A) else TvAccent.getFocusedContentColor(accentColorKey)
+    val focusedContent = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else TvAccent.getFocusedContentColor(accentColorKey)
     val context = LocalContext.current
     val isTouchDevice = remember(context) { DeviceUtils.isTouchDevice(context) }
 

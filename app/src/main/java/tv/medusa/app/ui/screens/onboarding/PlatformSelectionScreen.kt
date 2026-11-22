@@ -145,7 +145,7 @@ fun PlatformSelectionScreen(
                         modifier = Modifier.handleTouchClick { viewModel.deselectAll() },
                         colors = ButtonDefaults.colors(
                             containerColor = Color(0x1AFFFFFF),
-                            contentColor = Color(0xFF94A3B8),
+                            contentColor = tv.medusa.app.ui.theme.TvPalette.TextSecondaryCool,
                             focusedContainerColor = focusColor,
                             focusedContentColor = focusContent
                         ),
@@ -168,7 +168,7 @@ fun PlatformSelectionScreen(
             Text(
                 text = stringResource(R.string.onboarding_subtitle),
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color(0xFF94A3B8)
+                color = tv.medusa.app.ui.theme.TvPalette.TextSecondaryCool
             )
 
             Spacer(modifier = Modifier.height(20.dp))
@@ -212,7 +212,7 @@ fun PlatformSelectionScreen(
                     Text(
                         text = stringResource(R.string.onboarding_setup_label),
                         fontSize = 11.sp,
-                        color = Color(0xFF64748B),
+                        color = tv.medusa.app.ui.theme.TvPalette.Placeholder,
                         fontWeight = FontWeight.Medium
                     )
                     Text(
@@ -287,7 +287,7 @@ private fun PlatformTileCard(
                 color = when {
                     isFocused -> Color.White
                     isSelected -> Color(0xFF4F46E5)
-                    else -> Color(0x14FFFFFF)
+                    else -> tv.medusa.app.ui.theme.TvPalette.GlassSubtle
                 },
                 shape = RoundedCornerShape(14.dp)
             )

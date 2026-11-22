@@ -240,7 +240,7 @@ private fun SeasonalHeading(
             text = stringResource(R.string.seasonal_thematic_collection),
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
-            color = if (isMonochrome) Color(0xFF94A3B8) else eventAccent,
+            color = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.TextSecondaryCool else eventAccent,
             letterSpacing = 1.4.sp
         )
         Spacer(modifier = Modifier.height(4.dp))
@@ -266,7 +266,7 @@ private fun SeasonalHeading(
                 lineHeight = 22.sp
             ),
             fontSize = 14.sp,
-            color = Color(0xFFCBD5E1),
+            color = tv.medusa.app.ui.theme.TvPalette.TextMuted,
             modifier = Modifier.fillMaxWidth(0.75f)
         )
         Spacer(modifier = Modifier.height(8.dp))
@@ -275,7 +275,7 @@ private fun SeasonalHeading(
                 text = stringResource(R.string.seasonal_catalog_count, state.allCount),
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = if (isMonochrome) Color(0xFF94A3B8) else eventAccent.copy(alpha = 0.9f)
+                color = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.TextSecondaryCool else eventAccent.copy(alpha = 0.9f)
             )
             if (state.isRefreshing) {
                 Spacer(modifier = Modifier.width(12.dp))
@@ -337,10 +337,10 @@ private fun SeasonalLanding(
                     scale = ButtonDefaults.scale(focusedScale = 1.05f),
                     modifier = Modifier.handleTouchClick { onOpenAll() },
                     colors = ButtonDefaults.colors(
-                        containerColor = if (isMonochrome) Color(0x22FFFFFF) else eventAccent.copy(alpha = 0.18f),
+                        containerColor = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.GlassRaised else eventAccent.copy(alpha = 0.18f),
                         contentColor = Color.White,
                         focusedContainerColor = if (isMonochrome) Color.White else eventAccent,
-                        focusedContentColor = Color(0xFF0F172A)
+                        focusedContentColor = tv.medusa.app.ui.theme.TvPalette.FocusInk
                     ),
                     shape = ButtonDefaults.shape(RoundedCornerShape(10.dp)),
                     border = ButtonDefaults.border(
@@ -456,7 +456,7 @@ private fun SeasonalAllGrid(
                 Box(
                     modifier = Modifier
                         .height(240.dp)
-                        .background(Color(0x14FFFFFF), RoundedCornerShape(10.dp))
+                        .background(tv.medusa.app.ui.theme.TvPalette.GlassSubtle, RoundedCornerShape(10.dp))
                 )
             }
         } else {

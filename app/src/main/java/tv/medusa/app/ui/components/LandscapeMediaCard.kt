@@ -143,7 +143,7 @@ fun LandscapeMediaCard(
                     .align(Alignment.TopCenter)
                     .offset(y = 0.dp)
                     .clip(RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp))
-                    .background(if (isFocused) focusColor.copy(alpha = 0.20f) else Color(0x18FFFFFF))
+                    .background(if (isFocused) focusColor.copy(alpha = 0.20f) else tv.medusa.app.ui.theme.TvPalette.GlassIdle)
             )
 
             // Efecto Stack: Pestaña 1 (intermedia)
@@ -154,7 +154,7 @@ fun LandscapeMediaCard(
                     .align(Alignment.TopCenter)
                     .offset(y = 5.dp)
                     .clip(RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp))
-                    .background(if (isFocused) focusColor.copy(alpha = 0.35f) else Color(0x28FFFFFF))
+                    .background(if (isFocused) focusColor.copy(alpha = 0.35f) else tv.medusa.app.ui.theme.TvPalette.GlassSelected)
             )
 
             val cardShape = remember { RoundedCornerShape(10.dp) }
@@ -171,7 +171,7 @@ fun LandscapeMediaCard(
                         if (isFocused) {
                             Modifier.border(1.5.dp, focusColor, cardShape)
                         } else {
-                            Modifier.border(0.75.dp, Color(0x22FFFFFF), cardShape)
+                            Modifier.border(0.75.dp, tv.medusa.app.ui.theme.TvPalette.GlassRaised, cardShape)
                         }
                     )
             ) {

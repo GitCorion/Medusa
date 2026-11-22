@@ -211,7 +211,7 @@ fun SeasonalParticles(
                 val starColors = listOf(
                     Color(0xFFFDE047),
                     Color(0xFFFEF08A),
-                    Color(0xFFE2E8F0)
+                    tv.medusa.app.ui.theme.TvPalette.TextSoft
                 )
                 HolidayStar(
                     x = rand.nextFloat(),

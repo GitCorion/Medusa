@@ -92,13 +92,13 @@ fun CatalogSortButton(
     }
 
     val focusColor = if (isMonochrome) Color.White else TvAccent.getColor(accentColorKey)
-    val focusContent = if (isMonochrome) Color(0xFF0F172A) else TvAccent.getFocusedContentColor(accentColorKey)
+    val focusContent = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else TvAccent.getFocusedContentColor(accentColorKey)
     val isCustomSort = currentSort != CatalogSortOption.DEFAULT
 
     val contentColor = when {
         isFocused -> focusContent
         isCustomSort -> if (isMonochrome) Color.White else focusColor
-        else -> Color(0xFFE2E8F0)
+        else -> tv.medusa.app.ui.theme.TvPalette.TextSoft
     }
 
     Button(
@@ -111,7 +111,7 @@ fun CatalogSortButton(
         colors = ButtonDefaults.colors(
             containerColor = if (isCustomSort) {
                 if (isMonochrome) Color(0x30FFFFFF) else focusColor.copy(alpha = 0.22f)
-            } else Color(0x18FFFFFF),
+            } else tv.medusa.app.ui.theme.TvPalette.GlassIdle,
             contentColor = contentColor,
             focusedContainerColor = focusColor,
             focusedContentColor = focusContent
@@ -121,7 +121,7 @@ fun CatalogSortButton(
             border = if (isCustomSort && !isMonochrome) {
                 androidx.tv.material3.Border(border = BorderStroke(1.dp, focusColor.copy(alpha = 0.55f)))
             } else {
-                androidx.tv.material3.Border(border = BorderStroke(0.6.dp, Color(0x28FFFFFF)))
+                androidx.tv.material3.Border(border = BorderStroke(0.6.dp, tv.medusa.app.ui.theme.TvPalette.GlassSelected))
             },
             focusedBorder = androidx.tv.material3.Border(border = BorderStroke(1.5.dp, if (isMonochrome) Color.White else focusColor))
         ),
@@ -132,7 +132,7 @@ fun CatalogSortButton(
                 showDialog = true
             }
             .onFocusChanged { isFocused = it.isFocused }
-            .height(34.dp)
+            .height(48.dp)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -186,7 +186,7 @@ fun CatalogSortDialog(
 ) {
     val view = LocalView.current
     val focusColor = if (isMonochrome) Color.White else TvAccent.getColor(accentColorKey)
-    val focusContent = if (isMonochrome) Color(0xFF0F172A) else TvAccent.getFocusedContentColor(accentColorKey)
+    val focusContent = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else TvAccent.getFocusedContentColor(accentColorKey)
     val selectedFocusRequester = remember { FocusRequester() }
 
     LaunchedEffect(Unit) {
@@ -234,7 +234,7 @@ fun CatalogSortDialog(
                     .clip(RoundedCornerShape(18.dp))
                     .background(Color(0xF2090B14))
                     .border(
-                        border = BorderStroke(0.5.dp, Color(0x28FFFFFF)),
+                        border = BorderStroke(0.5.dp, tv.medusa.app.ui.theme.TvPalette.GlassSelected),
                         shape = RoundedCornerShape(18.dp)
                     )
                     .clickable(
@@ -269,7 +269,7 @@ fun CatalogSortDialog(
                             Text(
                                 text = stringResource(R.string.sort_dialog_subtitle),
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Color(0xFF94A3B8)
+                                color = tv.medusa.app.ui.theme.TvPalette.TextSecondaryCool
                             )
                         }
                     }
@@ -288,7 +288,7 @@ fun CatalogSortDialog(
                             val itemContentColor = when {
                                 isItemFocused -> focusContent
                                 isSelected -> if (isMonochrome) Color.White else focusColor
-                                else -> Color(0xFFE2E8F0)
+                                else -> tv.medusa.app.ui.theme.TvPalette.TextSoft
                             }
 
                             Button(
@@ -299,7 +299,7 @@ fun CatalogSortDialog(
                                 contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp),
                                 scale = ButtonDefaults.scale(scale = 1.0f, focusedScale = 1.02f),
                                 colors = ButtonDefaults.colors(
-                                    containerColor = if (isSelected) (if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.18f)) else Color(0x10FFFFFF),
+                                    containerColor = if (isSelected) (if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.GlassSelected else focusColor.copy(alpha = 0.18f)) else Color(0x10FFFFFF),
                                     contentColor = itemContentColor,
                                     focusedContainerColor = focusColor,
                                     focusedContentColor = focusContent
@@ -308,7 +308,7 @@ fun CatalogSortDialog(
                                     border = if (isSelected && !isMonochrome) {
                                         androidx.tv.material3.Border(border = BorderStroke(1.dp, focusColor.copy(alpha = 0.45f)))
                                     } else {
-                                        androidx.tv.material3.Border(border = BorderStroke(0.5.dp, Color(0x14FFFFFF)))
+                                        androidx.tv.material3.Border(border = BorderStroke(0.5.dp, tv.medusa.app.ui.theme.TvPalette.GlassSubtle))
                                     },
                                     focusedBorder = androidx.tv.material3.Border(border = BorderStroke(1.5.dp, if (isMonochrome) Color.White else focusColor))
                                 ),

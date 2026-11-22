@@ -20,6 +20,8 @@ import tv.medusa.app.data.local.UserPreferencesRepository
 import tv.medusa.app.data.remote.NetworkClientFactory
 import tv.medusa.app.data.remote.update.AppUpdateManager
 import tv.medusa.app.ui.theme.LocalAccentColor
+import tv.medusa.app.ui.theme.LocalAppWindowSize
+import tv.medusa.app.ui.theme.rememberAppWindowSize
 import tv.medusa.app.ui.theme.LocalIndicatorTheme
 import tv.medusa.app.ui.theme.LocalIsMonochromeTheme
 import tv.medusa.app.ui.theme.TvAccent
@@ -178,7 +180,8 @@ class MainActivity : ComponentActivity() {
                         LocalIsMonochromeTheme provides isMonochrome,
                         LocalIndicatorTheme provides indicatorTheme,
                         LocalPlatformLogoStyle provides platformLogoStyle,
-                        LocalAccentColor provides accentColor
+                        LocalAccentColor provides accentColor,
+                        LocalAppWindowSize provides rememberAppWindowSize()
                     ) {
                         MedusaApp(
                             pendingPlayItemId = pendingPlayItemId,

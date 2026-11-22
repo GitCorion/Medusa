@@ -101,7 +101,7 @@ fun MasterFilmTrigger(
                 border = androidx.tv.material3.Border(
                     border = androidx.compose.foundation.BorderStroke(
                         0.75.dp,
-                        Color(0x28FFFFFF)
+                        tv.medusa.app.ui.theme.TvPalette.GlassSelected
                     ),
                     shape = shape
                 ),

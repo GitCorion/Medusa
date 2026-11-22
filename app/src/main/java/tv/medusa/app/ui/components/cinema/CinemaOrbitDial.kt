@@ -100,7 +100,7 @@ fun CinemaOrbitDial(
                 border = androidx.tv.material3.Border(
                     border = BorderStroke(
                         0.75.dp,
-                        if (isActive) focusColor.copy(alpha = 0.5f) else Color(0x28FFFFFF)
+                        if (isActive) focusColor.copy(alpha = 0.5f) else tv.medusa.app.ui.theme.TvPalette.GlassSelected
                     ),
                     shape = CircleShape
                 ),

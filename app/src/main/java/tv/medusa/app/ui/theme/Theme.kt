@@ -23,8 +23,8 @@ fun MedusaTheme(
     content: @Composable () -> Unit,
 ) {
     val primaryColor = if (isMonochrome) Color.White else TvAccent.getColor(accentColorKey)
-    val onPrimaryColor = if (isMonochrome) Color(0xFF0F172A) else TvAccent.getFocusedContentColor(accentColorKey)
-    val secondaryColor = if (isMonochrome) Color(0xFFCBD5E1) else primaryColor.copy(alpha = 0.75f)
+    val onPrimaryColor = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else TvAccent.getFocusedContentColor(accentColorKey)
+    val secondaryColor = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.TextMuted else primaryColor.copy(alpha = 0.75f)
 
     val tvColorScheme = tvDarkColorScheme(
         primary = primaryColor,

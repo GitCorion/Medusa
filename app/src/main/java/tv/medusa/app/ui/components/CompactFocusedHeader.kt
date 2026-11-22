@@ -66,7 +66,7 @@ fun CompactFocusedHeader(
     if (item == null) return
 
     val focusColor = if (isMonochrome) Color.White else TvAccent.getColor(accentColor)
-    val focusContent = if (isMonochrome) Color(0xFF0F172A) else TvAccent.getFocusedContentColor(accentColor)
+    val focusContent = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else TvAccent.getFocusedContentColor(accentColor)
     val showIcons = buttonStyle != BUTTON_STYLE_TEXT_ONLY
     val showText = buttonStyle != BUTTON_STYLE_ICONS_ONLY
 
@@ -153,7 +153,7 @@ fun CompactFocusedHeader(
                         Text(
                             text = item.overview,
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFF94A3B8),
+                            color = tv.medusa.app.ui.theme.TvPalette.TextSecondaryCool,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f, fill = false)
@@ -169,7 +169,7 @@ fun CompactFocusedHeader(
                 Button(
                     onClick = { onPlayClick(item) },
                     colors = ButtonDefaults.colors(
-                        containerColor = if (isMonochrome) Color(0x28FFFFFF) else focusColor.copy(alpha = 0.20f),
+                        containerColor = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.GlassSelected else focusColor.copy(alpha = 0.20f),
                         contentColor = if (isMonochrome) Color.White else Color(0xFFE0F2FE),
                         focusedContainerColor = focusColor,
                         focusedContentColor = focusContent
@@ -206,8 +206,8 @@ fun CompactFocusedHeader(
                 Button(
                     onClick = { onDetailClick(item) },
                     colors = ButtonDefaults.colors(
-                        containerColor = if (isMonochrome) Color(0x14FFFFFF) else focusColor.copy(alpha = 0.10f),
-                        contentColor = if (isMonochrome) Color(0xFFE2E8F0) else Color(0xFFBAE6FD),
+                        containerColor = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.GlassSubtle else focusColor.copy(alpha = 0.10f),
+                        contentColor = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.TextSoft else Color(0xFFBAE6FD),
                         focusedContainerColor = focusColor,
                         focusedContentColor = focusContent
                     )

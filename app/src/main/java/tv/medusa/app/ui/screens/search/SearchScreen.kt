@@ -82,6 +82,7 @@ import tv.medusa.app.ui.components.TvTopBar
 import tv.medusa.app.ui.components.sort.CatalogSortButton
 import tv.medusa.app.ui.components.sort.CatalogSortOption
 import tv.medusa.app.ui.theme.TvAccent
+import tv.medusa.app.ui.theme.adaptiveKeyboardColumnWidth
 import tv.medusa.app.ui.theme.TvPill
 import kotlinx.coroutines.delay
 
@@ -103,7 +104,7 @@ fun SearchScreen(
     val buttonStyleKey by viewModel.buttonStyle.collectAsStateWithLifecycle()
     val isMonochrome by viewModel.isMonochrome.collectAsStateWithLifecycle()
     val focusColor = if (isMonochrome) Color.White else TvAccent.getColor(accentColorKey)
-    val focusContent = if (isMonochrome) Color(0xFF0F172A) else TvAccent.getFocusedContentColor(accentColorKey)
+    val focusContent = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else TvAccent.getFocusedContentColor(accentColorKey)
 
     val context = LocalContext.current
     val voicePrompt = stringResource(R.string.search_voice_prompt)
@@ -198,16 +199,19 @@ fun SearchScreen(
         )
 
         // Contenedor principal de búsqueda dividida (Panel Izquierdo: Teclado | Panel Derecho: Resultados)
+        val searchGutter = if (tv.medusa.app.ui.theme.LocalAppWindowSize.current ==
+            tv.medusa.app.ui.theme.AppWindowSize.COMPACT
+        ) 12.dp else 48.dp
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 48.dp, vertical = 6.dp)
+                .padding(horizontal = searchGutter, vertical = 6.dp)
         ) {
             // ==========================================================
             // PANEL IZQUIERDO: Display de Texto + Teclado Integrado Fijo
             // ==========================================================
             Column(
-                modifier = Modifier.width(320.dp),
+                modifier = Modifier.adaptiveKeyboardColumnWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // Barra de visualización de lo que se escribe (Compacta, sin lupa para no confundir con un input)
@@ -232,7 +236,7 @@ fun SearchScreen(
                         if (uiState.query.isEmpty()) {
                             Text(
                                 text = stringResource(R.string.search_placeholder),
-                                color = Color(0xFF64748B),
+                                color = tv.medusa.app.ui.theme.TvPalette.Placeholder,
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Medium
                             )
@@ -272,7 +276,7 @@ fun SearchScreen(
                                 contentPadding = PaddingValues(horizontal = 7.dp, vertical = 2.dp),
                                 shape = ButtonDefaults.shape(RoundedCornerShape(6.dp)),
                                 colors = ButtonDefaults.colors(
-                                    containerColor = Color(0x14FFFFFF),
+                                    containerColor = tv.medusa.app.ui.theme.TvPalette.GlassSubtle,
                                     contentColor = if (isMonochrome) Color.White else focusColor,
                                     focusedContainerColor = focusColor,
                                     focusedContentColor = focusContent
@@ -282,7 +286,7 @@ fun SearchScreen(
                                     focusedBorder = Border.None
                                 ),
                                 modifier = Modifier
-                                    .height(26.dp)
+                                    .height(48.dp)
                                     .focusProperties {
                                         right = if (sortedResults.isNotEmpty()) sortButtonFocusRequester else FocusRequester.Default
                                     }
@@ -304,11 +308,11 @@ fun SearchScreen(
                             shape = ButtonDefaults.shape(RoundedCornerShape(6.dp)),
                             colors = ButtonDefaults.colors(
                                 containerColor = if (uiState.isPredictiveActive) {
-                                    if (isMonochrome) Color(0x22FFFFFF) else focusColor.copy(alpha = 0.18f)
+                                    if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.GlassRaised else focusColor.copy(alpha = 0.18f)
                                 } else Color(0x0AFFFFFF),
                                 contentColor = if (uiState.isPredictiveActive) {
                                     if (isMonochrome) Color.White else focusColor
-                                } else Color(0xFF64748B),
+                                } else tv.medusa.app.ui.theme.TvPalette.Placeholder,
                                 focusedContainerColor = focusColor,
                                 focusedContentColor = focusContent
                             ),
@@ -398,7 +402,7 @@ fun SearchScreen(
                             Text(
                                 text = stringResource(R.string.search_catalog_title),
                                 style = MaterialTheme.typography.titleMedium,
-                                color = Color(0xFF94A3B8),
+                                color = tv.medusa.app.ui.theme.TvPalette.TextSecondaryCool,
                                 fontWeight = FontWeight.Medium
                             )
                         }
@@ -421,7 +425,7 @@ fun SearchScreen(
                                         shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
                                         colors = ButtonDefaults.colors(
                                             containerColor = Color(0xFF191D2C),
-                                            contentColor = Color(0xFFE2E8F0),
+                                            contentColor = tv.medusa.app.ui.theme.TvPalette.TextSoft,
                                             focusedContainerColor = focusColor,
                                             focusedContentColor = focusContent
                                         ),
@@ -430,7 +434,7 @@ fun SearchScreen(
                                             focusedBorder = Border.None
                                         ),
                                         modifier = Modifier
-                                            .height(26.dp)
+                                            .height(48.dp)
                                             .focusProperties {
                                                 if (sIndex == 0) {
                                                     left = initialKeyFocusRequester
@@ -459,7 +463,7 @@ fun SearchScreen(
                                 Text(
                                     text = stringResource(R.string.search_no_results, uiState.query),
                                     style = MaterialTheme.typography.titleMedium,
-                                    color = Color(0xFFCBD5E1),
+                                    color = tv.medusa.app.ui.theme.TvPalette.TextMuted,
                                     fontWeight = FontWeight.SemiBold
                                 )
                             }
@@ -499,7 +503,7 @@ fun SearchScreen(
                                                 shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
                                                 colors = ButtonDefaults.colors(
                                                     containerColor = Color(0xFF191D2C),
-                                                    contentColor = Color(0xFFE2E8F0),
+                                                    contentColor = tv.medusa.app.ui.theme.TvPalette.TextSoft,
                                                     focusedContainerColor = focusColor,
                                                     focusedContentColor = focusContent
                                                 ),
@@ -508,7 +512,7 @@ fun SearchScreen(
                                                     focusedBorder = Border.None
                                                 ),
                                                 modifier = Modifier
-                                                    .height(26.dp)
+                                                    .height(48.dp)
                                                     .focusProperties {
                                                         if (sIndex == 0) {
                                                             left = initialKeyFocusRequester
@@ -537,7 +541,7 @@ fun SearchScreen(
                                     Text(
                                         text = counterText,
                                         style = MaterialTheme.typography.titleMedium,
-                                        color = if (uiState.totalHits > 0) Color.White else Color(0xFF94A3B8),
+                                        color = if (uiState.totalHits > 0) Color.White else tv.medusa.app.ui.theme.TvPalette.TextSecondaryCool,
                                         fontWeight = FontWeight.Bold,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis

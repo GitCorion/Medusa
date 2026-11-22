@@ -106,7 +106,7 @@ fun TvTopBar(
     onDownNav: (() -> Unit)? = null
 ) {
     val focusColor = if (isMonochrome) Color.White else TvAccent.getColor(accentColorKey)
-    val focusContent = if (isMonochrome) Color(0xFF0F172A) else TvAccent.getFocusedContentColor(accentColorKey)
+    val focusContent = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else TvAccent.getFocusedContentColor(accentColorKey)
     val showTopIcons = buttonStyleKey != BUTTON_STYLE_TEXT_ONLY
     val showTopText = buttonStyleKey != BUTTON_STYLE_ICONS_ONLY
     val autoUpdateInfo by AppUpdateManager.updateInfo.collectAsStateWithLifecycle()
@@ -157,7 +157,7 @@ fun TvTopBar(
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
-                        .background(if (isMonochrome) Color(0x22FFFFFF) else focusColor.copy(alpha = 0.20f), RoundedCornerShape(16.dp))
+                        .background(if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.GlassRaised else focusColor.copy(alpha = 0.20f), RoundedCornerShape(16.dp))
                         .padding(horizontal = 8.dp, vertical = 6.dp)
                 ) {
                     CircularProgressIndicator(
@@ -234,7 +234,8 @@ fun TvTopBar(
                 modifier = Modifier
                     .then(if (homeFocusRequester != null) Modifier.focusRequester(homeFocusRequester) else Modifier)
                     .then(navDownModifier)
-                    .handleTouchClick { onNavigateHome() },
+                    .handleTouchClick { onNavigateHome() }
+                    .height(48.dp),
                 colors = topBarButtonColors(isHomeActive, isMonochrome, focusColor, focusContent, isDockFocused),
                 shape = ButtonDefaults.shape(shape = RoundedCornerShape(18.dp)),
                 border = topBarButtonBorder(isHomeActive, isMonochrome, focusColor, isDockFocused)
@@ -273,6 +274,7 @@ fun TvTopBar(
                     .then(if (medusaFocusRequester != null) Modifier.focusRequester(medusaFocusRequester) else Modifier)
                     .then(navDownModifier)
                     .handleTouchClick { onOpenMedusa() }
+                    .height(48.dp)
                     .onFocusChanged { isDiscoverFocused = it.isFocused }
                     .onKeyEvent { keyEvent ->
                         if (keyEvent.type == KeyEventType.KeyDown && keyEvent.key == Key.DirectionDown) {
@@ -317,7 +319,8 @@ fun TvTopBar(
                 scale = ButtonDefaults.scale(scale = 1.0f, focusedScale = 1.04f),
                 modifier = Modifier
                     .then(navDownModifier)
-                    .handleTouchClick { onOpenFavorites() },
+                    .handleTouchClick { onOpenFavorites() }
+                    .height(48.dp),
                 colors = topBarButtonColors(isFavoritesActive, isMonochrome, focusColor, focusContent, isDockFocused),
                 shape = ButtonDefaults.shape(shape = RoundedCornerShape(18.dp)),
                 border = topBarButtonBorder(isFavoritesActive, isMonochrome, focusColor, isDockFocused)
@@ -353,7 +356,8 @@ fun TvTopBar(
                 scale = ButtonDefaults.scale(scale = 1.0f, focusedScale = 1.04f),
                 modifier = Modifier
                     .then(navDownModifier)
-                    .handleTouchClick { onOpenSearch() },
+                    .handleTouchClick { onOpenSearch() }
+                    .height(48.dp),
                 colors = topBarButtonColors(isSearchActive, isMonochrome, focusColor, focusContent, isDockFocused),
                 shape = ButtonDefaults.shape(shape = RoundedCornerShape(18.dp)),
                 border = topBarButtonBorder(isSearchActive, isMonochrome, focusColor, isDockFocused)
@@ -389,7 +393,8 @@ fun TvTopBar(
                 scale = ButtonDefaults.scale(scale = 1.0f, focusedScale = 1.04f),
                 modifier = Modifier
                     .then(navDownModifier)
-                    .handleTouchClick { onOpenSettings() },
+                    .handleTouchClick { onOpenSettings() }
+                    .height(48.dp),
                 colors = topBarButtonColors(isSettingsActive, isMonochrome, focusColor, focusContent, isDockFocused),
                 shape = ButtonDefaults.shape(shape = RoundedCornerShape(18.dp)),
                 border = topBarButtonBorder(isSettingsActive, isMonochrome, focusColor, isDockFocused)
@@ -450,7 +455,7 @@ private fun topBarButtonColors(
         if (isDockFocused) {
             if (isMonochrome) Color(0x30FFFFFF) else focusColor.copy(alpha = 0.22f)
         } else {
-            if (isMonochrome) Color(0x18FFFFFF) else focusColor.copy(alpha = 0.12f)
+            if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.GlassIdle else focusColor.copy(alpha = 0.12f)
         }
     } else Color.Transparent,
     contentColor = if (isActive) {

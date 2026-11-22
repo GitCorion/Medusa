@@ -164,7 +164,7 @@ fun TorrentPreparationOverlay(
                 .background(Color(0xF20B101D))
                 .border(
                     width = 1.dp,
-                    color = if (state.isError) Color(0x55EF4444) else Color(0x18FFFFFF),
+                    color = if (state.isError) Color(0x55EF4444) else tv.medusa.app.ui.theme.TvPalette.GlassIdle,
                     shape = RoundedCornerShape(22.dp)
                 )
                 .padding(horizontal = 36.dp, vertical = 32.dp),
@@ -228,16 +228,16 @@ fun TorrentPreparationOverlay(
                     if (!state.quality.isNullOrBlank()) {
                         TvPill(
                             text = state.quality.uppercase(),
-                            containerColor = Color(0x22FFFFFF),
-                            textColor = Color(0xFFE2E8F0)
+                            containerColor = tv.medusa.app.ui.theme.TvPalette.GlassRaised,
+                            textColor = tv.medusa.app.ui.theme.TvPalette.TextSoft
                         )
                     }
 
                     if (!state.audio.isNullOrBlank()) {
                         TvPill(
                             text = state.audio.replaceFirstChar { it.uppercase() },
-                            containerColor = Color(0x22FFFFFF),
-                            textColor = Color(0xFFE2E8F0)
+                            containerColor = tv.medusa.app.ui.theme.TvPalette.GlassRaised,
+                            textColor = tv.medusa.app.ui.theme.TvPalette.TextSoft
                         )
                     }
 
@@ -353,7 +353,7 @@ fun TorrentPreparationOverlay(
                                 text = speedText,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Normal,
-                                color = Color(0xFFCBD5E1)
+                                color = tv.medusa.app.ui.theme.TvPalette.TextMuted
                             )
 
                             val etaText = when {
@@ -367,7 +367,7 @@ fun TorrentPreparationOverlay(
                                 text = etaText,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Medium,
-                                color = if (state.streamReady) Color(0xFF4ADE80) else Color(0xFF94A3B8)
+                                color = if (state.streamReady) Color(0xFF4ADE80) else tv.medusa.app.ui.theme.TvPalette.TextSecondaryCool
                             )
                         }
                     }
@@ -434,7 +434,7 @@ fun TorrentPreparationOverlay(
                                 .handleTouchClick { showVersionSelector = true }
                                 .focusRequester(versionsButtonFocusRequester),
                             colors = ButtonDefaults.colors(
-                                containerColor = Color(0x22FFFFFF),
+                                containerColor = tv.medusa.app.ui.theme.TvPalette.GlassRaised,
                                 contentColor = Color.White,
                                 focusedContainerColor = focusColor,
                                 focusedContentColor = focusContent
@@ -471,7 +471,7 @@ fun TorrentPreparationOverlay(
                                 } else Modifier
                             ),
                         colors = ButtonDefaults.colors(
-                            containerColor = Color(0x18FFFFFF),
+                            containerColor = tv.medusa.app.ui.theme.TvPalette.GlassIdle,
                             contentColor = Color.White,
                             focusedContainerColor = if (state.availableVersions.size <= 1) focusColor else Color(0x40FFFFFF),
                             focusedContentColor = if (state.availableVersions.size <= 1) focusContent else Color.White
@@ -596,7 +596,7 @@ private fun VersionSelectorModal(
                         text = "${versions.size} opciones",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
-                        color = Color(0xFF94A3B8)
+                        color = tv.medusa.app.ui.theme.TvPalette.TextSecondaryCool
                     )
                 }
 
@@ -629,7 +629,7 @@ private fun VersionSelectorModal(
                                 border = Border(
                                     border = androidx.compose.foundation.BorderStroke(
                                         1.dp,
-                                        if (isSelected) focusColor.copy(alpha = 0.45f) else Color(0x14FFFFFF)
+                                        if (isSelected) focusColor.copy(alpha = 0.45f) else tv.medusa.app.ui.theme.TvPalette.GlassSubtle
                                     ),
                                     shape = RoundedCornerShape(10.dp)
                                 ),
@@ -673,8 +673,8 @@ private fun VersionSelectorModal(
                                 if (container.isNotBlank()) {
                                     TvPill(
                                         text = container,
-                                        containerColor = Color(0x22FFFFFF),
-                                        textColor = Color(0xFFCBD5E1)
+                                        containerColor = tv.medusa.app.ui.theme.TvPalette.GlassRaised,
+                                        textColor = tv.medusa.app.ui.theme.TvPalette.TextMuted
                                     )
                                 }
                             }
