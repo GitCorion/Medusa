@@ -439,15 +439,6 @@ fun MediaContextMenuDialog(
                             .verticalScroll(rememberScrollState()),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text(
-                            text = stringResource(R.string.context_menu_options),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = tv.medusa.app.ui.theme.TvPalette.Placeholder,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.sp,
-                            modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)
-                        )
-
                         actions.forEachIndexed { index, actionItem ->
                             val isFirst = index == 0
                             var isBtnFocused by remember { mutableStateOf(false) }
@@ -460,17 +451,16 @@ fun MediaContextMenuDialog(
                             }
                             Button(
                                 onClick = safeActionClick,
+                                // Sin píldoras grises en reposo: el menú es una lista de texto
+                                // sobre el cristal del panel; solo la fila enfocada se ilumina.
                                 colors = ButtonDefaults.colors(
-                                    containerColor = tv.medusa.app.ui.theme.TvPalette.GlassIdle,
-                                    contentColor = Color.White,
+                                    containerColor = Color.Transparent,
+                                    contentColor = tv.medusa.app.ui.theme.TextPrimary,
                                     focusedContainerColor = focusColor,
                                     focusedContentColor = focusContent
                                 ),
                                 border = ButtonDefaults.border(
-                                    border = Border(
-                                        border = BorderStroke(0.5.dp, tv.medusa.app.ui.theme.TvPalette.GlassIdle),
-                                        shape = RoundedCornerShape(10.dp)
-                                    ),
+                                    border = Border.None,
                                     focusedBorder = Border.None
                                 ),
                                 shape = ButtonDefaults.shape(shape = RoundedCornerShape(10.dp)),
