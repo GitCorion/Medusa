@@ -63,7 +63,10 @@ object NetworkClientFactory {
      * manualmente en el dispositivo nunca se aceptan. En JVM se usa el almacén por defecto.
      */
     private val systemTrustManager: X509TrustManager = run {
-        val systemKeyStore = runCatching {
+        // Fail-closed en Android: si no se puede construir el almacén filtrado, se aborta en
+        // lugar de caer en el almacén por defecto (que incluye CAs instaladas por el usuario).
+        // En JVM (tests unitarios) no existe AndroidCAStore: se permite el almacén por defecto.
+        val systemKeyStore = try {
             val androidStore = java.security.KeyStore.getInstance("AndroidCAStore")
             androidStore.load(null, null)
             val filtered = java.security.KeyStore.getInstance(java.security.KeyStore.getDefaultType())
@@ -75,7 +78,13 @@ object NetworkClientFactory {
                 androidStore.getCertificate(alias)?.let { filtered.setCertificateEntry(alias, it) }
             }
             filtered
-        }.getOrNull()
+        } catch (e: java.security.KeyStoreException) {
+            null // JVM sin AndroidCAStore
+        } catch (e: java.security.NoSuchAlgorithmException) {
+            null // JVM sin AndroidCAStore
+        } catch (e: Exception) {
+            throw IllegalStateException("No se pudo construir el almacén de CAs del sistema", e)
+        }
 
         val factory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm())
         factory.init(systemKeyStore)
@@ -387,6 +396,7 @@ object NetworkClientFactory {
                     redactHeader("X-Emby-Authorization")
                     redactHeader("X-Emby-Token")
                     redactHeader("X-MediaBrowser-Token")
+                    redactHeader("trakt-api-key")
                     redactHeader("Cookie")
                     redactHeader("Set-Cookie")
                 })
@@ -407,7 +417,7 @@ object NetworkClientFactory {
         )
         // Query params sensibles (api_key=, token=, X-Emby-Token=…)
         .replace(
-            Regex("(?i)(api_key|apikey|access_token|token|x-emby-token|x-mediabrowser-token)=([^&\\s\"]+)"),
+            Regex("(?i)(api_key|apikey|access_token|token|x-emby-token|x-mediabrowser-token|secret|code|sig|trakt-api-key)=([^&\\s\"]+)"),
             "$1=REDACTED"
         )
 

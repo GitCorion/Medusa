@@ -311,10 +311,10 @@ class UserPreferencesRepository(context: Context) {
         }
     }
 
-    /** Marca/desmarca la compra de Medusa Pro. */
-    suspend fun updatePurchasedPro(isPurchased: Boolean) {
+    /** Estado heredado de la antigua licencia; la distribución pública no gestiona compras. */
+    suspend fun setLegacyProState(isPurchased: Boolean) {
         appContext.dataStore.edit { prefs ->
-            prefs[Keys.HAS_PURCHASED_PRO] = "true"
+            prefs[Keys.HAS_PURCHASED_PRO] = isPurchased.toString()
         }
     }
 

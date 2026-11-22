@@ -873,8 +873,9 @@ class SettingsViewModel @Inject constructor(
                     statusMessage = context.getString(R.string.settings_scan_qr)
                 )
 
-                var intervalMs = (codeResponse.interval.coerceAtLeast(5)) * 1000L
-                val maxAttempts = (codeResponse.expiresIn / codeResponse.interval).coerceAtLeast(10)
+                val safeInterval = codeResponse.interval.coerceIn(5, 60)
+                var intervalMs = safeInterval * 1000L
+        val maxAttempts = (codeResponse.expiresIn / safeInterval).coerceAtLeast(10)
 
                 for (i in 0 until maxAttempts) {
                     delay(intervalMs)

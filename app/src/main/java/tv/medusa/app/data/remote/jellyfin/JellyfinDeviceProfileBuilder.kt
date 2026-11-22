@@ -413,7 +413,7 @@ object JellyfinDeviceProfileBuilder {
     fun sanitizeUrlForLog(url: String?): String {
         if (url.isNullOrBlank()) return ""
         return url.replace(
-            Regex("(?i)(api_key|apikey|token|x-emby-token|x-mediabrowser-token)=([^&\\s]+)"),
+            Regex("(?i)(api_key|apikey|token|x-emby-token|x-mediabrowser-token|secret|code|sig|trakt-api-key)=([^&\\s]+)"),
             "$1=REDACTED"
         )
     }

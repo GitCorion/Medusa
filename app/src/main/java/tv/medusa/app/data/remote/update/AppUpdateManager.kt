@@ -6,7 +6,9 @@ import android.net.Uri
 import androidx.core.content.FileProvider
 import androidx.core.content.pm.PackageInfoCompat
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -66,6 +68,13 @@ class AppUpdateManager(private val context: Context) {
     companion object {
         private const val CHECK_RETRIES = 3
         private const val CHECK_RETRY_DELAY_MS = 3_000L
+        private const val MAX_APK_BYTES = 150L * 1024 * 1024
+        private val SHA256_REGEX = Regex("^[0-9a-fA-F]{64}$")
+        private val ALLOWED_DOWNLOAD_HOSTS = setOf(
+            "github.com",
+            "objects.githubusercontent.com",
+            "release-assets.githubusercontent.com"
+        )
 
         private val _updateInfo = MutableStateFlow<UpdateInfo?>(null)
         val updateInfo: StateFlow<UpdateInfo?> = _updateInfo.asStateFlow()
@@ -179,32 +188,36 @@ class AppUpdateManager(private val context: Context) {
         _downloadProgress.value = 0f
         return withContext(Dispatchers.IO) {
             runCatching {
-                if (!apkUrl.startsWith("http://") && !apkUrl.startsWith("https://")) {
-                    throw IllegalArgumentException("Invalid apkUrl scheme: $apkUrl")
+                val downloadUri = runCatching { Uri.parse(apkUrl) }.getOrNull()
+                    ?: throw IllegalArgumentException("Invalid apkUrl")
+                // Fail-closed: solo HTTPS y solo el host de los GitHub Releases del proyecto.
+                if (!downloadUri.scheme.equals("https", ignoreCase = true) ||
+                    downloadUri.host !in ALLOWED_DOWNLOAD_HOSTS
+                ) {
+                    throw IllegalArgumentException("Untrusted apkUrl: $apkUrl")
                 }
 
-                val isDirectApk = apkUrl.endsWith(".apk", ignoreCase = true) ||
-                        apkUrl.contains(".apk?", ignoreCase = true) ||
-                        apkUrl.contains("/download", ignoreCase = true)
-
-                if (!isDirectApk) {
-                    // Enlace no directo (p. ej. página de releases): abrir en navegador.
-                    val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(apkUrl)).apply {
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                    }
-                    context.startActivity(browserIntent)
-                    return@runCatching
+                // Fail-closed: sin hash SHA-256 válido no se instala nada.
+                if (expectedSha256 == null || !SHA256_REGEX.matches(expectedSha256)) {
+                    throw IllegalArgumentException("Missing or invalid APK SHA-256 in update manifest")
                 }
 
-                // Cliente compartido (timeouts y configuración de red coherentes con el resto de la app).
+                // Cliente propio sin redirects: un 302 a otro host/scheme eludiría el allowlist.
+                val client = NetworkClientFactory.okHttpClient.newBuilder()
+                    .followRedirects(false)
+                    .followSslRedirects(false)
+                    .build()
                 val request = Request.Builder().url(apkUrl).build()
-                NetworkClientFactory.okHttpClient.newCall(request).execute().use { response ->
+                client.newCall(request).execute().use { response ->
                     if (!response.isSuccessful) {
                         throw Exception(context.getString(R.string.update_error_apk_http, response.code))
                     }
 
                     val body = response.body ?: throw Exception(context.getString(R.string.update_error_empty_body))
                     val totalBytes = body.contentLength()
+                    if (totalBytes > MAX_APK_BYTES) {
+                        throw IllegalArgumentException("APK demasiado grande: $totalBytes bytes")
+                    }
 
                     val apkFile = File(context.cacheDir, "update.apk")
                     if (apkFile.exists()) apkFile.delete()
@@ -215,8 +228,12 @@ class AppUpdateManager(private val context: Context) {
                             var bytesRead: Int
                             var downloaded = 0L
                             while (input.read(buffer).also { bytesRead = it } != -1) {
-                                output.write(buffer, 0, bytesRead)
+                                if (!currentCoroutineContext().isActive) throw kotlinx.coroutines.CancellationException("OTA cancelado")
                                 downloaded += bytesRead
+                                if (downloaded > MAX_APK_BYTES) {
+                                    throw IllegalArgumentException("APK demasiado grande")
+                                }
+                                output.write(buffer, 0, bytesRead)
                                 if (totalBytes > 0) {
                                     val prog = downloaded.toFloat() / totalBytes
                                     _downloadProgress.value = prog
@@ -232,14 +249,22 @@ class AppUpdateManager(private val context: Context) {
                         throw Exception(context.getString(R.string.update_error_empty_body))
                     }
 
-                    // Verificación de integridad: el SHA-256 del APK descargado debe coincidir con el
-                    // declarado en version.json (canal de confianza por HTTPS). Evita instalar un APK alterado.
-                    if (!expectedSha256.isNullOrBlank()) {
-                        val actualSha256 = ServerVerificationUtils.sha256File(apkFile)
-                        if (!actualSha256.equals(expectedSha256, ignoreCase = true)) {
-                            apkFile.delete()
-                            throw Exception(context.getString(R.string.update_error_integrity))
-                        }
+                    // Verificación de integridad obligatoria (fail-closed, validada arriba).
+                    val actualSha256 = ServerVerificationUtils.sha256File(apkFile)
+                    if (!actualSha256.equals(expectedSha256, ignoreCase = true)) {
+                        apkFile.delete()
+                        throw Exception(context.getString(R.string.update_error_integrity))
+                    }
+
+                    // Protección anti-rollback: el APK no puede ser más antiguo que el instalado.
+                    val downloadedVersion = context.packageManager
+                        .getPackageArchiveInfo(apkFile.absolutePath, 0)?.longVersionCode ?: 0L
+                    if (downloadedVersion < PackageInfoCompat.getLongVersionCode(
+                            context.packageManager.getPackageInfo(context.packageName, 0)
+                        )
+                    ) {
+                        apkFile.delete()
+                        throw IllegalArgumentException("El APK es más antiguo que la versión instalada")
                     }
 
                     // Iniciar instalación nativa de Android (el instalador rechaza firmas distintas).
