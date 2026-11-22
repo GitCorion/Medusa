@@ -49,6 +49,7 @@ import androidx.compose.material.icons.rounded.Movie
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Tv
 import androidx.compose.foundation.layout.statusBarsPadding
+import tv.medusa.app.ui.util.adaptiveMarquee
 import tv.medusa.app.ui.util.handleTouchClick
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.CircularProgressIndicator
@@ -364,11 +365,10 @@ fun DetailScreen(
                                     fontWeight = FontWeight.Bold,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.basicMarquee(
-                                        iterations = Int.MAX_VALUE,
+                                    modifier = Modifier.adaptiveMarquee(
+                                        enabled = true,
                                         initialDelayMillis = 1500,
-                                        repeatDelayMillis = 2000,
-                                        velocity = 35.dp
+                                        repeatDelayMillis = 2000
                                     )
                                 )
                             }

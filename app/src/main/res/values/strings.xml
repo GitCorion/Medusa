@@ -618,6 +618,9 @@
     <string name="update_title_forced">ACTUALIZACIÓN OBLIGATORIA</string>
     <string name="update_title_available">ACTUALIZACIÓN DISPONIBLE</string>
     <string name="update_beta_expired">Esta versión beta ha caducado</string>
+    <string name="update_unverifiable">No se ha podido verificar el estado de esta versión. Conéctate a Internet para comprobar el servicio.</string>
+    <string name="update_retry">Reintentar</string>
+    <string name="update_exit">Cerrar Medusa</string>
     <string name="update_kill_switch_title">SERVICIO SUSPENDIDO</string>
     <string name="update_kill_switch_body">El acceso a Medusa se ha suspendido temporalmente. Actualiza a la última versión si está disponible.</string>
     <string name="update_new_version">Nueva versión %1$s</string>

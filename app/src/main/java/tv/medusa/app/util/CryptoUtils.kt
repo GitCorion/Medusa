@@ -30,8 +30,11 @@ object CryptoUtils {
     private val decryptedCache = java.util.concurrent.ConcurrentHashMap<String, String>()
 
     /**
-     * Cifra [plaintext]. Devuelve "" si está vacío. Si el Keystore fallara, devuelve el texto en
-     * claro como último recurso para no bloquear el guardado (no debería ocurrir en API 26+).
+     * Cifra [plaintext]. Devuelve "" si está vacío.
+     *
+     * Fail-closed: si el Keystore falla, se lanza en lugar de guardar la credencial en claro.
+     * Es preferible que la operación falle (y se informe) a dejar un token utilizable en
+     * `medusa_settings` sin que el usuario lo sepa.
      */
     fun encrypt(plaintext: String): String {
         if (plaintext.isBlank()) return ""
@@ -47,8 +50,8 @@ object CryptoUtils {
             decryptedCache[result] = plaintext
             result
         } catch (e: Exception) {
-            android.util.Log.w("CryptoUtils", "Error cifrando con Keystore, guardando en claro: ${e.message}")
-            plaintext
+            android.util.Log.e("CryptoUtils", "Keystore no disponible; no se guarda la credencial en claro", e)
+            throw IllegalStateException("No se pudo cifrar la credencial con Keystore", e)
         }
     }
 

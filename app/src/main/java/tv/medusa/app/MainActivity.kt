@@ -303,6 +303,12 @@ fun MedusaApp(
         // El manifiesto OTA publicado en el repositorio se consulta siempre: de él dependen
         // el kill-switch y la versión mínima soportada, que aplican a todas las instalaciones.
         appUpdateManager.checkAutomatically()
+        // El kill-switch no puede depender solo del arranque: un proceso que lleva días
+        // abierto debe enterarse de una revocación sin reiniciarse.
+        while (true) {
+            delay(30L * 60 * 1000)
+            appUpdateManager.checkForUpdates()
+        }
     }
 
     LaunchedEffect(updateInfo) {
@@ -336,9 +342,6 @@ fun MedusaApp(
             (context as? Activity)?.finish()
         }
     }
-
-    val currentEntry by navController.currentBackStackEntryAsState()
-    val isPlayerActive = currentEntry?.destination?.route?.startsWith("player") == true
 
     Box(modifier = Modifier.fillMaxSize()) {
         ContextMenuHost(
@@ -579,7 +582,7 @@ fun MedusaApp(
     }
 
     val isForceDialog = updateInfo?.isForceUpdate == true
-    if (showUpdateBanner && updateInfo?.hasUpdate == true && !isPlayerActive && (isForceDialog || !updateDismissed)) {
+    if (showUpdateBanner && updateInfo?.hasUpdate == true && (isForceDialog || !updateDismissed)) {
         Dialog(
             onDismissRequest = {
                 if (isForceDialog) {
@@ -701,12 +704,7 @@ fun MedusaApp(
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            val canUpdate = if (BuildConfig.ENABLE_IN_APP_UPDATER) {
-                                updateInfo?.apkUrl != null
-                            } else {
-                                // En Play no hay APK propio: siempre se ofrece la ficha de la tienda.
-                                true
-                            }
+                            val canUpdate = updateInfo?.apkUrl != null
                             val themeFocusColor = if (isMonochrome) Color.White else TvAccent.getColor(accentColor)
                             val themeFocusContent = if (isMonochrome) Color(0xFF0F172A) else TvAccent.getFocusedContentColor(accentColor)
 
@@ -736,6 +734,35 @@ fun MedusaApp(
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 13.sp
                                     )
+                                }
+                            }
+
+                            if (!canUpdate) {
+                                // Sin asset verificable (p. ej. modo fail-closed sin red):
+                                // dar siempre una salida y una forma de reintentar.
+                                Button(
+                                    onClick = { coroutineScope.launch { appUpdateManager.checkForUpdates() } },
+                                    colors = ButtonDefaults.colors(
+                                        containerColor = Color(0x18FFFFFF),
+                                        contentColor = Color.White,
+                                        focusedContainerColor = themeFocusColor,
+                                        focusedContentColor = themeFocusContent
+                                    ),
+                                    shape = ButtonDefaults.shape(RoundedCornerShape(12.dp))
+                                ) {
+                                    Text(stringResource(R.string.update_retry), fontSize = 13.sp)
+                                }
+                                Button(
+                                    onClick = { (context as? Activity)?.finish() },
+                                    colors = ButtonDefaults.colors(
+                                        containerColor = Color(0x18FFFFFF),
+                                        contentColor = Color.White,
+                                        focusedContainerColor = themeFocusColor,
+                                        focusedContentColor = themeFocusContent
+                                    ),
+                                    shape = ButtonDefaults.shape(RoundedCornerShape(12.dp))
+                                ) {
+                                    Text(stringResource(R.string.update_exit), fontSize = 13.sp)
                                 }
                             }
 

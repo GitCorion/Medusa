@@ -41,7 +41,6 @@ android {
         // Este token no es secreto y solo mantiene activas las comprobaciones de disponibilidad.
         buildConfigField("String", "DEFAULT_TMDB_API_KEY", "\"\"")
         buildConfigField("String", "DEFAULT_TRAKT_CLIENT_ID", "\"${envOr("TRAKT_CLIENT_ID", "")}\"")
-        buildConfigField("String", "DEFAULT_TRAKT_CLIENT_SECRET", "\"${envOr("TRAKT_CLIENT_SECRET", "")}\"")
         // Distribución pública: la app se actualiza a sí misma desde GitHub Releases.
         buildConfigField("boolean", "ENABLE_IN_APP_UPDATER", "true")
     }

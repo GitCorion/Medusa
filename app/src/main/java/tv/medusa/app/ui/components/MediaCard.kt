@@ -67,6 +67,7 @@ import tv.medusa.app.ui.theme.TvAccent
 import tv.medusa.app.ui.theme.TvCornerRadius
 import tv.medusa.app.ui.theme.TvMotion
 import tv.medusa.app.ui.theme.TvRatingBadge
+import tv.medusa.app.ui.util.adaptiveMarquee
 import tv.medusa.app.ui.util.handleTouchClick
 
 /**
@@ -328,16 +329,7 @@ fun MediaCard(
                     letterSpacing = 0.2.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.then(
-                        if (isFocused) {
-                            Modifier.basicMarquee(
-                                iterations = Int.MAX_VALUE,
-                                initialDelayMillis = 1000,
-                                repeatDelayMillis = 1500,
-                                velocity = 35.dp
-                            )
-                        } else Modifier
-                    )
+                    modifier = Modifier.adaptiveMarquee(enabled = isFocused)
                 )
 
                 Spacer(modifier = Modifier.height(2.dp))

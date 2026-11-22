@@ -618,6 +618,9 @@
     <string name="update_title_forced">MANDATORY UPDATE</string>
     <string name="update_title_available">UPDATE AVAILABLE</string>
     <string name="update_beta_expired">This beta version has expired</string>
+    <string name="update_unverifiable">We could not verify the status of this version. Connect to the internet to check the service.</string>
+    <string name="update_retry">Retry</string>
+    <string name="update_exit">Close Medusa</string>
     <string name="update_kill_switch_title">SERVICE SUSPENDED</string>
     <string name="update_kill_switch_body">Access to Medusa has been temporarily suspended. Update to the latest version if available.</string>
     <string name="update_new_version">New version %1$s</string>

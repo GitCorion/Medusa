@@ -853,7 +853,7 @@ class SettingsViewModel @Inject constructor(
         traktPollJob?.cancel()
         traktPollJob = viewModelScope.launch {
             val clientId = _uiState.value.traktClientId.trim().ifBlank { DEFAULT_TRAKT_CLIENT_ID }
-            val clientSecret = _uiState.value.traktClientSecret.trim().ifBlank { DEFAULT_TRAKT_CLIENT_SECRET }
+            val clientSecret = _uiState.value.traktClientSecret.trim()
 
             _uiState.value = _uiState.value.copy(
                 isWaitingTraktAuth = true,

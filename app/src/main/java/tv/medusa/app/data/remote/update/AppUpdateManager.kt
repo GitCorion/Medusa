@@ -15,6 +15,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import okhttp3.Request
 import retrofit2.http.GET
 import tv.medusa.app.BuildConfig
@@ -69,6 +71,12 @@ class AppUpdateManager(private val context: Context) {
         private const val CHECK_RETRIES = 3
         private const val CHECK_RETRY_DELAY_MS = 3_000L
         private const val MAX_APK_BYTES = 150L * 1024 * 1024
+        /** Si no podemos validar el manifiesto en 7 días, asumimos bloqueo (fail-closed). */
+        private const val MAX_MANIFEST_AGE_MS = 7L * 24 * 60 * 60 * 1000
+        private const val PREFS_NAME = "medusa_update_manifest"
+        private const val KEY_MANIFEST = "manifest_json"
+        private const val KEY_CHECKED_AT = "checked_at"
+        private val updateJson = Json { ignoreUnknownKeys = true }
         private val SHA256_REGEX = Regex("^[0-9a-fA-F]{64}$")
         private val ALLOWED_DOWNLOAD_HOSTS = setOf(
             "github.com",
@@ -95,9 +103,9 @@ class AppUpdateManager(private val context: Context) {
     }
 
     /**
-     * Consulta el manifiesto OTA con reintentos ante fallos de red transitorios (WiFi de TV).
-     * Devuelve el último [UpdateInfo] válido; en caso de fallo persistente, un [Result] fallido
-     * (la app simplemente no mostrará el aviso, nunca bloqueará por un error de red).
+     * Consulta el manifiesto OTA con reintentos. Si la red falla, se usa el último manifiesto
+     * validado (con TTL de 7 días). Si tampoco hay uno fresco, se entra en modo fail-closed:
+     * la app se bloquea con un aviso en vez de seguir ejecutando una versión no verificable.
      */
     suspend fun checkForUpdates(): Result<UpdateInfo> {
         var lastError: Throwable? = null
@@ -105,51 +113,81 @@ class AppUpdateManager(private val context: Context) {
             val outcome = runCatching { fetchUpdateInfo() }
             outcome.getOrNull()?.let { info ->
                 _updateInfo.value = info
+                runCatching {
+                    context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                        .edit()
+                        .putString(KEY_MANIFEST, updateJson.encodeToString(lastFetchedManifest))
+                        .putLong(KEY_CHECKED_AT, System.currentTimeMillis())
+                        .apply()
+                }
                 return Result.success(info)
             }
             lastError = outcome.exceptionOrNull()
             if (attempt < CHECK_RETRIES - 1) delay(CHECK_RETRY_DELAY_MS * (attempt + 1))
         }
-        return Result.failure(lastError ?: IllegalStateException("Update check failed"))
+        return Result.success(failClosedUpdateInfo(lastError))
     }
 
-    private suspend fun fetchUpdateInfo(): UpdateInfo {
-        val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
-        val currentVer = pInfo.versionName ?: "1.0"
-        val currentVersionCode = PackageInfoCompat.getLongVersionCode(pInfo)
+    /** Manifiesto crudo de la última consulta correcta; se cachea para uso offline. */
+    private var lastFetchedManifest: UpdateManifestDto = UpdateManifestDto()
 
+    private fun failClosedUpdateInfo(lastError: Throwable?): UpdateInfo {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val cachedJson = prefs.getString(KEY_MANIFEST, null)
+        val checkedAt = prefs.getLong(KEY_CHECKED_AT, 0L)
+        val fresh = cachedJson != null && System.currentTimeMillis() - checkedAt <= MAX_MANIFEST_AGE_MS
+        val cached = if (fresh) runCatching {
+            updateJson.decodeFromString<UpdateManifestDto>(cachedJson!!)
+        }.getOrNull() else null
+        if (cached == null) {
+            android.util.Log.e("AppUpdateManager", "Sin manifiesto verificable; bloqueando por seguridad", lastError)
+            return UpdateInfo(
+                hasUpdate = true,
+                isForceUpdate = true,
+                isKillSwitch = true,
+                currentVersion = currentVersionName(),
+                latestVersion = "desconocida",
+                releaseNotes = context.getString(R.string.update_unverifiable),
+                apkUrl = null,
+                apkSha256 = null
+            )
+        }
+        return buildUpdateInfo(cached)
+    }
+
+    private fun currentVersionName(): String =
+        runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "1.0" }
+            .getOrDefault("1.0")
+
+    private suspend fun fetchUpdateInfo(): UpdateInfo {
         val remoteVersion = manifestApi.getLatestVersion()
         if (remoteVersion.signatures.isNotEmpty()) {
             ServerVerificationUtils.updateSignatures(remoteVersion.signatures)
         }
+        lastFetchedManifest = remoteVersion
+        return buildUpdateInfo(remoteVersion)
+    }
 
+    private fun buildUpdateInfo(remoteVersion: UpdateManifestDto): UpdateInfo {
+        val pInfo = runCatching { context.packageManager.getPackageInfo(context.packageName, 0) }.getOrNull()
+        val currentVer = pInfo?.versionName ?: "1.0"
+        val currentVersionCode = pInfo?.let { PackageInfoCompat.getLongVersionCode(it) } ?: 0L
         val isNewer = if (remoteVersion.versionCode > 0L) {
             remoteVersion.versionCode > currentVersionCode
         } else {
-            val cleanRemote = remoteVersion.versionName.removePrefix("v").trim()
-            val cleanCurrent = currentVer.removePrefix("v").trim()
-            isVersionNewer(cleanCurrent, cleanRemote)
+            isVersionNewer(currentVer.removePrefix("v").trim(), remoteVersion.versionName.removePrefix("v").trim())
         }
-
-        // Kill-switch global: corta el acceso a TODAS las versiones instaladas, exista o no un
-        // reemplazo que descargar.
         val isKillSwitch = remoteVersion.killSwitch
-
         val isForceUpdate = isKillSwitch ||
             (remoteVersion.minSupportedVersionCode > 0L && currentVersionCode < remoteVersion.minSupportedVersionCode) ||
             (BuildConfig.ENABLE_IN_APP_UPDATER && remoteVersion.forceUpdate && isNewer)
-
         val hasValidUrl = !remoteVersion.apkUrl.isNullOrBlank()
-
-        // Distribución pública por GitHub Releases: el manifiesto publicado por el workflow
-        // describe siempre la última release y su asset APK.
         val hasUpdate = if (BuildConfig.ENABLE_IN_APP_UPDATER) {
             isKillSwitch || ((isNewer || isForceUpdate) && hasValidUrl)
         } else {
             isForceUpdate
         }
-
-        val info = UpdateInfo(
+        return UpdateInfo(
             hasUpdate = hasUpdate,
             isForceUpdate = isForceUpdate,
             isKillSwitch = isKillSwitch,
@@ -159,7 +197,6 @@ class AppUpdateManager(private val context: Context) {
             apkUrl = remoteVersion.apkUrl,
             apkSha256 = remoteVersion.apkSha256
         )
-        return info
     }
 
     private fun isVersionNewer(current: String, latest: String): Boolean {

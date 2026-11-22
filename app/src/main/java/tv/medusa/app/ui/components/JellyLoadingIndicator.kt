@@ -21,7 +21,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -34,6 +36,7 @@ import androidx.compose.ui.unit.sp
 import tv.medusa.app.R
 
 import tv.medusa.app.ui.theme.LocalIsMonochromeTheme
+import tv.medusa.app.ui.util.MotionPrefs
 
 @Composable
 fun JellyLoadingIndicator(
@@ -43,6 +46,31 @@ fun JellyLoadingIndicator(
     isMonochrome: Boolean = LocalIsMonochromeTheme.current
 ) {
     val symbolRes = if (isMonochrome) R.drawable.ic_jelly_symbol_mono else R.drawable.ic_jelly_symbol
+    val context = LocalContext.current
+    if (remember(context) { MotionPrefs.reduceMotion(context) }) {
+        // "Remove animations": estado estático, sin 5 transiciones infinitas.
+        Column(
+            modifier = modifier,
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Image(
+                painter = painterResource(id = symbolRes),
+                contentDescription = null,
+                modifier = Modifier.size(size)
+            )
+            if (message != null) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = message,
+                    color = Color.White,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        }
+        return
+    }
     val infiniteTransition = rememberInfiniteTransition(label = "JellySwim")
 
     // Realistic biological jellyfish propulsion cycle (2200ms total)

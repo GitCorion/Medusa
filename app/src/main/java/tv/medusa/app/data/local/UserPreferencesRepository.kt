@@ -38,7 +38,8 @@ val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "me
  */
 val DEFAULT_TMDB_API_KEY: String = BuildConfig.DEFAULT_TMDB_API_KEY
 val DEFAULT_TRAKT_CLIENT_ID: String = BuildConfig.DEFAULT_TRAKT_CLIENT_ID
-val DEFAULT_TRAKT_CLIENT_SECRET: String = BuildConfig.DEFAULT_TRAKT_CLIENT_SECRET
+/** No se distribuye ningún client secret en el APK: solo se usa el que introduce el usuario. */
+val DEFAULT_TRAKT_CLIENT_SECRET: String = ""
 
 const val BUTTON_STYLE_ICONS_ONLY = "ICONS_ONLY"
 const val BUTTON_STYLE_ICONS_AND_TEXT = "ICONS_AND_TEXT"
@@ -417,7 +418,7 @@ class UserPreferencesRepository(context: Context) {
             prefs[Keys.TRAKT_ACCESS_TOKEN] = CryptoUtils.encrypt(token)
             prefs[Keys.TRAKT_CLIENT_ID] = clientId
             if (clientSecret.isNotBlank()) {
-                prefs[Keys.TRAKT_CLIENT_SECRET] = clientSecret
+                prefs[Keys.TRAKT_CLIENT_SECRET] = CryptoUtils.encrypt(clientSecret)
             }
         }
     }
@@ -630,7 +631,7 @@ class UserPreferencesRepository(context: Context) {
             if (serverVersion.isNotBlank()) prefs[Keys.JELLYFIN_SERVER_VERSION] = serverVersion
             prefs[Keys.TRAKT_ACCESS_TOKEN] = CryptoUtils.encrypt(traktToken)
             prefs[Keys.TRAKT_CLIENT_ID] = traktClientId
-            if (traktClientSecret.isNotBlank()) prefs[Keys.TRAKT_CLIENT_SECRET] = traktClientSecret
+            if (traktClientSecret.isNotBlank()) prefs[Keys.TRAKT_CLIENT_SECRET] = CryptoUtils.encrypt(traktClientSecret)
             prefs[Keys.TMDB_API_KEY] = tmdbApiKey
             prefs[Keys.WATCH_REGION] = watchRegion
         }
@@ -711,7 +712,7 @@ class UserPreferencesRepository(context: Context) {
             val rawTraktId = this[Keys.TRAKT_CLIENT_ID] ?: ""
             val traktId = if (rawTraktId.isBlank()) DEFAULT_TRAKT_CLIENT_ID else rawTraktId
             val rawTraktSecret = this[Keys.TRAKT_CLIENT_SECRET] ?: ""
-            val traktSecret = if (rawTraktSecret.isBlank()) DEFAULT_TRAKT_CLIENT_SECRET else rawTraktSecret
+            val traktSecret = if (rawTraktSecret.isBlank()) DEFAULT_TRAKT_CLIENT_SECRET else CryptoUtils.decryptStored(rawTraktSecret)
 
             val serverUrl = this[Keys.JELLYFIN_SERVER_URL] ?: ""
             val token = CryptoUtils.decryptStored(this[Keys.JELLYFIN_ACCESS_TOKEN] ?: "")
