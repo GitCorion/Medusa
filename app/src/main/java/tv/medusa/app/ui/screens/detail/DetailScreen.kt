@@ -2,6 +2,9 @@ package tv.medusa.app.ui.screens.detail
 
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlinx.coroutines.launch
 import tv.medusa.app.ui.components.JellyLoadingIndicator
 import tv.medusa.app.ui.theme.LocalIsMonochromeTheme
@@ -154,12 +157,23 @@ fun DetailScreen(
     val episodeFocusRequester = remember { FocusRequester() }
     val episodesLazyListState = rememberLazyListState()
     var lastPlayedEpisodeId by rememberSaveable { mutableStateOf<String?>(null) }
-    var hasRequestedInitialFocus by rememberSaveable { mutableStateOf(false) }
+    var hasAnyFocus by remember { mutableStateOf(false) }
+
+    // Al volver del reproductor la pantalla puede quedar sin foco visible hasta moverse.
+    var resumeTick by remember { mutableStateOf(0) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) resumeTick++
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     // No usar todo `uiState` como clave: cada metadato que llega robaba el foco al episodio.
     val episodeSignature = (uiState as? DetailUiState.Success)
         ?.episodes?.joinToString { it.id }?.hashCode() ?: 0
-    LaunchedEffect(lastPlayedEpisodeId, episodeSignature) {
+    LaunchedEffect(lastPlayedEpisodeId, episodeSignature, resumeTick) {
         if (uiState is DetailUiState.Success) {
             val success = uiState as DetailUiState.Success
             val targetEpisodeIndex = if (lastPlayedEpisodeId != null) {
@@ -172,11 +186,13 @@ fun DetailScreen(
                     episodesLazyListState.scrollToItem(targetEpisodeIndex)
                     episodeFocusRequester.requestFocus()
                 }
-            } else if (!hasRequestedInitialFocus) {
-                hasRequestedInitialFocus = true
-                delay(120)
-                runCatching {
-                    playButtonFocusRequester.requestFocus()
+            } else if (!hasAnyFocus) {
+                // El botón puede no estar compuesto en el primer frame: reintenta antes de rendirse.
+                repeat(6) {
+                    if (runCatching { playButtonFocusRequester.requestFocus() }.isSuccess) {
+                        return@LaunchedEffect
+                    }
+                    delay(80)
                 }
             }
         }
@@ -185,6 +201,7 @@ fun DetailScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .onFocusChanged { hasAnyFocus = it.hasFocus }
             .background(Color(0xFF06080D))
     ) {
         when (val state = uiState) {

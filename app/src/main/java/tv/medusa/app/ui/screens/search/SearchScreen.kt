@@ -501,7 +501,9 @@ fun SearchScreen(
 
                     LazyVerticalGrid(
                         state = gridState,
-                        columns = GridCells.Adaptive(minSize = 140.dp),
+                        // El panel de resultados comparte pantalla con el teclado; con 120 dp entran
+                        // tres columnas y el póster queda por debajo del tamaño de Descubrir.
+                        columns = GridCells.Adaptive(minSize = 120.dp),
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                         verticalArrangement = Arrangement.spacedBy(20.dp),
                         contentPadding = PaddingValues(start = 12.dp, end = 16.dp, top = 4.dp, bottom = 48.dp),
