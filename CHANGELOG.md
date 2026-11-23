@@ -10,6 +10,12 @@ no tienen entrada detallada en este archivo; su histórico está en los Releases
 
 ## [Unreleased]
 
+## [2.4.2-beta.4] - 2026-11-23
+
+### Corregido
+
+- Reproductor: se inhibe el timeout de resolución de 75 s mientras el overlay de preparación TOD esté activo, y se prioriza el overlay frente a la carga de contenido. Se valida además el estado real del reproductor tras alcanzar STATE_READY para evitar falsos positivos durante la reproducción.
+
 ### Eliminado
 
 - Restos del antiguo explorador espacial (constelación/nebula): canvas, motores, atractores, grid

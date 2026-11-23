@@ -396,7 +396,28 @@ fun PlayerScreen(
     }
 
     val currentInfo = streamInfo
-    if (currentInfo != null) {
+    val torrentState by viewModel.torrentOverlayState.collectAsStateWithLifecycle()
+    if (torrentState != null) {
+        BackHandler(enabled = true) {
+            viewModel.cancelTorrentPreparation()
+            onBack()
+        }
+        TorrentPreparationOverlay(
+            state = torrentState!!,
+            focusColor = focusColor,
+            focusContent = focusContent,
+            onCancel = {
+                viewModel.cancelTorrentPreparation()
+                onBack()
+            },
+            onRetry = {
+                viewModel.retryTorrentPreparation()
+            },
+            onSelectVersion = { versionId ->
+                viewModel.selectVersion(versionId)
+            }
+        )
+    } else if (currentInfo != null) {
         key(currentInfo.playableId) {
             PlayerContent(
                 info = currentInfo,
@@ -417,40 +438,17 @@ fun PlayerScreen(
             )
         }
     } else {
-        val torrentState by viewModel.torrentOverlayState.collectAsStateWithLifecycle()
-        if (torrentState != null) {
-            BackHandler(enabled = true) {
-                viewModel.cancelTorrentPreparation()
-                onBack()
-            }
-            TorrentPreparationOverlay(
-                state = torrentState!!,
-                focusColor = focusColor,
-                focusContent = focusContent,
-                onCancel = {
-                    viewModel.cancelTorrentPreparation()
-                    onBack()
-                },
-                onRetry = {
-                    viewModel.retryTorrentPreparation()
-                },
-                onSelectVersion = { versionId ->
-                    viewModel.selectVersion(versionId)
-                }
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black),
+            contentAlignment = Alignment.Center
+        ) {
+            JellyLoadingIndicator(
+                size = 84.dp,
+                message = stringResource(R.string.player_loading),
+                isMonochrome = isMonochrome
             )
-        } else {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black),
-                contentAlignment = Alignment.Center
-            ) {
-                JellyLoadingIndicator(
-                    size = 84.dp,
-                    message = stringResource(R.string.player_loading),
-                    isMonochrome = isMonochrome
-                )
-            }
         }
     }
 }
@@ -485,6 +483,7 @@ private fun PlayerContent(
     val autoPlayNextEpisodeEnabled by viewModel.autoPlayNextEpisodeEnabled.collectAsStateWithLifecycle()
     val autoPlayNextMovieEnabled by viewModel.autoPlayNextMovieEnabled.collectAsStateWithLifecycle()
     val fatalPlaybackError by viewModel.fatalPlaybackError.collectAsStateWithLifecycle()
+    val torrentOverlayState by viewModel.torrentOverlayState.collectAsStateWithLifecycle()
 
     DisposableEffect(Unit) {
         AppForeground.isPlaybackActive = true
@@ -591,6 +590,7 @@ private fun PlayerContent(
     var playerErrorMessage by remember { mutableStateOf<String?>(null) }
     var retryTrigger by remember { mutableIntStateOf(0) }
     var audioAutoSelected by remember(info) { mutableStateOf(false) }
+    var hasEverBeenReady by remember(info, retryTrigger) { mutableStateOf(false) }
 
     LaunchedEffect(fatalPlaybackError) {
         fatalPlaybackError?.let { message ->
@@ -805,6 +805,7 @@ private fun PlayerContent(
                     override fun onPlaybackStateChanged(playbackState: Int) {
                         isBuffering = (playbackState == Player.STATE_BUFFERING)
                         if (playbackState == Player.STATE_READY) {
+                            hasEverBeenReady = true
                             playerErrorMessage = null
                         }
                     }
@@ -1291,9 +1292,14 @@ private fun PlayerContent(
     }
 
     // 75-second timeout for initial slow proxy resolution (resolving RD / rescue can take 10-40s)
-    LaunchedEffect(info, retryTrigger) {
+    // No debe correr mientras el overlay de preparación TOD esté activo.
+    val isTodPreparing = torrentOverlayState != null &&
+            torrentOverlayState?.state != "ERROR" &&
+            torrentOverlayState?.state != "UNAVAILABLE"
+    LaunchedEffect(info, retryTrigger, isTodPreparing) {
+        if (isTodPreparing) return@LaunchedEffect
         delay(75_000L)
-        if (exoPlayer.playbackState == Player.STATE_BUFFERING && currentPosition == 0L) {
+        if (!hasEverBeenReady && exoPlayer.playbackState == Player.STATE_BUFFERING && exoPlayer.currentPosition <= 0L) {
             playerErrorMessage = context.applicationContext.getString(R.string.player_resolve_timeout)
             isBuffering = false
         }
