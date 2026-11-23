@@ -10,7 +10,7 @@ name: Build & Publish (GitHub Releases)
 # versionName sale del tag; versionCode es el máximo publicado + 1 (nunca retrocede).
 #
 # Secretos: KEYSTORE_B64, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD,
-#           (opc.) TRAKT_CLIENT_ID, TRAKT_CLIENT_SECRET.
+#           (opc.) TRAKT_CLIENT_ID.
 
 on:
   push:
@@ -75,7 +75,7 @@ jobs:
 
           TAG="$TAG_NAME"
           if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-beta\.[0-9]+)?$ ]]; then
-            echo "::error::Tag no válido: $TAG. Usa v2.4.0 o v2.4.0-beta.1."
+            echo "::error::Tag no válido: $TAG. Usa vX.Y.Z o vX.Y.Z-beta.N."
             exit 1
           fi
 
@@ -195,7 +195,6 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
           TRAKT_CLIENT_ID: ${{ secrets.TRAKT_CLIENT_ID }}
-          TRAKT_CLIENT_SECRET: ${{ secrets.TRAKT_CLIENT_SECRET }}
         run: |
           ARGS=()
           if [ -n "${{ steps.version.outputs.code }}" ]; then

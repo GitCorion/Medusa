@@ -16,7 +16,7 @@ body:
       options:
         - label: He buscado en los issues abiertos y cerrados.
           required: true
-        - label: La propuesta respeta las reglas de diseño de DESIGN.md.
+        - label: La propuesta respeta las reglas de diseño de DESIGN.md y docs/ESTUDIO.md.
           required: true
 
   - type: textarea

@@ -26,29 +26,29 @@ Unlike sluggish web-based Jellyfin wrappers, Medusa TV is built 100% natively in
 
 - **Primary:** Living room Smart TVs, Google TV, Fire TV, and Android TV boxes at 1080p and 4K resolutions, operated via D-Pad remote control.
 - **Secondary:** Android tablets operated via touchscreen.
-- **Network:** Home LAN and remote server streaming, supporting offline demo mode and background catalog synchronization.
+- **Network:** Home LAN and remote server streaming. The local catalog keeps Home, Discover and Search usable without a live server; synchronization runs in the background.
 - **Distribution:** Public GitHub repository with releases; the app self-updates from the signed APK attached to each GitHub Release. No Firebase, analytics, crash reporting, or Play Store dependency. TMDB lookups use a user-supplied API key configured in Settings.
 
 ## Capabilities and Constraints
 
 ### Capabilities
-1. **Universal Navigation (`TvTopBar`):** Minimalist top header with brand emblem and 5 compact circular icon buttons: Inicio, Descubrir, Favoritos, Buscar y Ajustes.
+1. **Universal Navigation (`TvTopBar`):** Minimalist top header with the brand emblem and 5 compact icon capsules (18 dp radius, 18 dp icons): Inicio, Descubrir, Favoritos, Buscar y Ajustes.
 2. **Home Billboard & Dynamic Rows:** Hero banner with ClearLogo transparent vector titles, favorite genres row, platform brand tiles (Netflix, Prime Video, Disney+, Apple TV+, Max, Crunchyroll), and curated carousels.
 3. **Card Archetypes:**
    - *Vertical Media Card (2:3):* Full-bleed poster art with top-right score badge and external title/year on void with autoscroll marquee on focus.
    - *Continue Watching Card (16:9):* Panoramic backdrop with episode code tag (`T2:E4`), floating cyan progress bar, and centered play overlay.
    - *Top 10 Today Card:* 2:3 vertical poster flanked by oversized gradient ranking numbers (1 to 10).
    - *Sagas & Collections (16:9):* Multi-disc stacked tab silhouette communicating film collections.
-4. **Instant Tag Discovery (`MedusaScreen`):** Direct exploration feed pairing a 4-icon format selector with a horizontal genre/mood tag rail, updating the media carousel in real time.
+4. **Tag Discovery (`MedusaScreen`):** Direct exploration feed pairing a 4-icon format selector with a horizontal theme rail. Each selected tag adds a strict AND filter; `BACK` removes the last one and the result carousel updates in real time.
 5. **Detail Screen:** Full-width cinematic view with hero metadata, action buttons (`Reproducir`, `Favoritos`, `Trailer`, `Visto`), seasons/episodes picker, and recommendations carousels.
-6. **ExoPlayer Video Engine:** Direct play and transcoding with Apple TV-style Scrubber HUD, audio/subtitle track selector, and binge-watching next episode countdown.
+6. **Media3 Video Engine:** Direct play and transcoding with Apple TV-style scrubber HUD, audio/subtitle track selector, and binge-watching next episode countdown.
 7. **Search & Integrated Keyboard:** 10-foot D-Pad optimized on-screen keyboard with instant predictive search.
 8. **Settings & Personalization:** Accent color themes (Cian, Ámbar Cine, Blanco Puro / Monocromático), button display modes (solo iconos, solo texto, ambos), Trakt linking, and OTA auto-updates.
 
 ### Constraints
 - **Zero Real-Time Blur:** Prohibits `Modifier.blur()` and `RenderEffect` across all screens to guarantee 60 FPS on TV hardware.
 - **Zero Idle Border Slop:** No 1px grey outline borders in idle state on buttons, chips, or cards.
-- **Remote-First Navigation:** On TV, on-screen back buttons are banned; navigation relies strictly on the physical remote `BACK` key. On tablets, an elegant 38dp circular obsidian glass overlay button handles touch return.
+- **Remote-First Navigation:** On TV, on-screen back buttons are banned; navigation relies strictly on the physical remote `BACK` key. On tablets, a 36 dp `TvBackButton` chip appears only on Brand, Genre and Seasonal screens.
 
 ## Brand Commitments
 

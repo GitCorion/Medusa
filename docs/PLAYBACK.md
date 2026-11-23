@@ -183,10 +183,14 @@ aunque el `.strm` funcionara por el endpoint `static=true`.
 ## 8. Verificación mínima antes de publicar
 
 ```bash
-./gradlew :app:testPlayDebugUnitTest
-./gradlew :app:lintPlayRelease
-./gradlew :app:assemblePlayRelease :app:assembleBetaRelease :app:bundlePlayRelease
+./gradlew :app:testDebugUnitTest
+./gradlew :app:lintDebug
+./gradlew :app:assembleRelease
 ```
+
+No hay product flavors `play` ni `beta`: el canal OTA se inyecta en `assembleRelease` con
+`-PupdateChannel=stable|beta`. Para las migraciones de Room, añade
+`./gradlew :app:connectedDebugAndroidTest` con un dispositivo conectado.
 
 Los tests cubren:
 

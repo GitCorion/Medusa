@@ -29,7 +29,7 @@
     "name": "Medusa TV",
     "applicationCategory": "MultimediaApplication",
     "operatingSystem": "Android 8.0 o superior",
-    "softwareVersion": "2.4.0",
+    "softwareVersion": "2.4.1",
     "url": "https://gitcorion.github.io/Medusa/",
     "downloadUrl": "https://github.com/GitCorion/Medusa/releases/latest/download/Medusa.apk",
     "license": "https://www.gnu.org/licenses/gpl-3.0.html",
@@ -257,7 +257,7 @@
           <div class="ledger__row">
             <span class="ledger__kicker">El hardware</span>
             <span class="ledger__value">60 fps</span>
-            <p class="ledger__text">Sin blur en tiempo real, sin escalar tarjetas dentro de carruseles y sin animaciones autónomas. La fluidez es una decisión de diseño.</p>
+            <p class="ledger__text">Sin blur en tiempo real, sin escalar tarjetas dentro de carruseles y sin animaciones autónomas en el chrome. El hero rota cada 12 s cuando no tiene foco y las partículas estacionales son opcionales. La fluidez es una decisión de diseño.</p>
           </div>
         </div>
 
@@ -425,10 +425,11 @@
             <span class="chapter__name">Las pantallas</span>
           </div>
           <div>
-            <h2 class="chapter__title">Siete pantallas, una gramática.</h2>
+            <h2 class="chapter__title">Las pantallas, una gramática.</h2>
             <p class="chapter__intro">
-              Todas las capturas están tomadas de la app real en un televisor de 1080p, con una
-              biblioteca de prueba real. No hay maquetas: lo que ves es lo que se renderiza.
+              Seis pantallas distintas en siete capturas. Todas están tomadas de la app real en un
+              televisor de 1080p, con una biblioteca de prueba real. No hay maquetas: lo que ves es
+              lo que se renderiza.
             </p>
           </div>
         </div>
@@ -476,16 +477,16 @@
             <div class="shot__frame">
               <picture>
                 <source media="(max-width: 700px)" srcset="assets/estudio/captures/descubrir-960.webp">
-                <img src="assets/estudio/captures/descubrir-1600.webp" alt="Pantalla Descubrir con filtros de formato, chips de género y una tarjeta enfocada con borde cian de 1,5 dp." width="1600" height="900" decoding="async">
+                <img src="assets/estudio/captures/descubrir-1600.webp" alt="Pantalla Descubrir con filtros de formato, rail de temáticas y una tarjeta enfocada con borde cian de 1,5 dp." width="1600" height="900" decoding="async">
               </picture>
             </div>
             <figcaption>
               <span class="shot__name">Descubrir<span>exploración directa</span></span>
               <div class="shot__body">
-                <p>Filtros de formato y chips de género. La tarjeta enfocada lleva borde de 1,5 dp; el foco no exige OK.</p>
+                <p>Filtros de formato y un rail de temáticas. Cada etiqueta suma un filtro AND; <code>BACK</code> deshace la última. La tarjeta enfocada lleva borde de 1,5 dp; el foco no exige OK.</p>
                 <ul class="shot__notes">
                   <li>contador y atajos de mando</li>
-                  <li>chips de 10 dp de radio</li>
+                  <li>chips de 8 dp de radio</li>
                 </ul>
               </div>
             </figcaption>
@@ -586,8 +587,9 @@
             <h2 class="chapter__title">Lo que no se ve también es diseño.</h2>
             <p class="chapter__intro">
               Una interfaz fluida en un televisor de gama baja no sale del renderizado: sale de
-              decidir qué no se dibuja. <strong>Cero blur, cero escala por tarjeta y movimiento solo
-              cuando el mando actúa</strong> son decisiones de producto, no microoptimizaciones.
+              decidir qué no se dibuja. <strong>Cero blur, cero escala por tarjeta y un chrome sin
+              animaciones autónomas</strong> son decisiones de producto, no microoptimizaciones. El
+              hero rota solo cuando no tiene foco y las partículas estacionales son opcionales.
             </p>
           </div>
         </div>
@@ -612,18 +614,18 @@
             </div>
             <div class="stack__row">
               <span class="stack__label">Servicios</span>
-              <span class="stack__desc">Jellyfin, Trakt, TMDB, catálogos estáticos y el manifiesto OTA publicado en GitHub.</span>
+              <span class="stack__desc">Jellyfin, Trakt, TMDB, catálogos estáticos opcionales y el manifiesto OTA publicado en GitHub.</span>
             </div>
           </div>
 
           <dl class="specs">
-            <div><dt>Versión</dt><dd>2.4.0</dd></div>
+            <div><dt>Versión</dt><dd>2.4.1</dd></div>
             <div><dt>Plataforma</dt><dd>Android TV, Google TV, Fire TV y tablet</dd></div>
             <div><dt>Android mínimo</dt><dd>8.0, API 26</dd></div>
             <div><dt>Lenguaje</dt><dd>Kotlin 2.0.21, Compose TV y Hilt</dd></div>
             <div><dt>Reproductor</dt><dd>Media3 1.5.1 y decodificador FFmpeg</dd></div>
             <div><dt>Datos</dt><dd>Room 22, DataStore, Retrofit y OkHttp</dd></div>
-            <div><dt>Pruebas</dt><dd>38 unitarias y 1 de migración</dd></div>
+            <div><dt>Pruebas</dt><dd>36 clases unitarias (213 casos) y 1 instrumentada (5 casos)</dd></div>
             <div><dt>Distribución</dt><dd>APK firmado y OTA desde GitHub Releases</dd></div>
           </dl>
         </div>

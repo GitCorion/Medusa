@@ -7,12 +7,15 @@ Medusa se distribuye **públicamente desde GitHub Releases**, en dos canales y c
 
 | Canal | Tag | GitHub Release | Manifiesto | Quién lo recibe |
 |---|---|---|---|---|
-| Estable | `v2.4.0` | Latest | `docs/api/version.json` | Todos |
-| Beta | `v2.4.0-beta.1` | Pre-release | `docs/api/version-beta.json` | Solo los APK beta |
+| Estable | `v2.4.1` | Latest | `docs/api/version.json` | Todos |
+| Beta | `v2.4.1-beta.N` | Pre-release | `docs/api/version-beta.json` | Quien elija beta |
 
-- El canal va **grabado en el APK** (`BuildConfig.UPDATE_CHANNEL`). No hay ajuste en la app.
-- Un APK estable solo lee `version.json`. Uno beta lee **ambos** y se queda con el `versionCode`
-  más alto; `killSwitch`, `minSupportedVersionCode` y `signatures` mandan desde el estable.
+- El canal **por defecto** es el grabado en el APK (`BuildConfig.UPDATE_CHANNEL`), pero el usuario
+  puede cambiarlo en **Ajustes → Acerca de → Canal**. La elección se guarda en la app y manda
+  sobre el valor del APK.
+- El canal estable solo lee `version.json`. El canal beta lee **ambos** y se queda con el
+  `versionCode` más alto; `killSwitch`, `minSupportedVersionCode` y `signatures` mandan desde el
+  estable.
 - Publicar un estable copia su manifiesto a `version-beta.json`: los equipos en beta pasan solos a
   la stable y quedan de nuevo en el canal estable.
 - Si el manifiesto beta falla, el cliente beta usa el estable. Solo se bloquea (fail-closed) si
@@ -22,7 +25,7 @@ Medusa se distribuye **públicamente desde GitHub Releases**, en dos canales y c
 
 | Campo | Origen |
 |---|---|
-| `versionName` | El tag sin la `v`: `2.4.0` o `2.4.0-beta.1` |
+| `versionName` | El tag sin la `v`: `2.4.1` o `2.4.1-beta.N` |
 | `versionCode` | Máximo publicado en `main` + 1 (lo calcula el workflow) |
 
 El workflow rechaza un tag que no sea posterior a la versión estable publicada y serializa los dos
@@ -32,8 +35,8 @@ canales para que el contador nunca se repita.
 
 ```bash
 git pull --rebase            # el bot commitea los manifiestos en main
-git tag v2.4.0-beta.1
-git push origin v2.4.0-beta.1
+git tag v2.4.1-beta.1
+git push origin v2.4.1-beta.1
 ```
 
 El workflow `.github/workflows/release.yml`:
@@ -48,13 +51,16 @@ También se puede lanzar a mano: **Actions → Build & Publish → Run workflow*
 el selector de ref. Con `publish` desmarcado solo compila y sube el artefacto.
 
 Las notas salen de la sección correspondiente de `CHANGELOG.md` (versión exacta, versión base o
-`[Unreleased]`). Para una estable conviene renombrar antes `[Unreleased]` a `[2.4.0]`.
+`[Unreleased]`). Para una estable conviene renombrar antes `[Unreleased]` a `[2.4.1]` o a la
+versión que corresponda.
 
 ## Entrar y salir de beta
 
-- **Entrar:** instala una vez el APK del pre-release beta. A partir de ahí las betas llegan por OTA.
-- **Salir:** instala la estable cuando se publique (su `versionCode` es mayor). Android no permite
-  instalar una versión con `versionCode` inferior encima de una beta.
+- **Entrar:** elige **Beta** en Ajustes → Acerca de. También puedes instalar una vez el APK del
+  pre-release; la preferencia guardada tiene prioridad a partir de ahí.
+- **Salir:** elige **Estable** en el mismo ajuste. Si vienes de una beta con `versionCode` mayor,
+  no se puede bajar a una estable anterior: el equipo vuelve a estable con la siguiente publicación
+  estable.
 - Beta y estable son la **misma app**: no conviven instaladas; no hay dos iconos.
 
 ## Migración desde `tv.medusa.app.beta`
@@ -73,7 +79,7 @@ Las notas salen de la sección correspondiente de `CHANGELOG.md` (versión exact
 |---|---|
 | `KEYSTORE_B64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD` | Firma del APK |
 | `TMDB_API_KEY` | Generación manual de catálogos (`catalogs.yml`) |
-| `TRAKT_CLIENT_ID`, `TRAKT_CLIENT_SECRET` | Opcional; integración con Trakt |
+| `TRAKT_CLIENT_ID` | Opcional; integración con Trakt en build-time. El secret se configura en Ajustes |
 
 La clave de TMDB del usuario se introduce en **Ajustes → Clave API de TMDB**; no se comparte.
 

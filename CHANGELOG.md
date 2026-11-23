@@ -8,6 +8,20 @@ Los binarios y las notas completas de cada versión se publican en
 [GitHub Releases](https://github.com/GitCorion/Medusa/releases). Las versiones anteriores a 2.3.12
 no tienen entrada detallada en este archivo; su histórico está en los Releases y en `git log`.
 
+## [Unreleased]
+
+### Eliminado
+
+- Restos del antiguo explorador espacial (constelación/nebula): canvas, motores, atractores, grid
+  y sus tests, sin referencias desde la UI. Descubrir queda documentado como un rail de temáticas
+  con filtros AND y `BACK` para deshacer.
+
+### Documentación
+
+- `DESIGN.md` se reescribe con los tokens, radios, tipografía, movimiento y pantallas reales.
+- Se sincronizan versiones, conteo de pruebas, canales OTA, comandos Gradle, botón táctil y
+  catálogos manuales en README, PRODUCT, CONTRIBUTING, SECURITY y `docs/`.
+
 ## [2.4.1] - 2026-11-23
 
 ### Añadido

@@ -35,7 +35,7 @@ TMDB ni Trakt para trabajar en la interfaz.
 
 - `keystore.properties`, `*.keystore` y `*.jks` están ignorados. Nunca los subas.
 - La clave de TMDB se introduce en Ajustes; no se embebe en el APK.
-- `TRAKT_CLIENT_ID` y `TRAKT_CLIENT_SECRET` son opcionales y se inyectan en build-time.
+- `TRAKT_CLIENT_ID` es opcional y se inyecta en build-time. El `TRAKT_CLIENT_SECRET` se configura en Ajustes y no se embebe.
 - Si encuentras un secreto versionado, no lo copies en el issue: repórtalo siguiendo
   [`SECURITY.md`](SECURITY.md).
 
@@ -63,14 +63,14 @@ La identidad está documentada en [`DESIGN.md`](DESIGN.md). En resumen:
 - Un solo foco activo: borde de 1,5 dp en tarjetas, dock de iconos de 18 dp y cero escala por tarjeta.
 - El título y los metadatos de una tarjeta viven fuera del póster.
 - Nada de botones "Volver" en pantalla cuando corre en TV.
-- La navegación usa un dock de iconos; los chips mantienen su radio de 10 dp. No inventes
-  subrayados ondulados, sonar ni metáforas de interacción propias.
+- La navegación usa un dock de iconos; los chips mantienen su radio de 8 dp. No inventes
+  subrayados ondulados, sonar, constelaciones ni metáforas de interacción propias.
 - Nada de serif editorial, mayúsculas decorativas, separadores con punto medio ni flechas pegadas
   al texto.
 - Respeta `rememberReducedMotion()`.
 
-Si cambias un token, cámbialo en `ui/theme/Color.kt` y actualiza `DESIGN.md`. Si cambias un
-componente visual, añade una captura al PR.
+Si cambias un token, cámbialo en `ui/theme/Color.kt` y actualiza `DESIGN.md` y
+`docs/ESTUDIO.md`. Si cambias un componente visual, añade una captura al PR.
 
 ## Pruebas
 

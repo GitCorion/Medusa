@@ -8,7 +8,7 @@ versiones anteriores pueden no recibir correcciones.
 
 | Versión | Soporte |
 |---|---|
-| 2.3.x | Sí |
+| 2.4.x | Sí |
 | Anteriores | Solo si el fallo sigue presente en la última versión |
 
 ## Cómo reportar una vulnerabilidad

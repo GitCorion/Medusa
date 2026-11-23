@@ -4,7 +4,7 @@ Este documento describe cómo está construida la app, qué piezas se comunican 
 se tomaron las decisiones que no son obvias. Está pensado para alguien que va a tocar el código
 por primera vez, no para repetir el organigrama de carpetas.
 
-**Versión documentada:** 2.4.0 de `main` (`versionCode 1000165`); estable publicada: 2.3.12.
+**Versión documentada:** 2.4.1 de `main` (`versionCode 1000167`); estable publicada: 2.4.1.
 **Plataforma:** Android TV, Google TV, Fire TV y tablet. `minSdk 26`, `compileSdk` y `targetSdk` 36.
 
 ## 1. Vista general
@@ -32,8 +32,8 @@ MainActivity
 
 La navegación de primer nivel es `home`, `medusa`, `favorites`, `search` y `settings`; las rutas
 con argumentos son `detail/{itemId}`, `player/{itemId}`, `brand/{brandId}`, `genre/{genreName}` y
-`seasonal/{eventId}`. En TV, la tecla física `BACK` es la única affordance de retroceso. En tablet
-se añade un botón táctil de 38 dp.
+`seasonal/{eventId}`. En TV, la tecla física `BACK` es la única affordance de retroceso. En tablet,
+Marca, Género y Especiales muestran `TvBackButton`: un chip de 36 dp de alto y 8 dp de radio.
 
 ## 2. Stack
 
@@ -213,6 +213,9 @@ Los detalles completos, incluidos los errores que rompieron `.strm` en versiones
 - Si la red falla, se usa el último manifiesto validado con TTL de siete días. Si tampoco hay uno
   fresco, la app entra en modo fail-closed.
 - El `killSwitch` bloquea todas las versiones, haya o no reemplazo.
+- El canal por defecto es `BuildConfig.UPDATE_CHANNEL`, pero el usuario puede elegir Estable o
+  Beta en Ajustes → Acerca de. La preferencia guardada manda; el canal beta lee ambos manifiestos y
+  se queda con el `versionCode` más alto.
 - La instalación usa `FileProvider` y `REQUEST_INSTALL_PACKAGES`.
 
 ## 8. Interfaz y foco
@@ -228,11 +231,13 @@ indicadores, estilo de logos y tamaño de ventana, y monta el `NavHost`.
   v2.3.12 que se mantiene.
 - **Reglas de 10 pies.** Gutter de 48 dp, hero a sangre, una acción primaria por pantalla y
   navegación con la tecla física BACK en TV.
-- **Movimiento.** No hay animaciones autónomas ni bucles. La interfaz solo responde al mando y
-  respeta la escala de animación del sistema.
+- **Movimiento.** El chrome no tiene animaciones autónomas: el foco se lee por borde, relleno,
+  `zIndex` y luminosidad. Excepciones acotadas: el hero rota cada 12 s cuando no tiene foco, las
+  partículas estacionales son opcionales y hay pulsos de carga. Se respeta la escala de animación
+  del sistema.
 - **Cero blur.** No se usa `Modifier.blur()` ni `RenderEffect` en ninguna pantalla.
 - **Tablet.** `WindowSizeClass` adapta anchos y la navegación táctil. En TV no se muestran botones
-  de volver; en tablet sí, con 38 dp.
+  de volver; en tablet, Marca, Género y Especiales usan `TvBackButton` de 36 dp.
 
 ## 9. Rendimiento
 
@@ -240,13 +245,14 @@ indicadores, estilo de logos y tamaño de ventana, y monta el `NavHost`.
 - `dexLayoutOptimization = true` para el arranque.
 - Caché de imágenes de 1 GB y resize en servidor (`JellyfinImageUtils`).
 - Partículas escaladas según el dispositivo; `AppForeground` baja el ritmo del enriquecimiento.
-- `LazyRow`/`LazyColumn` con claves estables y sin animaciones autónomas.
+- `LazyRow`/`LazyColumn` con claves estables y sin animaciones por tarjeta.
 - No hay escala por tarjeta ni spotlight: el foco se lee por borde, zIndex y luminosidad del título.
 - Los workers pesados se posponen mientras hay reproducción o la app está visible.
 
 ## 10. Pruebas
 
-38 pruebas unitarias y una instrumentada. Las más importantes por contrato:
+36 clases de prueba unitaria (213 casos) y una instrumentada (5 casos). Las más importantes por
+contrato:
 
 | Prueba | Qué protege |
 |---|---|
@@ -277,8 +283,9 @@ Comandos:
 Cada ítem es `[id, isTv, popularity, title, year]`. La app los cruza con la biblioteca local; no
 pide miles de páginas a TMDB desde el dispositivo.
 
-**Nota operativa:** el workflow `catalogs.yml` regenera la carpeta cada noche con
-`TMDB_API_KEY`. En el árbol actual `docs/catalogs/` está excluido por `.gitignore`; si preparas un
+**Nota operativa:** el workflow `catalogs.yml` regenera la carpeta **manualmente** con
+`workflow_dispatch` y `TMDB_API_KEY`; no hay cron. En el árbol actual `docs/catalogs/` está
+excluido por `.gitignore`; si preparas un
 fork o publicas desde cero, asegúrate de versionar esa carpeta (`git add -f docs/catalogs` o quita
 la regla) para que `raw.githubusercontent.com` la sirva. Si una región no existe, la app usa TMDB
 en vivo cuando el usuario configuró su clave y muestra lo que pueda de la biblioteca local.
@@ -296,7 +303,7 @@ en vivo cuando el usuario configuró su clave y muestra lo que pueda de la bibli
 
 - La capa táctil de tablet merece una pasada propia; el modo solo iconos se pensó para un mando.
 - `TvPalette` conserva nombres históricos (`TextSecondaryCool`, `FocusInk`) que ya no describen sus
-  valores cálidos.
+  valores actuales.
 - No hay un benchmark automático de frames en CI; la regla de cero blur se revisa en código.
 - La carpeta de catálogos no está versionada en el árbol actual (ver nota operativa).
 

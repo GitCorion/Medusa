@@ -27,7 +27,7 @@ body:
     attributes:
       label: Versión de Medusa
       description: La ves en Ajustes o en el nombre del APK.
-      placeholder: "2.3.12 (1000159)"
+      placeholder: "2.4.1 (1000167)"
     validations:
       required: true
 

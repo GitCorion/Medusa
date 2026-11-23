@@ -2,7 +2,7 @@
 
 **Una interfaz a tres metros**
 
-Capa visual de `main` (2.4.0), 23 de noviembre de 2026 · Estable publicada: 2.3.12 · Madrid
+Capa visual de `main` (2.4.1), 23 de noviembre de 2026 · Estable publicada: 2.4.1 · Madrid
 
 > Este documento es la versión larga del estudio publicado en
 > <https://gitcorion.github.io/Medusa/>. Allí puedes probar el foco con las flechas del teclado y
@@ -18,7 +18,7 @@ Capa visual de `main` (2.4.0), 23 de noviembre de 2026 · Estable publicada: 2.3
 | Plataforma | Android 8.0+, `minSdk 26`, `targetSdk` 36 |
 | Construcción | Kotlin 2.0.21, Compose TV, Hilt, Room 22, Media3 |
 | Biblioteca de prueba | Jellyfin local; capturas con la biblioteca sincronizada |
-| Capturas | Televisor de 1920 × 1080, capa visual de `main` (2.4.0) |
+| Capturas | Televisor de 1920 × 1080, capa visual de `main` (2.4.1); las capturas se tomaron en la build 2.4.0, sin cambios visuales en 2.4.1 |
 | Licencia | GPL-3.0 |
 
 La interfaz es **cinematográfica y de diez pies**: arte a sangre, un dock de iconos, un foco de
@@ -46,7 +46,7 @@ un televisor, no un benchmark estadístico.
 
 La app se usa desde un sofá. Eso cambia cuatro cosas:
 
-- **La vista.** A tres metros, un texto de 12 px ocupa menos de cuatro milímetros. La densidad de
+- **La vista.** A tres metros, un texto de 12 sp ocupa menos de cuatro milímetros. La densidad de
   un dashboard no sirve; hace falta jerarquía.
 - **La mano.** El mando tiene D-pad, OK y BACK. No hay hover, no hay scroll fino y no hay puntero.
   El foco es el cursor y tiene que estar siempre visible.
@@ -64,14 +64,15 @@ que el usuario espera de una tele, no se inventa**.
 ### 4.1. Cine primero, tele después
 
 El arte ocupa la pantalla y el chrome desaparece. La navegación es un dock de iconos de 18 dp; el
-foco no exige OK y BACK sigue siendo el retroceso. Los filtros son chips compactos, las tarjetas
-tienen radio de 10 dp y las insignias, 4 dp. No hay marcos complejos ni metáforas literarias.
+foco no exige OK y BACK sigue siendo el retroceso. Los filtros son chips compactos de 8 dp, las
+tarjetas tienen radio de 10 dp y las insignias, 6–9 dp. No hay marcos complejos ni metáforas
+literarias.
 
 ### 4.2. El arte manda
 
 Los pósters y backdrops van a sangre. El título y el año viven fuera de la carátula; Continuar
 viendo usa el card oficial con título y progreso sobre el arte. No hay cajones grises con texto
-incrustado ni bordes de 1 px en reposo.
+incrustado ni bordes de 1 dp en reposo.
 
 ### 4.3. Un solo foco
 
@@ -142,11 +143,11 @@ La escala:
 
 | Rol | Tamaño | Peso |
 |---|---|---|
-| Display / hero | 36 px | 700 |
-| Headline | 24 px | 700 |
-| Title | 16 px | 600 |
-| Body | 13 px | 400 |
-| Label | 11 px | 600 |
+| Display / hero | 32–36 sp | 700 |
+| Headline | 24 sp | 700 |
+| Title | 16–20 sp | 600 |
+| Body | 13–15 sp | 400 |
+| Label | 11–12 sp | 600 |
 
 Prohibido: serif editorial, mayúsculas decorativas, tracking amplio, separadores con punto medio,
 flechas pegadas al texto y monocromo para datos por defecto. El texto se escribe en caja de frase.
@@ -156,23 +157,24 @@ Los ClearLogo del contenido son la única voz display variable.
 
 | Elemento | Radio |
 |---|---|
-| Insignia | 4 px |
-| Chip | 10 px |
-| Tarjeta | 10 px |
-| Cápsula del dock | 18 px |
-| Círculo | 999 px |
+| Insignia | 6–9 dp según tamaño |
+| Chip | 8 dp |
+| Tarjeta | 10 dp |
+| Cápsula del dock | 18 dp |
+| Círculo | 999 dp |
 
 Anatomía del foco:
 
-1. Borde de **1,5 px** cian sobre el póster y `zIndex(10f)`.
+1. Borde de **1,5 dp** cian sobre el póster y `zIndex(10f)`.
 2. Título a plena luminosidad; las tarjetas vecinas conservan su opacidad.
-3. Dock de iconos de 18 px en cápsulas de 18 px de radio.
+3. Dock de iconos de 18 dp en cápsulas de 18 dp de radio.
 4. Sin escala de tarjeta, sin spotlight, sin blur.
 
 ### 6.4. Movimiento
 
-- No hay animaciones autónomas, bucles, sonar ni partículas decorativas en la UI.
-- La interfaz solo responde al mando. Sin foco, no hay movimiento.
+- El chrome no tiene animaciones autónomas, bucles, sonar ni metáforas en movimiento.
+- Excepciones acotadas: el hero rota cada 12 s cuando no tiene foco, las partículas estacionales
+  son opcionales y hay pulsos de carga en Favoritos y Buscar.
 - Respeta la escala de animación del sistema. Con movimiento reducido, la interfaz se queda quieta.
 - Cero blur en tiempo real.
 
@@ -193,9 +195,10 @@ vigilar:** la densidad de metadatos y el contraste de los badges sobre arte clar
 
 ### Descubrir
 
-Filtros de formato y chips de género, con resultados en la misma pantalla. La tarjeta enfocada
-lleva borde de 1,5 px. **Lo que funciona:** exploración sin cambiar de contexto. **Lo que vigilar:**
-la carga cognitiva de filtro + chips + resultados; el estado vacío debe explicar qué hacer.
+Filtros de formato y un rail de temáticas, con resultados en la misma pantalla. Cada etiqueta se
+suma como filtro AND; `BACK` deshace la última y el carrusel se recalcula. La tarjeta enfocada lleva
+borde de 1,5 dp. **Lo que funciona:** exploración sin cambiar de contexto. **Lo que vigilar:** la
+carga cognitiva de filtro + etiquetas + resultados; el estado vacío debe explicar qué hacer.
 
 ### Ficha
 
@@ -231,13 +234,13 @@ Lo que ya está:
 - Foco visible en todos los elementos interactivos; no se depende del color solamente.
 - Dock de iconos con etiquetas en el modo texto o ambos.
 - Movimiento reducido respetado desde el sistema.
-- Teclas físicas y `BACK` en TV; botón táctil de 38 px en tablet.
+- Teclas físicas y `BACK` en TV; botón táctil `TvBackButton` de 36 dp en Marca, Género y Especiales.
 - Subtítulos con tamaño y fondo configurables.
 - Textos en español e inglés.
 
 Lo que falta o hay que vigilar:
 
-- La capa táctil de tablet merece una pasada propia; el dock de 18 px se pensó para un mando.
+- La capa táctil de tablet merece una pasada propia; el dock de 18 dp se pensó para un mando.
 - La semántica de selección en algunos rails puede mejorar (`Role.Checkbox`/`selected`) para
   lectores de pantalla.
 - Los metadatos más pequeños sobre backdrops claros necesitan comprobación caso por caso.
@@ -278,15 +281,15 @@ La fluidez no sale del renderizado: sale de decidir qué no se dibuja.
 
 ## 11. Deuda declarada
 
-1. **Tablet táctil.** El dock de 18 px y el foco de borde se pensaron para un mando. Falta una
+1. **Tablet táctil.** El dock de 18 dp y el foco de borde se pensaron para un mando. Falta una
    pasada de dedo, gestos y tamaños táctiles.
 2. **Nombres heredados.** `TvPalette` conserva `TextSecondaryCool` o `FocusInk`, nombres que ya no
    describen sus valores actuales. Es deuda de nombres, no de color.
 3. **Medición de frames.** La regla de cero blur está en el código y en las revisiones, pero no hay
    un benchmark automático en CI.
-4. **Catálogos en el árbol.** El workflow nocturno genera `docs/catalogs`, pero la carpeta está
-   excluida por `.gitignore` en este árbol. Un fork debe versionarla o la app caerá al fallback de
-   TMDB para las regiones sin catálogo.
+4. **Catálogos en el árbol.** El workflow manual `catalogs.yml` genera `docs/catalogs`, pero la
+   carpeta está excluida por `.gitignore` en este árbol. Un fork debe versionarla o la app caerá al
+   fallback de TMDB para las regiones sin catálogo.
 
 ## 12. Cómo reproducir el estudio
 
