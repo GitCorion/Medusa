@@ -5,6 +5,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
+import org.junit.Assume
 import org.junit.Test
 import tv.medusa.app.data.remote.jellyfin.CatalogoCapabilitiesDto
 import tv.medusa.app.data.remote.jellyfin.CatalogoFormatUtils
@@ -235,9 +236,18 @@ class CatalogoTorrentPluginTest {
         assertEquals("Conectando con peers…", zeroProgress10sState.statusText)
     }
 
+    /**
+     * Integración manual contra un Jellyfin real. No se ejecuta por defecto:
+     * exporta CATALOGO_TEST_SERVER para habilitarla.
+     */
     @Test
     fun liveServer_capabilitiesCheck() {
-        val serverUrl = "http://127.0.0.1:8086"
+        val serverUrl = System.getenv("CATALOGO_TEST_SERVER").orEmpty()
+        Assume.assumeTrue(
+            "Configura CATALOGO_TEST_SERVER para ejecutar el test de integración",
+            serverUrl.isNotBlank()
+        )
+
         val isReachable = runCatching {
             val url = java.net.URL("$serverUrl/Catalogo/Capabilities")
             val conn = url.openConnection() as java.net.HttpURLConnection
@@ -348,10 +358,19 @@ class CatalogoTorrentPluginTest {
         assertEquals(32L * 1024L * 1024L, calc3)
     }
 
+    /**
+     * Integración manual contra un Jellyfin real. No se ejecuta por defecto:
+     * exporta CATALOGO_TEST_SERVER y CATALOGO_TEST_TOKEN para habilitarla.
+     */
     @Test
     fun liveServer_realTokenStatusTests() {
-        val serverUrl = "http://127.0.0.1:8086"
-        val token = "***REMOVED***"
+        val serverUrl = System.getenv("CATALOGO_TEST_SERVER").orEmpty()
+        val token = System.getenv("CATALOGO_TEST_TOKEN").orEmpty()
+        Assume.assumeTrue(
+            "Configura CATALOGO_TEST_SERVER y CATALOGO_TEST_TOKEN para ejecutar el test de integración",
+            serverUrl.isNotBlank() && token.isNotBlank()
+        )
+
         val authHeader = "MediaBrowser Client=\"Tujelly\", Device=\"MacTest\", DeviceId=\"tujelly-test-suite\", Version=\"2.2.99\", Token=\"$token\""
 
         fun getStatus(itemId: String, releaseId: Long? = null): CatalogoStatusDto? {
