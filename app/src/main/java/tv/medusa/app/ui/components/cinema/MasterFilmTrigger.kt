@@ -112,10 +112,9 @@ fun MasterFilmTrigger(
             contentPadding = PaddingValues(0.dp),
             scale = ButtonDefaults.scale(scale = 1.0f, focusedScale = 1.0f),
             colors = ButtonDefaults.colors(
-                // En reposo el botón primario lleva un tinte del acento con el icono en color:
-                // se lee como acción principal sin competir con el relleno sólido del foco.
-                containerColor = if (isFocused) focusColor else focusColor.copy(alpha = 0.16f),
-                contentColor = if (isFocused) focusContentColor else focusColor,
+                // En reposo, neutro como el resto de acciones; el acento queda para el foco.
+                containerColor = tv.medusa.app.ui.theme.AbyssSurface,
+                contentColor = TextPrimary,
                 focusedContainerColor = focusColor,
                 focusedContentColor = focusContentColor
             ),
