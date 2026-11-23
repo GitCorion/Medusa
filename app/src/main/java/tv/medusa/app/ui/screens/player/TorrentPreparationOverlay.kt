@@ -14,6 +14,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -26,18 +27,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Layers
-import androidx.compose.material.icons.rounded.CloudDownload
-import androidx.compose.material.icons.rounded.ErrorOutline
-import androidx.compose.material.icons.rounded.Pause
-import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material.icons.rounded.WarningAmber
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -81,6 +74,7 @@ import tv.medusa.app.data.remote.jellyfin.TorrentOverlayUiState
 import tv.medusa.app.ui.theme.TvPill
 import tv.medusa.app.ui.util.handleTouchClick
 import tv.medusa.app.ui.theme.TextPrimary
+import tv.medusa.app.ui.theme.TextSecondary
 
 /**
  * Pantalla de búfer y preparación de torrent con diseño Anti-Slop cinemático:
@@ -132,372 +126,176 @@ fun TorrentPreparationOverlay(
             .background(Color(0xFF04060A)),
         contentAlignment = Alignment.Center
     ) {
-        // 1. Backdrop cinemático
+        // 1. Fondo y scrim, sin tarjeta contenedora
         if (!state.backdropUrl.isNullOrBlank()) {
             AsyncImage(
                 model = state.backdropUrl,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize(),
-                alpha = 0.30f
+                alpha = 0.18f
             )
         }
 
-        // 2. Viñeta oscura aterciopelada (Anti-slop background)
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
-                    Brush.radialGradient(
+                    Brush.verticalGradient(
                         colors = listOf(
-                            Color(0xD0060913),
-                            Color(0xF505070E),
-                            Color(0xFA030408)
+                            Color(0xF204060A),
+                            Color(0xFA04060A),
+                            Color(0xFF04060A)
                         )
                     )
                 )
         )
 
-        // 3. Tarjeta central elevada
-        Box(
+        // 2. Contenido directo sobre el fondo: sin caja, sin iconos decorativos
+        Column(
             modifier = Modifier
-                .fillMaxWidth(0.58f)
-                .clip(RoundedCornerShape(22.dp))
-                .background(Color(0xF20B101D))
-                .border(
-                    width = 1.dp,
-                    color = if (state.isError) Color(0x55EF4444) else tv.medusa.app.ui.theme.TvPalette.GlassIdle,
-                    shape = RoundedCornerShape(22.dp)
-                )
-                .padding(horizontal = 36.dp, vertical = 32.dp),
-            contentAlignment = Alignment.Center
+                .fillMaxWidth(0.56f)
+                .padding(horizontal = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                // Icono de estado con aura sutil
-                val iconVector = when {
-                    state.isError -> Icons.Rounded.ErrorOutline
-                    state.isUnavailable -> Icons.Rounded.WarningAmber
-                    state.streamReady -> Icons.Rounded.PlayArrow
-                    state.state.equals("PAUSED", ignoreCase = true) -> Icons.Rounded.Pause
-                    else -> Icons.Rounded.CloudDownload
+            if (state.title.isNotBlank()) {
+                Text(
+                    text = state.title,
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary,
+                    textAlign = TextAlign.Center,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+            }
+
+            val metaParts = buildList {
+                if (!state.quality.isNullOrBlank()) add(state.quality.uppercase())
+                if (!state.audio.isNullOrBlank()) add(state.audio.replaceFirstChar { it.uppercase() })
+                if (state.seeds > 0 || state.peers > 0) {
+                    add(stringResource(R.string.torrent_seeds_peers, state.seeds, state.peers))
                 }
-                val iconTint = when {
-                    state.isError -> Color(0xFFEF4444)
-                    state.isUnavailable -> Color(0xFFF59E0B)
-                    state.streamReady -> Color(0xFF4ADE80)
-                    else -> focusColor
+            }
+            if (metaParts.isNotEmpty()) {
+                Text(
+                    text = metaParts.joinToString("  ·  "),
+                    fontSize = 12.sp,
+                    color = TextSecondary,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(28.dp))
+            }
+
+            if (!state.isError && !state.isUnavailable) {
+                val downloadedStr = CatalogoFormatUtils.formatBytes(state.downloadedBytes)
+                val targetStr = CatalogoFormatUtils.formatBytes(state.targetBufferBytes)
+                val pct = (animatedProgress * 100).toInt().coerceIn(0, 100)
+                val speedText = if (state.speedBps > 0) {
+                    CatalogoFormatUtils.formatSpeed(state.speedBps)
+                } else if (state.isZeroProgressFor10s) {
+                    stringResource(R.string.torrent_connecting_swarm)
+                } else {
+                    stringResource(R.string.torrent_starting_download)
                 }
 
+                Text(
+                    text = state.statusText,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = TextPrimary,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "$downloadedStr / $targetStr",
+                        fontSize = 12.sp,
+                        color = TextSecondary
+                    )
+                    Text(
+                        text = "$pct %",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = focusColor
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
                 Box(
                     modifier = Modifier
-                        .size(54.dp)
-                        .background(iconTint.copy(alpha = 0.12f), CircleShape)
-                        .border(1.dp, iconTint.copy(alpha = 0.28f), CircleShape),
-                    contentAlignment = Alignment.Center
+                        .fillMaxWidth()
+                        .height(2.dp)
+                        .background(Color(0x24FFFFFF))
                 ) {
-                    Icon(
-                        imageVector = iconVector,
-                        contentDescription = null,
-                        tint = iconTint,
-                        modifier = Modifier.size(26.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(18.dp))
-
-                // Título
-                if (state.title.isNotBlank()) {
-                    Text(
-                        text = state.title,
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary,
-                        textAlign = TextAlign.Center,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
-
-                // Fila de Badges cinemáticos (Calidad, Audio, Enjambre, Versión activa)
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (!state.quality.isNullOrBlank()) {
-                        TvPill(
-                            text = state.quality.uppercase(),
-                            containerColor = tv.medusa.app.ui.theme.TvPalette.GlassRaised,
-                            textColor = tv.medusa.app.ui.theme.TvPalette.TextSoft
-                        )
-                    }
-
-                    if (!state.audio.isNullOrBlank()) {
-                        TvPill(
-                            text = state.audio.replaceFirstChar { it.uppercase() },
-                            containerColor = tv.medusa.app.ui.theme.TvPalette.GlassRaised,
-                            textColor = tv.medusa.app.ui.theme.TvPalette.TextSoft
-                        )
-                    }
-
-                    // Badge de enjambre (Semillas / Pares)
-                    if (state.seeds > 0 || state.peers > 0) {
-                        TvPill(
-                            text = stringResource(R.string.torrent_seeds_peers, state.seeds, state.peers),
-                            containerColor = Color(0x1822C55E),
-                            textColor = Color(0xFF4ADE80),
-                            borderColor = Color(0x3322C55E)
-                        )
-                    } else if (!state.isError && !state.isUnavailable && !state.streamReady) {
-                        TvPill(
-                            text = stringResource(R.string.torrent_searching_seeds),
-                            containerColor = Color(0x18EAB308),
-                            textColor = Color(0xFFFBBF24),
-                            borderColor = Color(0x33EAB308)
-                        )
-                    }
-
-                    // Badge de versión activa si hay múltiples versiones disponibles
-                    if (state.availableVersions.size > 1) {
-                        val currentVer = state.availableVersions.firstOrNull { it.id == state.currentMediaSourceId }
-                        val verName = currentVer?.name?.takeIf { it.isNotBlank() } ?: stringResource(R.string.torrent_version_n, 1)
-                        TvPill(
-                            text = verName,
-                            containerColor = focusColor.copy(alpha = 0.16f),
-                            textColor = focusColor,
-                            borderColor = focusColor.copy(alpha = 0.35f)
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(18.dp))
-
-                // Área de progreso de búfer
-                if (!state.isError && !state.isUnavailable) {
-                    Column(
+                    Box(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(Color(0x10FFFFFF))
-                            .padding(horizontal = 20.dp, vertical = 16.dp)
-                    ) {
-                        // Fila superior: Texto de estado y bytes contiguos / requeridos
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = state.statusText,
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = TextPrimary
-                            )
-
-                            val downloadedStr = CatalogoFormatUtils.formatBytes(state.downloadedBytes)
-                            val targetStr = CatalogoFormatUtils.formatBytes(state.targetBufferBytes)
-                            val pct = (animatedProgress * 100).toInt().coerceIn(0, 100)
-
-                            Text(
-                                text = "$downloadedStr / $targetStr ($pct%)",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = focusColor
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        // Barra de progreso estilizada
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(8.dp)
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(Color(0x20FFFFFF))
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth(animatedProgress)
-                                    .fillMaxHeight()
-                                    .clip(RoundedCornerShape(4.dp))
-                                    .background(
-                                        Brush.horizontalGradient(
-                                            colors = listOf(
-                                                focusColor,
-                                                focusColor.copy(alpha = 0.85f)
-                                            )
-                                        )
-                                    )
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        // Fila inferior: velocidad y tiempo restante
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            val speedText = if (state.speedBps > 0) {
-                                CatalogoFormatUtils.formatSpeed(state.speedBps)
-                            } else if (state.isZeroProgressFor10s) {
-                                stringResource(R.string.torrent_connecting_swarm)
-                            } else {
-                                stringResource(R.string.torrent_starting_download)
-                            }
-
-                            Text(
-                                text = speedText,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Normal,
-                                color = tv.medusa.app.ui.theme.TvPalette.TextMuted
-                            )
-
-                            val etaText = when {
-                                state.streamReady -> "¡Listo! Iniciando…"
-                                state.etaSeconds > 0 -> stringResource(R.string.torrent_eta_remaining, CatalogoFormatUtils.formatEta(state.etaSeconds))
-                                state.seeds == 0 -> stringResource(R.string.torrent_waiting_peers)
-                                else -> stringResource(R.string.torrent_buffering_initial)
-                            }
-
-                            Text(
-                                text = etaText,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = if (state.streamReady) Color(0xFF4ADE80) else tv.medusa.app.ui.theme.TvPalette.TextSecondaryCool
-                            )
-                        }
-                    }
-                }
-
-                // Mensaje de error
-                if (state.isError || state.isUnavailable) {
-                    val errText = state.errorMessage ?: state.statusText.takeIf { it.isNotBlank() } ?: stringResource(R.string.torrent_prepare_failed)
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Text(
-                        text = errText,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = Color(0xFFFCA5A5),
-                        textAlign = TextAlign.Center
+                            .fillMaxWidth(animatedProgress)
+                            .fillMaxHeight()
+                            .background(focusColor)
                     )
                 }
+                Spacer(modifier = Modifier.height(10.dp))
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Text(
+                    text = speedText,
+                    fontSize = 12.sp,
+                    color = TextSecondary
+                )
+            }
 
-                // Fila de acciones (Reintentar, Cambiar versión, Cancelar)
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(14.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (state.isError) {
-                        Button(
-                            onClick = onRetry,
-                            modifier = Modifier
-                                .handleTouchClick { onRetry() }
-                                .focusRequester(primaryButtonFocusRequester),
-                            colors = ButtonDefaults.colors(
-                                containerColor = tv.medusa.app.ui.theme.TvPalette.GlassRaised,
-                                contentColor = TextPrimary,
-                                focusedContainerColor = focusColor,
-                                focusedContentColor = focusContent
-                            ),
-                            scale = ButtonDefaults.scale(focusedScale = 1.05f),
-                            shape = ButtonDefaults.shape(RoundedCornerShape(10.dp))
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.Refresh,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Text(
-                                    text = stringResource(R.string.torrent_retry),
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                            }
-                        }
-                    }
+            if (state.isError || state.isUnavailable) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = state.errorMessage ?: state.statusText.takeIf { it.isNotBlank() }
+                        ?: stringResource(R.string.torrent_prepare_failed),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = if (state.isUnavailable) Color(0xFFF59E0B) else Color(0xFFFCA5A5),
+                    textAlign = TextAlign.Center
+                )
+            }
 
-                    // Botón para elegir otra versión disponible si hay más de 1
-                    if (state.availableVersions.size > 1) {
-                        Button(
-                            onClick = { showVersionSelector = true },
-                            modifier = Modifier
-                                .handleTouchClick { showVersionSelector = true }
-                                .focusRequester(versionsButtonFocusRequester),
-                            colors = ButtonDefaults.colors(
-                                containerColor = tv.medusa.app.ui.theme.TvPalette.GlassRaised,
-                                contentColor = TextPrimary,
-                                focusedContainerColor = focusColor,
-                                focusedContentColor = focusContent
-                            ),
-                            scale = ButtonDefaults.scale(focusedScale = 1.05f),
-                            shape = ButtonDefaults.shape(RoundedCornerShape(10.dp))
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Layers,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Text(
-                                    text = stringResource(R.string.torrent_versions_count, state.availableVersions.size),
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                            }
-                        }
-                    }
-
-                    // Botón Cancelar
-                    Button(
-                        onClick = onCancel,
-                        modifier = Modifier
-                            .handleTouchClick { onCancel() }
-                            .then(
-                                if (state.availableVersions.size <= 1 && !state.isError) {
-                                    Modifier.focusRequester(primaryButtonFocusRequester)
-                                } else Modifier
-                            ),
-                        colors = ButtonDefaults.colors(
-                            containerColor = tv.medusa.app.ui.theme.TvPalette.GlassIdle,
-                            contentColor = TextPrimary,
-                            focusedContainerColor = focusColor,
-                            focusedContentColor = focusContent
-                        ),
-                        scale = ButtonDefaults.scale(focusedScale = 1.05f),
-                        shape = ButtonDefaults.shape(RoundedCornerShape(10.dp))
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = null,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Text(
-                                text = stringResource(R.string.torrent_cancel),
-                                fontWeight = FontWeight.Normal
-                            )
-                        }
-                    }
+            Spacer(modifier = Modifier.height(28.dp))
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(24.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (state.isError) {
+                    TorrentTextButton(
+                        text = stringResource(R.string.torrent_retry),
+                        onClick = onRetry,
+                        focusColor = focusColor,
+                        focusContent = focusContent,
+                        focusRequester = primaryButtonFocusRequester
+                    )
                 }
+                if (state.availableVersions.size > 1) {
+                    TorrentTextButton(
+                        text = stringResource(R.string.torrent_versions_count, state.availableVersions.size),
+                        onClick = { showVersionSelector = true },
+                        focusColor = focusColor,
+                        focusContent = focusContent,
+                        focusRequester = versionsButtonFocusRequester
+                    )
+                }
+                TorrentTextButton(
+                    text = stringResource(R.string.torrent_cancel),
+                    onClick = onCancel,
+                    focusColor = focusColor,
+                    focusContent = focusContent,
+                    focusRequester = if (state.availableVersions.size <= 1 && !state.isError) {
+                        primaryButtonFocusRequester
+                    } else {
+                        null
+                    }
+                )
             }
         }
 
@@ -519,6 +317,43 @@ fun TorrentPreparationOverlay(
                 onClose = { showVersionSelector = false }
             )
         }
+    }
+}
+
+/**
+ * Acción sobria: sin contenedor en reposo; el foco pinta la cápsula de acento.
+ */
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun TorrentTextButton(
+    text: String,
+    onClick: () -> Unit,
+    focusColor: Color,
+    focusContent: Color,
+    focusRequester: FocusRequester? = null,
+    modifier: Modifier = Modifier
+) {
+    Button(
+        onClick = onClick,
+        modifier = modifier
+            .handleTouchClick { onClick() }
+            .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier),
+        colors = ButtonDefaults.colors(
+            containerColor = Color.Transparent,
+            contentColor = TextSecondary,
+            focusedContainerColor = focusColor,
+            focusedContentColor = focusContent
+        ),
+        scale = ButtonDefaults.scale(scale = 1f, focusedScale = 1f),
+        shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
+        border = ButtonDefaults.border(border = Border.None, focusedBorder = Border.None),
+        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
+    ) {
+        Text(
+            text = text,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium
+        )
     }
 }
 

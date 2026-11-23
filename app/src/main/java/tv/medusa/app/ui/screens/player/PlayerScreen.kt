@@ -65,7 +65,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import coil.compose.AsyncImage
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
@@ -1773,28 +1772,21 @@ private fun PlayerContent(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.35f)),
+                    .background(Color.Black.copy(alpha = 0.28f)),
                 contentAlignment = Alignment.Center
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(24.dp))
-                        .background(Color(0xEE121320))
-                        .border(1.dp, Color(0x44FFFFFF), RoundedCornerShape(24.dp))
-                        .padding(horizontal = 24.dp, vertical = 14.dp)
-                ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     JellyLoadingIndicator(
-                        size = 28.dp,
+                        size = 30.dp,
                         message = null,
                         isMonochrome = isMonochrome
                     )
-                    Spacer(modifier = Modifier.width(14.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
                     Text(
                         text = stringResource(R.string.player_loading_playback),
                         color = TextPrimary,
                         fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.Medium
                     )
                 }
             }

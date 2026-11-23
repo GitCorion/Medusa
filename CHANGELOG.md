@@ -20,9 +20,13 @@ no tienen entrada detallada en este archivo; su histórico está en los Releases
 
 - README reescrito como landing: estado actual, instalación, configuración inicial, arquitectura,
   privacidad y enlaces a los documentos técnicos. `README.en.md` queda alineado.
+- Pantallas de carga del reproductor y de preparación de torrent sin tarjetas contenedoras: layout
+  plano, menos iconos y adornos, textos e indicadores mínimos. La medusa vuelve al buffering.
 
 ### Corregido
 
+- Favoritos abre ordenado por año descendente y el corazón de favorito vuelve a mostrarse en todas
+  las tarjetas. Los badges de visto y favorito usan el acento activo.
 - Comprobación anti-rollback del APK descargado: se usa `PackageInfoCompat` para no llamar a
   `longVersionCode` en API 26–27.
 
