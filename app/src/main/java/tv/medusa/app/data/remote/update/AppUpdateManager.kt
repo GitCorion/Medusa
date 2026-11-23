@@ -334,7 +334,8 @@ class AppUpdateManager(private val context: Context) {
 
                     // Protección anti-rollback: el APK no puede ser más antiguo que el instalado.
                     val downloadedVersion = context.packageManager
-                        .getPackageArchiveInfo(apkFile.absolutePath, 0)?.longVersionCode ?: 0L
+                        .getPackageArchiveInfo(apkFile.absolutePath, 0)
+                        ?.let { PackageInfoCompat.getLongVersionCode(it) } ?: 0L
                     if (downloadedVersion < PackageInfoCompat.getLongVersionCode(
                             context.packageManager.getPackageInfo(context.packageName, 0)
                         )
