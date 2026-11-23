@@ -69,12 +69,20 @@ fun MediaRow(
         ) {
             val badgeText = localizedSectionBadge(section.badge)
             if (!badgeText.isNullOrBlank()) {
-                tv.medusa.app.ui.components.cinema.CinemaFormatBadge(
-                    text = badgeText,
-                    isHighlighted = !isMonochrome,
-                    highlightColor = focusColor
+                Text(
+                    text = badgeText.uppercase(),
+                    color = if (isMonochrome) Color.White else focusColor,
+                    fontWeight = FontWeight.Black,
+                    fontSize = 12.sp,
+                    letterSpacing = 0.8.sp
                 )
-                Spacer(modifier = Modifier.width(10.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "•",
+                    color = tv.medusa.app.ui.theme.TextSecondary.copy(alpha = 0.5f),
+                    fontSize = 13.sp
+                )
+                Spacer(modifier = Modifier.width(8.dp))
             }
 
             Text(

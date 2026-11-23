@@ -47,7 +47,10 @@ import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.Movie
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.Tv
+import java.util.Locale
+import tv.medusa.app.ui.theme.AmberCinema
 import androidx.compose.foundation.layout.statusBarsPadding
 import tv.medusa.app.ui.util.adaptiveMarquee
 import tv.medusa.app.ui.util.handleTouchClick
@@ -97,7 +100,6 @@ import tv.medusa.app.ui.components.MediaCard
 import tv.medusa.app.ui.components.TvBackButton
 import tv.medusa.app.ui.components.cinema.MasterFilmTrigger
 import tv.medusa.app.ui.components.cinema.CinemaOrbitDial
-import tv.medusa.app.ui.components.cinema.CinemaFormatBadge
 import tv.medusa.app.ui.theme.CinematicTypography
 import tv.medusa.app.ui.theme.TextPrimary
 import tv.medusa.app.ui.theme.TextSecondary
@@ -386,38 +388,75 @@ fun DetailScreen(
 
                             Spacer(modifier = Modifier.height(14.dp))
 
-                            // Metadata Badges Row en Cartelas Cinemáticas
-                            FlowRow(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            // Línea de metadatos cinematográficos limpia (Zero AI box slop)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
+                                // 1. Puntuación / Rating
                                 if (entity.communityRating != null && entity.communityRating > 0f) {
-                                    TvRatingBadge(rating = entity.communityRating, compact = false)
-                                }
-
-                                if (entity.productionYear != null) {
-                                    CinemaFormatBadge(text = "${entity.productionYear}")
-                                }
-
-                                CinemaFormatBadge(
-                                    text = when {
-                                        state.isCollection -> stringResource(R.string.detail_collection)
-                                        isEpisode -> stringResource(R.string.detail_type_episode, sNum, eNum)
-                                        isTvSeries -> stringResource(R.string.detail_type_series)
-                                        else -> stringResource(R.string.detail_type_movie)
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.Star,
+                                            contentDescription = null,
+                                            tint = AmberCinema,
+                                            modifier = Modifier.size(14.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            text = String.format(Locale.US, "%.1f", entity.communityRating),
+                                            color = Color.White,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 13.sp
+                                        )
                                     }
+                                    Text(text = "•", color = TextSecondary.copy(alpha = 0.5f), fontSize = 12.sp)
+                                }
+
+                                // 2. Año de producción
+                                if (entity.productionYear != null) {
+                                    Text(
+                                        text = "${entity.productionYear}",
+                                        color = TextSecondary,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                    Text(text = "•", color = TextSecondary.copy(alpha = 0.5f), fontSize = 12.sp)
+                                }
+
+                                // 3. Tipo (Película / Serie / Episodio)
+                                val typeLabel = when {
+                                    state.isCollection -> stringResource(R.string.detail_collection)
+                                    isEpisode -> stringResource(R.string.detail_type_episode, sNum, eNum)
+                                    isTvSeries -> stringResource(R.string.detail_type_series)
+                                    else -> stringResource(R.string.detail_type_movie)
+                                }
+                                Text(
+                                    text = typeLabel,
+                                    color = TextSecondary,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Medium
                                 )
 
-                                // Age Rating Badge (OfficialRating: PG-13, R, TV-MA, etc.)
+                                // 4. Calificación por edad (OfficialRating: PG-13, 16+, R, etc.)
                                 if (!entity.officialRating.isNullOrBlank()) {
-                                    CinemaFormatBadge(
-                                        text = entity.officialRating,
-                                        isHighlighted = true,
-                                        highlightColor = focusColor
-                                    )
+                                    Text(text = "•", color = TextSecondary.copy(alpha = 0.5f), fontSize = 12.sp)
+                                    Box(
+                                        modifier = Modifier
+                                            .border(0.8.dp, TextSecondary.copy(alpha = 0.45f), RoundedCornerShape(3.dp))
+                                            .padding(horizontal = 5.dp, vertical = 1.dp)
+                                    ) {
+                                        Text(
+                                            text = entity.officialRating,
+                                            color = TextSecondary,
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            letterSpacing = 0.5.sp
+                                        )
+                                    }
                                 }
 
-                                // Series Status Badge
+                                // 5. Estado de serie (si aplica)
                                 if (state.seriesStatus != null && state.seriesStatus.type != SeriesStatusType.UNKNOWN) {
                                     val statusLabel = when (state.seriesStatus.type) {
                                         SeriesStatusType.CANCELED -> stringResource(R.string.series_status_canceled)
@@ -426,31 +465,17 @@ fun DetailScreen(
                                         SeriesStatusType.UNKNOWN -> ""
                                     }
                                     if (statusLabel.isNotBlank()) {
-                                        val statusColor = when {
-                                            isMonochrome -> Color.White
-                                            state.seriesStatus.type == SeriesStatusType.CONTINUING -> Color(0xFF6EE7B7)
-                                            state.seriesStatus.type == SeriesStatusType.CANCELED -> Color(0xFFFCA5A5)
-                                            else -> focusColor
-                                        }
-                                        CinemaFormatBadge(
+                                        Text(text = "•", color = TextSecondary.copy(alpha = 0.5f), fontSize = 12.sp)
+                                        Text(
                                             text = statusLabel,
-                                            isHighlighted = !isMonochrome,
-                                            highlightColor = statusColor
+                                            color = if (state.seriesStatus.type == SeriesStatusType.CONTINUING) Color(0xFF34D399) else TextSecondary,
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Medium
                                         )
                                     }
                                 }
 
-                                // Individual Genre Pills
-                                val genreList = entity.genres
-                                    ?.split(",", ";")
-                                    ?.map { it.trim() }
-                                    ?.filter { it.isNotBlank() }
-                                    ?: emptyList()
-
-                                genreList.forEach { genre ->
-                                    CinemaFormatBadge(text = genre)
-                                }
-
+                                // 6. Progreso / Visto
                                 val totalEps = entity.totalItemCount
                                 val unplayedEps = entity.unplayedItemCount
                                 val playedEps = state.playedEpisodes ?: if (totalEps != null && unplayedEps != null) (totalEps - unplayedEps).coerceAtLeast(0) else 0
@@ -459,36 +484,49 @@ fun DetailScreen(
                                 val hasItemProgress = !isTvSeries && entity.playbackPositionTicks > 0 && !entity.isPlayed
 
                                 if (hasSeriesProgress) {
-                                    CinemaFormatBadge(
+                                    Text(text = "•", color = TextSecondary.copy(alpha = 0.5f), fontSize = 12.sp)
+                                    Text(
                                         text = stringResource(R.string.detail_progress, playedEps, totalEps ?: 0),
-                                        isHighlighted = true,
-                                        highlightColor = focusColor
+                                        color = focusColor,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.SemiBold
                                     )
-                                }
-
-                                if (hasItemProgress) {
-                                    CinemaFormatBadge(
+                                } else if (hasItemProgress) {
+                                    Text(text = "•", color = TextSecondary.copy(alpha = 0.5f), fontSize = 12.sp)
+                                    Text(
                                         text = stringResource(R.string.badge_in_progress),
-                                        isHighlighted = true,
-                                        highlightColor = focusColor
+                                        color = focusColor,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.SemiBold
                                     )
-                                }
-
-                                if (state.isFavorite) {
-                                    CinemaFormatBadge(
-                                        text = stringResource(R.string.badge_favorite),
-                                        isHighlighted = true,
-                                        highlightColor = if (isMonochrome) Color.White else Color(0xFFFDA4AF)
-                                    )
-                                }
-
-                                if (isSeriesFinished && !hasSeriesProgress && !hasItemProgress) {
-                                    CinemaFormatBadge(
+                                } else if (isSeriesFinished || state.isPlayed) {
+                                    Text(text = "•", color = TextSecondary.copy(alpha = 0.5f), fontSize = 12.sp)
+                                    Text(
                                         text = stringResource(R.string.badge_watched),
-                                        isHighlighted = true,
-                                        highlightColor = if (isMonochrome) Color.White else Color(0xFF6EE7B7)
+                                        color = Color(0xFF34D399),
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.SemiBold
                                     )
                                 }
+                            }
+
+                            // Géneros cinematográficos en línea tipográfica limpia (sin cajas)
+                            val genreList = entity.genres
+                                ?.split(",", ";")
+                                ?.map { it.trim() }
+                                ?.filter { it.isNotBlank() }
+                                ?: emptyList()
+
+                            if (genreList.isNotEmpty()) {
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = genreList.joinToString("  •  "),
+                                    color = TextSecondary.copy(alpha = 0.85f),
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Normal,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
                             }
 
                             Spacer(modifier = Modifier.height(16.dp))

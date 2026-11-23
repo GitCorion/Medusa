@@ -59,7 +59,6 @@ import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import tv.medusa.app.data.local.INDICATOR_THEME_MONOCHROME
 import tv.medusa.app.domain.model.MediaItem
-import tv.medusa.app.ui.components.cinema.CinemaFormatBadge
 import tv.medusa.app.ui.theme.TextPrimary
 import tv.medusa.app.ui.theme.TextSecondary
 import tv.medusa.app.ui.theme.LocalAccentColor
@@ -282,23 +281,14 @@ fun ContinueWatchingCard(
                     .fillMaxWidth()
                     .padding(start = 12.dp, end = 12.dp, bottom = 22.dp)
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    if (episodeCode != null) {
-                        CinemaFormatBadge(
-                            text = episodeCode,
-                            isHighlighted = isFocused,
-                            highlightColor = focusColor
-                        )
-                    } else {
-                        val isTv = item.type.equals("Series", ignoreCase = true) || item.type.equals("Episode", ignoreCase = true)
-                        CinemaFormatBadge(
-                            text = if (isTv) "SERIE" else "PELÍCULA"
-                        )
-                    }
-                }
+                val badgeLabel = episodeCode ?: (if (item.type.equals("Series", ignoreCase = true) || item.type.equals("Episode", ignoreCase = true)) "SERIE" else "PELÍCULA")
+                Text(
+                    text = badgeLabel,
+                    color = if (isFocused) focusColor else tv.medusa.app.ui.theme.TextSecondary,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.5.sp
+                )
 
                 Spacer(modifier = Modifier.height(4.dp))
 

@@ -1,7 +1,6 @@
 package tv.medusa.app.ui.components
 
 import tv.medusa.app.data.local.INDICATOR_THEME_MONOCHROME
-import tv.medusa.app.ui.components.cinema.CinemaFormatBadge
 import tv.medusa.app.ui.components.cinema.CinemaOrbitDial
 import tv.medusa.app.ui.components.cinema.MasterFilmTrigger
 import tv.medusa.app.ui.theme.AbyssSurface
@@ -9,6 +8,9 @@ import tv.medusa.app.ui.theme.AbyssVoid
 import tv.medusa.app.ui.theme.CinematicTypography
 import tv.medusa.app.ui.theme.TextPrimary
 import tv.medusa.app.ui.theme.TextSecondary
+import tv.medusa.app.ui.theme.AmberCinema
+import java.util.Locale
+import androidx.compose.material.icons.rounded.Star
 import tv.medusa.app.ui.theme.LocalIndicatorTheme
 import tv.medusa.app.ui.theme.LocalIsMonochromeTheme
 import androidx.compose.animation.Crossfade
@@ -470,24 +472,50 @@ fun HeroBanner(
                     }
                     is HeroSlideState.Movie -> {
                         val effectiveItem = currentSlideState.item
-                        // Metadata Row (Typographic hierarchy with clean delimiters)
+                        // Metadata Row (Typographic hierarchy with clean delimiters, Zero AI box slop)
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             if (effectiveItem.rating != null && effectiveItem.rating > 0f) {
-                                TvRatingBadge(rating = effectiveItem.rating, compact = false)
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Star,
+                                        contentDescription = null,
+                                        tint = AmberCinema,
+                                        modifier = Modifier.size(13.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(3.dp))
+                                    Text(
+                                        text = String.format(Locale.US, "%.1f", effectiveItem.rating),
+                                        color = Color.White,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp
+                                    )
+                                }
+                                Text(text = "•", color = TextSecondary.copy(alpha = 0.5f), fontSize = 12.sp)
                             }
 
                             if (effectiveItem.year != null) {
-                                CinemaFormatBadge(text = "${effectiveItem.year}")
+                                Text(
+                                    text = "${effectiveItem.year}",
+                                    color = TextSecondary,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Text(text = "•", color = TextSecondary.copy(alpha = 0.5f), fontSize = 12.sp)
                             }
 
                             val isTv = effectiveItem.type.equals("Series", ignoreCase = true) ||
                                     effectiveItem.type.equals("TvProgram", ignoreCase = true) ||
                                     effectiveItem.type.equals("Episode", ignoreCase = true)
                             val typeText = stringResource(if (isTv) R.string.type_series else R.string.type_movie)
-                            CinemaFormatBadge(text = typeText.uppercase())
+                            Text(
+                                text = typeText,
+                                color = TextSecondary,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium
+                            )
 
                             val hasEpisodeProgress = !effectiveItem.isPlayed &&
                                     isTv &&
@@ -503,28 +531,36 @@ fun HeroBanner(
                                 } else {
                                     "${effectiveItem.playedEpisodes} CAPS"
                                 }
-                                CinemaFormatBadge(
+                                Text(text = "•", color = TextSecondary.copy(alpha = 0.5f), fontSize = 12.sp)
+                                Text(
                                     text = progressText,
-                                    isHighlighted = true,
-                                    highlightColor = focusColor
+                                    color = focusColor,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold
                                 )
                             } else if (hasMovieProgress) {
-                                CinemaFormatBadge(
-                                    text = stringResource(R.string.badge_in_progress).uppercase(),
-                                    isHighlighted = true,
-                                    highlightColor = focusColor
+                                Text(text = "•", color = TextSecondary.copy(alpha = 0.5f), fontSize = 12.sp)
+                                Text(
+                                    text = stringResource(R.string.badge_in_progress),
+                                    color = focusColor,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold
                                 )
                             } else if (effectiveItem.isPlayed) {
-                                CinemaFormatBadge(
-                                    text = stringResource(R.string.badge_watched).uppercase(),
-                                    isHighlighted = true,
-                                    highlightColor = tv.medusa.app.ui.theme.TvPalette.SemanticWatched
+                                Text(text = "•", color = TextSecondary.copy(alpha = 0.5f), fontSize = 12.sp)
+                                Text(
+                                    text = stringResource(R.string.badge_watched),
+                                    color = Color(0xFF34D399),
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold
                                 )
                             } else if (effectiveItem.isFavorite) {
-                                CinemaFormatBadge(
-                                    text = stringResource(R.string.badge_favorite).uppercase(),
-                                    isHighlighted = true,
-                                    highlightColor = tv.medusa.app.ui.theme.TvPalette.SemanticFavorite
+                                Text(text = "•", color = TextSecondary.copy(alpha = 0.5f), fontSize = 12.sp)
+                                Text(
+                                    text = stringResource(R.string.badge_favorite),
+                                    color = if (isMonochrome) Color.White else Color(0xFFFDA4AF),
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold
                                 )
                             }
                         }
