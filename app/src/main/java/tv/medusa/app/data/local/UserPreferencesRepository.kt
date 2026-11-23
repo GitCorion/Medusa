@@ -4,7 +4,6 @@ import java.util.Locale
 import tv.medusa.app.BuildConfig
 import tv.medusa.app.data.remote.ApiConfig
 import tv.medusa.app.util.DeviceUtils
-import tv.medusa.app.util.ServerVerificationUtils
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
@@ -21,7 +20,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -97,11 +95,6 @@ data class UserPreferences(
     val selectedPlatforms: Set<String> = emptySet(),
     val hiddenTraktLists: Set<String> = emptySet(),
     val hasCompletedOnboarding: Boolean = true,
-    val isProUser: Boolean = true,
-    val hasPurchasedPro: Boolean = true,
-    val isFamilyVipUser: Boolean = false,
-    val isTrialActive: Boolean = false,
-    val trialDaysRemaining: Int = 0,
     val nightModeAudio: Int = 0,
     val audioVolumeBoostDb: Int = 0,
     val subtitleSize: String = SUBTITLE_SIZE_NORMAL,
@@ -172,14 +165,6 @@ class UserPreferencesRepository(context: Context) {
         val SELECTED_PLATFORMS = stringPreferencesKey("selected_platforms")
         val HIDDEN_TRAKT_LISTS = stringPreferencesKey("hidden_trakt_lists")
         val HAS_COMPLETED_ONBOARDING = stringPreferencesKey("has_completed_onboarding")
-        // Estado heredado de la antigua licencia de pago. La distribución pública no factura:
-        // se mantiene la clave original "is_pro_user" para no invalidar instalaciones existentes.
-        val HAS_PURCHASED_PRO = stringPreferencesKey("is_pro_user")
-        // Desbloqueo por código promocional, independiente de la compra.
-        val HAS_PROMO_UNLOCK = stringPreferencesKey("has_promo_unlock")
-        // Desbloqueo Pro en builds DEBUG (para probar sin pagar). Desactivable en runtime
-        // para testear el flujo no-Pro. Solo se lee cuando BuildConfig.DEBUG es true.
-        val DEBUG_PRO_OVERRIDE = stringPreferencesKey("debug_pro_override")
         val FIRST_INSTALL_TIME = longPreferencesKey("first_install_time_ms")
         val NIGHT_MODE_AUDIO = intPreferencesKey("night_mode_audio")
         val AUDIO_VOLUME_BOOST_DB = intPreferencesKey("audio_volume_boost_db")
@@ -232,18 +217,6 @@ class UserPreferencesRepository(context: Context) {
             }
         }
     }
-
-    val isProUser: StateFlow<Boolean> =
-        userPreferences.map { it.isProUser }.stateIn(appScope, SharingStarted.Eagerly, true)
-
-    val isTrialActive: StateFlow<Boolean> =
-        userPreferences.map { it.isTrialActive }.stateIn(appScope, SharingStarted.Eagerly, false)
-
-    val trialDaysRemaining: StateFlow<Int> =
-        userPreferences.map { it.trialDaysRemaining }.stateIn(appScope, SharingStarted.Eagerly, 0)
-
-    val isFamilyVipUser: StateFlow<Boolean> =
-        userPreferences.map { it.isFamilyVipUser }.stateIn(appScope, SharingStarted.Eagerly, false)
 
     val accentColor: StateFlow<String> =
         userPreferences.map { it.accentColor }.stateIn(appScope, SharingStarted.Eagerly, ACCENT_CYAN)
@@ -316,23 +289,6 @@ class UserPreferencesRepository(context: Context) {
     suspend fun setAudioVolumeBoostDb(db: Int) {
         appContext.dataStore.edit { prefs ->
             prefs[Keys.AUDIO_VOLUME_BOOST_DB] = db
-        }
-    }
-
-    /** Estado heredado de la antigua licencia; la distribución pública no gestiona compras. */
-    suspend fun setLegacyProState(isPurchased: Boolean) {
-        appContext.dataStore.edit { prefs ->
-            prefs[Keys.HAS_PURCHASED_PRO] = isPurchased.toString()
-        }
-    }
-
-    /**
-     * Activa/desactiva el desbloqueo Pro de DEBUG (solo relevante en builds DEBUG).
-     * Permite probar el flujo no-Pro sin recompilar ni realizar una compra.
-     */
-    suspend fun setDebugProOverride(enabled: Boolean) {
-        appContext.dataStore.edit { prefs ->
-            prefs[Keys.DEBUG_PRO_OVERRIDE] = enabled.toString()
         }
     }
 
@@ -705,13 +661,8 @@ class UserPreferencesRepository(context: Context) {
         private fun prefsStateFlow(context: Context): StateFlow<UserPreferences> {
             sharedPrefs?.let { return it }
             return synchronized(this) {
-                sharedPrefs ?: combine(
-                    context.applicationContext.dataStore.data,
-                    // Se combina con las firmas VIP para que el entitlement se recalcule en cuanto
-                    // el manifiesto OTA las aporte (si no, el primer arranque podría evaluarlas
-                    // vacías y dejar al usuario VIP como no-Pro hasta la siguiente escritura).
-                    ServerVerificationUtils.signatures
-                ) { prefs, _ -> prefs.toUserPreferences() }
+                sharedPrefs ?: context.applicationContext.dataStore.data
+                    .map { it.toUserPreferences() }
                     .stateIn(appScope, SharingStarted.Eagerly, UserPreferences())
                     .also { sharedPrefs = it }
             }
@@ -730,12 +681,6 @@ class UserPreferencesRepository(context: Context) {
 
             val serverUrl = this[Keys.JELLYFIN_SERVER_URL] ?: ""
             val token = CryptoUtils.decryptStored(this[Keys.JELLYFIN_ACCESS_TOKEN] ?: "")
-            val isFamilyVip = ServerVerificationUtils.isAuthorizedServer(serverUrl) && token.isNotBlank()
-            val hasPurchased = true
-            val hasPromo = true
-            val trialActive = false
-            val daysRemaining = 0
-            val isPro = true
 
             return UserPreferences(
                 jellyfinServerUrl = serverUrl,
@@ -770,11 +715,6 @@ class UserPreferencesRepository(context: Context) {
                     .filter { it.isNotBlank() }
                     .toSet(),
                 hasCompletedOnboarding = (this[Keys.HAS_COMPLETED_ONBOARDING] ?: "true") == true.toString(),
-                isProUser = isPro,
-                hasPurchasedPro = hasPurchased,
-                isFamilyVipUser = isFamilyVip,
-                isTrialActive = trialActive,
-                trialDaysRemaining = daysRemaining,
                 nightModeAudio = this[Keys.NIGHT_MODE_AUDIO] ?: 0,
                 audioVolumeBoostDb = this[Keys.AUDIO_VOLUME_BOOST_DB] ?: 0,
                 subtitleSize = this[Keys.SUBTITLE_SIZE] ?: SUBTITLE_SIZE_NORMAL,

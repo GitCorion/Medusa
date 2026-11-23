@@ -406,7 +406,7 @@ fun SettingsScreen(
 
         if (uiState.traktQrPayload != null) {
             TvQuickConnectDialog(
-                title = stringResource(R.string.pro_feature_trakt_title),
+                title = stringResource(R.string.settings_row_trakt_data),
                 step1Text = stringResource(R.string.settings_trakt_step1),
                 code = uiState.traktUserCode ?: "...",
                 qrData = uiState.traktQrPayload!!,
@@ -1348,15 +1348,6 @@ private fun AboutCategory(
         )
     )
 
-    val editionText = when {
-        uiState.isFamilyVipUser -> stringResource(R.string.settings_edition_vip)
-        else -> stringResource(R.string.settings_edition_lifetime)
-    }
-    TvSettingRow(
-        title = stringResource(R.string.settings_row_edition),
-        value = editionText
-    )
-
     TvSettingRow(
         title = stringResource(R.string.settings_row_status),
         value = if (hasUpdate) stringResource(R.string.settings_status_update_available, updateInfo?.latestVersion.orEmpty()) else stringResource(R.string.settings_status_up_to_date)
@@ -1365,11 +1356,10 @@ private fun AboutCategory(
     if (BuildConfig.ENABLE_IN_APP_UPDATER) {
         TvSectionHeader(title = stringResource(R.string.settings_section_updates))
 
-        val channelText = when {
-            uiState.isFamilyVipUser -> stringResource(R.string.settings_channel_vip)
-            BuildConfig.UPDATE_CHANNEL.equals("beta", ignoreCase = true) ->
-                stringResource(R.string.settings_channel_ota_beta)
-            else -> stringResource(R.string.settings_channel_ota)
+        val channelText = if (BuildConfig.UPDATE_CHANNEL.equals("beta", ignoreCase = true)) {
+            stringResource(R.string.settings_channel_ota_beta)
+        } else {
+            stringResource(R.string.settings_channel_ota)
         }
         TvSettingRow(
             title = stringResource(R.string.settings_row_channel),

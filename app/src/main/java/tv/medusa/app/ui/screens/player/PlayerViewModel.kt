@@ -109,7 +109,6 @@ class PlayerViewModel @Inject constructor(
     val buttonStyle: StateFlow<String> = userPreferencesRepository.buttonStyle
     val isMonochrome: StateFlow<Boolean> = userPreferencesRepository.isMonochrome
     val accentColor: StateFlow<String> = userPreferencesRepository.accentColor
-    val isProUser: StateFlow<Boolean> = userPreferencesRepository.isProUser
     val nightModeAudio: StateFlow<Int> = userPreferencesRepository.nightModeAudio
     private val _audioVolumeBoostDb = MutableStateFlow(userPreferencesRepository.audioVolumeBoostDb.value)
     val audioVolumeBoostDb: StateFlow<Int> = _audioVolumeBoostDb.asStateFlow()

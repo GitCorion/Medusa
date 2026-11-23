@@ -75,7 +75,6 @@ class HomeViewModel @Inject constructor(
     val isMonochrome: StateFlow<Boolean> = userPreferencesRepository.isMonochrome
     val buttonStyle: StateFlow<String> = userPreferencesRepository.buttonStyle
     val selectedPlatforms: StateFlow<Set<String>> = userPreferencesRepository.selectedPlatforms
-    val isProUser: StateFlow<Boolean> = userPreferencesRepository.isProUser
     val seasonalAudioEnabled: StateFlow<Boolean> = userPreferencesRepository.seasonalAudioEnabled
     val particleScale: StateFlow<Float> = userPreferencesRepository.userPreferencesFlow
         .map { it.getEffectiveParticleScale(context) }

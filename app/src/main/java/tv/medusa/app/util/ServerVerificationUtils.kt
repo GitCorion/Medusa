@@ -2,35 +2,11 @@ package tv.medusa.app.util
 
 import java.io.File
 import java.security.MessageDigest
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * Validador de firmas de licencia y servicios autorizados.
+ * Utilidades de verificación: hash SHA-256 de texto y de ficheros, y normalización de hosts.
  */
 object ServerVerificationUtils {
-
-    @Volatile
-    private var cachedSignatures: Set<String> = emptySet()
-
-    private val _signatures = MutableStateFlow<Set<String>>(emptySet())
-
-    /**
-     * Firmas activas como flujo reactivo. El entitlement (VIP familiar) se recalcula en cuanto
-     * llegan las firmas del manifiesto OTA, sin depender de escrituras adicionales en DataStore.
-     */
-    val signatures: StateFlow<Set<String>> = _signatures.asStateFlow()
-
-    fun updateSignatures(signatures: Collection<String>) {
-        if (signatures.isNotEmpty()) {
-            val set = signatures.toSet()
-            cachedSignatures = set
-            _signatures.value = set
-        }
-    }
-
-    fun getSignatures(): Set<String> = cachedSignatures
 
     /**
      * Calcula el hash SHA-256 en formato hexadecimal de una cadena de texto.
@@ -78,35 +54,5 @@ object ServerVerificationUtils {
         }
 
         return host.removePrefix("www.")
-    }
-
-    /**
-     * Comprueba si la dirección coincide con alguna de las firmas activas.
-     */
-    fun isAuthorizedServer(serverUrl: String?, signatures: Set<String> = cachedSignatures): Boolean {
-        if (serverUrl.isNullOrBlank()) return false
-        val activeSignatures = if (signatures.isNotEmpty()) signatures else cachedSignatures
-        if (activeSignatures.isEmpty()) return false
-
-        return try {
-            val host = extractHost(serverUrl)
-            if (host.isBlank()) return false
-
-            if (activeSignatures.contains(sha256(host))) {
-                return true
-            }
-
-            val parts = host.split('.')
-            for (i in 1 until parts.size) {
-                val subDomain = parts.drop(i).joinToString(".")
-                if (activeSignatures.contains(sha256(subDomain))) {
-                    return true
-                }
-            }
-
-            false
-        } catch (_: Exception) {
-            false
-        }
     }
 }

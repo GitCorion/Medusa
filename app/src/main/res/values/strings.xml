@@ -10,24 +10,6 @@
     <string name="onboarding_platforms_count">%1$d de %2$d plataformas activas</string>
     <string name="onboarding_continue">Aceptar y continuar</string>
 
-    <!-- Medusa Pro -->
-    <string name="pro_title">MEDUSA PRO</string>
-    <string name="pro_subtitle">Licencia de por vida. Sin cuotas mensuales ni suscripciones.</string>
-    <string name="pro_feature_intro_title">Salto de Intros y Créditos</string>
-    <string name="pro_feature_intro_desc">Detección y salto automático sin tocar el mando.</string>
-    <string name="pro_feature_next_title">Siguiente Episodio Interactivo</string>
-    <string name="pro_feature_next_desc">Tarjeta flotante con cuenta atrás personalizable.</string>
-    <string name="pro_feature_hubs_title">Hubs de Marcas de Streaming</string>
-    <string name="pro_feature_hubs_desc">Filtros y listas en el inicio de Netflix, Disney+, Max, Apple TV+ y más.</string>
-    <string name="pro_feature_trakt_title">Sincronización Trakt.tv</string>
-    <string name="pro_feature_trakt_desc">Scrobble en vivo y listas compartidas entre dispositivos.</string>
-    <string name="pro_feature_theme_title">Personalización Visual Completa</string>
-    <string name="pro_feature_theme_desc">Temas exclusivos, partículas y personalización avanzada.</string>
-    <string name="pro_buy">Comprar %1$s (De por vida)</string>
-    <string name="pro_restore">Restaurar compra</string>
-    <string name="pro_close">Cerrar</string>
-    <string name="pro_logo_content_description">Medusa Pro</string>
-
     <!-- Navegación superior (TvTopBar) -->
     <string name="nav_home">Inicio</string>
     <string name="nav_discover">Descubrir</string>
@@ -53,11 +35,9 @@
 
     <!-- Insignias -->
     <string name="badge_in_progress">EN PROGRESO</string>
+    <!-- Fichas / tarjetas -->
     <string name="badge_favorite">♥ FAVORITO</string>
     <string name="badge_watched">✓ VISTO</string>
-
-    <!-- Fichas / tarjetas -->
-    <string name="pro_badge">PRO</string>
 
     <!-- Tráiler -->
     <string name="trailer_load_error">No se pudo cargar el tráiler del contenido.</string>
@@ -384,17 +364,9 @@
     <string name="settings_section_system">Sistema</string>
     <string name="settings_row_app">Aplicación</string>
     <string name="settings_row_version">Versión instalada</string>
-    <string name="settings_edition_vip">Medusa Pro (Servidor Autorizado) 👑</string>
-    <string name="settings_edition_lifetime">Medusa Pro Vitalicio 👑</string>
-    <string name="settings_edition_trial">Medusa Pro (Prueba: quedan %1$d días) ⏳</string>
-    <string name="settings_edition_standard">Medusa Estándar (Gratis)</string>
-    <string name="settings_row_edition">Edición</string>
-    <string name="settings_btn_get_lifetime">Obtener Pro Vitalicio</string>
-    <string name="settings_btn_unlock_pro">Desbloquear Medusa Pro</string>
     <string name="settings_status_update_available">Actualización disponible (%1$s)</string>
     <string name="settings_status_up_to_date">Al día</string>
     <string name="settings_section_updates">Actualizaciones</string>
-    <string name="settings_channel_vip">Beta Privada (Servidor Autorizado)</string>
     <string name="settings_channel_ota">GitHub Releases (público)</string>
     <string name="settings_channel_ota_beta">GitHub Releases (beta)</string>
     <string name="settings_row_channel">Canal</string>

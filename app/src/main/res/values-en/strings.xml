@@ -10,24 +10,6 @@
     <string name="onboarding_platforms_count">%1$d of %2$d platforms active</string>
     <string name="onboarding_continue">Accept and continue</string>
 
-    <!-- Medusa Pro -->
-    <string name="pro_title">MEDUSA PRO</string>
-    <string name="pro_subtitle">Lifetime license. No monthly fees or subscriptions.</string>
-    <string name="pro_feature_intro_title">Intro &amp; Credits Skip</string>
-    <string name="pro_feature_intro_desc">Automatic detection and skipping without touching the remote.</string>
-    <string name="pro_feature_next_title">Interactive Next Episode</string>
-    <string name="pro_feature_next_desc">Floating card with a customizable countdown.</string>
-    <string name="pro_feature_hubs_title">Streaming Brand Hubs</string>
-    <string name="pro_feature_hubs_desc">Filters and rows on the home screen for Netflix, Disney+, Max, Apple TV+ and more.</string>
-    <string name="pro_feature_trakt_title">Trakt.tv Sync</string>
-    <string name="pro_feature_trakt_desc">Live scrobbling and lists shared across devices.</string>
-    <string name="pro_feature_theme_title">Full Visual Customization</string>
-    <string name="pro_feature_theme_desc">Exclusive themes, particles and advanced customization.</string>
-    <string name="pro_buy">Buy %1$s (Lifetime)</string>
-    <string name="pro_restore">Restore purchase</string>
-    <string name="pro_close">Close</string>
-    <string name="pro_logo_content_description">Medusa Pro</string>
-
     <!-- Top navigation (TvTopBar) -->
     <string name="nav_home">Home</string>
     <string name="nav_discover">Discover</string>
@@ -57,7 +39,6 @@
     <string name="badge_watched">✓ WATCHED</string>
 
     <!-- Cards -->
-    <string name="pro_badge">PRO</string>
 
     <!-- Trailer -->
     <string name="trailer_load_error">Could not load the trailer for this title.</string>
@@ -384,17 +365,9 @@
     <string name="settings_section_system">System</string>
     <string name="settings_row_app">Application</string>
     <string name="settings_row_version">Installed version</string>
-    <string name="settings_edition_vip">Medusa Pro (Authorized Server) 👑</string>
-    <string name="settings_edition_lifetime">Medusa Pro Lifetime 👑</string>
-    <string name="settings_edition_trial">Medusa Pro (Trial: %1$d days left) ⏳</string>
-    <string name="settings_edition_standard">Medusa Standard (Free)</string>
-    <string name="settings_row_edition">Edition</string>
-    <string name="settings_btn_get_lifetime">Get Pro Lifetime</string>
-    <string name="settings_btn_unlock_pro">Unlock Medusa Pro</string>
     <string name="settings_status_update_available">Update available (%1$s)</string>
     <string name="settings_status_up_to_date">Up to date</string>
     <string name="settings_section_updates">Updates</string>
-    <string name="settings_channel_vip">Private Beta (Authorized Server)</string>
     <string name="settings_channel_ota">GitHub Releases (public)</string>
     <string name="settings_channel_ota_beta">GitHub Releases (beta)</string>
     <string name="settings_row_channel">Channel</string>

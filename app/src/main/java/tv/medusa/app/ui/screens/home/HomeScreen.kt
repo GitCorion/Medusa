@@ -438,7 +438,6 @@ fun HomeScreen(
                                 title = stringResource(R.string.home_platforms_title),
                                 visiblePlatforms = selectedPlatforms.takeIf { it.isNotEmpty() },
                                 watchRegion = watchRegion,
-                                isProUser = true,
                                 modifier = Modifier.onFocusChanged { focusState ->
                                     if (focusState.hasFocus) {
                                         viewModel.setFocusedItem(null)

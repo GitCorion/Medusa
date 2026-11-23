@@ -477,7 +477,6 @@ private fun PlayerContent(
     val context = LocalContext.current
     val playerLifecycleOwner = LocalLifecycleOwner.current
     val activity = remember(context) { context.findActivity() }
-    val isProUser by viewModel.isProUser.collectAsStateWithLifecycle()
     val nightModeAudio by viewModel.nightModeAudio.collectAsStateWithLifecycle()
     val audioVolumeBoostDb by viewModel.audioVolumeBoostDb.collectAsStateWithLifecycle()
     val audioPassthroughMode by viewModel.audioPassthroughMode.collectAsStateWithLifecycle()

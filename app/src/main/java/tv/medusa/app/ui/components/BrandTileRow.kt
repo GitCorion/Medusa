@@ -1,6 +1,5 @@
 package tv.medusa.app.ui.components
 
-import androidx.compose.ui.text.font.FontWeight
 import androidx.tv.material3.Text
 import tv.medusa.app.data.local.INDICATOR_THEME_MONOCHROME
 import tv.medusa.app.data.local.PLATFORM_LOGO_COLOR
@@ -39,15 +38,12 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Card
 import androidx.tv.material3.CardDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Text
 import tv.medusa.app.ui.util.handleTouchClick
-import tv.medusa.app.R
 import tv.medusa.app.data.model.SUPPORTED_PLATFORMS
 import tv.medusa.app.ui.theme.TextPrimary
 
@@ -57,7 +53,6 @@ fun BrandTileRow(
     modifier: Modifier = Modifier,
     visiblePlatforms: Set<String>? = null,
     watchRegion: String? = null,
-    isProUser: Boolean = true,
     title: String? = null
 ) {
     val platforms = remember(visiblePlatforms, watchRegion) {
@@ -99,7 +94,6 @@ fun BrandTileRow(
             ) { platform ->
                 BrandCard(
                     brand = platform,
-                    isLocked = false,
                     onClick = { onSelectBrand(platform.id) }
                 )
             }
@@ -111,7 +105,6 @@ fun BrandTileRow(
 @Composable
 private fun BrandCard(
     brand: StreamPlatform,
-    isLocked: Boolean = false,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -165,22 +158,6 @@ private fun BrandCard(
                     .fillMaxSize()
                     .align(Alignment.Center)
             )
-
-            if (isLocked) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .background(Color(0xE6D97706), RoundedCornerShape(4.dp))
-                        .padding(horizontal = 5.dp, vertical = 2.dp)
-                ) {
-                    Text(
-                        text = stringResource(R.string.pro_badge),
-                        color = TextPrimary,
-                        fontSize = 8.sp,
-                        fontWeight = FontWeight.Black
-                    )
-                }
-            }
         }
     }
 }

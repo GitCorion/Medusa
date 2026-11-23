@@ -180,9 +180,6 @@ class AppUpdateManager(private val context: Context) {
         val merged = UpdateManifestSelection.merge(stable, beta)
             ?: error("No se pudo leer ningún manifiesto de actualización")
 
-        if (merged.signatures.isNotEmpty()) {
-            ServerVerificationUtils.updateSignatures(merged.signatures)
-        }
         lastFetchedManifest = merged
         return buildUpdateInfo(merged)
     }
