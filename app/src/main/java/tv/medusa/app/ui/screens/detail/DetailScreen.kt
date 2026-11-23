@@ -426,17 +426,16 @@ fun DetailScreen(
                                         SeriesStatusType.UNKNOWN -> ""
                                     }
                                     if (statusLabel.isNotBlank()) {
-                                        val (statusBg, statusBorder, statusText) = when {
-                                            isMonochrome -> Triple(tv.medusa.app.ui.theme.TvPalette.GlassIdle, tv.medusa.app.ui.theme.TvPalette.GlassRaised, tv.medusa.app.ui.theme.TvPalette.TextMuted)
-                                            state.seriesStatus.type == SeriesStatusType.CONTINUING -> Triple(Color(0x2010B981), Color(0x3510B981), Color(0xFF6EE7B7))
-                                            state.seriesStatus.type == SeriesStatusType.CANCELED -> Triple(Color(0x20EF4444), Color(0x35EF4444), Color(0xFFFCA5A5))
-                                            else -> Triple(tv.medusa.app.ui.theme.TvPalette.GlassIdle, tv.medusa.app.ui.theme.TvPalette.GlassRaised, tv.medusa.app.ui.theme.TvPalette.TextMuted)
+                                        val statusColor = when {
+                                            isMonochrome -> Color.White
+                                            state.seriesStatus.type == SeriesStatusType.CONTINUING -> Color(0xFF6EE7B7)
+                                            state.seriesStatus.type == SeriesStatusType.CANCELED -> Color(0xFFFCA5A5)
+                                            else -> focusColor
                                         }
-                                        TvPill(
+                                        CinemaFormatBadge(
                                             text = statusLabel,
-                                            containerColor = statusBg,
-                                            borderColor = statusBorder,
-                                            textColor = statusText
+                                            isHighlighted = !isMonochrome,
+                                            highlightColor = statusColor
                                         )
                                     }
                                 }
@@ -460,34 +459,34 @@ fun DetailScreen(
                                 val hasItemProgress = !isTvSeries && entity.playbackPositionTicks > 0 && !entity.isPlayed
 
                                 if (hasSeriesProgress) {
-                                    TvPill(
+                                    CinemaFormatBadge(
                                         text = stringResource(R.string.detail_progress, playedEps, totalEps ?: 0),
-                                        containerColor = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.GlassRaised else focusColor.copy(alpha = 0.16f),
-                                        textColor = if (isMonochrome) Color.White else focusColor
+                                        isHighlighted = true,
+                                        highlightColor = focusColor
                                     )
                                 }
 
                                 if (hasItemProgress) {
-                                    TvPill(
+                                    CinemaFormatBadge(
                                         text = stringResource(R.string.badge_in_progress),
-                                        containerColor = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.GlassRaised else focusColor.copy(alpha = 0.16f),
-                                        textColor = if (isMonochrome) Color.White else focusColor
+                                        isHighlighted = true,
+                                        highlightColor = focusColor
                                     )
                                 }
 
                                 if (state.isFavorite) {
-                                    TvPill(
+                                    CinemaFormatBadge(
                                         text = stringResource(R.string.badge_favorite),
-                                        containerColor = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.GlassIdle else Color(0x20F43F5E),
-                                        textColor = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.TextSoft else Color(0xFFFDA4AF)
+                                        isHighlighted = true,
+                                        highlightColor = if (isMonochrome) Color.White else Color(0xFFFDA4AF)
                                     )
                                 }
 
                                 if (isSeriesFinished && !hasSeriesProgress && !hasItemProgress) {
-                                    TvPill(
+                                    CinemaFormatBadge(
                                         text = stringResource(R.string.badge_watched),
-                                        containerColor = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.GlassIdle else Color(0x2010B981),
-                                        textColor = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.TextSoft else Color(0xFF6EE7B7)
+                                        isHighlighted = true,
+                                        highlightColor = if (isMonochrome) Color.White else Color(0xFF6EE7B7)
                                     )
                                 }
                             }
@@ -540,6 +539,7 @@ fun DetailScreen(
                                         focusColor = focusColor,
                                         focusContentColor = focusContent,
                                         focusRequester = playButtonFocusRequester,
+                                        buttonStyle = state.buttonStyle,
                                         onClick = {
                                             isLaunchingPlayer = true
                                             if (isTvSeries && state.nextUpEpisode != null) {
@@ -625,21 +625,10 @@ fun DetailScreen(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier.padding(horizontal = TvSpacing.ScreenSafeHorizontal)
                             ) {
-                                if (!isMonochrome) {
-                                    Box(
-                                        modifier = Modifier
-                                            .height(14.dp)
-                                            .width(3.dp)
-                                            .background(focusColor, RoundedCornerShape(1.5.dp))
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                }
                                 Text(
                                     text = stringResource(R.string.detail_seasons),
-                                    color = if (!isMonochrome) tv.medusa.app.ui.theme.TvPalette.TextMuted else tv.medusa.app.ui.theme.TvPalette.TextSecondaryCool,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    letterSpacing = 1.sp
+                                    style = CinematicTypography.SectionTitle,
+                                    color = TextPrimary
                                 )
                             }
                             Spacer(modifier = Modifier.height(12.dp))
@@ -684,15 +673,6 @@ fun DetailScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.padding(horizontal = TvSpacing.ScreenSafeHorizontal)
                         ) {
-                            if (!isMonochrome) {
-                                Box(
-                                    modifier = Modifier
-                                        .height(14.dp)
-                                        .width(3.dp)
-                                        .background(focusColor, RoundedCornerShape(1.5.dp))
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                            }
                             Text(
                                 text = stringResource(R.string.detail_episodes_count, state.episodes.size),
                                 style = CinematicTypography.SectionTitle,
@@ -761,15 +741,6 @@ fun DetailScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.padding(horizontal = TvSpacing.ScreenSafeHorizontal)
                         ) {
-                            if (!isMonochrome) {
-                                Box(
-                                    modifier = Modifier
-                                        .height(16.dp)
-                                        .width(3.dp)
-                                        .background(focusColor, RoundedCornerShape(1.5.dp))
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                            }
                             Text(
                                 text = stringResource(R.string.detail_collection_titles, state.collectionItems.size),
                                 style = CinematicTypography.SectionTitle,
@@ -819,15 +790,6 @@ fun DetailScreen(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier.padding(horizontal = TvSpacing.ScreenSafeHorizontal)
                             ) {
-                                if (!isMonochrome) {
-                                    Box(
-                                        modifier = Modifier
-                                            .height(16.dp)
-                                            .width(3.dp)
-                                            .background(focusColor, RoundedCornerShape(1.5.dp))
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                }
                                 Text(
                                     text = stringResource(R.string.detail_similar_titles),
                                     style = CinematicTypography.SectionTitle,
@@ -866,15 +828,6 @@ fun DetailScreen(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier.padding(horizontal = TvSpacing.ScreenSafeHorizontal)
                             ) {
-                                if (!isMonochrome) {
-                                    Box(
-                                        modifier = Modifier
-                                            .height(16.dp)
-                                            .width(3.dp)
-                                            .background(focusColor, RoundedCornerShape(1.5.dp))
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                }
                                 Text(
                                     text = stringResource(R.string.detail_more_from_genre, state.genreName!!.uppercase()),
                                     style = CinematicTypography.SectionTitle,

@@ -43,6 +43,8 @@ import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Icon
 import androidx.tv.material3.Text
+import tv.medusa.app.data.local.BUTTON_STYLE_ICONS_ONLY
+import tv.medusa.app.data.local.BUTTON_STYLE_TEXT_ONLY
 import tv.medusa.app.ui.theme.AbyssGlassHighlight
 import tv.medusa.app.ui.theme.CinematicTypography
 import tv.medusa.app.ui.theme.TextPrimary
@@ -70,9 +72,28 @@ fun MasterFilmTrigger(
     icon: ImageVector = Icons.Rounded.PlayArrow,
     focusColor: Color = Color.White,
     focusContentColor: Color = Color(0xFF070709),
-    focusRequester: FocusRequester? = null
+    focusRequester: FocusRequester? = null,
+    showIcon: Boolean = true,
+    showText: Boolean = true,
+    buttonStyle: String? = null
 ) {
     var isFocused by remember { mutableStateOf(false) }
+
+    val effectiveShowIcon = if (buttonStyle != null) {
+        buttonStyle != BUTTON_STYLE_TEXT_ONLY
+    } else {
+        showIcon
+    }
+    val effectiveShowText = if (buttonStyle != null) {
+        buttonStyle != BUTTON_STYLE_ICONS_ONLY
+    } else {
+        showText
+    }
+    val (finalShowIcon, finalShowText) = if (!effectiveShowIcon && !effectiveShowText) {
+        true to false
+    } else {
+        effectiveShowIcon to effectiveShowText
+    }
 
     val scale by animateFloatAsState(
         targetValue = if (isFocused) 1.02f else 1.0f,
@@ -117,25 +138,31 @@ fun MasterFilmTrigger(
                 Row(
                     modifier = Modifier
                         .fillMaxHeight()
-                        .padding(horizontal = 18.dp),
+                        .padding(horizontal = if (!finalShowText) 14.dp else 18.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center
                 ) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(19.dp)
-                            .offset(x = 1.dp) // Compensación óptica del centro de gravedad del triángulo
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = label,
-                        style = CinematicTypography.TriggerButton,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (isFocused) focusContentColor else TextPrimary
-                    )
+                    if (finalShowIcon) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = if (!finalShowText) label else null,
+                            modifier = Modifier
+                                .size(19.dp)
+                                .offset(x = if (icon == Icons.Rounded.PlayArrow && finalShowText) 1.dp else 0.dp)
+                        )
+                    }
+                    if (finalShowText) {
+                        if (finalShowIcon) {
+                            Spacer(modifier = Modifier.width(8.dp))
+                        }
+                        Text(
+                            text = label,
+                            style = CinematicTypography.TriggerButton,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (isFocused) focusContentColor else TextPrimary
+                        )
+                    }
                 }
 
                 // Separador de cámara y Cámara 2 (Especificación técnica)

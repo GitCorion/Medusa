@@ -38,6 +38,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import tv.medusa.app.data.local.BUTTON_STYLE_ICONS_ONLY
+import tv.medusa.app.data.local.BUTTON_STYLE_TEXT_ONLY
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.onPreviewKeyEvent
@@ -71,6 +73,7 @@ fun CatalogSortButton(
     accentColorKey: String,
     isMonochrome: Boolean,
     focusRequester: FocusRequester? = null,
+    buttonStyleKey: String = BUTTON_STYLE_ICONS_ONLY,
     modifier: Modifier = Modifier
 ) {
     var showDialog by remember { mutableStateOf(false) }
@@ -127,29 +130,36 @@ fun CatalogSortButton(
             .onFocusChanged { isFocused = it.isFocused }
             .height(tv.medusa.app.ui.theme.TvChipDefaults.Height)
     ) {
+        val showIcons = buttonStyleKey != BUTTON_STYLE_TEXT_ONLY
+        val showText = buttonStyleKey != BUTTON_STYLE_ICONS_ONLY
+
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Rounded.Sort,
-                contentDescription = stringResource(R.string.sort_dialog_title),
-                tint = contentColor,
-                modifier = Modifier.size(14.dp)
-            )
-            Spacer(modifier = Modifier.width(6.dp))
-            Text(
-                text = stringResource(currentSort.shortLabelRes),
-                color = contentColor,
-                style = tv.medusa.app.ui.theme.TvChipDefaults.textStyle
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-            Icon(
-                imageVector = Icons.Rounded.KeyboardArrowDown,
-                contentDescription = null,
-                tint = contentColor.copy(alpha = if (isFocused) 1f else 0.75f),
-                modifier = Modifier.size(14.dp)
-            )
+            if (showIcons) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Rounded.Sort,
+                    contentDescription = stringResource(R.string.sort_dialog_title),
+                    tint = contentColor,
+                    modifier = Modifier.size(14.dp)
+                )
+            }
+            if (showText) {
+                if (showIcons) Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = stringResource(currentSort.shortLabelRes),
+                    color = contentColor,
+                    style = tv.medusa.app.ui.theme.TvChipDefaults.textStyle
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Icon(
+                    imageVector = Icons.Rounded.KeyboardArrowDown,
+                    contentDescription = null,
+                    tint = contentColor.copy(alpha = if (isFocused) 1f else 0.75f),
+                    modifier = Modifier.size(14.dp)
+                )
+            }
         }
     }
 

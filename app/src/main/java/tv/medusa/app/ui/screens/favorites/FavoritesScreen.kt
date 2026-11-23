@@ -283,6 +283,7 @@ fun FavoritesScreen(
                                         accentColorKey = accentColorKey,
                                         isMonochrome = isMonochrome,
                                         focusRequester = sortButtonFocusRequester,
+                                        buttonStyleKey = buttonStyleKey,
                                         modifier = Modifier
                                             .focusRequester(sortButtonFocusRequester)
                                             .focusProperties {

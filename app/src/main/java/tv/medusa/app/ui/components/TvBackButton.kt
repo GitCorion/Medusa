@@ -30,6 +30,7 @@ import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Icon
 import androidx.tv.material3.Text
 import tv.medusa.app.R
+import tv.medusa.app.data.local.BUTTON_STYLE_ICONS_ONLY
 import tv.medusa.app.ui.theme.LocalAccentColor
 import tv.medusa.app.ui.theme.LocalIsMonochromeTheme
 import tv.medusa.app.ui.theme.TvAccent
@@ -51,8 +52,14 @@ fun TvBackButton(
     modifier: Modifier = Modifier,
     accentColorKey: String = "",
     isMonochrome: Boolean = LocalIsMonochromeTheme.current,
-    showLabel: Boolean = true
+    showLabel: Boolean = true,
+    buttonStyleKey: String? = null
 ) {
+    val effectiveShowLabel = if (buttonStyleKey != null) {
+        buttonStyleKey != BUTTON_STYLE_ICONS_ONLY
+    } else {
+        showLabel
+    }
     val effectiveAccent = if (accentColorKey.isNotBlank()) accentColorKey else LocalAccentColor.current
     val focusColor = if (isMonochrome) Color.White else TvAccent.getColor(effectiveAccent)
     val focusContent = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else TvAccent.getFocusedContentColor(effectiveAccent)
@@ -62,7 +69,7 @@ fun TvBackButton(
     Button(
         onClick = onClick,
         scale = tv.medusa.app.ui.theme.TvChipDefaults.buttonScale(),
-        contentPadding = if (showLabel) {
+        contentPadding = if (effectiveShowLabel) {
             tv.medusa.app.ui.theme.TvChipDefaults.ContentPadding
         } else {
             PaddingValues(horizontal = 10.dp, vertical = 6.dp)
@@ -90,7 +97,7 @@ fun TvBackButton(
                 tint = if (isFocused) focusContent else tv.medusa.app.ui.theme.TvPalette.TextMuted,
                 modifier = Modifier.size(15.dp)
             )
-            if (showLabel) {
+            if (effectiveShowLabel) {
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
                     text = stringResource(R.string.common_back),

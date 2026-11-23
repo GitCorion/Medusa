@@ -557,6 +557,7 @@ fun SearchScreen(
                                             },
                                             accentColorKey = accentColorKey,
                                             isMonochrome = isMonochrome,
+                                            buttonStyleKey = buttonStyleKey,
                                             focusRequester = sortButtonFocusRequester,
                                             modifier = Modifier
                                                 .focusRequester(sortButtonFocusRequester)

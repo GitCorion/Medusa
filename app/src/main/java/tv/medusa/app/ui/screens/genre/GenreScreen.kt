@@ -271,6 +271,7 @@ private fun GenreLanding(
                         icon = Icons.Rounded.Apps,
                         focusColor = accentColor,
                         focusContentColor = focusedContent,
+                        buttonStyle = buttonStyleKey,
                         onClick = onOpenAll
                     )
                 }
@@ -362,13 +363,15 @@ private fun GenreAllGrid(
                         currentSort = sortOption,
                         onSortSelected = { sortOption = it },
                         accentColorKey = accentColorKey,
-                        isMonochrome = isMonochrome
+                        isMonochrome = isMonochrome,
+                        buttonStyleKey = buttonStyleKey
                     )
                     if (isTouchDevice) {
                         TvBackButton(
                             onClick = onBackToLanding,
                             accentColorKey = accentColorKey,
-                            isMonochrome = isMonochrome
+                            isMonochrome = isMonochrome,
+                            buttonStyleKey = buttonStyleKey
                         )
                     }
                 }
