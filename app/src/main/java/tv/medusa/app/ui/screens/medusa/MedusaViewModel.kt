@@ -46,8 +46,6 @@ private object MedusaCache {
     var lastRecentWatched: List<JellyfinMediaEntity> = emptyList()
 }
 
-typealias ConstellationUiState = MedusaUiState
-
 @HiltViewModel
 class MedusaViewModel @Inject constructor(
     private val userPreferencesRepository: UserPreferencesRepository,
@@ -258,7 +256,7 @@ class MedusaViewModel @Inject constructor(
     }
 
     /**
-     * Alterna la selección de una etiqueta en la Constelación de Medusa:
+     * Alterna la selección de una etiqueta en el rail de Descubrir:
      * - Si la etiqueta ya estaba en la cadena activa: la desconecta junto con las posteriores.
      * - Si no estaba: la conecta como un filtro "AND" estricto.
      */
@@ -316,7 +314,7 @@ class MedusaViewModel @Inject constructor(
     /**
      * Tecla ATRÁS:
      * 1. Si el visor overlay está abierto -> lo cierra.
-     * 2. Si hay etiquetas activas conectadas -> desconecta la última (el mosaico se re-expande de forma asíncrona).
+     * 2. Si hay etiquetas activas conectadas -> desconecta la última (el rail se recalcula de forma asíncrona).
      * 3. Si la cadena está vacía -> devuelve false para volver al Home.
      */
     fun onBackPress(): Boolean {

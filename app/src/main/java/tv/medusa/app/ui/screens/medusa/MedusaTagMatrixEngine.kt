@@ -17,7 +17,7 @@ internal fun JellyfinMediaEntity.toMediaItem(baseUrl: String, token: String): Me
     toOptimizedMediaItem(baseUrl, token, MediaSource.JELLYFIN)
 
 /**
- * Modelo de datos para cada cápsula / celda del Muro Mosaico de Medusa.
+ * Modelo de datos para cada cápsula del rail de temáticas de Descubrir.
  */
 data class MedusaMosaicTag(
     val id: String,
@@ -30,7 +30,7 @@ data class MedusaMosaicTag(
 )
 
 /**
- * Motor de Matriz de Co-ocurrencia y Reemplazo Dinámico para Medusa.
+ * Motor de etiquetas por co-ocurrencia para el rail de Descubrir.
  * Arquitectura de alto rendimiento optimizada para Android TV y procesadores ARM (Odroid N2+):
  * - Catálogo preordenado en inicialización (recuperación O(K) sin ordenaciones en runtime).
  * - Índice invertido de etiquetas y coincidencia "AND" mediante intersección rápida de IntArray.
