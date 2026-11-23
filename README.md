@@ -21,7 +21,7 @@
 
 ![Inicio de Medusa TV en un televisor de 1080p](docs/assets/estudio/captures/inicio-1600.webp)
 
-<p align="center"><sub>Inicio en un televisor de 1920 × 1080. Las capturas reflejan la capa visual actual de main (2.4.0); la estable publicada sigue siendo 2.3.12.</sub></p>
+<p align="center"><sub>Inicio en un televisor de 1080p.</sub></p>
 
 ## Qué es
 

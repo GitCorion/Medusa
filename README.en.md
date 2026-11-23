@@ -21,7 +21,7 @@
 
 ![Medusa TV home screen on a 1080p television](docs/assets/estudio/captures/inicio-1600.webp)
 
-<p align="center"><sub>Home on a 1920 × 1080 television. Captures show the current main visual layer (2.4.0); the published stable release is still 2.3.12.</sub></p>
+<p align="center"><sub>Home on a 1080p television.</sub></p>
 
 ## What it is
 
