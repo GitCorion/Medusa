@@ -4,6 +4,8 @@ import tv.medusa.app.data.local.INDICATOR_THEME_MONOCHROME
 import tv.medusa.app.ui.components.cinema.CinemaFormatBadge
 import tv.medusa.app.ui.components.cinema.CinemaOrbitDial
 import tv.medusa.app.ui.components.cinema.MasterFilmTrigger
+import tv.medusa.app.ui.theme.AbyssSurface
+import tv.medusa.app.ui.theme.AbyssVoid
 import tv.medusa.app.ui.theme.CinematicTypography
 import tv.medusa.app.ui.theme.TextPrimary
 import tv.medusa.app.ui.theme.TextSecondary
@@ -225,9 +227,9 @@ fun HeroBanner(
                                     .background(
                                         Brush.horizontalGradient(
                                             colors = listOf(
-                                                Color(0xFF07070B),
-                                                Color(0xEE07070B),
-                                                Color(0x3307070B),
+                                                AbyssVoid,
+                                                AbyssVoid.copy(alpha = 0.93f),
+                                                AbyssVoid.copy(alpha = 0.20f),
                                                 Color.Transparent
                                             ),
                                             startX = 0f,
@@ -244,8 +246,8 @@ fun HeroBanner(
                                             colors = listOf(
                                                 Color.Transparent,
                                                 Color.Transparent,
-                                                Color(0x5507070B),
-                                                Color(0xFF07070B)
+                                                AbyssVoid.copy(alpha = 0.35f),
+                                                AbyssVoid
                                             )
                                         )
                                     )
@@ -284,9 +286,9 @@ fun HeroBanner(
                                         .background(
                                             Brush.horizontalGradient(
                                                 colors = listOf(
-                                                    Color(0xFF07070B),
-                                                    Color(0xEE07070B),
-                                                    Color(0x3307070B),
+                                                    AbyssVoid,
+                                                    AbyssVoid.copy(alpha = 0.93f),
+                                                    AbyssVoid.copy(alpha = 0.20f),
                                                     Color.Transparent
                                                 ),
                                                 startX = 0f,
@@ -303,8 +305,8 @@ fun HeroBanner(
                                                 colors = listOf(
                                                     Color.Transparent,
                                                     Color.Transparent,
-                                                    Color(0x5507070B),
-                                                    Color(0xFF07070B)
+                                                    AbyssVoid.copy(alpha = 0.35f),
+                                                    AbyssVoid
                                                 )
                                             )
                                         )
@@ -314,7 +316,7 @@ fun HeroBanner(
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .background(Color(0xFF0C0D14))
+                                    .background(AbyssSurface)
                             )
                         }
                     }
@@ -322,7 +324,7 @@ fun HeroBanner(
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(Color(0xFF0C0D14))
+                                .background(AbyssSurface)
                         )
                     }
                 }
@@ -337,10 +339,10 @@ fun HeroBanner(
                 .background(
                     Brush.horizontalGradient(
                         colors = listOf(
-                            Color(0xF607070B),
-                            Color(0xEE07070B),
-                            Color(0x9907070B),
-                            Color(0x3307070B),
+                            AbyssVoid.copy(alpha = 0.96f),
+                            AbyssVoid.copy(alpha = 0.92f),
+                            AbyssVoid.copy(alpha = 0.60f),
+                            AbyssVoid.copy(alpha = 0.20f),
                             Color.Transparent
                         )
                     )
@@ -520,13 +522,13 @@ fun HeroBanner(
                                 CinemaFormatBadge(
                                     text = stringResource(R.string.badge_watched).uppercase(),
                                     isHighlighted = true,
-                                    highlightColor = Color(0xFF10B981)
+                                    highlightColor = tv.medusa.app.ui.theme.TvPalette.SemanticWatched
                                 )
                             } else if (effectiveItem.isFavorite) {
                                 CinemaFormatBadge(
                                     text = stringResource(R.string.badge_favorite).uppercase(),
                                     isHighlighted = true,
-                                    highlightColor = Color(0xFFF43F5E)
+                                    highlightColor = tv.medusa.app.ui.theme.TvPalette.SemanticFavorite
                                 )
                             }
                         }

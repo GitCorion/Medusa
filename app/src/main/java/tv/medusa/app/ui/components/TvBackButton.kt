@@ -61,9 +61,9 @@ fun TvBackButton(
 
     Button(
         onClick = onClick,
-        scale = ButtonDefaults.scale(focusedScale = 1.08f),
+        scale = tv.medusa.app.ui.theme.TvChipDefaults.buttonScale(),
         contentPadding = if (showLabel) {
-            PaddingValues(start = 12.dp, end = 16.dp, top = 6.dp, bottom = 6.dp)
+            tv.medusa.app.ui.theme.TvChipDefaults.ContentPadding
         } else {
             PaddingValues(horizontal = 10.dp, vertical = 6.dp)
         },
@@ -73,19 +73,10 @@ fun TvBackButton(
             focusedContainerColor = focusColor,
             focusedContentColor = focusContent
         ),
-        shape = ButtonDefaults.shape(RoundedCornerShape(10.dp)),
-        border = ButtonDefaults.border(
-            border = androidx.tv.material3.Border(
-                border = androidx.compose.foundation.BorderStroke(0.75.dp, tv.medusa.app.ui.theme.TvPalette.GlassSelected),
-                shape = RoundedCornerShape(10.dp)
-            ),
-            focusedBorder = androidx.tv.material3.Border(
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White),
-                shape = RoundedCornerShape(10.dp)
-            )
-        ),
+        shape = ButtonDefaults.shape(tv.medusa.app.ui.theme.TvChipDefaults.Shape),
+        border = tv.medusa.app.ui.theme.TvChipDefaults.buttonBorder(),
         modifier = modifier
-            .height(48.dp)
+            .height(tv.medusa.app.ui.theme.TvChipDefaults.Height)
             .onFocusChanged { isFocused = it.isFocused }
             .handleTouchClick { onClick() }
     ) {
@@ -97,16 +88,14 @@ fun TvBackButton(
                 imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                 contentDescription = stringResource(R.string.common_back),
                 tint = if (isFocused) focusContent else tv.medusa.app.ui.theme.TvPalette.TextMuted,
-                modifier = Modifier.size(16.dp)
+                modifier = Modifier.size(15.dp)
             )
             if (showLabel) {
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
                     text = stringResource(R.string.common_back),
                     color = if (isFocused) focusContent else Color.White,
-                    fontSize = 12.5.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    letterSpacing = 0.3.sp
+                    style = tv.medusa.app.ui.theme.TvChipDefaults.textStyle
                 )
             }
         }

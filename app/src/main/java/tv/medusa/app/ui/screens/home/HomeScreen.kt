@@ -12,6 +12,8 @@ import kotlinx.coroutines.delay
 import tv.medusa.app.ui.components.JellyLoadingIndicator
 import tv.medusa.app.ui.components.TvNavTab
 import tv.medusa.app.ui.components.TvTopBar
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
 import tv.medusa.app.ui.components.cinema.MasterFilmTrigger
 import tv.medusa.app.ui.theme.CinematicTypography
 import tv.medusa.app.ui.theme.TextPrimary
@@ -227,23 +229,24 @@ fun HomeScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            imageVector = Icons.Rounded.Dns,
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_jelly_symbol),
                             contentDescription = null,
-                            tint = tv.medusa.app.ui.theme.TvPalette.Placeholder,
-                            modifier = Modifier.size(44.dp)
+                            modifier = Modifier
+                                .size(64.dp)
+                                .alpha(0.85f)
                         )
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(18.dp))
                         Text(
                             text = stringResource(R.string.home_welcome),
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 22.sp
+                            style = CinematicTypography.HeroDisplay.copy(
+                                fontSize = 26.sp,
+                                lineHeight = 32.sp
                             ),
                             color = Color.White,
                             textAlign = TextAlign.Center
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(10.dp))
                         Text(
                             text = stringResource(R.string.home_setup_desc),
                             style = MaterialTheme.typography.bodyMedium,
@@ -251,7 +254,7 @@ fun HomeScreen(
                             textAlign = TextAlign.Center,
                             modifier = Modifier.padding(horizontal = 32.dp)
                         )
-                        Spacer(modifier = Modifier.height(24.dp))
+                        Spacer(modifier = Modifier.height(26.dp))
                         MasterFilmTrigger(
                             label = stringResource(R.string.home_config_button),
                             icon = Icons.Rounded.Tune,
@@ -267,43 +270,39 @@ fun HomeScreen(
             is HomeUiState.EmptyLibrary -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            imageVector = Icons.Rounded.Dns,
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_jelly_symbol),
                             contentDescription = null,
-                            tint = tv.medusa.app.ui.theme.TvPalette.Placeholder,
-                            modifier = Modifier.size(44.dp)
+                            modifier = Modifier
+                                .size(64.dp)
+                                .alpha(0.85f)
                         )
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(18.dp))
                         Text(
                             text = stringResource(R.string.home_server_connected),
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 22.sp
+                            style = CinematicTypography.HeroDisplay.copy(
+                                fontSize = 26.sp,
+                                lineHeight = 32.sp
                             ),
                             color = Color.White,
                             textAlign = TextAlign.Center
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(10.dp))
                         Text(
                             text = stringResource(R.string.home_empty_library),
                             style = MaterialTheme.typography.bodyMedium,
                             color = tv.medusa.app.ui.theme.TvPalette.TextSecondaryCool,
                             textAlign = TextAlign.Center
                         )
-                        Spacer(modifier = Modifier.height(24.dp))
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(14.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            MasterFilmTrigger(
-                                label = stringResource(R.string.home_sync),
-                                icon = Icons.Rounded.Refresh,
-                                focusColor = focusColor,
-                                focusContentColor = focusContent,
-                                focusRequester = heroActionFocusRequester,
-                                onClick = { viewModel.loadHomeFeed() }
-                            )
-                        }
+                        Spacer(modifier = Modifier.height(26.dp))
+                        MasterFilmTrigger(
+                            label = stringResource(R.string.home_sync),
+                            icon = Icons.Rounded.Refresh,
+                            focusColor = focusColor,
+                            focusContentColor = focusContent,
+                            focusRequester = heroActionFocusRequester,
+                            onClick = { viewModel.loadHomeFeed() }
+                        )
                     }
                 }
             }
@@ -311,31 +310,40 @@ fun HomeScreen(
             is HomeUiState.Error -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            imageVector = Icons.Rounded.WarningAmber,
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_jelly_symbol),
                             contentDescription = null,
-                            tint = tv.medusa.app.ui.theme.TvPalette.TextSoft,
-                            modifier = Modifier.size(48.dp)
+                            modifier = Modifier
+                                .size(64.dp)
+                                .alpha(0.55f)
                         )
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(18.dp))
                         Text(
-                            text = stringResource(R.string.home_error, state.message),
+                            text = stringResource(R.string.home_error),
+                            style = CinematicTypography.HeroDisplay.copy(
+                                fontSize = 24.sp,
+                                lineHeight = 30.sp
+                            ),
                             color = Color.White,
-                            style = MaterialTheme.typography.titleMedium
+                            textAlign = TextAlign.Center
                         )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Button(
-                            onClick = { viewModel.loadHomeFeed() },
-                            modifier = Modifier.handleTouchClick { viewModel.loadHomeFeed() },
-                            colors = ButtonDefaults.colors(
-                                containerColor = tv.medusa.app.ui.theme.TvPalette.GlassRaised,
-                                contentColor = Color.White,
-                                focusedContainerColor = focusColor,
-                                focusedContentColor = focusContent
-                            )
-                        ) {
-                            Text(text = stringResource(R.string.common_retry), fontWeight = FontWeight.Bold)
-                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = state.message,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = tv.medusa.app.ui.theme.TvPalette.TextSecondaryCool,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(horizontal = 40.dp)
+                        )
+                        Spacer(modifier = Modifier.height(24.dp))
+                        MasterFilmTrigger(
+                            label = stringResource(R.string.common_retry),
+                            icon = Icons.Rounded.Refresh,
+                            focusColor = focusColor,
+                            focusContentColor = focusContent,
+                            focusRequester = heroActionFocusRequester,
+                            onClick = { viewModel.loadHomeFeed() }
+                        )
                     }
                 }
             }

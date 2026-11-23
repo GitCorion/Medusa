@@ -166,7 +166,7 @@ fun ContinueWatchingCard(
                 .fillMaxWidth()
                 .aspectRatio(16f / 9f)
                 .clip(cardShape)
-                .background(Color(0xFF0C1017))
+                .background(tv.medusa.app.ui.theme.TvPalette.SurfaceCard)
                 .then(if (isFocused) Modifier.border(1.5.dp, focusColor, cardShape) else Modifier)
         ) {
             if (!isImageError && !currentImageModel.isNullOrBlank()) {
@@ -191,7 +191,10 @@ fun ContinueWatchingCard(
                         .fillMaxSize()
                         .background(
                             Brush.verticalGradient(
-                                colors = listOf(Color(0xFF232A3B), Color(0xFF0F1420))
+                                colors = listOf(
+                                    tv.medusa.app.ui.theme.TvPalette.FallbackGradientTop,
+                                    tv.medusa.app.ui.theme.TvPalette.FallbackGradientBottom
+                                )
                             )
                         ),
                     contentAlignment = Alignment.Center

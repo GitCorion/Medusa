@@ -499,20 +499,17 @@ fun SearchScreen(
                                         uiState.suggestions.take(4).forEachIndexed { sIndex, suggestion ->
                                             Button(
                                                 onClick = { viewModel.selectSuggestion(suggestion) },
-                                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
-                                                shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
-                                                colors = ButtonDefaults.colors(
-                                                    containerColor = Color(0xFF191D2C),
-                                                    contentColor = tv.medusa.app.ui.theme.TvPalette.TextSoft,
-                                                    focusedContainerColor = focusColor,
-                                                    focusedContentColor = focusContent
+                                                contentPadding = tv.medusa.app.ui.theme.TvChipDefaults.ContentPadding,
+                                                scale = tv.medusa.app.ui.theme.TvChipDefaults.buttonScale(),
+                                                shape = ButtonDefaults.shape(tv.medusa.app.ui.theme.TvChipDefaults.Shape),
+                                                colors = tv.medusa.app.ui.theme.TvChipDefaults.buttonColors(
+                                                    isSelected = false,
+                                                    focusColor = focusColor,
+                                                    focusContent = focusContent
                                                 ),
-                                                border = ButtonDefaults.border(
-                                                    border = Border.None,
-                                                    focusedBorder = Border.None
-                                                ),
+                                                border = tv.medusa.app.ui.theme.TvChipDefaults.buttonBorder(),
                                                 modifier = Modifier
-                                                    .height(48.dp)
+                                                    .height(tv.medusa.app.ui.theme.TvChipDefaults.Height)
                                                     .focusProperties {
                                                         if (sIndex == 0) {
                                                             left = initialKeyFocusRequester
@@ -521,8 +518,8 @@ fun SearchScreen(
                                             ) {
                                                 Text(
                                                     text = suggestion,
-                                                    fontSize = 11.sp,
-                                                    fontWeight = FontWeight.SemiBold,
+                                                    color = tv.medusa.app.ui.theme.TvPalette.TextSoft,
+                                                    style = tv.medusa.app.ui.theme.TvChipDefaults.textStyle,
                                                     maxLines = 1,
                                                     overflow = TextOverflow.Ellipsis
                                                 )

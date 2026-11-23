@@ -75,8 +75,7 @@ fun CompactFocusedHeader(
             .fillMaxWidth()
             .padding(horizontal = 48.dp, vertical = 6.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(Color(0xD90D0F18))
-            .border(0.75.dp, Color(0x20FFFFFF), RoundedCornerShape(12.dp))
+            .background(tv.medusa.app.ui.theme.AbyssSurface.copy(alpha = 0.90f))
             .padding(horizontal = 20.dp, vertical = 10.dp)
     ) {
         Row(
@@ -168,12 +167,17 @@ fun CompactFocusedHeader(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Button(
                     onClick = { onPlayClick(item) },
+                    contentPadding = tv.medusa.app.ui.theme.TvChipDefaults.ContentPadding,
+                    scale = tv.medusa.app.ui.theme.TvChipDefaults.buttonScale(),
+                    shape = ButtonDefaults.shape(tv.medusa.app.ui.theme.TvChipDefaults.Shape),
+                    border = tv.medusa.app.ui.theme.TvChipDefaults.buttonBorder(),
                     colors = ButtonDefaults.colors(
                         containerColor = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.GlassSelected else focusColor.copy(alpha = 0.20f),
                         contentColor = if (isMonochrome) Color.White else Color(0xFFE0F2FE),
                         focusedContainerColor = focusColor,
                         focusedContentColor = focusContent
-                    )
+                    ),
+                    modifier = Modifier.height(tv.medusa.app.ui.theme.TvChipDefaults.Height)
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -184,7 +188,7 @@ fun CompactFocusedHeader(
                                 imageVector = Icons.Rounded.PlayArrow,
                                 contentDescription = stringResource(R.string.common_play),
                                 modifier = Modifier
-                                    .size(16.dp)
+                                    .size(15.dp)
                                     .offset(x = if (!showText) 1.dp else 0.5.dp) // Compensación óptica del centro visual
                             )
                         }
@@ -192,8 +196,7 @@ fun CompactFocusedHeader(
                             if (showIcons) Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 text = stringResource(R.string.common_play),
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 12.sp,
+                                style = tv.medusa.app.ui.theme.TvChipDefaults.textStyle,
                                 maxLines = 1,
                                 softWrap = false
                             )
@@ -205,12 +208,17 @@ fun CompactFocusedHeader(
 
                 Button(
                     onClick = { onDetailClick(item) },
+                    contentPadding = tv.medusa.app.ui.theme.TvChipDefaults.ContentPadding,
+                    scale = tv.medusa.app.ui.theme.TvChipDefaults.buttonScale(),
+                    shape = ButtonDefaults.shape(tv.medusa.app.ui.theme.TvChipDefaults.Shape),
+                    border = tv.medusa.app.ui.theme.TvChipDefaults.buttonBorder(),
                     colors = ButtonDefaults.colors(
                         containerColor = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.GlassSubtle else focusColor.copy(alpha = 0.10f),
                         contentColor = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.TextSoft else Color(0xFFBAE6FD),
                         focusedContainerColor = focusColor,
                         focusedContentColor = focusContent
-                    )
+                    ),
+                    modifier = Modifier.height(tv.medusa.app.ui.theme.TvChipDefaults.Height)
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -227,8 +235,7 @@ fun CompactFocusedHeader(
                             if (showIcons) Spacer(modifier = Modifier.width(6.dp))
                             Text(
                                 text = stringResource(R.string.common_details),
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
+                                style = tv.medusa.app.ui.theme.TvChipDefaults.textStyle,
                                 maxLines = 1,
                                 softWrap = false
                             )

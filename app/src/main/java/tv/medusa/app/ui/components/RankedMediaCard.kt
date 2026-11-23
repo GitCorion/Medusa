@@ -60,6 +60,7 @@ import coil.compose.AsyncImage
 import tv.medusa.app.R
 import tv.medusa.app.data.local.INDICATOR_THEME_MONOCHROME
 import tv.medusa.app.domain.model.MediaItem
+import tv.medusa.app.ui.theme.CinematicTypography
 import tv.medusa.app.ui.theme.TextPrimary
 import tv.medusa.app.ui.theme.TextSecondary
 import tv.medusa.app.ui.theme.LocalAccentColor
@@ -174,12 +175,8 @@ fun RankedMediaCard(
                 // 1. Número Gigante estilizado a la izquierda
                 Text(
                     text = "$rank",
-                    style = TextStyle(
-                        fontFamily = FontFamily.Default,
-                        brush = numberBrush,
-                        fontSize = 112.sp,
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = (-4).sp
+                    style = CinematicTypography.RankedDisplay.copy(
+                        brush = numberBrush
                     ),
                     modifier = Modifier
                         .align(Alignment.BottomStart)
@@ -195,7 +192,7 @@ fun RankedMediaCard(
                         .aspectRatio(2f / 3f)
                         .zIndex(2f)
                         .clip(posterShape)
-                        .background(Color(0xFF0C1017))
+                        .background(tv.medusa.app.ui.theme.TvPalette.SurfaceCard)
                         .then(if (isFocused) Modifier.border(1.5.dp, focusColor, posterShape) else Modifier)
                 ) {
                     var isImageError by remember(item.id, item.posterUrl) { mutableStateOf(false) }
@@ -211,7 +208,10 @@ fun RankedMediaCard(
                     } else {
                         val fallbackGradient = remember {
                             Brush.verticalGradient(
-                                colors = listOf(Color(0xFF232A3B), Color(0xFF0F1420))
+                                colors = listOf(
+                                    tv.medusa.app.ui.theme.TvPalette.FallbackGradientTop,
+                                    tv.medusa.app.ui.theme.TvPalette.FallbackGradientBottom
+                                )
                             )
                         }
                         Box(
@@ -270,13 +270,13 @@ fun RankedMediaCard(
                             Box(
                                 modifier = Modifier
                                     .size(20.dp)
-                                    .background(Color(0xCC000000), CircleShape),
+                                    .background(tv.medusa.app.ui.theme.TvPalette.BadgeBackdrop, CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     imageVector = Icons.Rounded.Favorite,
                                     contentDescription = stringResource(R.string.common_favorite),
-                                    tint = if (isMonochrome) Color.White else Color(0xFFF43F5E),
+                                    tint = if (isMonochrome) Color.White else tv.medusa.app.ui.theme.TvPalette.SemanticFavorite,
                                     modifier = Modifier.size(11.dp)
                                 )
                             }
@@ -286,13 +286,13 @@ fun RankedMediaCard(
                             Box(
                                 modifier = Modifier
                                     .size(20.dp)
-                                    .background(Color(0xCC000000), CircleShape),
+                                    .background(tv.medusa.app.ui.theme.TvPalette.BadgeBackdrop, CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     imageVector = Icons.Rounded.Check,
                                     contentDescription = stringResource(R.string.common_watched),
-                                    tint = if (isMonochrome) Color.White.copy(alpha = 0.90f) else Color(0xFF10B981),
+                                    tint = if (isMonochrome) Color.White.copy(alpha = 0.90f) else tv.medusa.app.ui.theme.TvPalette.SemanticWatched,
                                     modifier = Modifier.size(12.dp)
                                 )
                             }

@@ -58,12 +58,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.PlatformTextStyle
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
+import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Icon
+import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import tv.medusa.app.R
@@ -74,9 +78,13 @@ import tv.medusa.app.ui.components.JellyLoadingIndicator
 import tv.medusa.app.ui.components.MediaCard
 import tv.medusa.app.ui.components.TvNavTab
 import tv.medusa.app.ui.components.TvTopBar
+import tv.medusa.app.ui.theme.AbyssVoid
 import tv.medusa.app.ui.theme.CinematicTypography
+import tv.medusa.app.ui.theme.DmSansFamily
 import tv.medusa.app.ui.theme.TextPrimary
 import tv.medusa.app.ui.theme.TextSecondary
+import tv.medusa.app.ui.theme.TextTertiary
+import tv.medusa.app.ui.theme.TvChipDefaults
 import tv.medusa.app.ui.theme.LocalAccentColor
 import tv.medusa.app.ui.theme.LocalIsMonochromeTheme
 import tv.medusa.app.ui.theme.TvAccent
@@ -149,7 +157,7 @@ fun MedusaScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF06080D))
+            .background(AbyssVoid)
     ) {
         // Fondo: Solo proyectar backdrop si el usuario ha seleccionado alguna temática.
         // La selección se lee en su propio composable para no recomponer la pantalla al
@@ -168,8 +176,8 @@ fun MedusaScreen(
                     Brush.radialGradient(
                         colors = listOf(
                             if (isMonochrome) Color(0x10FFFFFF) else accentColor.copy(alpha = 0.08f),
-                            Color(0xEE06080D),
-                            Color(0xFF06080D)
+                            AbyssVoid.copy(alpha = 0.93f),
+                            AbyssVoid
                         ),
                         radius = 1200f
                     )
@@ -344,9 +352,9 @@ fun MedusaScreen(
 
                             Text(
                                 text = if (isFocusedOnMoviesRow) stringResource(R.string.medusa_hint_movies_short) else stringResource(R.string.medusa_hint_nav_movies_short),
-                                color = Color(0x7794A3B8),
-                                fontSize = 10.sp,
-                                fontFamily = FontFamily.SansSerif
+                                color = TextTertiary,
+                                fontSize = 11.sp,
+                                fontFamily = DmSansFamily
                             )
                         }
 
@@ -480,61 +488,46 @@ private fun SelectedTagBadge(
     accentColor: Color,
     onFocusChange: (Boolean) -> Unit = {}
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isFocused by interactionSource.collectIsFocusedAsState()
-
-    LaunchedEffect(isFocused) {
-        onFocusChange(isFocused)
-    }
-
-    val containerColor = if (isFocused) {
-        accentColor
-    } else {
-        if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.GlassSelected else accentColor.copy(alpha = 0.22f)
-    }
-
-    val contentColor = if (isFocused) {
-        Color(0xFF06080D)
-    } else {
-        if (isMonochrome) Color.White else accentColor
-    }
-
-    Box(
+    Surface(
+        onClick = onRemove,
+        shape = ClickableSurfaceDefaults.shape(shape = TvChipDefaults.Shape),
+        scale = TvChipDefaults.scale(),
+        colors = TvChipDefaults.colors(
+            isSelected = true,
+            isMonochrome = isMonochrome,
+            focusColor = accentColor,
+            focusContent = tv.medusa.app.ui.theme.TvPalette.FocusInk
+        ),
+        border = TvChipDefaults.border(),
         modifier = Modifier
-            .height(32.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .background(containerColor)
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = onRemove
-            )
-            .padding(horizontal = 12.dp, vertical = 4.dp),
-        contentAlignment = Alignment.Center
+            .onFocusChanged { onFocusChange(it.isFocused) }
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        Box(
+            modifier = Modifier
+                .height(TvChipDefaults.Height)
+                .padding(horizontal = TvChipDefaults.HorizontalPadding),
+            contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = Icons.Rounded.Check,
-                contentDescription = null,
-                tint = contentColor,
-                modifier = Modifier.size(13.dp)
-            )
-            Text(
-                text = tag.label,
-                color = contentColor,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = FontFamily.SansSerif
-            )
-            Icon(
-                imageVector = Icons.Rounded.Close,
-                contentDescription = stringResource(R.string.common_delete),
-                tint = contentColor,
-                modifier = Modifier.size(13.dp)
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Check,
+                    contentDescription = null,
+                    modifier = Modifier.size(13.dp)
+                )
+                Text(
+                    text = tag.label,
+                    style = TvChipDefaults.textStyle,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Icon(
+                    imageVector = Icons.Rounded.Close,
+                    contentDescription = stringResource(R.string.common_delete),
+                    modifier = Modifier.size(13.dp)
+                )
+            }
         }
     }
 }

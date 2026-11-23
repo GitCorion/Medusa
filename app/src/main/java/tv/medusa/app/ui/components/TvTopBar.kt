@@ -55,8 +55,11 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import tv.medusa.app.ui.theme.DmSansFamily
 import androidx.tv.material3.Border
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
@@ -230,7 +233,7 @@ fun TvTopBar(
             val isHomeActive = selectedTab == TvNavTab.HOME
             Button(
                 onClick = onNavigateHome,
-                scale = ButtonDefaults.scale(scale = 1.0f, focusedScale = 1.04f),
+                scale = ButtonDefaults.scale(scale = 1.0f, focusedScale = 1.0f),
                 modifier = Modifier
                     .then(if (homeFocusRequester != null) Modifier.focusRequester(homeFocusRequester) else Modifier)
                     .then(navDownModifier)
@@ -256,6 +259,9 @@ fun TvTopBar(
                             text = stringResource(R.string.nav_home),
                             fontWeight = if (isHomeActive) FontWeight.Bold else FontWeight.SemiBold,
                             fontSize = 12.sp,
+                            lineHeight = 14.sp,
+                            fontFamily = DmSansFamily,
+                            style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false)),
                             maxLines = 1,
                             softWrap = false
                         )
@@ -268,7 +274,7 @@ fun TvTopBar(
             var isDiscoverFocused by remember { mutableStateOf(false) }
             Button(
                 onClick = onOpenMedusa,
-                scale = ButtonDefaults.scale(scale = 1.0f, focusedScale = 1.04f),
+                scale = ButtonDefaults.scale(scale = 1.0f, focusedScale = 1.0f),
                 modifier = Modifier
                     .then(if (medusaFocusRequester != null) Modifier.focusRequester(medusaFocusRequester) else Modifier)
                     .then(navDownModifier)
@@ -303,6 +309,9 @@ fun TvTopBar(
                             text = stringResource(R.string.nav_discover),
                             fontWeight = if (isDiscoverActive) FontWeight.Bold else FontWeight.SemiBold,
                             fontSize = 12.sp,
+                            lineHeight = 14.sp,
+                            fontFamily = DmSansFamily,
+                            style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false)),
                             maxLines = 1,
                             softWrap = false
                         )
@@ -314,7 +323,7 @@ fun TvTopBar(
             val isFavoritesActive = selectedTab == TvNavTab.FAVORITES
             Button(
                 onClick = onOpenFavorites,
-                scale = ButtonDefaults.scale(scale = 1.0f, focusedScale = 1.04f),
+                scale = ButtonDefaults.scale(scale = 1.0f, focusedScale = 1.0f),
                 modifier = Modifier
                     .then(navDownModifier)
                     .handleTouchClick { onOpenFavorites() },
@@ -339,6 +348,9 @@ fun TvTopBar(
                             text = stringResource(R.string.nav_favorites),
                             fontWeight = if (isFavoritesActive) FontWeight.Bold else FontWeight.SemiBold,
                             fontSize = 12.sp,
+                            lineHeight = 14.sp,
+                            fontFamily = DmSansFamily,
+                            style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false)),
                             maxLines = 1,
                             softWrap = false
                         )
@@ -350,7 +362,7 @@ fun TvTopBar(
             val isSearchActive = selectedTab == TvNavTab.SEARCH
             Button(
                 onClick = onOpenSearch,
-                scale = ButtonDefaults.scale(scale = 1.0f, focusedScale = 1.04f),
+                scale = ButtonDefaults.scale(scale = 1.0f, focusedScale = 1.0f),
                 modifier = Modifier
                     .then(navDownModifier)
                     .handleTouchClick { onOpenSearch() },
@@ -375,6 +387,9 @@ fun TvTopBar(
                             text = stringResource(R.string.nav_search),
                             fontWeight = if (isSearchActive) FontWeight.Bold else FontWeight.SemiBold,
                             fontSize = 12.sp,
+                            lineHeight = 14.sp,
+                            fontFamily = DmSansFamily,
+                            style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false)),
                             maxLines = 1,
                             softWrap = false
                         )
@@ -386,7 +401,7 @@ fun TvTopBar(
             val isSettingsActive = selectedTab == TvNavTab.SETTINGS
             Button(
                 onClick = onOpenSettings,
-                scale = ButtonDefaults.scale(scale = 1.0f, focusedScale = 1.04f),
+                scale = ButtonDefaults.scale(scale = 1.0f, focusedScale = 1.0f),
                 modifier = Modifier
                     .then(navDownModifier)
                     .handleTouchClick { onOpenSettings() },
@@ -411,6 +426,9 @@ fun TvTopBar(
                             text = stringResource(R.string.nav_settings),
                             fontWeight = if (isSettingsActive) FontWeight.Bold else FontWeight.SemiBold,
                             fontSize = 12.sp,
+                            lineHeight = 14.sp,
+                            fontFamily = DmSansFamily,
+                            style = TextStyle(platformStyle = PlatformTextStyle(includeFontPadding = false)),
                             maxLines = 1,
                             softWrap = false
                         )
@@ -472,14 +490,9 @@ private fun topBarButtonBorder(
     focusColor: Color,
     isDockFocused: Boolean = true
 ) = ButtonDefaults.border(
-    border = if (isActive && isDockFocused) {
-        androidx.tv.material3.Border(
-            border = BorderStroke(0.6.dp, if (isMonochrome) Color(0x55FFFFFF) else focusColor.copy(alpha = 0.5f)),
-            shape = RoundedCornerShape(18.dp)
-        )
-    } else Border.None,
+    border = Border.None,
     focusedBorder = androidx.tv.material3.Border(
-        border = BorderStroke(1.dp, Color.White),
+        border = BorderStroke(1.5.dp, Color.White),
         shape = RoundedCornerShape(18.dp)
     )
 )

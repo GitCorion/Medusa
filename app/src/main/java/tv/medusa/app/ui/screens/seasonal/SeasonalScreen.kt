@@ -334,29 +334,29 @@ private fun SeasonalLanding(
             ) {
                 Button(
                     onClick = onOpenAll,
-                    scale = ButtonDefaults.scale(focusedScale = 1.05f),
-                    modifier = Modifier.handleTouchClick { onOpenAll() },
+                    scale = tv.medusa.app.ui.theme.TvChipDefaults.buttonScale(),
+                    contentPadding = tv.medusa.app.ui.theme.TvChipDefaults.ContentPadding,
+                    shape = ButtonDefaults.shape(tv.medusa.app.ui.theme.TvChipDefaults.Shape),
                     colors = ButtonDefaults.colors(
                         containerColor = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.GlassRaised else eventAccent.copy(alpha = 0.18f),
                         contentColor = Color.White,
                         focusedContainerColor = if (isMonochrome) Color.White else eventAccent,
                         focusedContentColor = tv.medusa.app.ui.theme.TvPalette.FocusInk
                     ),
-                    shape = ButtonDefaults.shape(RoundedCornerShape(10.dp)),
-                    border = ButtonDefaults.border(
-                        border = Border.None,
-                        focusedBorder = Border.None
-                    )
+                    border = tv.medusa.app.ui.theme.TvChipDefaults.buttonBorder(),
+                    modifier = Modifier
+                        .height(tv.medusa.app.ui.theme.TvChipDefaults.Height)
+                        .handleTouchClick { onOpenAll() }
                 ) {
                     Icon(
                         imageVector = Icons.Rounded.Apps,
                         contentDescription = null,
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(15.dp)
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = stringResource(R.string.common_view_all_count, state.allCount),
-                        fontWeight = FontWeight.Bold
+                        style = tv.medusa.app.ui.theme.TvChipDefaults.textStyle
                     )
                 }
             }

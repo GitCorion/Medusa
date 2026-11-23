@@ -157,7 +157,7 @@ fun EpisodeCard(
                             .zIndex(2f)
                             .size(20.dp)
                             .background(
-                                color = Color(0xCC000000),
+                                color = tv.medusa.app.ui.theme.TvPalette.BadgeBackdrop,
                                 shape = CircleShape
                             ),
                         contentAlignment = Alignment.Center
@@ -165,7 +165,7 @@ fun EpisodeCard(
                         Icon(
                             imageVector = Icons.Rounded.Check,
                             contentDescription = stringResource(R.string.common_watched),
-                            tint = if (isMonochrome) Color.White.copy(alpha = 0.90f) else Color(0xFF10B981),
+                            tint = if (isMonochrome) Color.White.copy(alpha = 0.90f) else tv.medusa.app.ui.theme.TvPalette.SemanticWatched,
                             modifier = Modifier.size(13.dp)
                         )
                     }

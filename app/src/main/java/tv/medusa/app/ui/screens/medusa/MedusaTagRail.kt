@@ -47,11 +47,18 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import tv.medusa.app.ui.theme.CyanBioluminescent
+import tv.medusa.app.ui.theme.DmSansFamily
+import tv.medusa.app.ui.theme.TvChipDefaults
+import androidx.tv.material3.ClickableSurfaceDefaults
+import androidx.tv.material3.Surface
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
 import androidx.tv.material3.ExperimentalTvMaterial3Api
@@ -70,7 +77,7 @@ fun MedusaTagRail(
     modifier: Modifier = Modifier,
     firstPillFocusRequester: FocusRequester? = null,
     isMonochrome: Boolean = false,
-    accentColor: Color = Color(0xFF00A4DC),
+    accentColor: Color = CyanBioluminescent,
     onTagFocused: (MedusaMosaicTag) -> Unit = {}
 ) {
     val listState = rememberLazyListState()
@@ -185,65 +192,49 @@ fun MedusaTagPill(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     isMonochrome: Boolean = false,
-    accentColor: Color = Color(0xFF00A4DC),
+    accentColor: Color = CyanBioluminescent,
     onFocusChange: (Boolean) -> Unit = {}
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isFocused by interactionSource.collectIsFocusedAsState()
-
-    LaunchedEffect(isFocused) {
-        onFocusChange(isFocused)
-    }
-
-    val focusColor = if (isMonochrome) Color.White else accentColor
-
-    val containerColor = when {
-        isFocused -> focusColor
-        tag.isSelected -> if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.GlassSelected else focusColor.copy(alpha = 0.22f)
-        else -> Color(0x0EFFFFFF)
-    }
-
-    val contentColor = when {
-        isFocused -> Color(0xFF06080D)
-        tag.isSelected -> if (isMonochrome) Color.White else focusColor
-        else -> tv.medusa.app.ui.theme.TvPalette.TextMuted
-    }
-
-    Box(
+    Surface(
+        onClick = onClick,
+        shape = ClickableSurfaceDefaults.shape(shape = TvChipDefaults.Shape),
+        scale = TvChipDefaults.scale(),
+        colors = TvChipDefaults.colors(
+            isSelected = tag.isSelected,
+            isMonochrome = isMonochrome,
+            focusColor = accentColor,
+            focusContent = tv.medusa.app.ui.theme.TvPalette.FocusInk
+        ),
+        border = TvChipDefaults.border(),
         modifier = modifier
-            .height(32.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .background(containerColor)
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = onClick
-            )
-            .padding(horizontal = 14.dp, vertical = 4.dp),
-        contentAlignment = Alignment.Center
+            .onFocusChanged { onFocusChange(it.isFocused) }
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
+        Box(
+            modifier = Modifier
+                .height(TvChipDefaults.Height)
+                .padding(horizontal = TvChipDefaults.HorizontalPadding),
+            contentAlignment = Alignment.Center
         ) {
-            if (tag.isSelected) {
-                Icon(
-                    imageVector = Icons.Rounded.Check,
-                    contentDescription = null,
-                    tint = contentColor,
-                    modifier = Modifier.size(13.dp)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                if (tag.isSelected) {
+                    Icon(
+                        imageVector = Icons.Rounded.Check,
+                        contentDescription = null,
+                        modifier = Modifier.size(13.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                }
+                Text(
+                    text = tag.label,
+                    style = TvChipDefaults.textStyle,
+                    fontWeight = if (tag.isSelected) FontWeight.Bold else FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
-                Spacer(modifier = Modifier.width(6.dp))
             }
-            Text(
-                text = tag.label,
-                color = contentColor,
-                fontSize = 12.sp,
-                fontWeight = if (tag.isSelected || isFocused) FontWeight.Bold else FontWeight.Medium,
-                fontFamily = FontFamily.SansSerif,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
         }
     }
 }

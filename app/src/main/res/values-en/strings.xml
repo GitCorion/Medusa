@@ -75,13 +75,13 @@
 
     <!-- Home -->
     <string name="home_loading">Loading catalog...</string>
-    <string name="home_welcome">Welcome to Medusa</string>
-    <string name="home_setup_desc">Set up your Jellyfin server to enjoy your movies, series and recommendations.</string>
-    <string name="home_config_button">Configure Jellyfin Server</string>
-    <string name="home_server_connected">Server connected</string>
-    <string name="home_empty_library">No movies or series were found on your Jellyfin server.\nCheck that your user has access to the libraries.</string>
-    <string name="home_sync">Sync</string>
-    <string name="home_error">Error: %1$s</string>
+    <string name="home_welcome">Your jellyfish needs a home</string>
+    <string name="home_setup_desc">Connect your Jellyfin server to awaken your abyssal cinema on the big screen.</string>
+    <string name="home_config_button">Connect Jellyfin Server</string>
+    <string name="home_server_connected">Connected waters, empty library</string>
+    <string name="home_empty_library">Your jellyfish drifts in quiet waters with no content.\nAdd movies or series to your Jellyfin library to start.</string>
+    <string name="home_sync">Scan Library</string>
+    <string name="home_error">Something got tangled in the depths</string>
 
     <!-- Detail -->
     <string name="detail_loading">Loading details...</string>
@@ -297,7 +297,7 @@
 
     <!-- Appearance -->
     <string name="settings_section_theme">THEME</string>
-    <string name="settings_theme_neon">Medusa</string>
+    <string name="settings_theme_neon">Medusa Cyan</string>
     <string name="settings_theme_amber">Cinema Amber</string>
     <string name="settings_theme_monochrome">Monochrome</string>
     <string name="settings_section_buttons">BUTTONS ON CARDS</string>
@@ -362,7 +362,7 @@
     <string name="settings_subtitles_preview_sample">Winter is coming. — House Stark</string>
 
     <!-- 5. Interface & Display -->
-    <string name="settings_theme_desc">Choose between Medusa Neon, Cinema Amber or high-contrast Monochrome for OLED displays.</string>
+    <string name="settings_theme_desc">Choose between Medusa Cyan, Cinema Amber or high-contrast Monochrome for OLED displays.</string>
     <string name="settings_buttons_desc">Choose button presentation style (Play, Trailer, Watched) on media detail screens.</string>
     <string name="settings_perf_desc">Control background particles and effects. Choose battery saver for low-power HDMI sticks.</string>
 

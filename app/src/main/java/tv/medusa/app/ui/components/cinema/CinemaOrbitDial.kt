@@ -85,7 +85,7 @@ fun CinemaOrbitDial(
                 containerColor = when {
                     isFocused -> focusColor
                     isActive -> focusColor.copy(alpha = 0.22f)
-                    else -> Color(0xFF16151B)
+                    else -> tv.medusa.app.ui.theme.AbyssSurface
                 },
                 contentColor = when {
                     isFocused -> focusContentColor
@@ -97,15 +97,9 @@ fun CinemaOrbitDial(
             ),
             shape = ButtonDefaults.shape(shape = CircleShape),
             border = ButtonDefaults.border(
-                border = androidx.tv.material3.Border(
-                    border = BorderStroke(
-                        0.75.dp,
-                        if (isActive) focusColor.copy(alpha = 0.5f) else tv.medusa.app.ui.theme.TvPalette.GlassSelected
-                    ),
-                    shape = CircleShape
-                ),
+                border = androidx.tv.material3.Border.None,
                 focusedBorder = androidx.tv.material3.Border(
-                    border = BorderStroke(1.2.dp, Color.White),
+                    border = BorderStroke(1.5.dp, Color.White),
                     shape = CircleShape
                 )
             ),

@@ -75,13 +75,13 @@
 
     <!-- Inicio (Home) -->
     <string name="home_loading">Cargando catálogo...</string>
-    <string name="home_welcome">Bienvenido a Medusa</string>
-    <string name="home_setup_desc">Configura tu servidor Jellyfin para disfrutar de tus películas, series y recomendaciones.</string>
-    <string name="home_config_button">Configurar Servidor Jellyfin</string>
-    <string name="home_server_connected">Servidor conectado</string>
-    <string name="home_empty_library">No se encontraron películas ni series en tu servidor Jellyfin.\nComprueba que tu usuario tenga acceso a las bibliotecas.</string>
-    <string name="home_sync">Sincronizar</string>
-    <string name="home_error">Error: %1$s</string>
+    <string name="home_welcome">Tu medusa necesita un hogar</string>
+    <string name="home_setup_desc">Conecta tu servidor Jellyfin para encender tu cine abisal en la gran pantalla.</string>
+    <string name="home_config_button">Conectar Servidor Jellyfin</string>
+    <string name="home_server_connected">Aguas conectadas, biblioteca vacía</string>
+    <string name="home_empty_library">Tu medusa nada en aguas tranquilas sin contenido.\nAñade títulos a tus bibliotecas de Jellyfin para comenzar.</string>
+    <string name="home_sync">Escanear Biblioteca</string>
+    <string name="home_error">Algo se enredó en las profundidades</string>
 
     <!-- Detalle (Detail) -->
     <string name="detail_loading">Cargando detalles...</string>
@@ -297,7 +297,7 @@
 
     <!-- Apariencia -->
     <string name="settings_section_theme">TEMA</string>
-    <string name="settings_theme_neon">Medusa</string>
+    <string name="settings_theme_neon">Cian Medusa</string>
     <string name="settings_theme_amber">Ámbar Cine</string>
     <string name="settings_theme_monochrome">Monocromático</string>
     <string name="settings_section_buttons">BOTONES EN FICHAS</string>
@@ -362,7 +362,7 @@
     <string name="settings_subtitles_preview_sample">El invierno se acerca. — Casa Stark</string>
 
     <!-- 5. Interfaz y Pantalla -->
-    <string name="settings_theme_desc">Elige entre Medusa Neón, Ámbar Cine o Monocromático para paneles OLED.</string>
+    <string name="settings_theme_desc">Elige entre Cian Medusa, Ámbar Cine o Monocromático para paneles OLED.</string>
     <string name="settings_buttons_desc">Formato visual de los botones de acción (Reproducir, Trailer, Visto) en las fichas de detalle.</string>
     <string name="settings_perf_desc">Controla las partículas y efectos de GPU. Elige ahorro si usas un stick HDMI o TV de baja potencia.</string>
 

@@ -1007,13 +1007,8 @@ private fun PlatformsCategory(
                     focusedContainerColor = Color(0x35FFFFFF)
                 ),
                 border = ClickableSurfaceDefaults.border(
-                    border = Border(
-                        border = BorderStroke(
-                            0.5.dp,
-                            if (isCurrent) focusColor.copy(alpha = 0.6f) else tv.medusa.app.ui.theme.TvPalette.GlassSubtle
-                        )
-                    ),
-                    focusedBorder = Border(border = BorderStroke(1.5.dp, focusColor))
+                    border = Border.None,
+                    focusedBorder = Border(border = BorderStroke(1.5.dp, Color.White))
                 ),
                 scale = ClickableSurfaceDefaults.scale(focusedScale = 1.02f)
             ) {
@@ -1465,8 +1460,8 @@ private fun AboutCategory(
                 focusedContainerColor = tv.medusa.app.ui.theme.TvPalette.GlassSelected
             ),
             border = ClickableSurfaceDefaults.border(
-                border = Border(border = BorderStroke(0.5.dp, tv.medusa.app.ui.theme.TvPalette.GlassSubtle)),
-                focusedBorder = Border(border = BorderStroke(1.5.dp, focusColor))
+                border = Border.None,
+                focusedBorder = Border(border = BorderStroke(1.5.dp, Color.White))
             ),
             scale = ClickableSurfaceDefaults.scale(focusedScale = 1.01f)
         ) {
@@ -1514,8 +1509,8 @@ private fun AboutCategory(
                 focusedContainerColor = tv.medusa.app.ui.theme.TvPalette.GlassSelected
             ),
             border = ClickableSurfaceDefaults.border(
-                border = Border(border = BorderStroke(0.5.dp, tv.medusa.app.ui.theme.TvPalette.GlassSubtle)),
-                focusedBorder = Border(border = BorderStroke(1.5.dp, focusColor))
+                border = Border.None,
+                focusedBorder = Border(border = BorderStroke(1.5.dp, Color.White))
             ),
             scale = ClickableSurfaceDefaults.scale(focusedScale = 1.01f)
         ) {
@@ -1655,8 +1650,8 @@ private fun TvSettingRow(
                 focusedContainerColor = tv.medusa.app.ui.theme.TvPalette.GlassSelected
             ),
             border = ClickableSurfaceDefaults.border(
-                border = Border(border = BorderStroke(0.5.dp, tv.medusa.app.ui.theme.TvPalette.GlassSubtle)),
-                focusedBorder = Border(border = BorderStroke(1.5.dp, focusColor))
+                border = Border.None,
+                focusedBorder = Border(border = BorderStroke(1.5.dp, Color.White))
             ),
             scale = ClickableSurfaceDefaults.scale(focusedScale = 1.01f)
         ) {
@@ -1766,14 +1761,8 @@ private fun <T> TvSegmentedSelector(
                     focusedContentColor = focusContent
                 ),
                 border = ClickableSurfaceDefaults.border(
-                    border = Border(
-                        border = BorderStroke(
-                            if (isSelected) 1.dp else 0.5.dp,
-                            if (isSelected) (if (isMonochrome) Color(0x40FFFFFF) else focusColor.copy(alpha = 0.45f)) else tv.medusa.app.ui.theme.TvPalette.GlassSubtle
-                        ),
-                        shape = RoundedCornerShape(10.dp)
-                    ),
-                    focusedBorder = Border.None
+                    border = Border.None,
+                    focusedBorder = Border(border = BorderStroke(1.5.dp, Color.White))
                 ),
                 scale = ClickableSurfaceDefaults.scale(focusedScale = 1.02f)
             ) {
@@ -1829,13 +1818,8 @@ private fun TvTraktListToggleRow(
             focusedContainerColor = tv.medusa.app.ui.theme.TvPalette.GlassSelected
         ),
         border = ClickableSurfaceDefaults.border(
-            border = Border(
-                border = BorderStroke(
-                    0.5.dp,
-                    if (isVisible) tv.medusa.app.ui.theme.TvPalette.GlassRaised else Color(0x0EFFFFFF)
-                )
-            ),
-            focusedBorder = Border(border = BorderStroke(1.5.dp, focusColor))
+            border = Border.None,
+            focusedBorder = Border(border = BorderStroke(1.5.dp, Color.White))
         ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1.01f)
     ) {
@@ -1934,13 +1918,8 @@ private fun TvPlatformToggleRow(
             focusedContainerColor = tv.medusa.app.ui.theme.TvPalette.GlassSelected
         ),
         border = ClickableSurfaceDefaults.border(
-            border = Border(
-                border = BorderStroke(
-                    0.5.dp,
-                    if (isSelected) tv.medusa.app.ui.theme.TvPalette.GlassRaised else Color(0x0EFFFFFF)
-                )
-            ),
-            focusedBorder = Border(border = BorderStroke(1.5.dp, focusColor))
+            border = Border.None,
+            focusedBorder = Border(border = BorderStroke(1.5.dp, Color.White))
         ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1.01f)
     ) {

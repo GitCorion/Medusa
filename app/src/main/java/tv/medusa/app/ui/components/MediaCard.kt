@@ -161,7 +161,7 @@ fun MediaCard(
                     .fillMaxWidth()
                     .aspectRatio(2f / 3f)
                     .clip(posterShape)
-                    .background(Color(0xFF0C1017))
+                    .background(tv.medusa.app.ui.theme.TvPalette.SurfaceCard)
                     // Cero contorno en reposo: el arte respira sobre el vacío; solo el foco
                     // dibuja el borde de acento.
                     .then(if (isFocused) Modifier.border(1.5.dp, focusColor, posterShape) else Modifier)
@@ -179,7 +179,10 @@ fun MediaCard(
                 } else {
                     val fallbackGradient = remember {
                         Brush.verticalGradient(
-                            colors = listOf(Color(0xFF232A3B), Color(0xFF0F1420))
+                            colors = listOf(
+                                tv.medusa.app.ui.theme.TvPalette.FallbackGradientTop,
+                                tv.medusa.app.ui.theme.TvPalette.FallbackGradientBottom
+                            )
                         )
                     }
                     Box(
@@ -253,7 +256,7 @@ fun MediaCard(
                             Box(
                                 modifier = Modifier
                                     .background(
-                                        color = Color(0xCC000000),
+                                        color = tv.medusa.app.ui.theme.TvPalette.BadgeBackdrop,
                                         shape = RoundedCornerShape(4.dp)
                                     )
                                     .padding(horizontal = 6.dp, vertical = 2.dp),
@@ -274,7 +277,7 @@ fun MediaCard(
                             modifier = Modifier
                                 .size(22.dp)
                                 .background(
-                                    color = Color(0xCC000000),
+                                    color = tv.medusa.app.ui.theme.TvPalette.BadgeBackdrop,
                                     shape = CircleShape
                                 ),
                             contentAlignment = Alignment.Center
@@ -282,7 +285,7 @@ fun MediaCard(
                             Icon(
                                 imageVector = Icons.Rounded.Favorite,
                                 contentDescription = stringResource(R.string.common_favorite),
-                                tint = if (isMonochrome) Color.White else Color(0xFFF43F5E),
+                                tint = if (isMonochrome) Color.White else tv.medusa.app.ui.theme.TvPalette.SemanticFavorite,
                                 modifier = Modifier.size(12.dp)
                             )
                         }
@@ -293,7 +296,7 @@ fun MediaCard(
                             modifier = Modifier
                                 .size(22.dp)
                                 .background(
-                                    color = Color(0xCC000000),
+                                    color = tv.medusa.app.ui.theme.TvPalette.BadgeBackdrop,
                                     shape = CircleShape
                                 ),
                             contentAlignment = Alignment.Center
@@ -301,7 +304,7 @@ fun MediaCard(
                             Icon(
                                 imageVector = Icons.Rounded.Check,
                                 contentDescription = stringResource(R.string.common_watched),
-                                tint = if (isMonochrome) Color.White.copy(alpha = 0.90f) else Color(0xFF10B981),
+                                tint = if (isMonochrome) Color.White.copy(alpha = 0.90f) else tv.medusa.app.ui.theme.TvPalette.SemanticWatched,
                                 modifier = Modifier.size(14.dp)
                             )
                         }
@@ -347,7 +350,7 @@ fun MediaCard(
                             text = " • ",
                             style = MaterialTheme.typography.bodySmall,
                             color = tv.medusa.app.ui.theme.TextTertiary,
-                            fontSize = 10.sp,
+                            fontSize = 11.sp,
                             modifier = Modifier.clearAndSetSemantics { }
                         )
                     }

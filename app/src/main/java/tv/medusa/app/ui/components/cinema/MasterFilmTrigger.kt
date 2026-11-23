@@ -91,23 +91,17 @@ fun MasterFilmTrigger(
             contentPadding = PaddingValues(0.dp),
             scale = ButtonDefaults.scale(scale = 1.0f, focusedScale = 1.0f),
             colors = ButtonDefaults.colors(
-                containerColor = if (isFocused) focusColor else Color(0xFF16151B),
+                containerColor = if (isFocused) focusColor else tv.medusa.app.ui.theme.AbyssSurface,
                 contentColor = if (isFocused) focusContentColor else TextPrimary,
                 focusedContainerColor = focusColor,
                 focusedContentColor = focusContentColor
             ),
             shape = ButtonDefaults.shape(shape = shape),
             border = ButtonDefaults.border(
-                border = androidx.tv.material3.Border(
-                    border = androidx.compose.foundation.BorderStroke(
-                        0.75.dp,
-                        tv.medusa.app.ui.theme.TvPalette.GlassSelected
-                    ),
-                    shape = shape
-                ),
+                border = androidx.tv.material3.Border.None,
                 focusedBorder = androidx.tv.material3.Border(
                     border = androidx.compose.foundation.BorderStroke(
-                        1.dp,
+                        1.5.dp,
                         Color.White
                     ),
                     shape = shape

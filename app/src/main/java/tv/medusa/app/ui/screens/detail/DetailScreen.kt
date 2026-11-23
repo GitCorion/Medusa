@@ -654,36 +654,25 @@ fun DetailScreen(
                                     contentType = { "season_chip" }
                                 ) { season ->
                                     val isSelected = season.id == state.selectedSeasonId
-                                    val chipShape = RoundedCornerShape(8.dp)
                                     Button(
                                         onClick = { viewModel.selectSeason(season.id) },
-                                        modifier = Modifier.handleTouchClick { viewModel.selectSeason(season.id) },
-                                        scale = ButtonDefaults.scale(scale = 1.0f, focusedScale = 1.05f),
-                                        colors = ButtonDefaults.colors(
-                                            containerColor = if (isSelected) (if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.GlassDivider else focusColor.copy(alpha = 0.22f)) else Color(0x0EFFFFFF),
-                                            contentColor = if (isSelected) (if (isMonochrome) Color.White else focusColor) else TextPrimary.copy(alpha = 0.75f),
-                                            focusedContainerColor = focusColor,
-                                            focusedContentColor = focusContent
+                                        modifier = Modifier
+                                            .height(tv.medusa.app.ui.theme.TvChipDefaults.Height)
+                                            .handleTouchClick { viewModel.selectSeason(season.id) },
+                                        scale = tv.medusa.app.ui.theme.TvChipDefaults.buttonScale(),
+                                        contentPadding = tv.medusa.app.ui.theme.TvChipDefaults.ContentPadding,
+                                        colors = tv.medusa.app.ui.theme.TvChipDefaults.buttonColors(
+                                            isSelected = isSelected,
+                                            focusColor = focusColor,
+                                            focusContent = focusContent
                                         ),
-                                        border = ButtonDefaults.border(
-                                            border = Border(
-                                                border = BorderStroke(
-                                                    0.75.dp,
-                                                    if (isSelected) (if (isMonochrome) Color(0x60FFFFFF) else focusColor.copy(alpha = 0.5f)) else tv.medusa.app.ui.theme.TvPalette.GlassIdle
-                                                ),
-                                                shape = chipShape
-                                            ),
-                                            focusedBorder = Border(
-                                                border = BorderStroke(1.5.dp, Color.White),
-                                                shape = chipShape
-                                            )
-                                        ),
-                                        shape = ButtonDefaults.shape(shape = chipShape)
+                                        border = tv.medusa.app.ui.theme.TvChipDefaults.buttonBorder(),
+                                        shape = ButtonDefaults.shape(shape = tv.medusa.app.ui.theme.TvChipDefaults.Shape)
                                     ) {
                                         Text(
                                             text = season.name,
-                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                            fontSize = 12.sp
+                                            color = if (isSelected) (if (isMonochrome) Color.White else focusColor) else TextPrimary.copy(alpha = 0.85f),
+                                            style = tv.medusa.app.ui.theme.TvChipDefaults.textStyle
                                         )
                                     }
                                 }

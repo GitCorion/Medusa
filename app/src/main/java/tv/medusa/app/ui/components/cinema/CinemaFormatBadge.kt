@@ -68,7 +68,6 @@ fun CinemaFormatBadge(
             Text(
                 text = text,
                 style = CinematicTypography.FilmCodecBadge,
-                fontSize = 10.sp,
                 color = textColor,
                 maxLines = 1,
                 softWrap = false

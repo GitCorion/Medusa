@@ -136,11 +136,11 @@ private fun BrandCard(
                 .background(
                     if (isFocused) {
                         androidx.compose.ui.graphics.Brush.verticalGradient(
-                            listOf(Color(0xFF222B3D), Color(0xFF121722))
+                            listOf(tv.medusa.app.ui.theme.TvPalette.FallbackGradientTop, tv.medusa.app.ui.theme.TvPalette.SurfaceBrandCard)
                         )
                     } else {
                         androidx.compose.ui.graphics.Brush.verticalGradient(
-                            listOf(Color(0xFF141822), Color(0xFF0A0D14))
+                            listOf(tv.medusa.app.ui.theme.TvPalette.SurfaceBrandCard, tv.medusa.app.ui.theme.TvPalette.SurfaceBrandCardBottom)
                         )
                     }
                 )

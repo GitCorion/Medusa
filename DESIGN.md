@@ -1,45 +1,48 @@
 ---
 name: "Medusa TV"
-description: "Interfaz real de Medusa TV para Android TV: navegación por iconos, arte full-bleed, carrusel de tags y foco de alto contraste cian."
+description: "Interfaz cinematográfica de Medusa TV para Android TV: DM Serif Display & DM Sans, cian bioluminiscente del logotipo oficial, arte full-bleed, cero real-time blur y foco de alto contraste para 10-foot UI."
 colors:
-  void-black: "#06080d"
-  surface-dark: "#0c1017"
-  surface-elevated: "#141b26"
-  glass-idle: "#16ffffff"
+  void-black: "#04060a"
+  surface-dark: "#0a0f1d"
+  surface-elevated: "#10162a"
+  glass-idle: "#18ffffff"
   glass-selected: "#28ffffff"
-  scrim-black: "#cc06080d"
-  focus-cyan: "#00f2fe"
-  focus-dark: "#06080d"
-  amber-rating: "#f59e0b"
-  text-primary: "#f8fafc"
-  text-secondary: "#94a3b8"
-  text-tertiary: "#64748b"
+  scrim-black: "#eb04060a"
+  focus-cyan: "#00d2ff"
+  focus-dark: "#04060a"
+  abyssal-cobalt: "#0b5eff"
+  glacial-aqua: "#8bffff"
+  amber-cinema: "#e5a44d"
+  gold-watched: "#d4af37"
+  text-primary: "#f7f5f0"
+  text-secondary: "#a39e93"
+  text-tertiary: "#827d73"
 typography:
   display:
-    fontFamily: "Inter, Roboto, sans-serif"
+    fontFamily: "DM Serif Display, serif"
     fontSize: "36px"
     fontWeight: 700
     lineHeight: 1.15
   headline:
-    fontFamily: "Inter, Roboto, sans-serif"
+    fontFamily: "DM Serif Display, serif"
     fontSize: "24px"
     fontWeight: 700
     lineHeight: 1.2
   title:
-    fontFamily: "Inter, Roboto, sans-serif"
-    fontSize: "14px"
+    fontFamily: "DM Sans, sans-serif"
+    fontSize: "16px"
     fontWeight: 600
     lineHeight: 1.3
   body:
-    fontFamily: "Inter, Roboto, sans-serif"
+    fontFamily: "DM Sans, sans-serif"
     fontSize: "13px"
     fontWeight: 400
     lineHeight: 1.5
   label:
-    fontFamily: "Inter, Roboto, sans-serif"
+    fontFamily: "DM Sans, sans-serif"
     fontSize: "11px"
     fontWeight: 600
-    letterSpacing: "0.05em"
+    letterSpacing: "0.04em"
 rounded:
   badge: "4px"
   chip: "10px"
@@ -90,11 +93,12 @@ components:
 
 **Enfoque Visual: "Cinematic TV Leanback"**
 
-Medusa TV es una interfaz de streaming 10-foot real para Android TV y pantallas OLED. El diseño no se basa en marcos complejos, cajas grises ni metáforas literarias, sino en **lo que realmente se renderiza en pantalla**: carátulas cinematográficas a sangre, navegación por iconos compactos, foco de alto contraste instantáneo y cero elementos superfluos.
+Medusa TV es una interfaz de streaming 10-foot real para Android TV y pantallas OLED. El diseño no se basa en marcos complejos, cajas grises ni metáforas literarias, sino en **lo que realmente se renderiza en pantalla**: carátulas cinematográficas a sangre, navegación por iconos compactos, tipografía editorial con carácter (DM Serif Display & DM Sans), foco bioluminiscente inequívoco y cero elementos superfluos.
 
-Toda la aplicación vive sobre un fondo negro cinematográfico puro (`#06080D`). El foco activo es inequívoco: exactamente un elemento en pantalla se ilumina en `Cyan` (`#00F2FE`) con iconos/texto oscuros `#06080D` para lectura perfecta a 3 metros. Desde v2.3.12 las tarjetas inactivas **mantienen su opacidad y luminosidad al 100%** (se eliminó el spotlight por coste de GPU); el foco se señala mediante `zIndex(10f)`, un borde de acento de `1.5.dp` sobre el póster y el texto del título que pasa de `0.75f` a `1.0f`.
+Toda la aplicación vive sobre un fondo negro cinematográfico puro (`#04060A`). El foco activo es inequívoco: exactamente un elemento en pantalla se ilumina en `Cian Medusa` (`#00D2FF`) con iconos/texto oscuros `#04060A` para lectura perfecta a 3 metros. Desde v2.3.12 las tarjetas inactivas **mantienen su opacidad y luminosidad al 100%** (se eliminó el spotlight por coste de GPU); el foco se señala mediante `zIndex(10f)`, un borde de acento de `1.5.dp` sobre el póster y el texto del título que pasa de `0.75f` a `1.0f`.
 
 **Pilares reales de la interfaz:**
+- **Tipografía con Voz Cinematográfica:** Títulos monumentales en `DM Serif Display` (serif de alta costura, números del Top 10 en cursiva teatral) combinados con `DM Sans` para controles, botones y badges.
 - **Barra Superior Minimalista:** Logotipo de Medusa a la izquierda y 5 iconos circulares a la derecha (Inicio, Brújula/Descubrir, Corazón/Favoritos, Lupa/Buscar, Ajustes). Sin etiquetas de texto ruidosas.
 - **Filtros por Iconos:** Selector de formato compacto con 4 iconos: Ojo (Todos), Cuadrícula (Catálogo), Claqueta (Películas) y Pantalla TV (Series).
 - **Carrusel de Tags (Descubrir):** Pantalla de exploración directa con chips temáticos (Aventura, Animación, Ciencia Ficción...) y carrusel inferior de resultados en tiempo real.
@@ -106,36 +110,35 @@ Toda la aplicación vive sobre un fondo negro cinematográfico puro (`#06080D`).
 La paleta real extraída directamente del código fuente y los temas de la app:
 
 ### Foco y Acento Principal
-- **Focus Cyan** (`#00F2FE`): El color del mando. Borde de `1.5.dp` sobre el póster de la tarjeta activa, relleno sólido en iconos de navegación seleccionados y barra de progreso de reproducción.
-- **Focus Dark Content** (`#06080D`): Tinta negra profunda utilizada dentro de botones e iconos con fondo cian para garantizar máximo contraste (15.8:1).
+- **Focus Cyan** (`#00D2FF`): El color del mando. Cian bioluminiscente idéntico al isotipo oficial de Medusa. Borde de `1.5.dp` sobre el póster de la tarjeta activa, relleno sólido en iconos de navegación seleccionados y barra de progreso.
+- **Focus Dark Content** (`#04060A`): Tinta negra profunda utilizada dentro de botones e iconos con fondo activo para garantizar máximo contraste (15.8:1).
+- **Abyssal Cobalt** (`#0B5EFF`): Azul cobalto oceánico de los tentáculos del isotipo, utilizado en gradientes espaciales y brillos secundarios.
+- **Glacial Aqua** (`#8BFFFF`): Reflejos y corona luminosa de la medusa para detalles técnicos.
 
 ### Secundarios y Calificaciones
-- **Amber Rating** (`#F59E0B`): Estrella e insignias numéricas de puntuación (ej. `★ 8.7`).
-- **Accent Alternativos (Ajustes):** La app permite cambiar el acento cian por *Ámbar Cine* (`#F59E0B`) o *Blanco Puro* (`#FFFFFF`) / *Monocromático*.
+- **Amber Cinema** (`#E5A44D`): Calidez dorada halógena de 3200K, utilizada para insignias numéricas y favoritos.
+- **Gold Nitrate** (`#D4AF37`): Sello dorado de época para contenido visto/reproducido.
+- **Accent Alternativos (Ajustes):** La app permite cambiar el acento cian por *Ámbar Cine* (`#E5A44D`) o *Blanco Puro* (`#FFFFFF`) / *Monocromático*.
 
 ### Superficies y Neutros
 - **Void Black** (`#06080D`): Fondo raíz de toda la app. Negro profundo para paneles OLED.
-- **Surface Dark** (`#0C1017`): Fondo del teclado en pantalla y superficies elevadas secundarias.
-- **Surface Elevated** (`#141B26`): Fondo base de carga para carátulas y pósteres.
-- **Glass Idle** (`#16FFFFFF` / `Color(0x18FFFFFF)`): Cristal translúcido para botones y chips en reposo. Cero bordes grises de 1px.
+- **Surface Dark** (`#0C1017`): Fondo del teclado en pantalla y superficies elevadas secundarias (`TvPalette.SurfaceCard`).
+- **Surface Elevated** (`#18171E`): Fondo base de carga para carátulas y pósteres.
+- **Glass Idle** (`#18FFFFFF`): Cristal translúcido para botones y chips en reposo. Cero bordes grises de 1px.
 - **Glass Selected** (`#28FFFFFF`): Estado activo para chips de formato y pestañas seleccionadas.
-- **Text Primary** (`#F8FAFC`): Blanco limpio para títulos y etiquetas principales.
-- **Text Secondary** (`#94A3B8`): Gris pizarra para metadatos (año, género, temporadas) e iconos en reposo.
-- **Text Tertiary** (`#64748B`): Gris atenuado para etiquetas secundarias e indicadores.
-
-> **Tokens en código:** `ui/theme/Color.kt` define la paleta cálida de marca (marfil `#F7F5F0`,
-> pergamino `#A39E93`, grafito `#827D73`, ya en AA). `TvPalette` centraliza los neutros fríos
-> que usan los cromos de UI (cristales, `#94A3B8`, `#CBD5E1`, `#64748B`). Los valores de arriba
-> son la referencia visual; donde difieran, manda `Color.kt`/`TvPalette`, que es lo que renderiza.
+- **Text Primary** (`#F7F5F0`): Blanco marfil cálido para lectura descansada a 3 metros.
+- **Text Secondary** (`#A39E93`): Gris pergamino cinematográfico para metadatos (año, género, temporadas).
+- **Text Tertiary** (`#827D73`): Grafito atenuado para micro-metadatos (4.9:1 sobre abismo, WCAG AA).
 
 ## Typography
 
-Tipografía nativa del sistema (Inter / Roboto) renderizada con contraste nítido para 1080p y 4K:
+Tipografía cinematográfica embebida (DM Serif Display & DM Sans) renderizada con contraste nítido para 1080p y 4K:
 
-- **Display Hero (36sp, Bold):** Título de película/serie en el Hero Banner cuando no hay logotipo transparente ClearLogo. Marquee continuo si supera una línea.
-- **Section Headline (20sp - 24sp, Bold):** Títulos de carrusel (`Continuar viendo`, `Top 10 Hoy`, `Favoritos`, `120 TITLES`).
-- **Card Title (14sp, SemiBold):** Título de película debajo del póster. En reposo es tenue (`#94A3B8`); al enfocar se ilumina en blanco con autoscroll marquee.
-- **Metadata Body (13sp - 14sp, Regular):** Sinopsis y descripción de contenido (máximo 5 líneas con elipsis).
+- **Display Hero (32sp - 36sp, DM Serif Display Bold):** Título de película/serie en el Hero Banner cuando no hay logotipo transparente ClearLogo.
+- **Ranked Display (114sp, DM Serif Display Bold Italic):** Números colosales teatrales para el Top 10 Hoy.
+- **Section Headline (19sp, DM Serif Display Bold):** Títulos de carrusel (`Continuar viendo`, `Top 10 Hoy`, `Favoritos`).
+- **Card Title (12sp - 14sp, DM Sans SemiBold):** Título de película debajo del póster. En reposo marfil tenue; al enfocar blanco puro con autoscroll marquee.
+- **Film Codec Badge (11sp, DM Sans Bold):** Especificaciones técnicas y códigos de episodio (`T2:E4`, `4K HDR`). Calibrado a 11sp para lectura descansada a 3m.
 - **Badge / Pill Label (10sp - 11sp, SemiBold):** Píldoras de formato, año (`2026`), tipo (`SERIES`), código de episodio (`T1:E4`) y calificación por edad (`TV-MA`, `ES-16`).
 
 ## Layout y Estructura de Pantallas

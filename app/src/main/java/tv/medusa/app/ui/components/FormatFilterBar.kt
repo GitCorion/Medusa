@@ -1,16 +1,14 @@
 package tv.medusa.app.ui.components
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.Movie
@@ -30,24 +28,27 @@ import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.tv.material3.Border
-import androidx.tv.material3.Button
-import androidx.tv.material3.ButtonDefaults
+import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Icon
+import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import tv.medusa.app.R
 import tv.medusa.app.data.local.BUTTON_STYLE_ICONS_ONLY
 import tv.medusa.app.data.local.BUTTON_STYLE_TEXT_ONLY
 import tv.medusa.app.domain.model.MediaFormatFilter
 import tv.medusa.app.ui.theme.TvAccent
+import tv.medusa.app.ui.theme.TvChipDefaults
 import tv.medusa.app.ui.theme.TvSpacing
 import tv.medusa.app.ui.util.handleTouchClick
 
 /**
- * Universal format filter bar (All / Movies / Series) with watched filter toggle.
- * Follows 10-foot Android TV guidelines with standard 8dp corner radius and focus scaling.
+ * Barra universal de filtros de formato (Todo / Películas / Series) con conmutador de vistos.
+ * Basada 100% en el estándar canónico [TvChipDefaults]:
+ * - Altura: 36dp
+ * - Cero bordes en reposo (Anti-slop)
+ * - Foco: Borde 1.5dp blanco nítido, escala 1.0f
+ * - Tipografía: DM Sans 12sp SemiBold sin font-padding residual
  */
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
@@ -59,7 +60,7 @@ fun FormatFilterBar(
     isMonochrome: Boolean,
     hideWatched: Boolean = false,
     onToggleHideWatched: (() -> Unit)? = null,
-    contentPadding: PaddingValues = PaddingValues(horizontal = TvSpacing.ScreenSafeHorizontal, vertical = 8.dp),
+    contentPadding: PaddingValues = PaddingValues(horizontal = TvSpacing.ScreenSafeHorizontal, vertical = 6.dp),
     modifier: Modifier = Modifier
 ) {
     val focusColor = if (isMonochrome) Color.White else TvAccent.getColor(accentColorKey)
@@ -68,76 +69,58 @@ fun FormatFilterBar(
     val showIcons = buttonStyleKey != BUTTON_STYLE_TEXT_ONLY
     val showText = buttonStyleKey != BUTTON_STYLE_ICONS_ONLY
 
-    val buttonPadding = if (!showText) {
-        PaddingValues(0.dp)
-    } else {
-        PaddingValues(horizontal = 14.dp, vertical = 6.dp)
-    }
-
-    val chipShape = RoundedCornerShape(10.dp)
-
     Row(
-        modifier = modifier
-            .padding(contentPadding),
+        modifier = modifier.padding(contentPadding),
         horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.Start),
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (onToggleHideWatched != null) {
             val hideWatchedLabel = stringResource(R.string.filter_hide_watched)
-            Button(
+            Surface(
                 onClick = { onToggleHideWatched() },
-                contentPadding = buttonPadding,
-                scale = ButtonDefaults.scale(scale = 1.0f, focusedScale = 1.04f),
-                colors = ButtonDefaults.colors(
-                    containerColor = if (hideWatched) (if (isMonochrome) Color(0x30FFFFFF) else focusColor.copy(alpha = 0.22f)) else tv.medusa.app.ui.theme.TvPalette.GlassSubtle,
-                    contentColor = if (hideWatched) (if (isMonochrome) Color.White else focusColor) else Color(0xFFA39E93),
-                    focusedContainerColor = focusColor,
-                    focusedContentColor = focusContent
+                shape = ClickableSurfaceDefaults.shape(shape = TvChipDefaults.Shape),
+                scale = TvChipDefaults.scale(),
+                colors = TvChipDefaults.colors(
+                    isSelected = hideWatched,
+                    isMonochrome = isMonochrome,
+                    focusColor = focusColor,
+                    focusContent = focusContent
                 ),
-                shape = ButtonDefaults.shape(shape = chipShape),
-                border = ButtonDefaults.border(
-                    border = androidx.tv.material3.Border(
-                        border = BorderStroke(
-                            0.6.dp,
-                            if (hideWatched) (if (isMonochrome) Color(0x60FFFFFF) else focusColor.copy(alpha = 0.5f)) else Color(0x1CFFFFFF)
-                        ),
-                        shape = chipShape
-                    ),
-                    focusedBorder = androidx.tv.material3.Border(
-                        border = BorderStroke(1.5.dp, Color.White),
-                        shape = chipShape
-                    )
-                ),
+                border = TvChipDefaults.border(),
                 modifier = Modifier
                     .handleTouchClick { onToggleHideWatched() }
                     .semantics {
                         role = Role.Switch
                         toggleableState = ToggleableState(hideWatched)
                     }
-                    .height(48.dp)
-                    .then(if (!showText) Modifier.width(38.dp) else Modifier)
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
+                Box(
+                    modifier = Modifier
+                        .height(TvChipDefaults.Height)
+                        .padding(horizontal = if (!showText) 12.dp else TvChipDefaults.HorizontalPadding),
+                    contentAlignment = Alignment.Center
                 ) {
-                    if (showIcons) {
-                        val icon = if (hideWatched) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility
-                        Icon(
-                            imageVector = icon,
-                            contentDescription = hideWatchedLabel,
-                            modifier = Modifier.size(if (!showText) 16.dp else 14.dp)
-                        )
-                    }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        if (showIcons) {
+                            val icon = if (hideWatched) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility
+                            Icon(
+                                imageVector = icon,
+                                contentDescription = hideWatchedLabel,
+                                modifier = Modifier.size(TvChipDefaults.IconSize)
+                            )
+                        }
 
-                    if (showText) {
-                        if (showIcons) Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = hideWatchedLabel,
-                            fontSize = 12.sp,
-                            fontWeight = if (hideWatched) FontWeight.Bold else FontWeight.Medium,
-                            letterSpacing = 0.3.sp
-                        )
+                        if (showText) {
+                            if (showIcons) Spacer(modifier = Modifier.width(TvChipDefaults.IconSpacing))
+                            Text(
+                                text = hideWatchedLabel,
+                                style = TvChipDefaults.textStyle,
+                                fontWeight = if (hideWatched) FontWeight.Bold else FontWeight.SemiBold
+                            )
+                        }
                     }
                 }
             }
@@ -150,64 +133,55 @@ fun FormatFilterBar(
                 MediaFormatFilter.MOVIES -> stringResource(R.string.format_movies)
                 MediaFormatFilter.SERIES -> stringResource(R.string.format_series)
             }
-            Button(
+            Surface(
                 onClick = { onSelect(format) },
-                contentPadding = buttonPadding,
-                scale = ButtonDefaults.scale(scale = 1.0f, focusedScale = 1.04f),
-                colors = ButtonDefaults.colors(
-                    containerColor = if (isSelected) (if (isMonochrome) Color(0x30FFFFFF) else focusColor.copy(alpha = 0.22f)) else tv.medusa.app.ui.theme.TvPalette.GlassSubtle,
-                    contentColor = if (isSelected) (if (isMonochrome) Color.White else focusColor) else Color(0xFFA39E93),
-                    focusedContainerColor = focusColor,
-                    focusedContentColor = focusContent
+                shape = ClickableSurfaceDefaults.shape(shape = TvChipDefaults.Shape),
+                scale = TvChipDefaults.scale(),
+                colors = TvChipDefaults.colors(
+                    isSelected = isSelected,
+                    isMonochrome = isMonochrome,
+                    focusColor = focusColor,
+                    focusContent = focusContent
                 ),
-                shape = ButtonDefaults.shape(shape = chipShape),
-                border = ButtonDefaults.border(
-                    border = androidx.tv.material3.Border(
-                        border = BorderStroke(
-                            0.6.dp,
-                            if (isSelected) (if (isMonochrome) Color(0x60FFFFFF) else focusColor.copy(alpha = 0.5f)) else Color(0x1CFFFFFF)
-                        ),
-                        shape = chipShape
-                    ),
-                    focusedBorder = androidx.tv.material3.Border(
-                        border = BorderStroke(1.5.dp, Color.White),
-                        shape = chipShape
-                    )
-                ),
+                border = TvChipDefaults.border(),
                 modifier = Modifier
                     .handleTouchClick { onSelect(format) }
                     .semantics {
                         role = Role.Tab
                         this.selected = isSelected
                     }
-                    .height(48.dp)
-                    .then(if (!showText) Modifier.width(38.dp) else Modifier)
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
+                Box(
+                    modifier = Modifier
+                        .height(TvChipDefaults.Height)
+                        .padding(horizontal = if (!showText) 12.dp else TvChipDefaults.HorizontalPadding),
+                    contentAlignment = Alignment.Center
                 ) {
-                    if (showIcons) {
-                        val icon = when (format) {
-                            MediaFormatFilter.ALL -> Icons.Rounded.Apps
-                            MediaFormatFilter.MOVIES -> Icons.Rounded.Movie
-                            MediaFormatFilter.SERIES -> Icons.Rounded.Tv
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        if (showIcons) {
+                            val icon = when (format) {
+                                MediaFormatFilter.ALL -> Icons.Rounded.Apps
+                                MediaFormatFilter.MOVIES -> Icons.Rounded.Movie
+                                MediaFormatFilter.SERIES -> Icons.Rounded.Tv
+                            }
+                            Icon(
+                                imageVector = icon,
+                                contentDescription = formatLabel,
+                                modifier = Modifier.size(TvChipDefaults.IconSize)
+                            )
                         }
-                        Icon(
-                            imageVector = icon,
-                            contentDescription = formatLabel,
-                            modifier = Modifier.size(if (!showText) 16.dp else 14.dp)
-                        )
-                    }
 
-                    if (showText) {
-                        if (showIcons) Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = formatLabel,
-                            fontSize = 12.sp,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                            letterSpacing = 0.3.sp
-                        )
+                        if (showText) {
+                            if (showIcons) Spacer(modifier = Modifier.width(TvChipDefaults.IconSpacing))
+                            Text(
+                                text = formatLabel,
+                                style = TvChipDefaults.textStyle,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold
+                            )
+                        }
                     }
                 }
             }

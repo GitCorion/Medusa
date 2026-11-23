@@ -26,6 +26,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.TextStyle
+import androidx.tv.material3.Border
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.tv.material3.ButtonDefaults
+import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Icon
 import androidx.tv.material3.Text
@@ -51,7 +58,7 @@ object TvColors {
  * calibrados a partir de la ingeniería inversa de Apple TV (1080p reference screen model).
  */
 object TvSpacing {
-    val ScreenSafeHorizontal = 60.dp       // Margen lateral seguro de pantalla (PostPlay/Shelf safe horizontal)
+    val ScreenSafeHorizontal = 48.dp       // Margen lateral calibrado para TVs y cajas modernas (10-foot safe)
     val TitleToShelfItems = 24.dp          // TitleToShelfItemsSpacing exacto de Apple TV
     val RaisedTitleToShelfItems = 18.dp    // RaisedTitleToShelfItemsSpacing para carrusel enfocado
     val ShelfBottomPadding = 24.dp         // Ritmo vertical inferior entre filas de contenido
@@ -135,7 +142,7 @@ fun TvPill(
     containerColor: Color = tv.medusa.app.ui.theme.TvPalette.GlassIdle,
     textColor: Color = tv.medusa.app.ui.theme.TvPalette.TextSoft,
     borderColor: Color? = null,
-    fontSizeSp: Int = 10,
+    fontSizeSp: Int = 11,
     horizontalPadDp: Dp = TvSpacing.BadgeHorizontalPad,
     verticalPadDp: Dp = TvSpacing.BadgeVerticalPad
 ) {
@@ -161,24 +168,124 @@ fun TvPill(
     }
 }
 
+/**
+ * Especificación canónica y unificada para TODOS los Chips y Píldoras de Medusa TV.
+ * - Altura exacta: 36.dp universal en Home, Descubrir y Ajustes.
+ * - Radio de esquinas: 8.dp
+ * - Cero bordes en reposo (Anti-slop: cero marcos grises o wireframes)
+ * - Borde 1.5.dp blanco puro únicamente al recibir foco
+ * - Escala 1.0f (foco solo mediante borde y luz, cero saltos de tamaño)
+ * - Tipografía DM Sans 12sp SemiBold sin font-padding residual
+ */
+object TvChipDefaults {
+    val Height: Dp = 36.dp
+    val Shape: RoundedCornerShape = RoundedCornerShape(8.dp)
+    val HorizontalPadding: Dp = 16.dp
+    val ContentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 6.dp)
+    val IconSize: Dp = 15.dp
+    val IconSpacing: Dp = 7.dp
+    val FontSize = 12.sp
+    val LineHeight = 14.sp
+
+    val textStyle: TextStyle = TextStyle(
+        fontFamily = DmSansFamily,
+        fontSize = FontSize,
+        lineHeight = LineHeight,
+        letterSpacing = 0.3.sp,
+        platformStyle = PlatformTextStyle(includeFontPadding = false)
+    )
+
+    // --- Surface support ---
+    @OptIn(ExperimentalTvMaterial3Api::class)
+    @Composable
+    fun colors(
+        isSelected: Boolean = false,
+        isMonochrome: Boolean = LocalIsMonochromeTheme.current,
+        focusColor: Color = currentFocusColor(),
+        focusContent: Color = currentFocusContentColor()
+    ) = ClickableSurfaceDefaults.colors(
+        containerColor = when {
+            isSelected -> if (isMonochrome) Color(0x30FFFFFF) else focusColor.copy(alpha = 0.22f)
+            else -> tv.medusa.app.ui.theme.TvPalette.SurfaceChip
+        },
+        contentColor = when {
+            isSelected -> if (isMonochrome) Color.White else focusColor
+            else -> tv.medusa.app.ui.theme.TextSecondary
+        },
+        focusedContainerColor = focusColor,
+        focusedContentColor = focusContent
+    )
+
+    @OptIn(ExperimentalTvMaterial3Api::class)
+    @Composable
+    fun border(
+        chipShape: RoundedCornerShape = Shape
+    ) = ClickableSurfaceDefaults.border(
+        border = Border.None, // CERO bordes en reposo: ni wireframes ni bordes grises
+        focusedBorder = Border(
+            border = BorderStroke(1.5.dp, Color.White),
+            shape = chipShape
+        )
+    )
+
+    @OptIn(ExperimentalTvMaterial3Api::class)
+    fun scale() = ClickableSurfaceDefaults.scale(scale = 1.0f, focusedScale = 1.0f)
+
+    // --- Button support ---
+    @OptIn(ExperimentalTvMaterial3Api::class)
+    @Composable
+    fun buttonColors(
+        isSelected: Boolean = false,
+        isMonochrome: Boolean = LocalIsMonochromeTheme.current,
+        focusColor: Color = currentFocusColor(),
+        focusContent: Color = currentFocusContentColor()
+    ) = ButtonDefaults.colors(
+        containerColor = when {
+            isSelected -> if (isMonochrome) Color(0x30FFFFFF) else focusColor.copy(alpha = 0.22f)
+            else -> tv.medusa.app.ui.theme.TvPalette.SurfaceChip
+        },
+        contentColor = when {
+            isSelected -> if (isMonochrome) Color.White else focusColor
+            else -> tv.medusa.app.ui.theme.TextSecondary
+        },
+        focusedContainerColor = focusColor,
+        focusedContentColor = focusContent
+    )
+
+    @OptIn(ExperimentalTvMaterial3Api::class)
+    @Composable
+    fun buttonBorder(
+        chipShape: RoundedCornerShape = Shape
+    ) = ButtonDefaults.border(
+        border = Border.None,
+        focusedBorder = Border(
+            border = BorderStroke(1.5.dp, Color.White),
+            shape = chipShape
+        )
+    )
+
+    @OptIn(ExperimentalTvMaterial3Api::class)
+    fun buttonScale() = ButtonDefaults.scale(scale = 1.0f, focusedScale = 1.0f)
+}
+
 object TvAccent {
     fun getColor(key: String): Color {
         return when (key) {
             ACCENT_AMBER -> AmberCinema             // Amber Cinema Warm
             ACCENT_WHITE -> Color(0xFFFFFFFF)       // Pure White Minimal
-            else -> CyanBioluminescent             // Medusa Cyan Bioluminescent
+            else -> CyanBioluminescent             // Cian Medusa Bioluminiscente (color real del logotipo)
         }
     }
 
     fun getFocusedContentColor(key: String): Color {
-        return CyanFocusedContent // Dark void #06080D high-contrast text on bright backgrounds
+        return CyanFocusedContent // Dark void #04060A high-contrast text on bright backgrounds
     }
 
     fun getDisplayName(key: String): String {
         return when (key) {
             ACCENT_AMBER -> "Ámbar Cine"
             ACCENT_WHITE -> "Blanco Puro"
-            else -> "Cian Bioluminiscente"
+            else -> "Cian Medusa"
         }
     }
 
@@ -186,7 +293,7 @@ object TvAccent {
         return when (key) {
             ACCENT_AMBER -> "Tono ámbar dorado cálido inspirado en salas de cine clásicas."
             ACCENT_WHITE -> "Resalte blanco puro estilo Apple TV minimalista."
-            else -> "Cian abisal vibrante con máximo contraste para salón a 3 metros."
+            else -> "Cian bioluminiscente eléctrico idéntico al logotipo de Medusa."
         }
     }
 }

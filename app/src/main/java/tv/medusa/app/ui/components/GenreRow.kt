@@ -7,6 +7,7 @@ import tv.medusa.app.ui.theme.TextSecondary
 import tv.medusa.app.ui.theme.LocalAccentColor
 import tv.medusa.app.ui.theme.LocalIsMonochromeTheme
 import tv.medusa.app.ui.theme.TvAccent
+import tv.medusa.app.ui.theme.TvChipDefaults
 import tv.medusa.app.ui.theme.TvCornerRadius
 import tv.medusa.app.ui.theme.TvSpacing
 import androidx.compose.foundation.BorderStroke
@@ -105,44 +106,33 @@ private fun GenreChip(
     val accentKey = LocalAccentColor.current
     val focusColor = if (isMonochrome) Color.White else TvAccent.getColor(accentKey)
     val focusContent = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else TvAccent.getFocusedContentColor(accentKey)
-    var isFocused by remember { mutableStateOf(false) }
-
-    val chipShape = RoundedCornerShape(8.dp)
 
     Surface(
         onClick = onClick,
-        modifier = Modifier
-            .onFocusChanged { isFocused = it.isFocused }
-            .handleTouchClick { onClick() },
-        shape = ClickableSurfaceDefaults.shape(shape = chipShape),
-        colors = ClickableSurfaceDefaults.colors(
-            containerColor = Color(0xFF11141C),
-            focusedContainerColor = focusColor,
-            contentColor = TextSecondary,
-            focusedContentColor = focusContent
+        modifier = Modifier.handleTouchClick { onClick() },
+        shape = ClickableSurfaceDefaults.shape(shape = TvChipDefaults.Shape),
+        scale = TvChipDefaults.scale(),
+        colors = TvChipDefaults.colors(
+            isSelected = false,
+            isMonochrome = isMonochrome,
+            focusColor = focusColor,
+            focusContent = focusContent
         ),
-        border = ClickableSurfaceDefaults.border(
-            border = Border(
-                border = BorderStroke(0.75.dp, tv.medusa.app.ui.theme.TvPalette.GlassRaised),
-                shape = chipShape
-            ),
-            focusedBorder = Border(
-                border = BorderStroke(1.5.dp, Color.White),
-                shape = chipShape
-            )
-        ),
-        scale = ClickableSurfaceDefaults.scale(scale = 1.0f, focusedScale = 1.0f)
+        border = TvChipDefaults.border()
     ) {
         Box(
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 11.dp),
+            modifier = Modifier
+                .height(TvChipDefaults.Height)
+                .padding(horizontal = TvChipDefaults.HorizontalPadding),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text = genreName.uppercase(),
-                color = if (isFocused) focusContent else TextPrimary,
-                fontWeight = FontWeight.Bold,
-                fontSize = 11.sp,
-                letterSpacing = 1.2.sp
+                style = TvChipDefaults.textStyle.copy(
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.2.sp
+                )
             )
         }
     }

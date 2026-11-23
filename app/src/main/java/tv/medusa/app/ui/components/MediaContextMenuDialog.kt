@@ -221,7 +221,7 @@ fun MediaContextMenuDialog(
                     id = "remove_favorite",
                     label = stringRemoveFavorite,
                     icon = Icons.Rounded.Favorite,
-                    iconTint = if (!isMonochrome) Color(0xFFF43F5E) else null,
+                    iconTint = if (!isMonochrome) tv.medusa.app.ui.theme.TvPalette.SemanticFavorite else null,
                     action = { onToggleFavorite(item) }
                 )
             )
@@ -319,9 +319,9 @@ fun MediaContextMenuDialog(
                 modifier = Modifier
                     .adaptiveDialogWidth(620.dp)
                     .clip(RoundedCornerShape(18.dp))
-                    .background(Color(0xF2090B14))
+                    .background(tv.medusa.app.ui.theme.AbyssVoid.copy(alpha = 0.95f))
                     .border(
-                        border = BorderStroke(0.5.dp, Color(0x24FFFFFF)),
+                        border = BorderStroke(0.5.dp, tv.medusa.app.ui.theme.BorderSubtle),
                         shape = RoundedCornerShape(18.dp)
                     )
                     .clickable(
@@ -418,8 +418,7 @@ fun MediaContextMenuDialog(
                                 TvPill(
                                     text = item.year.toString(),
                                     containerColor = tv.medusa.app.ui.theme.TvPalette.GlassIdle,
-                                    textColor = tv.medusa.app.ui.theme.TvPalette.TextMuted,
-                                    borderColor = tv.medusa.app.ui.theme.TvPalette.GlassRaised
+                                    textColor = tv.medusa.app.ui.theme.TvPalette.TextMuted
                                 )
                             }
 
