@@ -1,11 +1,11 @@
 {
-  "versionCode": 1000168,
-  "versionName": "2.4.2-beta.1",
+  "versionCode": 1000169,
+  "versionName": "2.4.2-beta.2",
   "minSupportedVersionCode": 1000105,
   "forceUpdate": false,
   "killSwitch": false,
-  "releaseNotes": "### Eliminado\n\n- Restos del antiguo explorador espacial (constelación/nebula): canvas, motores, atractores, grid\n  y sus tests, sin referencias desde la UI. Descubrir queda documentado como un rail de temáticas\n  con filtros AND y `BACK` para deshacer.\n\n### Cambiado\n\n- README reescrito como landing: estado actual, instalación, configuración inicial, arquitectura,\n  privacidad y enlaces a los documentos técnicos. `README.en.md` queda alineado.\n\n### Corregido\n\n- Comprobación anti-rollback del APK descargado: se usa `PackageInfoCompat` para no llamar a\n  `longVersionCode` en API 26–27.\n\n### Documentación\n\n- `DESIGN.md` se reescribe con los tokens, radios, tipografía, movimiento y pantallas reales.\n- Se sincronizan versiones, conteo de pruebas, canales OTA, comandos Gradle, botón táctil y\n  catálogos manuales en README, PRODUCT, CONTRIBUTING, SECURITY y `docs/`.",
-  "apkUrl": "https://github.com/GitCorion/Medusa/releases/download/v2.4.2-beta.1/Medusa.apk",
-  "apkSha256": "58d68e2d9f5c132ecddff54ddd4722681911233e3eef48a348116f642bbf1552",
+  "releaseNotes": "### Eliminado\n\n- Restos del antiguo explorador espacial (constelación/nebula): canvas, motores, atractores, grid\n  y sus tests, sin referencias desde la UI. Descubrir queda documentado como un rail de temáticas\n  con filtros AND y `BACK` para deshacer.\n\n### Cambiado\n\n- README reescrito como landing: estado actual, instalación, configuración inicial, arquitectura,\n  privacidad y enlaces a los documentos técnicos. `README.en.md` queda alineado.\n- Pantallas de carga del reproductor y de preparación de torrent sin tarjetas contenedoras: layout\n  plano, menos iconos y adornos, textos e indicadores mínimos. La medusa vuelve al buffering.\n\n### Corregido\n\n- Favoritos abre ordenado por año descendente y el corazón de favorito vuelve a mostrarse en todas\n  las tarjetas. Los badges de visto y favorito usan el acento activo.\n- Comprobación anti-rollback del APK descargado: se usa `PackageInfoCompat` para no llamar a\n  `longVersionCode` en API 26–27.\n\n### Documentación\n\n- `DESIGN.md` se reescribe con los tokens, radios, tipografía, movimiento y pantallas reales.\n- Se sincronizan versiones, conteo de pruebas, canales OTA, comandos Gradle, botón táctil y\n  catálogos manuales en README, PRODUCT, CONTRIBUTING, SECURITY y `docs/`.",
+  "apkUrl": "https://github.com/GitCorion/Medusa/releases/download/v2.4.2-beta.2/Medusa.apk",
+  "apkSha256": "4560cb77d5e9673bb371f6eba466ad172cf60c46eddfd83ae6b745b61b5ad953",
   "signatures": []
 }
