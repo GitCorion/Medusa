@@ -1,11 +1,11 @@
 {
-  "versionCode": 1000164,
-  "versionName": "2.4.0-beta.5",
+  "versionCode": 1000165,
+  "versionName": "2.4.0-beta.6",
   "minSupportedVersionCode": 1000105,
   "forceUpdate": false,
   "killSwitch": false,
   "releaseNotes": "2.4.0 en preparación. La capa visual y los cambios de esta sección ya están publicados en la beta\n**2.4.0-beta.3** (23 de noviembre de 2026); la estable sigue en 2.3.12.\n\n### Añadido\n\n- Identidad cinematográfica: tinta `#04060A`, cian eléctrico `#00D2FF`, cobalto `#0B5EFF`, aqua\n  `#8BFFFF`, ámbar `#E5A44D`, oro `#D4AF37` y nota `#FACC15`.\n- DM Sans variable como única familia tipográfica, con escala de diez pies (36/24/16/13/11).\n- Dock de iconos de 18 dp, foco de 1,5 dp sobre el póster, `zIndex(10f)` y título a plena\n  luminosidad.\n- Estudio de diseño en `docs/index.html` y `docs/ESTUDIO.md`.\n- Documentación: README bilingüe, arquitectura, contribución, seguridad, changelog, licencia\n  GPL-3.0, plantillas de issue y de PR.\n- TOD con el plugin de Jellyfin: `Prepare`, buffer y `stream_ready`.\n- Canales estable y beta con manifiestos OTA separados, `versionCode` automático que nunca\n  retrocede y migración a `tv.medusa.app`.\n- QR local para enlaces y activaciones, sin depender de un generador externo.\n- Top 10 con números tipográficos de titanio y anchura adaptativa para leer el 10 completo.\n\n### Cambiado\n\n- La navegación vuelve al dock de iconos: el foco no exige OK y la barra admite iconos, texto o\n  ambos.\n- Las tarjetas conservan su opacidad y no escalan; el foco se lee por borde, zIndex y el título.\n- Se eliminan el spotlight, la atenuación de vecinos y las animaciones autónomas.\n- Los neutros pasan a zinc y grafito; el texto principal es blanco puro sobre tinta abisal.\n- Se retira Fraunces y la estructura editorial. La única voz display variable son los ClearLogo.\n\n### Corregido\n\n- Legibilidad y restos de la plantilla anterior detectados en un televisor real.\n- Contraste de los textos secundarios y de los metadatos.\n- Foco de la navegación y de los carruseles tras el cambio de estructura.\n\n### Descartado\n\n- La metáfora de corriente ondulada, sonar y batimetría.\n- La navegación tipográfica con subrayado.\n- La capa Material TV con tabs pill, escala 1,1x y chips de 48 dp.\n\n### Seguridad\n\n- Sin cambios de modelo de seguridad en esta pasada. Se mantienen el cifrado de credenciales, el\n  pin TLS, la verificación SHA-256 del OTA y el modo fail-closed.",
-  "apkUrl": "https://github.com/GitCorion/Medusa/releases/download/v2.4.0-beta.5/Medusa.apk",
-  "apkSha256": "7cc6b458e11a27636a7fa42cc66cea8471036b613278327d7270163393daf4f3",
+  "apkUrl": "https://github.com/GitCorion/Medusa/releases/download/v2.4.0-beta.6/Medusa.apk",
+  "apkSha256": "acfc2a5453235fca6738bc06645c2d5772b175164789d5c5a371514c003c0fd9",
   "signatures": []
 }
