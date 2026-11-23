@@ -135,13 +135,9 @@ private fun BrandCard(
                 .fillMaxSize()
                 .background(
                     if (isFocused) {
-                        androidx.compose.ui.graphics.Brush.verticalGradient(
-                            listOf(tv.medusa.app.ui.theme.TvPalette.FallbackGradientTop, tv.medusa.app.ui.theme.TvPalette.SurfaceBrandCard)
-                        )
+                        tv.medusa.app.ui.theme.AbyssSurfaceElevated
                     } else {
-                        androidx.compose.ui.graphics.Brush.verticalGradient(
-                            listOf(tv.medusa.app.ui.theme.TvPalette.SurfaceBrandCard, tv.medusa.app.ui.theme.TvPalette.SurfaceBrandCardBottom)
-                        )
+                        tv.medusa.app.ui.theme.TvPalette.SurfaceCard
                     }
                 )
                 .padding(horizontal = 14.dp, vertical = 8.dp)

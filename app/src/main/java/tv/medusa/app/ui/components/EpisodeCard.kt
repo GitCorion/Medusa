@@ -80,7 +80,7 @@ fun EpisodeCard(
             containerColor = Color(0xFF0C1017),
             focusedContainerColor = Color(0xFF141B26)
         ),
-        scale = CardDefaults.scale(scale = 1.0f, focusedScale = 1.03f),
+        scale = CardDefaults.scale(scale = 1.0f, focusedScale = 1.0f),
         shape = CardDefaults.shape(shape = cardShape),
         border = CardDefaults.border(
             border = Border.None,
@@ -239,7 +239,10 @@ fun EpisodeCard(
             ) {
                 Text(
                     text = "${episode.episodeNumber}. ${episode.name}",
-                    style = MaterialTheme.typography.labelLarge,
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        fontFamily = tv.medusa.app.ui.theme.DmSansFamily,
+                        platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false)
+                    ),
                     fontWeight = FontWeight.SemiBold,
                     color = if (isFocused) Color.White else TextPrimary,
                     maxLines = 1,
@@ -250,7 +253,10 @@ fun EpisodeCard(
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = episode.overview,
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontFamily = tv.medusa.app.ui.theme.DmSansFamily,
+                            platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false)
+                        ),
                         color = TextSecondary,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,

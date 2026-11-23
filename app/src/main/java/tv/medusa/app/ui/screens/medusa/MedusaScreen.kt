@@ -368,7 +368,7 @@ fun MedusaScreen(
                                         isFocusedOnMoviesRow = true
                                     }
                                 },
-                            contentPadding = PaddingValues(start = 48.dp, end = 48.dp, top = 4.dp, bottom = 4.dp),
+                            contentPadding = PaddingValues(start = 48.dp, end = 48.dp, top = 6.dp, bottom = 16.dp),
                             horizontalArrangement = Arrangement.spacedBy(14.dp),
                             verticalAlignment = Alignment.Top
                         ) {

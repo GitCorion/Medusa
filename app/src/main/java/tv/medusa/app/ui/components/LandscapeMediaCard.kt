@@ -257,6 +257,10 @@ fun LandscapeMediaCard(
                             Text(
                                 text = cleanTitle,
                                 color = if (isFocused) Color.White else TextPrimary,
+                                fontFamily = tv.medusa.app.ui.theme.DmSansFamily,
+                                style = androidx.compose.ui.text.TextStyle(
+                                    platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false)
+                                ),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 14.sp,
                                 letterSpacing = 0.2.sp,
@@ -275,6 +279,10 @@ fun LandscapeMediaCard(
                             Text(
                                 text = subtitle,
                                 color = if (isFocused) focusColor else TextSecondary,
+                                fontFamily = tv.medusa.app.ui.theme.DmSansFamily,
+                                style = androidx.compose.ui.text.TextStyle(
+                                    platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false)
+                                ),
                                 fontWeight = FontWeight.SemiBold,
                                 fontSize = 11.sp,
                                 letterSpacing = 0.5.sp,

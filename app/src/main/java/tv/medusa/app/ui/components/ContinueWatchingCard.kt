@@ -305,6 +305,10 @@ fun ContinueWatchingCard(
                 Text(
                     text = displayTitle,
                     color = if (isFocused) Color.White else TextPrimary,
+                    fontFamily = tv.medusa.app.ui.theme.DmSansFamily,
+                    style = androidx.compose.ui.text.TextStyle(
+                        platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false)
+                    ),
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.sp,
                     letterSpacing = 0.2.sp,

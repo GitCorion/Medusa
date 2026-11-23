@@ -200,28 +200,16 @@ fun TvTopBar(
 
         // Sección derecha: Pestañas de navegación en Lens Carriage Dock
         var isDockFocused by remember { mutableStateOf(false) }
-        val dockAlpha by animateFloatAsState(
-            targetValue = if (isDockFocused) 1.0f else 0.55f,
-            animationSpec = tween(300),
-            label = "dockAlpha"
-        )
         val dockBgColor by animateColorAsState(
-            targetValue = if (isDockFocused) Color(0x3E070709) else Color(0x10070709),
+            targetValue = if (isDockFocused) Color(0x240A0F1D) else Color(0x100A0F1D),
             animationSpec = tween(300),
             label = "dockBg"
-        )
-        val dockBorderColor by animateColorAsState(
-            targetValue = if (isDockFocused) Color(0x30FFFFFF) else Color(0x06FFFFFF),
-            animationSpec = tween(300),
-            label = "dockBorder"
         )
 
         Box(
             modifier = Modifier
                 .onFocusChanged { isDockFocused = it.hasFocus }
-                .graphicsLayer { alpha = dockAlpha }
                 .background(dockBgColor, RoundedCornerShape(22.dp))
-                .border(0.6.dp, dockBorderColor, RoundedCornerShape(22.dp))
                 .padding(horizontal = 4.dp, vertical = 3.dp)
         ) {
             Row(
@@ -465,18 +453,10 @@ private fun topBarButtonColors(
     isDockFocused: Boolean = true
 ) = ButtonDefaults.colors(
     containerColor = if (isActive) {
-        if (isDockFocused) {
-            if (isMonochrome) Color(0x30FFFFFF) else focusColor.copy(alpha = 0.22f)
-        } else {
-            if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.GlassIdle else focusColor.copy(alpha = 0.12f)
-        }
+        if (isMonochrome) Color(0x30FFFFFF) else focusColor.copy(alpha = 0.20f)
     } else Color.Transparent,
     contentColor = if (isActive) {
-        if (isDockFocused) {
-            if (isMonochrome) Color.White else focusColor
-        } else {
-            if (isMonochrome) Color(0xCCFFFFFF) else focusColor.copy(alpha = 0.85f)
-        }
+        if (isMonochrome) Color.White else focusColor
     } else Color(0xFFA39E93),
     focusedContainerColor = focusColor,
     focusedContentColor = focusContent

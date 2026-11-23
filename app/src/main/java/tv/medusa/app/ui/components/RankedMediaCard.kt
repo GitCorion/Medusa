@@ -315,7 +315,10 @@ fun RankedMediaCard(
                     Column {
                         Text(
                             text = item.title,
-                            style = MaterialTheme.typography.labelMedium,
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                fontFamily = tv.medusa.app.ui.theme.DmSansFamily,
+                                platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false)
+                            ),
                             color = if (isFocused) Color.White else TextPrimary,
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 12.sp,
@@ -331,7 +334,10 @@ fun RankedMediaCard(
                             if (item.year != null) {
                                 Text(
                                     text = item.year.toString(),
-                                    style = MaterialTheme.typography.bodySmall,
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        fontFamily = tv.medusa.app.ui.theme.DmSansFamily,
+                                        platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false)
+                                    ),
                                     color = if (isFocused) focusColor else TextSecondary,
                                     fontSize = 11.sp,
                                     fontWeight = if (isFocused) FontWeight.SemiBold else FontWeight.Normal
@@ -340,7 +346,10 @@ fun RankedMediaCard(
                             if (item.year != null) {
                                 Text(
                                     text = " • ",
-                                    style = MaterialTheme.typography.bodySmall,
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        fontFamily = tv.medusa.app.ui.theme.DmSansFamily,
+                                        platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false)
+                                    ),
                                     color = tv.medusa.app.ui.theme.TextTertiary,
                                     fontSize = 10.sp
                                 )
@@ -350,7 +359,10 @@ fun RankedMediaCard(
                                     item.type.equals("Episode", ignoreCase = true)
                             Text(
                                 text = stringResource(if (isTv) R.string.type_series else R.string.type_movie),
-                                style = MaterialTheme.typography.bodySmall,
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    fontFamily = tv.medusa.app.ui.theme.DmSansFamily,
+                                    platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false)
+                                ),
                                 color = TextSecondary,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Medium
