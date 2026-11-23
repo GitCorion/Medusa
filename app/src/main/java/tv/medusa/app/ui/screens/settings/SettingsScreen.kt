@@ -75,6 +75,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
@@ -430,6 +431,8 @@ private fun JellyfinCategory(
     focusColor: Color,
     focusContent: Color
 ) {
+    var showLogoutConfirm by remember { mutableStateOf(false) }
+
     if (uiState.isJellyfinConnected) {
         TvSettingsGroupCard(title = stringResource(R.string.settings_section_server_session)) {
             TvSettingRow(
@@ -523,8 +526,8 @@ private fun JellyfinCategory(
             }
 
             Button(
-                onClick = { viewModel.disconnectJellyfin() },
-                modifier = Modifier.handleTouchClick { viewModel.disconnectJellyfin() },
+                onClick = { showLogoutConfirm = true },
+                modifier = Modifier.handleTouchClick { showLogoutConfirm = true },
                 colors = ButtonDefaults.colors(
                     containerColor = tv.medusa.app.ui.theme.TvPalette.GlassSubtle,
                     contentColor = Color(0xFFEF4444),
@@ -693,6 +696,21 @@ private fun JellyfinCategory(
             }
         }
     }
+
+    if (showLogoutConfirm) {
+        TvConfirmDialog(
+            title = stringResource(R.string.settings_logout_confirm_title),
+            body = stringResource(R.string.settings_logout_confirm_body),
+            confirmLabel = stringResource(R.string.settings_logout_confirm_action),
+            onConfirm = {
+                showLogoutConfirm = false
+                viewModel.disconnectJellyfin()
+            },
+            onDismiss = { showLogoutConfirm = false },
+            focusColor = focusColor,
+            focusContent = focusContent
+        )
+    }
 }
 
 /**
@@ -707,6 +725,8 @@ private fun TlsCertificateSection(
     focusColor: Color,
     focusContent: Color
 ) {
+    var showRemovePinConfirm by remember { mutableStateOf(false) }
+
     if (!uiState.serverUrl.startsWith("https://", ignoreCase = true)) return
 
     TvSectionHeader(title = stringResource(R.string.settings_section_tls))
@@ -759,8 +779,8 @@ private fun TlsCertificateSection(
 
         if (uiState.jellyfinAllowSelfSigned) {
             Button(
-                onClick = { viewModel.clearSelfSignedCertificate() },
-                modifier = Modifier.handleTouchClick { viewModel.clearSelfSignedCertificate() },
+                onClick = { showRemovePinConfirm = true },
+                modifier = Modifier.handleTouchClick { showRemovePinConfirm = true },
                 colors = ButtonDefaults.colors(
                     containerColor = tv.medusa.app.ui.theme.TvPalette.GlassSubtle,
                     contentColor = Color(0xFFFF8A80),
@@ -783,6 +803,21 @@ private fun TlsCertificateSection(
         color = tv.medusa.app.ui.theme.TvPalette.Placeholder,
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
     )
+
+    if (showRemovePinConfirm) {
+        TvConfirmDialog(
+            title = stringResource(R.string.settings_tls_remove_confirm_title),
+            body = stringResource(R.string.settings_tls_remove_confirm_body),
+            confirmLabel = stringResource(R.string.settings_tls_remove_confirm_action),
+            onConfirm = {
+                showRemovePinConfirm = false
+                viewModel.clearSelfSignedCertificate()
+            },
+            onDismiss = { showRemovePinConfirm = false },
+            focusColor = focusColor,
+            focusContent = focusContent
+        )
+    }
 }
 
 // =============================================================================
@@ -797,6 +832,8 @@ private fun LibraryCategory(
     focusColor: Color,
     focusContent: Color
 ) {
+    var showTraktUnlinkConfirm by remember { mutableStateOf(false) }
+
     TvSettingsGroupCard(title = stringResource(R.string.settings_section_library_view)) {
         TvSettingSwitchRow(
             title = stringResource(R.string.settings_library_hide_watched_title),
@@ -922,7 +959,7 @@ private fun LibraryCategory(
             }
 
             Button(
-                onClick = { viewModel.disconnectTrakt() },
+                onClick = { showTraktUnlinkConfirm = true },
                 colors = ButtonDefaults.colors(
                     containerColor = tv.medusa.app.ui.theme.TvPalette.GlassSubtle,
                     contentColor = Color(0xFFEF4444),
@@ -973,6 +1010,21 @@ private fun LibraryCategory(
         value = if (uiState.traktToken.isNotBlank()) formatKey(uiState.traktToken) else stringResource(R.string.settings_value_no_token),
         onClick = { viewModel.openEditDialog(SettingField.TRAKT_MANUAL_TOKEN) }
     )
+
+    if (showTraktUnlinkConfirm) {
+        TvConfirmDialog(
+            title = stringResource(R.string.settings_trakt_unlink_confirm_title),
+            body = stringResource(R.string.settings_trakt_unlink_confirm_body),
+            confirmLabel = stringResource(R.string.settings_trakt_unlink_confirm_action),
+            onConfirm = {
+                showTraktUnlinkConfirm = false
+                viewModel.disconnectTrakt()
+            },
+            onDismiss = { showTraktUnlinkConfirm = false },
+            focusColor = focusColor,
+            focusContent = focusContent
+        )
+    }
 }
 
 // =============================================================================
@@ -1422,9 +1474,13 @@ private fun AboutCategory(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Rounded.CloudDone, contentDescription = null, modifier = Modifier.size(15.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        val progressText = uiState.downloadProgress?.let { " (${(it * 100).toInt()}%)" } ?: ""
                         Text(
-                            text = stringResource(R.string.settings_btn_download_install, progressText),
+                            text = uiState.downloadProgress?.let { progress ->
+                                stringResource(
+                                    R.string.settings_btn_download_install_progress,
+                                    (progress * 100).toInt()
+                                )
+                            } ?: stringResource(R.string.settings_btn_download_install),
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -1889,7 +1945,8 @@ private fun TvTraktListToggleRow(
                     color = if (isVisible) TextPrimary else tv.medusa.app.ui.theme.TvPalette.TextSecondaryCool
                 )
                 val subtitle = buildString {
-                    append(stringResource(R.string.settings_list_item_count, list.itemCount ?: 0))
+                    val itemCount = list.itemCount ?: 0
+                    append(pluralStringResource(R.plurals.settings_list_item_count, itemCount, itemCount))
                     val author = list.user?.username
                     if (!author.isNullOrBlank()) {
                         append(", ")
@@ -2167,6 +2224,123 @@ private fun TvSectionHeader(title: String) {
         letterSpacing = 0.2.sp,
         modifier = Modifier.padding(top = 18.dp, bottom = 8.dp, start = 2.dp)
     )
+}
+
+// =============================================================================
+// DIÁLOGO DE CONFIRMACIÓN PARA ACCIONES DESTRUCTIVAS
+// =============================================================================
+
+/**
+ * Confirmación para acciones que borran datos o rompen una vinculación. El foco inicial
+ * queda en Cancelar para que un OK accidental del mando no ejecute la acción.
+ */
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun TvConfirmDialog(
+    title: String,
+    body: String,
+    confirmLabel: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+    focusColor: Color,
+    focusContent: Color
+) {
+    val cancelFocusRequester = remember { FocusRequester() }
+
+    LaunchedEffect(Unit) {
+        delay(150)
+        cancelFocusRequester.requestFocus()
+    }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xCC000000)),
+            contentAlignment = Alignment.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .adaptiveDialogWidth(500.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color(0xFF141722))
+                    .border(1.dp, tv.medusa.app.ui.theme.TvPalette.GlassDivider, RoundedCornerShape(16.dp))
+                    .padding(24.dp)
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = title,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary,
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Text(
+                        text = body,
+                        fontSize = 13.sp,
+                        color = tv.medusa.app.ui.theme.TvPalette.TextMuted,
+                        textAlign = TextAlign.Center,
+                        lineHeight = 18.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(22.dp))
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Button(
+                            onClick = onDismiss,
+                            modifier = Modifier
+                                .weight(1f)
+                                .focusRequester(cancelFocusRequester)
+                                .handleTouchClick { onDismiss() },
+                            colors = ButtonDefaults.colors(
+                                containerColor = tv.medusa.app.ui.theme.TvPalette.GlassIdle,
+                                contentColor = TextPrimary,
+                                focusedContainerColor = focusColor,
+                                focusedContentColor = focusContent
+                            )
+                        ) {
+                            Text(
+                                text = stringResource(R.string.common_cancel),
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+
+                        Button(
+                            onClick = onConfirm,
+                            modifier = Modifier
+                                .weight(1f)
+                                .handleTouchClick { onConfirm() },
+                            colors = ButtonDefaults.colors(
+                                containerColor = Color(0x33EF4444),
+                                contentColor = Color(0xFFFCA5A5),
+                                focusedContainerColor = Color(0xFFEF4444),
+                                focusedContentColor = TextPrimary
+                            )
+                        ) {
+                            Text(
+                                text = confirmLabel,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 // =============================================================================

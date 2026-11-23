@@ -52,6 +52,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -113,11 +114,12 @@ fun MedusaScreen(
         if (isMonochrome) TextPrimary else TvAccent.getColor(accentColorKey)
     }
 
-    val formatNounPlural = when (uiState.format) {
-        MediaFormat.ALL -> stringResource(R.string.medusa_noun_titles)
-        MediaFormat.MOVIES -> stringResource(R.string.medusa_noun_movies)
-        MediaFormat.SERIES -> stringResource(R.string.medusa_noun_series)
-    }
+    val headerCount = if (uiState.activeChain.isNotEmpty()) uiState.totalMatchingCount else uiState.matchingMovies.size
+    val headerCountText = when (uiState.format) {
+        MediaFormat.ALL -> pluralStringResource(R.plurals.medusa_header_count_titles, headerCount, headerCount)
+        MediaFormat.MOVIES -> pluralStringResource(R.plurals.medusa_header_count_movies, headerCount, headerCount)
+        MediaFormat.SERIES -> pluralStringResource(R.plurals.medusa_header_count_series, headerCount, headerCount)
+    }.uppercase()
 
     val topBarMedusaFocusRequester = remember { FocusRequester() }
     val tagRailFocusRequester = remember { FocusRequester() }
@@ -346,8 +348,7 @@ fun MedusaScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             MedusaMoviesHeader(
-                                movieCount = if (uiState.activeChain.isNotEmpty()) uiState.totalMatchingCount else uiState.matchingMovies.size,
-                                formatNounPlural = formatNounPlural,
+                                countText = headerCountText,
                                 selectedMovieFlow = viewModel.selectedMovie,
                                 fallbackMovie = uiState.matchingMovies.firstOrNull(),
                                 accentColor = accentColor,
@@ -433,8 +434,7 @@ private fun MedusaBackdrop(
  */
 @Composable
 private fun MedusaMoviesHeader(
-    movieCount: Int,
-    formatNounPlural: String,
+    countText: String,
     selectedMovieFlow: StateFlow<MediaItem?>,
     fallbackMovie: MediaItem?,
     accentColor: Color,
@@ -445,7 +445,7 @@ private fun MedusaMoviesHeader(
 
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(
-            text = "$movieCount ${formatNounPlural.uppercase()}",
+            text = countText,
             style = CinematicTypography.SectionTitle.copy(fontSize = 14.sp),
             color = TextPrimary
         )
@@ -528,7 +528,7 @@ private fun SelectedTagBadge(
                 )
                 Icon(
                     imageVector = Icons.Rounded.Close,
-                    contentDescription = stringResource(R.string.common_delete),
+                    contentDescription = stringResource(R.string.medusa_remove_active_filter),
                     modifier = Modifier.size(13.dp)
                 )
             }

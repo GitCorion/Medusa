@@ -7,7 +7,7 @@
     <string name="onboarding_title">Elige tus plataformas</string>
     <string name="onboarding_subtitle">Selecciona las plataformas que usas. Sus novedades y tendencias se cruzarán con tu biblioteca Jellyfin.</string>
     <string name="onboarding_setup_label">Configuración de inicio</string>
-    <string name="onboarding_platforms_count">%1$d de %2$d plataformas activas</string>
+    <string name="onboarding_platforms_count">Plataformas activas: %1$d de %2$d</string>
     <string name="onboarding_continue">Aceptar y continuar</string>
 
     <!-- Navegación superior (TvTopBar) -->
@@ -30,7 +30,7 @@
     <string name="common_retry">Reintentar</string>
     <string name="common_back">Volver</string>
     <string name="common_cancel">Cancelar</string>
-    <string name="common_view_all_count">Ver todos los elementos (%1$d)</string>
+    <string name="common_view_all_count">Ver todos los títulos (%1$d)</string>
     <string name="common_delete">Eliminar</string>
 
     <!-- Insignias -->
@@ -40,33 +40,36 @@
     <string name="badge_watched">✓ VISTO</string>
 
     <!-- Tráiler -->
-    <string name="trailer_load_error">No se pudo cargar el tráiler del contenido.</string>
-    <string name="trailer_close_back">Cerrar Tráiler (Atrás)</string>
+    <string name="trailer_load_error">No hay un tráiler disponible para este título.</string>
+    <string name="trailer_close_back">Cerrar tráiler (Atrás)</string>
     <string name="hero_carousel_cd">Destacados. Usa izquierda y derecha para cambiar de título, o pulsa para avanzar.</string>
 
     <!-- Géneros -->
     <string name="genre_favorites_title">Géneros favoritos</string>
     <string name="home_platforms_title">Tus plataformas</string>
     <string name="seasonal_thematic_collection">Colección temática</string>
-    <string name="seasonal_catalog_count">%1$d títulos en catálogo</string>
+    <plurals name="seasonal_catalog_count">
+        <item quantity="one">%1$d título en catálogo</item>
+        <item quantity="other">%1$d títulos en catálogo</item>
+    </plurals>
     <string name="seasonal_updating">Actualizando…</string>
     <string name="seasonal_view_collection">Ver colección</string>
-    <string name="favorites_empty_title">No tienes elementos en favoritos</string>
-    <string name="favorites_empty_filter_title">No hay elementos con este filtro</string>
+    <string name="favorites_empty_title">Aún no hay favoritos</string>
+    <string name="favorites_empty_filter_title">No hay títulos con este filtro</string>
     <string name="context_menu_options">OPCIONES</string>
 
     <!-- Inicio (Home) -->
-    <string name="home_loading">Cargando catálogo...</string>
+    <string name="home_loading">Cargando catálogo…</string>
     <string name="home_welcome">Conecta tu servidor</string>
     <string name="home_setup_desc">Conecta tu servidor Jellyfin para disfrutar de tus películas y series en la gran pantalla.</string>
-    <string name="home_config_button">Conectar Servidor Jellyfin</string>
-    <string name="home_server_connected">Biblioteca vacía</string>
+    <string name="home_config_button">Conectar servidor Jellyfin</string>
+    <string name="home_server_connected">Tu biblioteca está vacía</string>
     <string name="home_empty_library">No se encontró contenido en tus bibliotecas de Jellyfin.\nAñade películas o series a tu servidor para comenzar.</string>
-    <string name="home_sync">Escanear Biblioteca</string>
+    <string name="home_sync">Sincronizar biblioteca</string>
     <string name="home_error">No se pudo cargar el catálogo</string>
 
     <!-- Detalle (Detail) -->
-    <string name="detail_loading">Cargando detalles...</string>
+    <string name="detail_loading">Cargando detalles…</string>
     <string name="detail_season_episode">Temporada %1$s • Episodio %2$s</string>
     <string name="detail_progress">PROGRESO: %1$d/%2$d</string>
     <string name="detail_watch_trailer">Tráiler</string>
@@ -75,7 +78,7 @@
     <string name="detail_load_timeout">El servidor tardó demasiado en cargar la ficha.</string>
     <string name="detail_seasons">Temporadas</string>
     <string name="detail_episodes_count">CAPÍTULOS (%1$d)</string>
-    <string name="detail_loading_episodes">Cargando capítulos...</string>
+    <string name="detail_loading_episodes">Cargando capítulos…</string>
     <string name="detail_no_episodes">No se encontraron capítulos en el servidor para esta temporada.</string>
     <string name="detail_collection">Colección</string>
     <string name="detail_collection_titles">Títulos de esta colección (%1$d)</string>
@@ -83,19 +86,19 @@
     <string name="detail_similar_titles">Títulos similares</string>
     <string name="detail_genre">GÉNERO</string>
     <string name="detail_more_from_genre">Más de %1$s</string>
-    <string name="detail_starting_player">Iniciando reproductor...</string>
+    <string name="detail_starting_player">Iniciando reproductor…</string>
     <string name="detail_type_episode">EPISODIO • T%1$s:E%2$s</string>
     <string name="detail_type_series">SERIE</string>
     <string name="detail_type_movie">PELÍCULA</string>
     <string name="detail_status_canceled">🔴 %1$s</string>
     <string name="detail_status_ended">⚪ %1$s</string>
     <string name="detail_status_continuing">🟢 %1$s</string>
-    <string name="series_status_canceled">Suspendida (Sin final)</string>
+    <string name="series_status_canceled">Cancelada (sin final)</string>
     <string name="series_status_ended">Terminada</string>
     <string name="series_status_continuing">Continúa</string>
 
     <!-- Búsqueda (Search) -->
-    <string name="search_placeholder">Buscar...</string>
+    <string name="search_placeholder">Buscar…</string>
     <string name="search_voice_title">Búsqueda por voz</string>
     <string name="search_keyboard_auto">Teclado auto</string>
     <string name="search_keyboard_free">Teclado libre</string>
@@ -113,23 +116,23 @@
     <string name="keyboard_clear_label">LIMPIAR</string>
 
     <!-- Favoritos -->
-    <string name="favorites_syncing">Sincronizando favoritos con Jellyfin...</string>
-    <string name="favorites_collection_count">Colección de Favoritos (%1$d)</string>
+    <string name="favorites_syncing">Sincronizando favoritos con Jellyfin…</string>
+    <string name="favorites_collection_count">Colección de favoritos (%1$d)</string>
 
     <!-- Género -->
-    <string name="genre_loading">Cargando catálogo de %1$s...</string>
+    <string name="genre_loading">Cargando catálogo de %1$s…</string>
     <string name="genre_header">GÉNERO • %1$s</string>
     <string name="genre_empty">No hay títulos para este filtro en %1$s.</string>
 
     <!-- Marca (Brand) -->
-    <string name="brand_loading">Cargando catálogo de la plataforma...</string>
+    <string name="brand_loading">Cargando catálogo de la plataforma…</string>
     <string name="brand_no_titles">No se encontraron títulos disponibles para %1$s</string>
     <string name="brand_no_titles_hint">Verifica tu conexión a Internet o prueba a cambiar el filtro de formato.</string>
     <string name="brand_retry_load">Reintentar carga</string>
 
     <!-- Reproductor (Player) -->
-    <string name="player_loading">Cargando...</string>
-    <string name="player_loading_playback">Cargando reproducción...</string>
+    <string name="player_loading">Cargando…</string>
+    <string name="player_loading_playback">Cargando reproducción…</string>
     <string name="player_error_cd">Error</string>
     <string name="player_playback_error">Error de reproducción</string>
     <string name="player_cannot_play_file">No se pudo reproducir este archivo</string>
@@ -146,22 +149,22 @@
     <string name="player_play_now">Reproducir ahora</string>
     <string name="player_no_audio_tracks">No se detectaron pistas de audio adicionales.</string>
     <string name="player_disabled">Desactivados</string>
-    <string name="player_playback_speed">Velocidad de Reproducción</string>
+    <string name="player_playback_speed">Velocidad de reproducción</string>
     <string name="player_speed_normal">1.0×</string>
-    <string name="player_aspect_ratio">Relación de Aspecto</string>
+    <string name="player_aspect_ratio">Relación de aspecto</string>
     <string name="player_aspect_fit">Ajustar</string>
     <string name="player_aspect_zoom">Zoom</string>
     <string name="player_aspect_fill">Rellenar</string>
     <string name="player_resume">Reanudar (%1$s)</string>
     <string name="player_from_start">Desde el principio</string>
-    <string name="player_subtitle_size">Tamaño de Subtítulos</string>
+    <string name="player_subtitle_size">Tamaño de subtítulos</string>
     <string name="player_subtitle_size_small">Pequeño</string>
     <string name="player_subtitle_size_normal">Normal</string>
     <string name="player_subtitle_size_large">Grande</string>
-    <string name="player_subtitle_contrast">Fondo de Contraste</string>
+    <string name="player_subtitle_contrast">Fondo de contraste</string>
     <string name="player_subtitle_contrast_off">Desactivado</string>
     <string name="player_subtitle_contrast_on">Activado</string>
-    <string name="player_afr_title">Auto Frame Rate</string>
+    <string name="player_afr_title">Ajuste de fotogramas</string>
     <string name="player_afr_enabled">Activado</string>
     <string name="player_afr_disabled">Desactivado</string>
 
@@ -170,22 +173,22 @@
     <!-- ===================================================================== -->
 
     <!-- Campos de edición (SettingField) -->
-    <string name="settings_field_server_url">URL del Servidor Jellyfin</string>
+    <string name="settings_field_server_url">URL del servidor Jellyfin</string>
     <string name="settings_field_server_url_placeholder">http://192.168.1.100:8096 o https://jellyfin.ejemplo.com</string>
-    <string name="settings_field_lan_server_url">URL Local / LAN (Opcional)</string>
+    <string name="settings_field_lan_server_url">URL local / LAN (opcional)</string>
     <string name="settings_field_lan_server_url_placeholder">http://192.168.1.x:8096 (Red local)</string>
     <string name="settings_field_lan_server_url_desc">Streaming directo en red local sin salir a Internet ni consumir WAN</string>
     <string name="settings_field_username">Usuario Jellyfin</string>
-    <string name="settings_field_username_placeholder">Escribe tu usuario</string>
+    <string name="settings_field_username_placeholder">p. ej. maría</string>
     <string name="settings_field_password">Contraseña Jellyfin</string>
     <string name="settings_field_password_placeholder">Escribe tu contraseña</string>
     <string name="settings_field_trakt_client_id">Trakt Client ID</string>
     <string name="settings_field_trakt_client_id_placeholder">Client ID de Trakt</string>
     <string name="settings_field_trakt_client_secret">Trakt Client Secret</string>
     <string name="settings_field_trakt_client_secret_placeholder">Client Secret de Trakt</string>
-    <string name="settings_field_trakt_token">Trakt Access Token Directo</string>
-    <string name="settings_field_trakt_token_placeholder">Access Token de Trakt</string>
-    <string name="settings_field_watch_region">Región de Catálogo</string>
+    <string name="settings_field_trakt_token">Token de acceso directo de Trakt</string>
+    <string name="settings_field_trakt_token_placeholder">Token de acceso de Trakt</string>
+    <string name="settings_field_watch_region">Región de catálogo</string>
     <string name="settings_field_watch_region_placeholder">ES</string>
     <string name="settings_field_tmdb_api_key">Clave API de TMDB</string>
     <string name="settings_field_tmdb_api_key_placeholder">Pega tu clave de themoviedb.org</string>
@@ -195,14 +198,14 @@
     <!-- Navegación lateral -->
     <string name="settings_title">Ajustes</string>
     <string name="settings_nav_jellyfin">Servidor Jellyfin</string>
-    <string name="settings_nav_platforms">Plataformas y Cadenas</string>
+    <string name="settings_nav_platforms">Plataformas y cadenas</string>
     <string name="settings_nav_library">Biblioteca y Trakt</string>
     <string name="settings_nav_playback">Reproducción</string>
-    <string name="settings_nav_audio">Audio y Sonido</string>
+    <string name="settings_nav_audio">Audio y sonido</string>
     <string name="settings_nav_subtitles">Subtítulos</string>
-    <string name="settings_nav_appearance">Interfaz y Pantalla</string>
+    <string name="settings_nav_appearance">Interfaz y pantalla</string>
     <string name="settings_nav_about">Acerca de</string>
-    <string name="settings_section_appearance_perf">Interfaz y Pantalla</string>
+    <string name="settings_section_appearance_perf">Interfaz y pantalla</string>
 
     <!-- Jellyfin -->
     <string name="settings_section_server_session">Servidor y sesión</string>
@@ -211,7 +214,7 @@
     <string name="settings_row_status">Estado</string>
     <string name="settings_status_connected">Conectado</string>
     <string name="settings_row_library_synced">Biblioteca sincronizada</string>
-    <string name="settings_library_count">%1$s títulos (%2$s películas, %3$s series)</string>
+    <string name="settings_library_count">Títulos: %1$s · Películas: %2$s · Series: %3$s</string>
     <string name="settings_library_empty">Sin títulos en memoria</string>
     <string name="settings_row_last_sync">Última sincronización</string>
     <string name="settings_section_actions">Acciones</string>
@@ -225,17 +228,19 @@
     <string name="settings_section_servers_found">Servidores encontrados</string>
     <string name="settings_discovering_servers">Buscando servidores Jellyfin en la red local…</string>
     <string name="settings_no_servers_found">No se encontró ningún servidor. Comprueba que estés en la misma red o introduce la URL a mano.</string>
-    <string name="settings_one_server_found">1 servidor encontrado. Selecciónalo para conectarte.</string>
-    <string name="settings_servers_found">%1$d servidores encontrados. Selecciona uno para conectarte.</string>
-    <string name="settings_placeholder_enter_url">Introducir URL…</string>
+    <plurals name="settings_servers_found">
+        <item quantity="one">%1$d servidor encontrado. Selecciónalo para conectarte.</item>
+        <item quantity="other">%1$d servidores encontrados. Selecciona uno para conectarte.</item>
+    </plurals>
+    <string name="settings_placeholder_enter_url">http://192.168.1.100:8096</string>
     <string name="settings_btn_check_server">Comprobar servidor</string>
     <string name="settings_section_login_method">Método de inicio de sesión</string>
     <string name="settings_login_quick_connect">Quick Connect (QR)</string>
     <string name="settings_login_user_pass">Usuario y contraseña</string>
     <string name="settings_btn_waiting_confirmation">Esperando confirmación…</string>
     <string name="settings_btn_generate_qr">Generar código QR</string>
-    <string name="settings_qc_step1">Abre en tu navegador o móvil Jellyfin &gt; Quick Connect</string>
-    <string name="settings_placeholder_enter_user">Escribir usuario…</string>
+    <string name="settings_qc_step1">Abre Jellyfin en tu navegador o móvil y ve a Quick Connect</string>
+    <string name="settings_placeholder_enter_user">p. ej. maría</string>
     <string name="settings_row_password">Contraseña</string>
     <string name="settings_placeholder_enter_password">Escribir contraseña…</string>
     <string name="settings_btn_connecting">Conectando…</string>
@@ -262,7 +267,7 @@
     <string name="settings_section_lists_collections">Listas y colecciones</string>
     <string name="settings_trakt_lists_desc">Gestiona qué listas se muestran en el carrusel de Trakt y en la pantalla de inicio. Si Trakt duplicó tus películas o series de la biblioteca, desmárcalas para ocultarlas.</string>
     <string name="settings_loading_trakt_lists">Cargando listas de Trakt…</string>
-    <string name="settings_trakt_no_lists">No se encontraron listas en tu cuenta de Trakt.</string>
+    <string name="settings_trakt_no_lists">No hay listas en tu cuenta de Trakt. Crea una en trakt.tv.</string>
     <string name="settings_section_link_account">Vincular cuenta</string>
     <string name="settings_btn_generating_code">Generando código…</string>
     <string name="settings_btn_link_qr">Vincular con código QR</string>
@@ -311,7 +316,7 @@
     <string name="settings_playback_next_movie_title">Siguiente película de saga</string>
     <string name="settings_playback_next_movie_desc">Sugiere o enlaza la siguiente entrega al finalizar los créditos de una película perteneciente a una saga.</string>
     <string name="settings_section_video_display">Pantalla y frecuencia</string>
-    <string name="settings_playback_afr_title">Ajuste de fotogramas (Auto Frame Rate)</string>
+    <string name="settings_playback_afr_title">Ajuste de fotogramas (AFR)</string>
     <string name="settings_playback_afr_desc">Sincroniza los hercios del televisor (24p, 50p, 60p) con la fuente para eliminar saltos de imagen.</string>
 
     <!-- 3. Audio y Sonido -->
@@ -319,11 +324,11 @@
     <string name="settings_audio_passthrough_title">Modo passthrough HDMI</string>
     <string name="settings_audio_passthrough_desc">Envía el audio codificado directamente al receptor AV o barra de sonido.</string>
     <string name="settings_section_audio_enhancements">Mejoras de audio y diálogos</string>
-    <string name="settings_audio_night_mode_title">Modo nocturno (Rango dinámico)</string>
+    <string name="settings_audio_night_mode_title">Modo nocturno (rango dinámico)</string>
     <string name="settings_audio_night_mode_desc">Atenúa picos sonoros bruscos y explosiones para ver contenido por la noche sin sobresaltos.</string>
     <string name="settings_audio_night_off">Desactivado</string>
-    <string name="settings_audio_night_moderate">Moderado</string>
-    <string name="settings_audio_night_high">Máximo</string>
+    <string name="settings_audio_night_moderate">Suave</string>
+    <string name="settings_audio_night_high">Fuerte</string>
     <string name="settings_audio_boost_title">Realce de ganancia en diálogos</string>
     <string name="settings_audio_boost_desc">Aumenta el volumen de frecuencias de voz para diálogos tenues o difíciles de comprender.</string>
     <string name="settings_audio_boost_none">Sin realce (0 dB)</string>
@@ -349,7 +354,7 @@
 
     <!-- 5. Interfaz y Pantalla -->
     <string name="settings_theme_desc">Elige entre Cian Medusa, Ámbar Cine o Monocromático para paneles OLED.</string>
-    <string name="settings_buttons_desc">Formato visual de los botones de acción (Reproducir, Trailer, Visto) en las fichas de detalle.</string>
+    <string name="settings_buttons_desc">Formato visual de los botones de acción (Reproducir, Tráiler, Favoritos, Visto) en las fichas de detalle.</string>
     <string name="settings_perf_desc">Controla las partículas y efectos de GPU. Elige ahorro si usas un stick HDMI o TV de baja potencia.</string>
 
     <!-- 6. Biblioteca y Trakt -->
@@ -357,8 +362,8 @@
     <string name="settings_library_hide_watched_title">Ocultar contenido ya visto</string>
     <string name="settings_library_hide_watched_desc">Omite películas y capítulos completados en los carruseles de descubrimiento e inicio.</string>
     <string name="settings_section_library_database">Base de datos y caché local</string>
-    <string name="settings_library_db_stats_title">Base de datos local (Room)</string>
-    <string name="settings_library_db_stats_desc">%1$d películas, %2$d series (%3$d capítulos) almacenados para navegación instantánea.</string>
+    <string name="settings_library_db_stats_title">Base de datos local</string>
+    <string name="settings_library_db_stats_desc">Películas: %1$d · Series: %2$d · Capítulos: %3$d en caché local.</string>
 
     <!-- Acerca de -->
     <string name="settings_section_system">Sistema</string>
@@ -375,7 +380,7 @@
     <string name="settings_row_channel">Canal</string>
     <string name="settings_btn_checking">Comprobando…</string>
     <string name="settings_btn_check_updates">Buscar actualizaciones</string>
-    <string name="settings_btn_download_install">Descargar e instalar%1$s</string>
+    <string name="settings_btn_download_install">Descargar e instalar</string>
     <string name="settings_section_distribution">Distribución</string>
     <string name="settings_channel_play">Google Play Store</string>
     <string name="settings_section_release_notes">Novedades de la versión %1$s</string>
@@ -406,7 +411,10 @@
 
     <!-- Valores / listas -->
     <string name="settings_value_not_configured">Sin configurar</string>
-    <string name="settings_list_item_count">%1$d elementos</string>
+    <plurals name="settings_list_item_count">
+        <item quantity="one">%1$d título</item>
+        <item quantity="other">%1$d títulos</item>
+    </plurals>
     <string name="settings_list_author">@%1$s</string>
     <string name="settings_hidden_in_medusa">(Oculta en Medusa)</string>
     <string name="settings_version_build">%1$s (Build %2$s)</string>
@@ -422,7 +430,7 @@
     <string name="settings_trakt_unlinked">Cuenta de Trakt desvinculada.</string>
     <string name="settings_requesting_trakt_code">Solicitando código a Trakt.tv…</string>
     <string name="settings_scan_qr">Escanea el código QR o entra en trakt.tv/activate</string>
-    <string name="settings_trakt_linked">Trakt vinculado exitosamente.</string>
+    <string name="settings_trakt_linked">Trakt vinculado.</string>
     <string name="settings_trakt_code_expired">Código de Trakt expirado.</string>
     <string name="settings_trakt_invalid_credentials">Credenciales Trakt no válidas.</string>
     <string name="settings_trakt_cancelled">Proceso cancelado por Trakt.</string>
@@ -431,14 +439,16 @@
     <string name="settings_enter_server_url_first">Introduce primero la URL de tu servidor</string>
     <string name="settings_testing_connection">Probando conexión con %1$s…</string>
     <string name="settings_server_detected">Servidor detectado: %1$s (%2$s)</string>
-    <string name="settings_error_prefix">Error: %1$s</string>
     <string name="settings_enter_jellyfin_url">Introduce la URL de tu servidor Jellyfin</string>
     <string name="settings_starting_quick_connect">Iniciando Quick Connect…</string>
     <string name="settings_qc_code">Código Quick Connect: %1$s</string>
     <string name="settings_quick_connect_expired">El código Quick Connect ha caducado. Genera uno nuevo e inténtalo de nuevo.</string>
     <string name="settings_quick_connect_token_error">Jellyfin autorizó el código, pero no se pudo obtener el token de acceso: %1$s</string>
     <string name="settings_authorized_as">Autorizado como %1$s. Sincronizando catálogo…</string>
-    <string name="settings_sync_started">Sincronización iniciada en segundo plano (%1$d ítems en caché)</string>
+    <plurals name="settings_sync_started">
+        <item quantity="one">Sincronización iniciada en segundo plano (%1$d título en caché)</item>
+        <item quantity="other">Sincronización iniciada en segundo plano (%1$d títulos en caché)</item>
+    </plurals>
     <string name="settings_enter_url_and_user">Escribe la URL del servidor y tu usuario</string>
     <string name="settings_connecting_with">Conectando con %1$s…</string>
     <string name="settings_server_authenticating">Servidor: %1$s. Autenticando…</string>
@@ -450,34 +460,33 @@
     <string name="settings_check_failed">No se pudo comprobar: %1$s</string>
     <string name="settings_error_connection_fallback">Error de conexión</string>
     <string name="settings_downloading_update">Descargando actualización…</string>
-    <string name="settings_download_error">Error al descargar: %1$s</string>
 
     <!-- Errores de red (formatNetworkError) -->
     <string name="settings_error_html_not_jellyfin">La dirección no responde como un servidor Jellyfin (devolvió una página web HTML en lugar de JSON). Revisa que la URL y el puerto sean correctos (ej: http://192.168.1.X:8096) o si la red tiene un portal cautivo/proxy.</string>
     <string name="settings_error_400">Error 400: Solicitud rechazada por Jellyfin. Revisa tus credenciales o permisos de usuario.</string>
-    <string name="settings_error_401">Error 401: Usuario o contraseña incorrectos en Jellyfin.</string>
-    <string name="settings_error_403">Error 403: Acceso denegado en Jellyfin.</string>
-    <string name="settings_error_404">Error 404: Servidor Jellyfin no encontrado en %1$s.</string>
-    <string name="settings_error_5xx">Error %1$d: Fallo interno del servidor.</string>
-    <string name="settings_error_http">Error HTTP %1$d: %2$s</string>
+    <string name="settings_error_401">Error 401: Usuario o contraseña incorrectos. Revisa tus credenciales.</string>
+    <string name="settings_error_403">Error 403: Jellyfin denegó el acceso. Revisa los permisos de tu usuario en el servidor.</string>
+    <string name="settings_error_404">Error 404: Servidor Jellyfin no encontrado en %1$s. Comprueba la URL y el puerto.</string>
+    <string name="settings_error_5xx">Error %1$d: Fallo interno del servidor. Inténtalo de nuevo en unos minutos.</string>
+    <string name="settings_error_http">El servidor devolvió un error HTTP %1$d. Inténtalo de nuevo.</string>
     <string name="settings_error_connect">No se pudo conectar a %1$s. Verifica que el servidor esté activo.</string>
-    <string name="settings_error_timeout">Tiempo de espera agotado al conectar a %1$s.</string>
-    <string name="settings_error_unknown_host">No se encuentra el host \'%1$s\'.</string>
+    <string name="settings_error_timeout">Tiempo de espera agotado al conectar a %1$s. Comprueba tu conexión e inténtalo de nuevo.</string>
+    <string name="settings_error_unknown_host">No se encuentra el host \'%1$s\'. Comprueba la URL.</string>
     <string name="settings_error_ssl">Error de certificado SSL. Si estás en red local usa http://.</string>
-    <string name="settings_error_connection">Error de conexión: %1$s</string>
-    <string name="settings_error_unknown">Fallo desconocido</string>
+    <string name="settings_error_connection">No se pudo conectar con el servidor. Comprueba la URL y que esté activo.</string>
+    <string name="settings_error_unknown">No se pudo completar la operación. Inténtalo de nuevo.</string>
 
     <!-- Títulos de sección del feed (se resuelven en la UI; el dominio usa el texto en español como clave estable) -->
-    <string name="section_continue_watching">Continuar Viendo</string>
+    <string name="section_continue_watching">Continuar viendo</string>
     <string name="section_recently_added">Añadido recientemente</string>
     <string name="section_top_movies">Películas destacadas</string>
-    <string name="section_top_series">Series Destacadas</string>
-    <string name="section_recommended_movies">Películas Recomendadas</string>
+    <string name="section_top_series">Series destacadas</string>
+    <string name="section_recommended_movies">Películas recomendadas</string>
     <string name="section_recommended_of">Recomendados de %1$s</string>
     <string name="section_hidden_gems">Joyas ocultas</string>
-    <string name="section_genre_hidden_gems">Joyas Ocultas</string>
-    <string name="section_top10_essentials">Top 10 Imprescindibles</string>
-    <string name="section_new_releases">Novedades Recientes</string>
+    <string name="section_genre_hidden_gems">Joyas ocultas</string>
+    <string name="section_top10_essentials">Top 10 imprescindibles</string>
+    <string name="section_new_releases">Novedades recientes</string>
     <string name="section_latest_releases">Últimos estrenos</string>
     <string name="section_top10_spain">Top 10 en España hoy</string>
     <string name="section_platform_popular">Populares en %1$s</string>
@@ -488,8 +497,8 @@
     <string name="section_because_watched">Porque viste %1$s</string>
     <string name="section_watchlist">Tu Watchlist</string>
     <string name="section_for_you">Recomendaciones para ti</string>
-    <string name="section_trending">En Tendencia</string>
-    <string name="section_acclaimed_cinema">Cine Aclamado</string>
+    <string name="section_trending">En tendencia</string>
+    <string name="section_acclaimed_cinema">Cine aclamado</string>
     <string name="section_movies">Películas</string>
     <string name="section_series">Series</string>
 
@@ -501,12 +510,12 @@
     <string name="badge_popular">POPULAR</string>
 
     <!-- Etiquetas de origen (HeroBanner) -->
-    <string name="hero_source_trakt_recommended">Trakt Recomendado</string>
-    <string name="hero_source_top_today">Top %1$d Hoy</string>
-    <string name="hero_source_trending">En Tendencia</string>
+    <string name="hero_source_trakt_recommended">Trakt recomendado</string>
+    <string name="hero_source_top_today">Top %1$d hoy</string>
+    <string name="hero_source_trending">En tendencia</string>
     <string name="hero_source_for_you">Para ti</string>
     <string name="hero_source_watchlist">Tu Watchlist</string>
-    <string name="hero_source_collection">En tu Colección</string>
+    <string name="hero_source_collection">En tu colección</string>
 
     <!-- Tipos de contenido -->
     <string name="type_movie">PELÍCULA</string>
@@ -519,15 +528,17 @@
     <string name="filter_hide_watched">Ocultar vistos</string>
 
     <!-- Búsqueda (cabecera de resultados) -->
-    <string name="search_counter_searching">Buscando en tu servidor Jellyfin...</string>
-    <string name="search_counter_one">1 título encontrado</string>
-    <string name="search_counter_many">%1$d títulos encontrados</string>
+    <string name="search_counter_searching">Buscando en tu servidor Jellyfin…</string>
+    <plurals name="search_counter_found">
+        <item quantity="one">%1$d título encontrado</item>
+        <item quantity="other">%1$d títulos encontrados</item>
+    </plurals>
     <string name="search_counter_none">Sin coincidencias</string>
 
     <!-- Detalle -->
     <string name="detail_not_found">Elemento no encontrado en tu biblioteca</string>
     <string name="detail_error_loading">Error al cargar el contenido</string>
-    <string name="detail_play_collection">Reproducir Colección</string>
+    <string name="detail_play_collection">Reproducir colección</string>
     <string name="detail_play">Reproducir</string>
     <string name="detail_resume_episode">Continuar %1$s</string>
     <string name="detail_play_episode">Reproducir %1$s</string>
@@ -549,14 +560,14 @@
     <string name="player_more_like_this">También te podría gustar</string>
     <string name="player_auto_exit_in">Saliendo en %1$ds</string>
     <string name="player_watch_credits">Ver créditos</string>
-    <string name="player_tab_audio">Audio y Sonido</string>
+    <string name="player_tab_audio">Audio y sonido</string>
     <string name="player_audio_tracks">Pistas de audio</string>
-    <string name="player_night_mode">Modo Nocturno</string>
+    <string name="player_night_mode">Modo nocturno</string>
     <string name="player_night_mode_desc">Realza diálogos y atenúa estruendos</string>
     <string name="player_night_mode_off">Desactivado</string>
     <string name="player_night_mode_soft">Suave</string>
     <string name="player_night_mode_strong">Fuerte</string>
-    <string name="player_volume_boost">Amplificador de Volumen</string>
+    <string name="player_volume_boost">Amplificador de volumen</string>
     <string name="player_volume_boost_desc">Aumenta la ganancia para pistas 5.1/7.1 bajas</string>
     <string name="player_volume_boost_original">0 dB</string>
     <string name="player_volume_boost_low">+3 dB</string>
@@ -569,7 +580,7 @@
     <string name="player_version_choose">Elige una versión del contenido</string>
     <string name="player_no_versions">No hay versiones alternativas para este contenido.</string>
     <string name="player_version_default">Versión %1$d</string>
-    <string name="player_tab_settings">Ajustes de Reproducción</string>
+    <string name="player_tab_settings">Ajustes de reproducción</string>
     <string name="player_decoder_unsupported">El dispositivo no soporta este formato de vídeo o audio (HEVC/HDR)</string>
     <string name="player_error_http_5xx">El servidor de streaming devolvió un error (HTTP %1$d). Pulsa Reintentar.</string>
     <string name="player_error_http_401">Error de autenticación con el servidor (HTTP 401). Pulsa Reintentar.</string>
@@ -584,7 +595,7 @@
     <string name="player_audio_passthrough_desc">Control de salida HDMI / decodificación</string>
     <string name="player_audio_passthrough_off">PCM</string>
     <string name="player_audio_passthrough_auto">Automático</string>
-    <string name="player_audio_passthrough_direct">Passthrough</string>
+    <string name="player_audio_passthrough_direct">Directo</string>
     <string name="player_audio_fallback_toast">Audio incompatible con el televisor. Cambiado automáticamente a decodificación PCM.</string>
     <string name="player_audio_track_switched_toast">Cambiando automáticamente a pista de audio compatible: %1$s</string>
     <string name="player_modal_close">Cerrar menú</string>
@@ -598,7 +609,7 @@
 
     <!-- Actualizaciones -->
     <string name="update_downloading_progress">Descargando actualización: %1$d%%</string>
-    <string name="update_downloading">Descargando...</string>
+    <string name="update_downloading">Descargando…</string>
     <string name="update_now">Actualizar ahora</string>
     <string name="update_title_forced">ACTUALIZACIÓN OBLIGATORIA</string>
     <string name="update_title_available">ACTUALIZACIÓN DISPONIBLE</string>
@@ -613,30 +624,51 @@
 
     <!-- Estado / errores de pantallas -->
     <string name="home_error_connecting">Error conectando con Jellyfin</string>
-    <string name="genre_empty_no_content">No se encontraron contenidos para el género \'%1$s\'.</string>
+    <string name="genre_empty_no_content">No hay títulos del género \'%1$s\'.</string>
 
     <!-- Medusa -->
     <string name="medusa_noun_titles">títulos</string>
     <string name="medusa_noun_movies">películas</string>
     <string name="medusa_noun_series">series</string>
+    <plurals name="medusa_header_count_titles">
+        <item quantity="one">%1$d título</item>
+        <item quantity="other">%1$d títulos</item>
+    </plurals>
+    <plurals name="medusa_header_count_movies">
+        <item quantity="one">%1$d película</item>
+        <item quantity="other">%1$d películas</item>
+    </plurals>
+    <plurals name="medusa_header_count_series">
+        <item quantity="one">%1$d serie</item>
+        <item quantity="other">%1$d series</item>
+    </plurals>
     <string name="medusa_available_count">%1$d %2$s disponibles</string>
-    <string name="medusa_hint_movies_short">[ARRIBA] Volver a filtros     [OK] Ver ficha</string>
+    <string name="medusa_hint_movies_short">[ARRIBA] Volver a filtros     [OK] Ver detalles</string>
     <string name="medusa_hint_nav_movies_short">[ABAJO] Navegar películas     [BACK] Deshacer</string>
-    <string name="medusa_hint_movies">[ARRIBA] Volver a filtros     [OK] Ver ficha     [BACK] Deshacer</string>
+    <string name="medusa_hint_movies">[ARRIBA] Volver a filtros     [OK] Ver detalles     [BACK] Deshacer</string>
     <string name="medusa_hint_active_chain">[OK] Eliminar esta temática     [ABAJO] Rail de temáticas     [BACK] Volver</string>
     <string name="medusa_hint_chain">[OK] Filtrar más     [ARRIBA] Editar filtros     [ABAJO] Películas     [BACK] Deshacer</string>
     <string name="medusa_hint_default">[OK] Seleccionar     [← →] Explorar     [BACK] Salir</string>
 
     <!-- Sincronización -->
-    <string name="sync_background">Sincronizando en segundo plano...</string>
-    <string name="sync_checking_restrictions">Comprobando restricciones parentales...</string>
-    <string name="sync_searching_news">Buscando novedades en Jellyfin...</string>
-    <string name="sync_updated_with_news">Catálogo actualizado (+%1$d novedades)</string>
-    <string name="sync_up_to_date">Catálogo al día (%1$d títulos)</string>
+    <string name="sync_background">Sincronizando en segundo plano…</string>
+    <string name="sync_checking_restrictions">Comprobando restricciones parentales…</string>
+    <string name="sync_searching_news">Buscando novedades en Jellyfin…</string>
+    <plurals name="sync_updated_with_news">
+        <item quantity="one">Catálogo actualizado (+%1$d novedad)</item>
+        <item quantity="other">Catálogo actualizado (+%1$d novedades)</item>
+    </plurals>
+    <plurals name="sync_up_to_date">
+        <item quantity="one">Catálogo al día (%1$d título)</item>
+        <item quantity="other">Catálogo al día (%1$d títulos)</item>
+    </plurals>
     <string name="sync_resuming">Reanudando sincronización: %1$d / %2$d</string>
     <string name="sync_progress_zero">Sincronizando: 0 / %1$d</string>
     <string name="sync_progress">Sincronizando: %1$d / %2$d</string>
-    <string name="sync_updated_count">Catálogo actualizado (%1$d títulos)</string>
+    <plurals name="sync_updated_count">
+        <item quantity="one">Catálogo actualizado (%1$d título)</item>
+        <item quantity="other">Catálogo actualizado (%1$d títulos)</item>
+    </plurals>
     <string name="sync_session_expired">Sesión caducada (401). Reconecta en Ajustes</string>
     <string name="sync_error_prefix">Error al sincronizar: %1$s</string>
     <string name="sync_error_connection">Error de conexión</string>
@@ -655,10 +687,10 @@
     <string name="favorites_filter_hint">Prueba seleccionando otro filtro de la barra superior.</string>
 
     <!-- Actualizaciones (descarga APK) -->
-    <string name="update_error_apk_http">Error al descargar APK: HTTP %1$d</string>
-    <string name="update_error_empty_body">Respuesta vacía al descargar APK</string>
-    <string name="update_error_integrity">Verificación de integridad fallida: el APK descargado no coincide con el hash esperado.</string>
-    <string name="update_error_redirect">La descarga del APK intentó redirigir a un destino no permitido.</string>
+    <string name="update_error_apk_http">No se pudo descargar la actualización (HTTP %1$d). Inténtalo de nuevo.</string>
+    <string name="update_error_empty_body">La descarga de la actualización llegó vacía. Inténtalo de nuevo.</string>
+    <string name="update_error_integrity">No se pudo instalar la actualización: el archivo no coincide con el hash esperado. Descárgala de nuevo.</string>
+    <string name="update_error_redirect">La descarga intentó redirigir a un destino no permitido. Inténtalo de nuevo desde GitHub Releases.</string>
     <string name="update_badge_content_description">Actualización disponible</string>
 
     <!-- Menú Contextual de Medios -->
@@ -689,7 +721,7 @@
     <string name="torrent_server_unavailable">Servidor de descargas no disponible</string>
     <string name="torrent_cancel">Cancelar</string>
     <string name="torrent_retry">Reintentar</string>
-    <string name="torrent_seeds_peers">%1$d semillas y %2$d pares</string>
+    <string name="torrent_seeds_peers">Semillas: %1$d · Pares: %2$d</string>
     <string name="torrent_searching_seeds">Buscando semillas…</string>
     <string name="torrent_connecting_swarm">Conectando con el enjambre…</string>
     <string name="torrent_starting_download">Iniciando descarga…</string>
@@ -699,7 +731,10 @@
     <string name="torrent_prepare_failed">No se pudo preparar la descarga.</string>
     <string name="torrent_versions_count">Versiones (%1$d)</string>
     <string name="torrent_choose_version">Elegir versión disponible</string>
-    <string name="torrent_options_count">%1$d opciones</string>
+    <plurals name="torrent_options_count">
+        <item quantity="one">%1$d opción</item>
+        <item quantity="other">%1$d opciones</item>
+    </plurals>
     <string name="torrent_version_n">Versión %1$d</string>
 
     <!-- Ordenación de catálogo -->
@@ -715,7 +750,22 @@
     <string name="sort_year_desc_short">Año ▼</string>
     <string name="sort_year_asc">Año (Más antiguos primero)</string>
     <string name="sort_year_asc_short">Año ▲</string>
-    <string name="sort_rating_desc">Calificación (Mejor valoradas)</string>
-    <string name="sort_rating_desc_short">Nota ▼</string>
+    <string name="sort_rating_desc">Valoración (Mejor valoradas)</string>
+    <string name="sort_rating_desc_short">Valoración ▼</string>
+
+    <!-- Confirmaciones -->
+    <string name="settings_logout_confirm_title">¿Cerrar sesión de Jellyfin?</string>
+    <string name="settings_logout_confirm_body">Se borrarán los datos descargados de tu biblioteca y tendrás que volver a introducir tus credenciales.</string>
+    <string name="settings_logout_confirm_action">Cerrar sesión</string>
+    <string name="settings_trakt_unlink_confirm_title">¿Desvincular Trakt?</string>
+    <string name="settings_trakt_unlink_confirm_body">Se dejará de sincronizar tu progreso y tus listas. Para volver a vincular la cuenta necesitarás un móvil o un PC.</string>
+    <string name="settings_trakt_unlink_confirm_action">Desvincular Trakt</string>
+    <string name="settings_tls_remove_confirm_title">¿Quitar la confianza del certificado?</string>
+    <string name="settings_tls_remove_confirm_body">La app dejará de aceptar este certificado hasta que vuelvas a fijar su fingerprint.</string>
+    <string name="settings_tls_remove_confirm_action">Quitar confianza</string>
+
+    <string name="settings_btn_download_install_progress">Descargar e instalar (%1$d%%)</string>
+    <string name="player_error_close">Cerrar error</string>
+    <string name="medusa_remove_active_filter">Quitar este filtro</string>
 
 </resources>

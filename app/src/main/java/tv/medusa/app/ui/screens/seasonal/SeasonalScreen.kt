@@ -43,6 +43,7 @@ import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -273,7 +274,7 @@ private fun SeasonalHeading(
         Spacer(modifier = Modifier.height(8.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = stringResource(R.string.seasonal_catalog_count, state.allCount),
+                text = pluralStringResource(R.plurals.seasonal_catalog_count, state.allCount, state.allCount),
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.TextSecondaryCool else eventAccent.copy(alpha = 0.9f)

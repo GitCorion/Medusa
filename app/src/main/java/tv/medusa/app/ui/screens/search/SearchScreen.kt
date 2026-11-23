@@ -55,6 +55,7 @@ import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
@@ -510,8 +511,7 @@ fun SearchScreen(
                     // Cuadrícula TV de Resultados (Pósters interactivos) con cabecera integrada en la propia grid
                     val counterText = when {
                         uiState.isLoading -> stringResource(R.string.search_counter_searching)
-                        uiState.totalHits == 1 -> stringResource(R.string.search_counter_one)
-                        uiState.totalHits > 1 -> stringResource(R.string.search_counter_many, uiState.totalHits)
+                        uiState.totalHits > 0 -> pluralStringResource(R.plurals.search_counter_found, uiState.totalHits, uiState.totalHits)
                         else -> stringResource(R.string.search_counter_none)
                     }
 

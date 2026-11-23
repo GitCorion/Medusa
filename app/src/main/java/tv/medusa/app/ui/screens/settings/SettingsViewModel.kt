@@ -802,8 +802,7 @@ class SettingsViewModel @Inject constructor(
                 discoveredServers = servers,
                 statusMessage = when {
                     servers.isEmpty() -> context.getString(R.string.settings_no_servers_found)
-                    servers.size == 1 -> context.getString(R.string.settings_one_server_found)
-                    else -> context.getString(R.string.settings_servers_found, servers.size)
+                    else -> context.resources.getQuantityString(R.plurals.settings_servers_found, servers.size, servers.size)
                 }
             )
         }
@@ -972,14 +971,14 @@ class SettingsViewModel @Inject constructor(
                     403 -> context.getString(R.string.settings_error_403)
                     404 -> context.getString(R.string.settings_error_404, cleanUrl)
                     500, 502, 503 -> context.getString(R.string.settings_error_5xx, e.code())
-                    else -> context.getString(R.string.settings_error_http, e.code(), e.message())
+                    else -> context.getString(R.string.settings_error_http, e.code())
                 }
             }
             is ConnectException -> context.getString(R.string.settings_error_connect, cleanUrl)
             is SocketTimeoutException -> context.getString(R.string.settings_error_timeout, cleanUrl)
             is UnknownHostException -> context.getString(R.string.settings_error_unknown_host, cleanUrl)
             is javax.net.ssl.SSLHandshakeException -> context.getString(R.string.settings_error_ssl)
-            else -> context.getString(R.string.settings_error_connection, msg.ifBlank { context.getString(R.string.settings_error_unknown) })
+            else -> context.getString(R.string.settings_error_connection)
         }
     }
 
@@ -1023,7 +1022,7 @@ class SettingsViewModel @Inject constructor(
                 val details = formatNetworkError(e, cleanUrl)
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    statusMessage = context.getString(R.string.settings_error_prefix, details)
+                    statusMessage = details
                 )
             }
         }
@@ -1162,7 +1161,7 @@ class SettingsViewModel @Inject constructor(
                         _uiState.value = _uiState.value.copy(
                             isSuccess = true,
                             isLoading = false,
-                            statusMessage = context.getString(R.string.settings_sync_started, count)
+                            statusMessage = context.resources.getQuantityString(R.plurals.settings_sync_started, count, count)
                         )
                     } catch (e: Exception) {
                         authorized = false
@@ -1185,7 +1184,7 @@ class SettingsViewModel @Inject constructor(
                 val details = formatNetworkError(e, cleanUrl)
                 _uiState.value = _uiState.value.copy(
                     isWaitingJellyfinQuickConnect = false,
-                    statusMessage = context.getString(R.string.settings_error_prefix, details)
+                    statusMessage = details
                 )
             }
         }
@@ -1323,7 +1322,7 @@ class SettingsViewModel @Inject constructor(
                 val details = formatNetworkError(e, cleanUrl)
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
-                    statusMessage = context.getString(R.string.settings_error_prefix, details)
+                    statusMessage = details
                 )
             }
         }
@@ -1385,7 +1384,8 @@ class SettingsViewModel @Inject constructor(
             result.onFailure { e ->
                 _uiState.value = _uiState.value.copy(
                     downloadProgress = null,
-                    statusMessage = context.getString(R.string.settings_download_error, e.localizedMessage)
+                    statusMessage = e.localizedMessage?.takeIf { it.isNotBlank() }
+                        ?: context.getString(R.string.settings_error_unknown)
                 )
             }
         }

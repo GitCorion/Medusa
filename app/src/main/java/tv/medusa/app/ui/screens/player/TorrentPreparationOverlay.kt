@@ -57,6 +57,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -594,7 +595,7 @@ private fun VersionSelectorModal(
                     }
 
                     Text(
-                        text = stringResource(R.string.torrent_options_count, versions.size),
+                        text = pluralStringResource(R.plurals.torrent_options_count, versions.size, versions.size),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
                         color = tv.medusa.app.ui.theme.TvPalette.TextSecondaryCool

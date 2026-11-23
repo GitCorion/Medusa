@@ -55,6 +55,10 @@ class MediaSyncRepository(
     private fun str(id: Int, vararg args: Any): String =
         appContext?.getString(id, *args).orEmpty()
 
+    /** Resuelve un plural localizado; vacío si no hay contexto (p. ej. en tests unitarios). */
+    private fun pluralStr(id: Int, quantity: Int): String =
+        appContext?.resources?.getQuantityString(id, quantity, quantity).orEmpty()
+
     companion object {
         private val _syncProgress = MutableStateFlow(SyncProgress())
         val syncProgress: StateFlow<SyncProgress> = _syncProgress.asStateFlow()
@@ -629,7 +633,7 @@ class MediaSyncRepository(
                         isSyncing = false,
                         current = updatedLocal,
                         total = updatedLocal,
-                        message = if (deltaCount > 0) str(R.string.sync_updated_with_news, deltaCount) else str(R.string.sync_up_to_date, updatedLocal)
+                        message = if (deltaCount > 0) pluralStr(R.plurals.sync_updated_with_news, deltaCount) else pluralStr(R.plurals.sync_up_to_date, updatedLocal)
                     )
                     return@runCatching
                 }
@@ -826,7 +830,7 @@ class MediaSyncRepository(
                     isSyncing = false,
                     current = finalCount,
                     total = finalCount,
-                    message = str(R.string.sync_updated_count, finalCount)
+                    message = pluralStr(R.plurals.sync_updated_count, finalCount)
                 )
 
                 // Encolar enriquecimiento de fondo una vez concluida la sincronización completa del catálogo
@@ -851,7 +855,7 @@ class MediaSyncRepository(
                         isError = false,
                         current = currentCount,
                         total = currentCount,
-                        message = str(R.string.sync_up_to_date, currentCount)
+                        message = pluralStr(R.plurals.sync_up_to_date, currentCount)
                     )
                 } else {
                     val errorMessage = if (is401) {

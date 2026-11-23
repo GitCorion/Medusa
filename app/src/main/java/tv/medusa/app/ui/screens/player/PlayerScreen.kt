@@ -1821,7 +1821,7 @@ private fun PlayerContent(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Close,
-                        contentDescription = stringResource(R.string.player_error_cd),
+                        contentDescription = stringResource(R.string.player_error_close),
                         tint = Color(0xFFFCA5A5),
                         modifier = Modifier.size(40.dp)
                     )
