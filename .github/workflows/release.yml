@@ -162,6 +162,29 @@ jobs:
       - name: Decode signing keystore
         run: echo "${{ secrets.KEYSTORE_B64 }}" | base64 --decode > app/keystore.jks
 
+      - name: Verify signing keystore
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          EXPECTED_SIGNING_CERT: ${{ vars.SIGNING_CERT_SHA256 }}
+        run: |
+          set -euo pipefail
+          if [ -z "$EXPECTED_SIGNING_CERT" ]; then
+            echo "::error::Falta la variable de repositorio SIGNING_CERT_SHA256"
+            exit 1
+          fi
+          ACTUAL="$(keytool -J-Duser.language=en -list -v \
+            -keystore app/keystore.jks \
+            -storepass "$KEYSTORE_PASSWORD" \
+            -alias "$KEY_ALIAS" \
+            | sed -nE 's/^[[:space:]]*SHA256: //p' | head -1 | tr -d ':' | tr '[:lower:]' '[:upper:]')"
+          EXPECTED="$(printf '%s' "$EXPECTED_SIGNING_CERT" | tr -d ':' | tr '[:lower:]' '[:upper:]')"
+          if [ "$ACTUAL" != "$EXPECTED" ]; then
+            echo "::error::El keystore no es el de release (huella $ACTUAL)"
+            exit 1
+          fi
+          echo "✓ Keystore de release verificado: $ACTUAL"
+
       - name: Unit tests
         run: ./gradlew :app:testDebugUnitTest --no-daemon
 
@@ -184,12 +207,29 @@ jobs:
           fi
           ./gradlew :app:assembleRelease --no-daemon "${ARGS[@]}"
 
+      - name: Verify APK signing certificate
+        env:
+          EXPECTED_SIGNING_CERT: ${{ vars.SIGNING_CERT_SHA256 }}
+        run: |
+          set -euo pipefail
+          APKSIGNER="$(ls "${ANDROID_HOME:?}"/build-tools/*/apksigner | sort -V | tail -1)"
+          ACTUAL="$("$APKSIGNER" verify --print-certs \
+            app/build/outputs/apk/release/app-release.apk \
+            | sed -nE 's/.*certificate SHA-256 digest: //p' | head -1 \
+            | tr -d ':' | tr '[:lower:]' '[:upper:]')"
+          EXPECTED="$(printf '%s' "$EXPECTED_SIGNING_CERT" | tr -d ':' | tr '[:lower:]' '[:upper:]')"
+          if [ "$ACTUAL" != "$EXPECTED" ]; then
+            echo "::error::El APK no está firmado con la clave de release (huella $ACTUAL)"
+            exit 1
+          fi
+          echo "✓ APK firmado con la clave de release: $ACTUAL"
+
       - name: Upload build artifact
         uses: actions/upload-artifact@v7
         with:
           name: Medusa-APK
           path: app/build/outputs/apk/release/app-release.apk
-          retention-days: 7
+          retention-days: 2
 
       # action-gh-release no renombra con "origen:destino": copiamos el APK con el nombre
       # final que espera el manifiesto OTA (Medusa.apk).
