@@ -436,10 +436,7 @@ private fun TvKeyButton(
                 border = BorderStroke(0.75.dp, Color(0x1CFFFFFF)),
                 shape = keyShape
             ),
-            focusedBorder = Border(
-                border = BorderStroke(1.5.dp, Color.White),
-                shape = keyShape
-            ),
+            focusedBorder = Border.None,
             disabledBorder = Border.None
         ),
         modifier = modifier

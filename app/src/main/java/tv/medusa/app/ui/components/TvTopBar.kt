@@ -491,8 +491,5 @@ private fun topBarButtonBorder(
     isDockFocused: Boolean = true
 ) = ButtonDefaults.border(
     border = Border.None,
-    focusedBorder = androidx.tv.material3.Border(
-        border = BorderStroke(1.5.dp, Color.White),
-        shape = RoundedCornerShape(18.dp)
-    )
+    focusedBorder = Border.None
 )

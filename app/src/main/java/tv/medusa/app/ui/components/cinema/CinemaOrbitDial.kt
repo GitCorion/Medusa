@@ -98,10 +98,7 @@ fun CinemaOrbitDial(
             shape = ButtonDefaults.shape(shape = CircleShape),
             border = ButtonDefaults.border(
                 border = androidx.tv.material3.Border.None,
-                focusedBorder = androidx.tv.material3.Border(
-                    border = BorderStroke(1.5.dp, Color.White),
-                    shape = CircleShape
-                )
+                focusedBorder = androidx.tv.material3.Border.None
             ),
             modifier = Modifier
                 .size(sizeDp)

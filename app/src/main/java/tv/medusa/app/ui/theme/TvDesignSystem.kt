@@ -221,11 +221,8 @@ object TvChipDefaults {
     fun border(
         chipShape: RoundedCornerShape = Shape
     ) = ClickableSurfaceDefaults.border(
-        border = Border.None, // CERO bordes en reposo: ni wireframes ni bordes grises
-        focusedBorder = Border(
-            border = BorderStroke(1.5.dp, Color.White),
-            shape = chipShape
-        )
+        border = Border.None,
+        focusedBorder = Border.None // CERO bordes blancos: foco mediante cápsula cian sólida idéntica a Ajustes
     )
 
     @OptIn(ExperimentalTvMaterial3Api::class)
@@ -258,10 +255,7 @@ object TvChipDefaults {
         chipShape: RoundedCornerShape = Shape
     ) = ButtonDefaults.border(
         border = Border.None,
-        focusedBorder = Border(
-            border = BorderStroke(1.5.dp, Color.White),
-            shape = chipShape
-        )
+        focusedBorder = Border.None // CERO bordes blancos: foco mediante cápsula cian sólida idéntica a Ajustes
     )
 
     @OptIn(ExperimentalTvMaterial3Api::class)

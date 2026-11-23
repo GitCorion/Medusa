@@ -1,121 +1,863 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Política de Privacidad - Medusa</title>
-    <style>
-        :root {
-            --bg-color: #0b0f17;
-            --card-bg: #131b26;
-            --text-primary: #e2e8f0;
-            --text-secondary: #94a3b8;
-            --accent-color: #00e5ff;
-            --border-color: #1e293b;
-        }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-primary);
-            line-height: 1.6;
-            margin: 0;
-            padding: 24px;
-        }
-        .container {
-            max-width: 780px;
-            margin: 0 auto;
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 16px;
-            padding: 40px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        }
-        h1 {
-            color: var(--accent-color);
-            margin-top: 0;
-            font-size: 28px;
-        }
-        h2 {
-            color: #ffffff;
-            font-size: 19px;
-            margin-top: 28px;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 8px;
-        }
-        p, li {
-            color: var(--text-secondary);
-            font-size: 15px;
-        }
-        ul {
-            padding-left: 20px;
-        }
-        li {
-            margin-bottom: 8px;
-        }
-        .badge {
-            display: inline-block;
-            background: rgba(0, 229, 255, 0.1);
-            color: var(--accent-color);
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-            margin-bottom: 16px;
-        }
-        .footer {
-            margin-top: 36px;
-            font-size: 13px;
-            color: #64748b;
-            text-align: center;
-        }
-    </style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Estudio Medusa TV: una interfaz a tres metros</title>
+  <meta name="description" content="Estudio de diseño y arquitectura de Medusa TV, un cliente Jellyfin nativo para Android TV. Foco a 3 metros, 60 fps sin blur y una identidad abisal.">
+  <meta name="theme-color" content="#050a0e">
+  <link rel="canonical" href="https://gitcorion.github.io/Medusa/">
+  <link rel="icon" href="assets/estudio/favicon.png" type="image/png">
+  <link rel="preload" href="assets/estudio/fonts/space-grotesk-variable.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="stylesheet" href="assets/estudio/estudio.css">
+
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="es_ES">
+  <meta property="og:site_name" content="Medusa TV">
+  <meta property="og:title" content="Estudio Medusa TV: una interfaz a tres metros">
+  <meta property="og:description" content="Cómo se diseña un cliente Jellyfin para un sofá, un mando y una tele OLED. Identidad abisal, foco de alto contraste y 60 fps sin blur.">
+  <meta property="og:url" content="https://gitcorion.github.io/Medusa/">
+  <meta property="og:image" content="https://gitcorion.github.io/Medusa/assets/estudio/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Medusa TV",
+    "applicationCategory": "MultimediaApplication",
+    "operatingSystem": "Android 8.0 o superior",
+    "softwareVersion": "2.3.12",
+    "url": "https://gitcorion.github.io/Medusa/",
+    "downloadUrl": "https://github.com/GitCorion/Medusa/releases/latest/download/Medusa.apk",
+    "license": "https://www.gnu.org/licenses/gpl-3.0.html",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "EUR"
+    }
+  }
+  </script>
 </head>
 <body>
-    <div class="container">
-        <span class="badge">Última actualización: Noviembre 2026</span>
-        <h1>Política de Privacidad de Medusa</h1>
-        <p><strong>Medusa</strong> es una aplicación cliente independiente para servidores multimedia Jellyfin, diseñada para dispositivos Android y Android TV. Esta Política de Privacidad describe cómo se gestiona y protege la información al utilizar la aplicación.</p>
+  <a class="skip" href="#estudio">Saltar al estudio</a>
 
-        <h2>1. Principio Fundamental: Privacidad por Diseño</h2>
-        <p>Medusa es una aplicación cliente de código abierto/independiente pensada para conectarse a tu propio servidor privado. <strong>No recopilamos, no almacenamos en servidores propios y no vendemos ningún tipo de dato personal de nuestros usuarios.</strong></p>
+  <header class="topbar">
+    <a class="brand" href="#top" aria-label="Medusa TV, volver al inicio">
+      <img src="assets/estudio/medusa-wordmark.png" alt="Medusa TV" width="965" height="320">
+      <span class="brand__label">Estudio<br>2026</span>
+    </a>
+    <nav class="topnav" aria-label="Secciones del estudio">
+      <a href="#distancia">Distancia</a>
+      <a href="#sistema">Sistema</a>
+      <a href="#pantallas">Pantallas</a>
+      <a href="#motor">Motor</a>
+      <a href="#registro">Registro</a>
+    </nav>
+    <a class="btn btn--primary btn--small topbar__cta" href="https://github.com/GitCorion/Medusa/releases/latest/download/Medusa.apk">Descargar</a>
+  </header>
 
-        <h2>2. Datos Almacenados en tu Dispositivo</h2>
-        <p>Toda la información necesaria para el funcionamiento de la aplicación se almacena <strong>exclusivamente de forma local en tu dispositivo</strong>:</p>
-        <ul>
-            <li><strong>Credenciales del Servidor:</strong> La dirección de tu servidor Jellyfin, tu nombre de usuario y los tokens de sesión se guardan de forma segura en el almacenamiento local protegido del sistema operativo.</li>
-            <li><strong>Caché y Preferencias:</strong> Preferencias de interfaz (temas, tamaño de texto, configuración de reproducción, región seleccionada) e historial de caché de imágenes de tu propio servidor.</li>
-        </ul>
+  <div class="depth" aria-hidden="true">
+    <span class="depth__end">0 m</span>
+    <span class="depth__track">
+      <span class="depth__fill" id="depthFill"></span>
+      <span class="depth__dot" id="depthDot"></span>
+    </span>
+    <span class="depth__end">900 m</span>
+  </div>
 
-        <h2>3. Comunicaciones de Red y Fuentes de Datos</h2>
-        <p>La aplicación solo establece comunicaciones con los siguientes puntos y servicios:</p>
-        <ul>
-            <li><strong>Tu Servidor Jellyfin:</strong> Las peticiones de catálogo personal, imágenes y reproducción de vídeo se realizan directa y exclusivamente entre tu dispositivo y el servidor Jellyfin configurado por ti.</li>
-            <li><strong>Servidor Backend y Catálogos de Descubrimiento (TMDB y Trakt):</strong> Para ofrecer listas de tendencias, novedades y catálogos organizados por plataforma y región sin requerir que el usuario configure o exponga claves de API, estos catálogos de metadatos se generan y sirven de forma anónima desde nuestra infraestructura optimizada de servidor y CDN. Las consultas son públicas, en caché y no recopilan ni asocian ningún dato personal ni identificador de tu biblioteca personal.</li>
-            <li><strong>Trakt.tv (Sincronización Personal Opcional):</strong> Si decides vincular voluntariamente tu cuenta de Trakt mediante inicio de sesión seguro (OAuth), la app sincroniza tu historial de visualización, listas y colecciones directamente con los servidores de Trakt.tv bajo sus propios términos.</li>
-        </ul>
+  <main id="estudio">
+    <!-- ============================================================ hero -->
+    <section class="hero" id="top" data-depth="0">
+      <svg class="hero__contours" viewBox="0 0 1440 900" preserveAspectRatio="none" aria-hidden="true">
+        <g fill="none" stroke="currentColor" stroke-width="1">
+          <path d="M-80 690 C 190 610 380 760 690 672 S 1160 548 1530 640" stroke-opacity=".28"/>
+          <path d="M-80 735 C 210 650 420 810 720 718 S 1180 590 1530 684" stroke-opacity=".22"/>
+          <path d="M-80 782 C 230 700 450 856 760 766 S 1210 640 1530 730" stroke-opacity=".17"/>
+          <path d="M-80 830 C 250 750 480 900 800 812 S 1240 690 1530 778" stroke-opacity=".12"/>
+          <path d="M-80 604 C 170 528 360 664 660 586 S 1130 466 1530 552" stroke-opacity=".14"/>
+          <path d="M-80 520 C 150 448 340 574 620 504 S 1100 394 1530 470" stroke-opacity=".08"/>
+        </g>
+      </svg>
 
-        <h2>4. Atribución de Fuentes de Datos</h2>
-        <p>Medusa integra información pública y metadatos de las siguientes plataformas:</p>
-        <ul>
-            <li><strong>TMDB (The Movie Database):</strong> This product uses the TMDB API but is not endorsed or certified by TMDB.</li>
-            <li><strong>Trakt.tv:</strong> Listas y tendencias proporcionadas por Trakt.tv.</li>
-        </ul>
+      <div class="wrap hero__inner">
+        <div class="hero__copy">
+          <p class="hero__meta">
+            <span>Estudio de producto</span>
+            <span>Noviembre de 2026</span>
+            <span>v2.3.12</span>
+          </p>
 
-        <h2>5. Analíticas y Diagnóstico de Errores</h2>
-        <p>Medusa no incluye rastreadores, analítica, servicios de seguimiento de actividad ni informes de fallos a terceros. Los datos de tu biblioteca permanecen en tu dispositivo y en tu propio servidor Jellyfin. Las actualizaciones se descargan desde los GitHub Releases públicos del proyecto.</p>
+          <h1>
+            <span class="line"><span>Una interfaz</span></span>
+            <span class="line"><span>a <em>tres metros<svg class="hero__current" viewBox="0 0 420 14" preserveAspectRatio="none" aria-hidden="true"><path d="M2 8 C 70 14 132 2 202 8 S 322 14 402 6 S 414 5 418 8"/></svg></em>.</span></span>
+          </h1>
 
-        <h2>6. Menores de Edad</h2>
-        <p>Medusa no recopila conscientemente información de identificación personal de niños ni de ningún otro usuario.</p>
+          <p class="hero__lead">
+            Medusa TV convierte una biblioteca Jellyfin en un instrumento de observación.
+            <strong>Quince mil títulos, cinco teclas y una sola luz</strong> que dice dónde estás.
+          </p>
 
-        <h2>7. Descargo de Responsabilidad</h2>
-        <p>Medusa es un reproductor cliente y no proporciona, distribuye ni aloja ningún tipo de contenido multimedia. El usuario es el único responsable del contenido al que accede a través de su servidor multimedia.</p>
+          <div class="hero__actions">
+            <a class="btn btn--primary" href="https://github.com/GitCorion/Medusa/releases/latest/download/Medusa.apk">
+              <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+              Descargar Medusa
+            </a>
+            <a class="btn btn--ghost" href="#distancia">Leer el estudio</a>
+          </div>
 
-        <h2>8. Contacto</h2>
-        <p>Si tienes preguntas sobre esta Política de Privacidad, puedes ponerte en contacto a través del repositorio oficial del proyecto o por correo electrónico.</p>
-
-        <div class="footer">
-            Medusa © 2026 - Reproductor multimedia para Jellyfin
+          <dl class="hero__specs">
+            <div>
+              <dt>Plataforma</dt>
+              <dd>Android TV y tablet</dd>
+            </div>
+            <div>
+              <dt>Construida con</dt>
+              <dd>Kotlin y Compose TV</dd>
+            </div>
+            <div>
+              <dt>Android mínimo</dt>
+              <dd>8.0, API 26</dd>
+            </div>
+            <div>
+              <dt>Biblioteca de prueba</dt>
+              <dd>15.325 títulos</dd>
+            </div>
+          </dl>
         </div>
+
+        <div class="hero__demo">
+          <div class="demo" data-demo>
+            <svg class="demo__arcs" viewBox="0 0 600 420" preserveAspectRatio="none" aria-hidden="true">
+              <g fill="none" stroke="currentColor" stroke-width="1">
+                <path d="M-40 360 C 130 270 330 420 640 300" stroke-opacity=".7"/>
+                <path d="M-40 395 C 150 310 360 455 640 335" stroke-opacity=".5"/>
+                <path d="M-40 430 C 170 350 390 490 640 370" stroke-opacity=".35"/>
+              </g>
+            </svg>
+
+            <div class="demo__head">
+              <span class="demo__title">El mando es el cursor</span>
+              <span class="demo__hint" id="demoHint">
+                <kbd>←</kbd><kbd>→</kbd> mover el foco
+              </span>
+            </div>
+
+            <div class="poster-rail" role="listbox" aria-label="Demostración de foco de Medusa TV" aria-describedby="demoHint demoCaption">
+              <button class="poster is-active" role="option" aria-selected="true" tabindex="0" data-title="Expedición: salvar nuestros mares" data-meta="2026, película">
+                <span class="poster__art"><img src="assets/estudio/posters/expedicion.webp" alt="" width="300" height="450"></span>
+                <span class="poster__title">Expedición: salvar nuestros mares</span>
+              </button>
+              <button class="poster" role="option" aria-selected="false" tabindex="-1" data-title="It Follows" data-meta="2015, película">
+                <span class="poster__art"><img src="assets/estudio/posters/it-follows.webp" alt="" width="300" height="450"></span>
+                <span class="poster__title">It Follows</span>
+              </button>
+              <button class="poster" role="option" aria-selected="false" tabindex="-1" data-title="Várzea: onde nasce o futebol" data-meta="2026, serie">
+                <span class="poster__art"><img src="assets/estudio/posters/varzea.webp" alt="" width="300" height="450"></span>
+                <span class="poster__title">Várzea: onde nasce o futebol</span>
+              </button>
+              <button class="poster" role="option" aria-selected="false" tabindex="-1" data-title="The Gymnasts of Fisherman Colony" data-meta="2026, película">
+                <span class="poster__art"><img src="assets/estudio/posters/gymnasts.webp" alt="" width="300" height="450"></span>
+                <span class="poster__title">The Gymnasts of Fisherman Colony</span>
+              </button>
+              <button class="poster" role="option" aria-selected="false" tabindex="-1" data-title="Night of the Living Dead" data-meta="1968, película">
+                <span class="poster__art"><img src="assets/estudio/posters/night-living-dead.webp" alt="" width="300" height="450"></span>
+                <span class="poster__title">Night of the Living Dead</span>
+              </button>
+            </div>
+
+            <div class="demo__status" aria-live="polite">
+              <span class="demo__status-title" data-demo-title>Expedición: salvar nuestros mares</span>
+              <span class="demo__status-meta" data-demo-meta>2026, película</span>
+              <span class="demo__status-action" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+                Reproducir
+              </span>
+            </div>
+          </div>
+          <p class="demo__caption" id="demoCaption">Demo de foco, sin reproducción. Un anillo de 1,5 dp, sin escalar la tarjeta ni atenuar a sus vecinas.</p>
+        </div>
+      </div>
+
+      <a class="hero__scroll" href="#distancia">
+        Bajar al instrumento
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+      </a>
+    </section>
+
+    <!-- ============================================================ distance -->
+    <section class="chapter chapter--dark" id="distancia" data-depth="40">
+      <div class="wrap">
+        <div class="chapter__head">
+          <div class="chapter__mark">
+            <span class="chapter__depth">−40 m</span>
+            <span class="chapter__name">La distancia</span>
+          </div>
+          <div>
+            <h2 class="chapter__title">Tres metros cambian todas las reglas.</h2>
+            <p class="chapter__intro">
+              En un salón, la tele no se mira: se habita. El pulgar tiene cinco teclas, la vista llega
+              cansada y la pantalla compite con una lámpara encendida. Medusa se diseñó desde esa
+              restricción, no desde una maqueta de escritorio.
+            </p>
+          </div>
+        </div>
+
+        <div class="distance__grid">
+          <div class="distance__copy">
+            <p>
+              A tres metros, el campo de visión útil se estrecha y el detalle se pierde. Lo que en un
+              monitor de 27 pulgadas es un metadato discreto, en un sofá es ruido. La interfaz tiene
+              que contestar tres preguntas sin que el usuario se acerque: <strong>dónde estoy, qué puedo
+              hacer y qué ha cambiado</strong>.
+            </p>
+            <p>
+              De ahí salen las decisiones que atraviesan toda la app: arte a sangre, títulos fuera del
+              póster, una sola acción primaria por pantalla y una corriente que subraya lo activo en
+              lugar de rellenar bloques enteros de color.
+            </p>
+          </div>
+
+          <figure class="distance__figure">
+            <svg viewBox="0 0 640 380" role="img" aria-label="Esquema lateral de un salón: un sofá a tres metros de una televisión de 55 pulgadas, con la línea de visión a la altura de los ojos.">
+              <g fill="none" stroke="var(--silt)" stroke-width="1" stroke-linecap="round">
+                <line x1="40" y1="310" x2="600" y2="310"/>
+              </g>
+
+              <!-- couch -->
+              <g fill="none" stroke="var(--parchment)" stroke-width="1.5" stroke-linejoin="round">
+                <rect x="68" y="196" width="26" height="96" rx="9"/>
+                <rect x="94" y="236" width="112" height="26" rx="8"/>
+                <rect x="94" y="262" width="112" height="38" rx="6"/>
+                <rect x="206" y="224" width="20" height="76" rx="9"/>
+                <line x1="108" y1="300" x2="108" y2="310"/>
+                <line x1="192" y1="300" x2="192" y2="310"/>
+              </g>
+
+              <!-- tv -->
+              <g fill="none" stroke="var(--parchment)" stroke-width="1.5">
+                <rect x="500" y="120" width="92" height="58" rx="3"/>
+                <line x1="546" y1="178" x2="546" y2="310"/>
+                <line x1="516" y1="310" x2="576" y2="310"/>
+              </g>
+              <rect x="507" y="127" width="78" height="44" rx="1" fill="var(--current)" opacity=".1"/>
+
+              <!-- sight line -->
+              <g stroke="var(--current)" stroke-width="1" stroke-dasharray="3 7" fill="none">
+                <line x1="214" y1="170" x2="500" y2="170"/>
+                <circle cx="214" cy="170" r="4"/>
+              </g>
+
+              <!-- dimension -->
+              <g stroke="var(--current)" stroke-width="1.2">
+                <line x1="226" y1="340" x2="500" y2="340"/>
+                <line x1="226" y1="334" x2="226" y2="346"/>
+                <line x1="500" y1="334" x2="500" y2="346"/>
+              </g>
+
+              <g fill="var(--silt)" font-size="10.5">
+                <text x="546" y="106" text-anchor="middle">55 pulgadas</text>
+                <text x="214" y="154" text-anchor="middle">punto de vista</text>
+                <text x="363" y="366" text-anchor="middle">distancia de visionado</text>
+              </g>
+              <text x="363" y="330" text-anchor="middle" fill="var(--current)" font-size="20" font-weight="600" letter-spacing="-0.5">3 m</text>
+            </svg>
+            <figcaption class="distance__caption">
+              Un texto de 12 px a tres metros mide menos de cuatro milímetros. Si no se lee de un
+              vistazo, no existe.
+            </figcaption>
+          </figure>
+        </div>
+
+        <div class="ledger">
+          <div class="ledger__row">
+            <span class="ledger__kicker">La distancia</span>
+            <span class="ledger__value">3 m</span>
+            <p class="ledger__text">La jerarquía importa más que la densidad. Un título grande, un dato y una acción; el resto puede esperar.</p>
+          </div>
+          <div class="ledger__row">
+            <span class="ledger__kicker">El mando</span>
+            <span class="ledger__value">5 teclas</span>
+            <p class="ledger__text">El foco es el cursor. Solo puede haber una luz encendida a la vez y siempre tiene que estar a la vista.</p>
+          </div>
+          <div class="ledger__row">
+            <span class="ledger__kicker">El hardware</span>
+            <span class="ledger__value">60 fps</span>
+            <p class="ledger__text">Sin blur en tiempo real, sin escalar tarjetas y sin animaciones autónomas. La fluidez es una decisión de diseño.</p>
+          </div>
+        </div>
+
+        <blockquote class="pullquote">
+          «Si un elemento no comunica foco, jerarquía o dato, se elimina.»
+          <cite>Sistema de diseño de Medusa, 2026</cite>
+        </blockquote>
+      </div>
+    </section>
+
+    <!-- ============================================================ system -->
+    <section class="chapter chart" id="sistema" data-depth="120">
+      <svg class="chart__contours" viewBox="0 0 1440 1400" preserveAspectRatio="none" aria-hidden="true">
+        <g fill="none" stroke="currentColor" stroke-width="1">
+          <path d="M-80 220 C 220 140 420 300 740 210 S 1200 90 1540 180"/>
+          <path d="M-80 270 C 240 186 450 346 770 254 S 1220 136 1540 226"/>
+          <path d="M-80 320 C 260 232 480 392 800 300 S 1240 182 1540 272"/>
+          <path d="M-80 980 C 210 900 430 1050 760 960 S 1220 846 1540 930"/>
+          <path d="M-80 1030 C 230 946 460 1096 790 1004 S 1240 890 1540 974"/>
+          <path d="M-80 1080 C 250 992 490 1142 820 1048 S 1260 934 1540 1018"/>
+        </g>
+      </svg>
+
+      <div class="wrap">
+        <div class="chapter__head">
+          <div class="chapter__mark">
+            <span class="chapter__depth">−120 m</span>
+            <span class="chapter__name">El sistema</span>
+          </div>
+          <div>
+            <h2 class="chapter__title">El sistema cabe en una sola voz.</h2>
+            <p class="chapter__intro">
+              Space Grotesk cubre titulares, interfaz y datos. La identidad no vive en una tipografía
+              exótica, sino en cómo se comporta la luz: <strong>una corriente turquesa que subraya lo
+              activo</strong> y un violeta que señala lo que se sincroniza.
+            </p>
+          </div>
+        </div>
+
+        <div class="palette" aria-label="Paleta principal">
+          <div class="swatch">
+            <span class="swatch__chip" style="background:#050a0e"></span>
+            <span class="swatch__name">Tinta abisal</span>
+            <span class="swatch__hex">#050A0E</span>
+            <span class="swatch__role">Fondo raíz y tinta sobre acentos.</span>
+          </div>
+          <div class="swatch">
+            <span class="swatch__chip" style="background:#64e0d3"></span>
+            <span class="swatch__name">Corriente</span>
+            <span class="swatch__hex">#64E0D3</span>
+            <span class="swatch__role">Foco, progreso y selección.</span>
+          </div>
+          <div class="swatch">
+            <span class="swatch__chip" style="background:#b9a7e3"></span>
+            <span class="swatch__name">Violeta medusa</span>
+            <span class="swatch__hex">#B9A7E3</span>
+            <span class="swatch__role">Sincronía y favoritos.</span>
+          </div>
+          <div class="swatch">
+            <span class="swatch__chip" style="background:#f2b441"></span>
+            <span class="swatch__name">Ámbar halógeno</span>
+            <span class="swatch__hex">#F2B441</span>
+            <span class="swatch__role">Solo valoraciones.</span>
+          </div>
+          <div class="swatch">
+            <span class="swatch__chip" style="background:#e8836b"></span>
+            <span class="swatch__name">Coral</span>
+            <span class="swatch__hex">#E8836B</span>
+            <span class="swatch__role">Errores y acciones destructivas.</span>
+          </div>
+          <div class="swatch">
+            <span class="swatch__chip" style="background:#ede8dc"></span>
+            <span class="swatch__name">Pergamino</span>
+            <span class="swatch__hex">#EDE8DC</span>
+            <span class="swatch__role">Texto principal y superficies de carta.</span>
+          </div>
+        </div>
+
+        <div class="palette palette--neutral" aria-label="Neutros de profundidad">
+          <div class="swatch">
+            <span class="swatch__chip" style="background:#0c1c22"></span>
+            <span class="swatch__name">Agua profunda</span>
+            <span class="swatch__hex">#0C1C22</span>
+            <span class="swatch__role">Superficies base y teclado.</span>
+          </div>
+          <div class="swatch">
+            <span class="swatch__chip" style="background:#10232a"></span>
+            <span class="swatch__name">Agua elevada</span>
+            <span class="swatch__hex">#10232A</span>
+            <span class="swatch__role">Controles y superficies elevadas.</span>
+          </div>
+          <div class="swatch">
+            <span class="swatch__chip" style="background:#8c9a96"></span>
+            <span class="swatch__name">Sedimento</span>
+            <span class="swatch__hex">#8C9A96</span>
+            <span class="swatch__role">Metadatos y texto secundario.</span>
+          </div>
+          <div class="swatch">
+            <span class="swatch__chip" style="background:#6e7c78"></span>
+            <span class="swatch__name">Grafito húmedo</span>
+            <span class="swatch__hex">#6E7C78</span>
+            <span class="swatch__role">Micro-datos y etiquetas.</span>
+          </div>
+        </div>
+
+        <div class="system__grid">
+          <div class="type-specimen">
+            <div class="type-specimen__big">
+              <span>Aa</span>
+              <small>Space Grotesk,<br>variable y OFL.<br>Una sola voz.</small>
+            </div>
+            <dl class="type-scale">
+              <div><dt class="t-hero">Titular</dt><dd>38 sp, 700</dd></div>
+              <div><dt class="t-section">Sección</dt><dd>21 sp, 700</dd></div>
+              <div><dt class="t-body">Cuerpo</dt><dd>15 sp, 400</dd></div>
+              <div><dt class="t-meta">Metadatos</dt><dd>13 sp, 400</dd></div>
+              <div><dt class="t-label">Etiqueta</dt><dd>12 sp, 500</dd></div>
+            </dl>
+            <div class="shapes" aria-label="Radios de la interfaz">
+              <div class="shape"><span class="shape__box shape__box--0"></span><span>0, pestaña</span></div>
+              <div class="shape"><span class="shape__box shape__box--4"></span><span>4, insignia</span></div>
+              <div class="shape"><span class="shape__box shape__box--10"></span><span>10, tarjeta</span></div>
+              <div class="shape"><span class="shape__box shape__box--16"></span><span>16, diálogo</span></div>
+            </div>
+          </div>
+
+          <div>
+            <table class="contrast">
+              <caption>Contraste sobre tinta abisal, calculado con la fórmula WCAG 2.</caption>
+              <thead>
+                <tr><th scope="col">Color</th><th scope="col">Muestra</th><th scope="col">Ratio</th></tr>
+              </thead>
+              <tbody>
+                <tr><th scope="row">Pergamino</th><td><span class="contrast__sample" style="background:#ede8dc"></span>#EDE8DC</td><td>16,3:1</td></tr>
+                <tr><th scope="row">Corriente</th><td><span class="contrast__sample" style="background:#64e0d3"></span>#64E0D3</td><td>12,5:1</td></tr>
+                <tr><th scope="row">Ámbar</th><td><span class="contrast__sample" style="background:#f2b441"></span>#F2B441</td><td>10,8:1</td></tr>
+                <tr><th scope="row">Violeta</th><td><span class="contrast__sample" style="background:#b9a7e3"></span>#B9A7E3</td><td>9,2:1</td></tr>
+                <tr><th scope="row">Sedimento</th><td><span class="contrast__sample" style="background:#8c9a96"></span>#8C9A96</td><td>6,8:1</td></tr>
+                <tr><th scope="row">Grafito</th><td><span class="contrast__sample" style="background:#6e7c78"></span>#6E7C78</td><td>4,6:1</td></tr>
+              </tbody>
+            </table>
+
+            <div class="anatomy">
+              <div class="anatomy__stage">
+                <span class="anatomy__card"><img src="assets/estudio/posters/expedicion.webp" alt="Póster de Expedición: salvar nuestros mares, con el anillo de foco turquesa" width="300" height="450"></span>
+                <span class="anatomy__title">Expedición: salvar nuestros mares</span>
+                <span class="anatomy__caption">2026, película</span>
+              </div>
+              <div>
+                <h3>Anatomía del foco</h3>
+                <ol>
+                  <li><strong>Anillo de 1,5 dp en corriente.</strong> Un solo elemento lo lleva a la vez; el reposo no simula foco.</li>
+                  <li><strong>El título sube de sedimento a pergamino.</strong> El contraste hace el trabajo que antes hacía un bloque relleno.</li>
+                  <li><strong>Una corriente bajo el título.</strong> La misma gramática que marca la pestaña activa en la barra superior.</li>
+                  <li><strong>zIndex 10 y nada más.</strong> Sin escalar la tarjeta ni atenuar a sus vecinas: se evita el temblor y se conservan los 60 fps.</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ screens -->
+    <section class="chapter chapter--dark" id="pantallas" data-depth="260">
+      <div class="wrap">
+        <div class="chapter__head">
+          <div class="chapter__mark">
+            <span class="chapter__depth">−260 m</span>
+            <span class="chapter__name">Las pantallas</span>
+          </div>
+          <div>
+            <h2 class="chapter__title">Siete pantallas, una gramática.</h2>
+            <p class="chapter__intro">
+              Todas las capturas están tomadas de la app real en un televisor de 1080p, con una
+              biblioteca de 15.325 títulos. No hay maquetas: lo que ves es lo que se renderiza.
+            </p>
+          </div>
+        </div>
+
+        <div class="gallery">
+          <figure class="shot shot--wide">
+            <div class="shot__frame">
+              <picture>
+                <source media="(max-width: 700px)" srcset="assets/estudio/captures/inicio-960.webp">
+                <img src="assets/estudio/captures/inicio-1600.webp" alt="Pantalla de inicio de Medusa TV con el hero de Los Anillos de Poder, la navegación tipográfica y la fila de géneros favoritos." width="1600" height="900" decoding="async">
+              </picture>
+            </div>
+            <figcaption>
+              <span class="shot__name">Inicio<span>hero a sangre</span></span>
+              <div class="shot__body">
+                <p>El hero ocupa la primera pantalla completa. La navegación flota sin competir con el arte y el título del contenido manda.</p>
+                <ul class="shot__notes">
+                  <li>ClearLogo o Space Grotesk bold</li>
+                  <li>anillo de contacto y arcos batimétricos</li>
+                </ul>
+              </div>
+            </figcaption>
+          </figure>
+
+          <figure class="shot shot--wide">
+            <div class="shot__frame">
+              <picture>
+                <source media="(max-width: 700px)" srcset="assets/estudio/captures/inicio-filas-960.webp">
+                <img src="assets/estudio/captures/inicio-filas-1600.webp" alt="Filas de inicio: plataformas de streaming, Continuar viendo con barras de progreso y Top 10 de hoy." width="1600" height="900" decoding="async">
+              </picture>
+            </div>
+            <figcaption>
+              <span class="shot__name">Inicio<span>filas y carruseles</span></span>
+              <div class="shot__body">
+                <p>El título y el año viven fuera del póster. Las plataformas usan placas discretas y las tarjetas de continuar viendo llevan su progreso en corriente.</p>
+                <ul class="shot__notes">
+                  <li>progreso flotante en 16:9</li>
+                  <li>Top 10 con ranking tipográfico</li>
+                </ul>
+              </div>
+            </figcaption>
+          </figure>
+
+          <figure class="shot">
+            <div class="shot__frame">
+              <picture>
+                <source media="(max-width: 700px)" srcset="assets/estudio/captures/descubrir-960.webp">
+                <img src="assets/estudio/captures/descubrir-1600.webp" alt="Pantalla Descubrir con filtros de formato, rail de temáticas y una tarjeta enfocada con anillo turquesa." width="1600" height="900" decoding="async">
+              </picture>
+            </div>
+            <figcaption>
+              <span class="shot__name">Descubrir<span>exploración directa</span></span>
+              <div class="shot__body">
+                <p>Filtro de formato, rail de temáticas y resultados en la misma pantalla. La corriente marca el filtro activo, no un chip relleno.</p>
+                <ul class="shot__notes">
+                  <li>contador y atajos de mando</li>
+                  <li>el foco no atenúa la fila</li>
+                </ul>
+              </div>
+            </figcaption>
+          </figure>
+
+          <figure class="shot">
+            <div class="shot__frame">
+              <picture>
+                <source media="(max-width: 700px)" srcset="assets/estudio/captures/ficha-960.webp">
+                <img src="assets/estudio/captures/ficha-1600.webp" alt="Ficha de It Follows con póster a la izquierda, metadatos editoriales, botones de acción y sinopsis sin panel contenedor." width="1600" height="900" decoding="async">
+              </picture>
+            </div>
+            <figcaption>
+              <span class="shot__name">Ficha<span>detalle cinemático</span></span>
+              <div class="shot__body">
+                <p>Póster a la izquierda y metadatos editoriales a la derecha. La sinopsis respira sobre el fondo; no hay panel redondeado que la encierre.</p>
+                <ul class="shot__notes">
+                  <li>estados de progreso y favorito</li>
+                  <li>una sola acción primaria</li>
+                </ul>
+              </div>
+            </figcaption>
+          </figure>
+
+          <figure class="shot">
+            <div class="shot__frame">
+              <picture>
+                <source media="(max-width: 700px)" srcset="assets/estudio/captures/buscar-960.webp">
+                <img src="assets/estudio/captures/buscar-1600.webp" alt="Búsqueda de Nosferatu con teclado en pantalla a la izquierda, sugerencias y cinco resultados a la derecha." width="1600" height="900" decoding="async">
+              </picture>
+            </div>
+            <figcaption>
+              <span class="shot__name">Buscar<span>teclado de 10 pies</span></span>
+              <div class="shot__body">
+                <p>El teclado ocupa la mitad izquierda y los resultados aparecen sin cambiar de pantalla. Escribir no rompe el contexto.</p>
+                <ul class="shot__notes">
+                  <li>sugerencias predictivas</li>
+                  <li>resultados en tiempo real</li>
+                </ul>
+              </div>
+            </figcaption>
+          </figure>
+
+          <figure class="shot">
+            <div class="shot__frame">
+              <picture>
+                <source media="(max-width: 700px)" srcset="assets/estudio/captures/favoritos-960.webp">
+                <img src="assets/estudio/captures/favoritos-1600.webp" alt="Colección de Favoritos con filtros de formato, orden y una fila de pósteres con insignias de corazón y puntuación." width="1600" height="900" decoding="async">
+              </picture>
+            </div>
+            <figcaption>
+              <span class="shot__name">Favoritos<span>colección personal</span></span>
+              <div class="shot__body">
+                <p>Los filtros de formato y el orden viven sobre la colección, no en un menú aparte. La portada sigue siendo la protagonista.</p>
+                <ul class="shot__notes">
+                  <li>insignias de corazón y nota</li>
+                  <li>conteo de la colección</li>
+                </ul>
+              </div>
+            </figcaption>
+          </figure>
+
+          <figure class="shot shot--wide">
+            <div class="shot__frame">
+              <picture>
+                <source media="(max-width: 700px)" srcset="assets/estudio/captures/ajustes-960.webp">
+                <img src="assets/estudio/captures/ajustes-1600.webp" alt="Pantalla de ajustes con barra lateral plana, secciones tipográficas y el estado del servidor Jellyfin con 15.325 títulos sincronizados." width="1600" height="900" decoding="async">
+              </picture>
+            </div>
+            <figcaption>
+              <span class="shot__name">Ajustes<span>instrumento, no tienda</span></span>
+              <div class="shot__body">
+                <p>Barra lateral plana y grupos tipográficos. Sin tarjetas contenedoras: la corriente vertical marca el ítem activo y el estado del servidor se lee de un vistazo.</p>
+                <ul class="shot__notes">
+                  <li>secciones sin cajas</li>
+                  <li>sincronización y sesión visibles</li>
+                </ul>
+              </div>
+            </figcaption>
+          </figure>
+        </div>
+
+        <p class="gallery__note">
+          Capturas tomadas el 22 de noviembre de 2026 en un televisor de 1920 × 1080, con la app
+          v2.3.12. La biblioteca y los títulos pertenecen a sus titulares.
+        </p>
+      </div>
+    </section>
+
+    <!-- ============================================================ engine -->
+    <section class="chapter chapter--dark" id="motor" data-depth="480">
+      <div class="wrap">
+        <div class="chapter__head">
+          <div class="chapter__mark">
+            <span class="chapter__depth">−480 m</span>
+            <span class="chapter__name">El motor</span>
+          </div>
+          <div>
+            <h2 class="chapter__title">Lo que no se ve también es diseño.</h2>
+            <p class="chapter__intro">
+              Una interfaz fluida en un televisor de gama baja no sale del renderizado: sale de
+              decidir qué no se dibuja. <strong>Cero blur, cero escala por tarjeta y una sola animación
+              de entrada</strong> son decisiones de producto, no microoptimizaciones.
+            </p>
+          </div>
+        </div>
+
+        <div class="engine__grid">
+          <div class="stack" aria-label="Capas de la aplicación">
+            <div class="stack__row">
+              <span class="stack__label">Compose TV</span>
+              <span class="stack__desc">Pantallas, foco y corriente. Sin efectos de renderizado ni sombras artificiales.</span>
+            </div>
+            <div class="stack__row">
+              <span class="stack__label">ViewModels</span>
+              <span class="stack__desc">Un <strong>StateFlow</strong> por pantalla y un estado que sobrevive a la configuración. Hilt inyecta el grafo.</span>
+            </div>
+            <div class="stack__row">
+              <span class="stack__label">MediaRepository</span>
+              <span class="stack__desc">Fachada delgada sobre <strong>local, Jellyfin, sincronización, TMDB y Trakt</strong>. Los repositorios especializados hacen el trabajo.</span>
+            </div>
+            <div class="stack__row">
+              <span class="stack__label">Room 22 y DataStore</span>
+              <span class="stack__desc">Catálogo, búsqueda FTS, cachés de portada y preferencias. OkHttp cachea respuestas e imágenes.</span>
+            </div>
+            <div class="stack__row">
+              <span class="stack__label">Servicios</span>
+              <span class="stack__desc">Jellyfin, Trakt, TMDB, catálogos estáticos y el manifiesto OTA publicado en GitHub.</span>
+            </div>
+          </div>
+
+          <dl class="specs">
+            <div><dt>Versión documentada</dt><dd>2.3.12, versionCode 1000159</dd></div>
+            <div><dt>Plataforma</dt><dd>Android TV, Google TV, Fire TV y tablet</dd></div>
+            <div><dt>Android mínimo</dt><dd>8.0, API 26</dd></div>
+            <div><dt>Lenguaje</dt><dd>Kotlin 2.0.21, Compose TV y Hilt</dd></div>
+            <div><dt>Reproductor</dt><dd>Media3 1.5.1 y decodificador FFmpeg</dd></div>
+            <div><dt>Datos</dt><dd>Room 22, DataStore, Retrofit y OkHttp</dd></div>
+            <div><dt>Pruebas</dt><dd>36 unitarias y 1 de migración</dd></div>
+            <div><dt>Distribución</dt><dd>APK firmado y OTA desde GitHub Releases</dd></div>
+          </dl>
+        </div>
+
+        <div class="playback">
+          <div>
+            <h3>La reproducción no se rinde.</h3>
+            <p>
+              Jellyfin puede servir un archivo local, un <code>.strm</code> con una IP interna de Docker
+              o un contenedor que Media3 no abre. El orden de candidatos es explícito y nunca deja la
+              lista vacía.
+            </p>
+          </div>
+          <ol class="cascade">
+            <li><span><strong>stream?static=true</strong>Jellyfin resuelve el .strm en el servidor. La tele nunca intenta alcanzar la IP interna del archivo.</span></li>
+            <li><span><strong>Remux</strong>El mismo endpoint sin static, cuando el contenedor lo permite.</span></li>
+            <li><span><strong>DirectStreamUrl</strong>La URL que devuelve PlaybackInfo para el perfil del dispositivo.</span></li>
+            <li><span><strong>TranscodingUrl</strong>HLS/TS con H.264 y AAC como salida universal.</span></li>
+            <li><span><strong>Transcodificación completa</strong>Si todo falla, el servidor renegocia audio y versión. La app reintenta sin gastar el presupuesto de audio.</span></li>
+          </ol>
+        </div>
+
+        <div class="budget">
+          <h3>Presupuesto de rendimiento</h3>
+          <p>La regla es simple: si cuesta frames, no entra. El perfil de dispositivo y el orden de candidatos están cubiertos por pruebas golden.</p>
+          <div class="budget__grid">
+            <div class="budget__item"><span class="budget__value">60</span><span class="budget__label">fps objetivo en hardware de entrada</span></div>
+            <div class="budget__item"><span class="budget__value">0</span><span class="budget__label">blur en tiempo real</span></div>
+            <div class="budget__item"><span class="budget__value">1,5 dp</span><span class="budget__label">anillo de foco</span></div>
+            <div class="budget__item"><span class="budget__value">1</span><span class="budget__label">pulso de sonar al entrar, nunca en bucle</span></div>
+            <div class="budget__item"><span class="budget__value">0</span><span class="budget__label">escalados o atenuaciones por tarjeta</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ log -->
+    <section class="chapter chapter--dark" id="registro" data-depth="900">
+      <div class="wrap">
+        <div class="chapter__head">
+          <div class="chapter__mark">
+            <span class="chapter__depth">−900 m</span>
+            <span class="chapter__name">El registro</span>
+          </div>
+          <div>
+            <h2 class="chapter__title">La identidad se decidió en una tarde.</h2>
+            <p class="chapter__intro">
+              El 22 de noviembre de 2026 la interfaz cambió de rumbo. Estos son los commits reales,
+              con la hora y el motivo. Un estudio de diseño también es un registro de lo que se
+              descartó.
+            </p>
+          </div>
+        </div>
+
+        <p class="log__date">22 de noviembre de 2026, Madrid</p>
+        <ol class="log">
+          <li class="log__item">
+            <span class="log__when"><time datetime="2026-11-22T21:27">21:27</time><code>8430b41</code></span>
+            <div class="log__body">
+              <h3>Identidad abisal</h3>
+              <p>El negro digital y el cian neón se sustituyen por tinta abisal, corriente turquesa y violeta de medusa. Los neutros pasan de gris frío a pergamino y sedimento.</p>
+            </div>
+          </li>
+          <li class="log__item">
+            <span class="log__when"><time datetime="2026-11-22T21:27">21:27</time><code>2d6958f</code></span>
+            <div class="log__body">
+              <h3>Navegación tipográfica</h3>
+              <p>Las píldoras rellenas se convierten en pestañas con una corriente bajo la activa. El foco deja de ser un bloque y pasa a ser una señal.</p>
+            </div>
+          </li>
+          <li class="log__item">
+            <span class="log__when"><time datetime="2026-11-22T21:28">21:28</time><code>f47e297</code></span>
+            <div class="log__body">
+              <h3>Hero batimétrico</h3>
+              <p>Arcos estáticos, anillo de contacto y un solo pulso de sonar. Profundidad visual sin blur y sin coste de GPU.</p>
+            </div>
+          </li>
+          <li class="log__item">
+            <span class="log__when"><time datetime="2026-11-22T22:05">22:05</time><code>43ab861</code></span>
+            <div class="log__body">
+              <h3>Legibilidad en la tele real</h3>
+              <p>Ajustes después de mirar la interfaz a tres metros, no en el monitor. La distancia de visionado vuelve a decidir el tamaño y el contraste.</p>
+            </div>
+          </li>
+          <li class="log__item">
+            <span class="log__when"><time datetime="2026-11-22T22:11">22:11</time><code>886ec79</code></span>
+            <div class="log__body">
+              <h3>De editorial a cinematográfico</h3>
+              <p>Se retira Fraunces. Space Grotesk queda como única voz y el hero deja de parecer una portada de periódico. La identidad se sostiene en la estructura, no en una serif prestada.</p>
+            </div>
+          </li>
+        </ol>
+
+        <blockquote class="log__quote">
+          «La medusa no vive solo en el logo; vive en la estructura.»
+          <cite>Sistema de diseño de Medusa, 2026</cite>
+        </blockquote>
+
+        <div class="open">
+          <h3>Lo que queda abierto</h3>
+          <ul>
+            <li><strong>Tablet táctil</strong>El modo solo iconos se pensó para un mando. Falta una pasada de objetivos táctiles y gestos para el uso con el dedo.</li>
+            <li><strong>Nombres heredados</strong><code>TvPalette</code> conserva nombres como <code>TextSecondaryCool</code> o <code>FocusInk</code> que ya no describen sus valores cálidos.</li>
+            <li><strong>Medición de frames</strong>La regla de cero blur está en el código y en las revisiones, pero no hay un benchmark automático de frames en CI.</li>
+          </ul>
+          <p class="open__note">Auditoría de diseño del 22 de noviembre de 2026. La deuda se declara; no se esconde en una diapositiva.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================ download -->
+    <section class="download" id="descargar" data-depth="900">
+      <div class="wrap download__inner">
+        <div>
+          <div class="download__app">
+            <img src="assets/estudio/app-icon.png" alt="Icono de Medusa TV" width="512" height="512">
+            <span>Medusa TV<small>Cliente Jellyfin para Android TV</small></span>
+          </div>
+          <h2>Vuelve a la superficie.</h2>
+          <p class="download__lead">
+            Se instala desde un APK firmado. No hay Play Store, ni cuenta, ni analítica. La app se
+            actualiza sola desde GitHub Releases y verifica el SHA-256 antes de instalar.
+          </p>
+          <div class="download__actions">
+            <a class="btn btn--primary" href="https://github.com/GitCorion/Medusa/releases/latest/download/Medusa.apk">
+              <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+              Descargar el APK
+            </a>
+            <a class="btn btn--ghost" href="https://github.com/GitCorion/Medusa/releases">Ver todas las versiones</a>
+          </div>
+          <div class="download__meta">
+            <span>15,2 MB</span>
+            <span>Android 8.0 o superior</span>
+            <span>GPL-3.0</span>
+            <span>Sin analítica</span>
+          </div>
+        </div>
+
+        <div class="install">
+          <h3>Instalar en la tele</h3>
+          <ol>
+            <li><strong>Descarga el APK</strong> en el dispositivo o envíalo por ADB con <code>adb install</code>.</li>
+            <li><strong>Permite el origen desconocido</strong> para el explorador o el receptor que use la tele.</li>
+            <li><strong>Abre Medusa</strong>, elige tu servidor Jellyfin y entra con tu cuenta o con Quick Connect.</li>
+          </ol>
+          <p class="install__note">
+            Si el manifiesto de actualización no se puede verificar durante siete días, la app falla
+            cerrada en lugar de ejecutar una versión sin comprobar.
+          </p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap">
+      <div class="footer__grid">
+        <div class="footer__brand">
+          <img src="assets/estudio/medusa-wordmark.png" alt="Medusa TV" width="965" height="320">
+          <p>Un cliente Jellyfin nativo para mirar tu biblioteca desde el sofá. Sin nube, sin cuentas de Medusa y sin rastreadores.</p>
+        </div>
+        <div class="footer__col">
+          <h3>Proyecto</h3>
+          <ul>
+            <li><a href="https://github.com/GitCorion/Medusa">Repositorio</a></li>
+            <li><a href="https://github.com/GitCorion/Medusa/releases">Versiones</a></li>
+            <li><a href="https://github.com/GitCorion/Medusa/issues">Incidencias</a></li>
+            <li><a href="https://github.com/GitCorion/Medusa/blob/main/LICENSE">Licencia GPL-3.0</a></li>
+          </ul>
+        </div>
+        <div class="footer__col">
+          <h3>Documentación</h3>
+          <ul>
+            <li><a href="https://github.com/GitCorion/Medusa/blob/main/README.md">README</a></li>
+            <li><a href="https://github.com/GitCorion/Medusa/blob/main/docs/ARCHITECTURE.md">Arquitectura</a></li>
+            <li><a href="https://github.com/GitCorion/Medusa/blob/main/DESIGN.md">Sistema de diseño</a></li>
+            <li><a href="privacy.html">Privacidad</a></li>
+          </ul>
+        </div>
+        <div class="footer__col">
+          <h3>Datos y soporte</h3>
+          <ul>
+            <li><a href="https://jellyfin.org">Jellyfin</a></li>
+            <li><a href="https://www.themoviedb.org">TMDB</a></li>
+            <li><a href="https://trakt.tv">Trakt</a></li>
+            <li><a href="https://developer.android.com/media/media3">Media3</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer__legal">
+        <p>
+          Medusa es un cliente independiente de Jellyfin. No aloja ni distribuye contenido. Este
+          producto usa la API de TMDB pero no está avalado ni certificado por TMDB. Cartel de
+          <em>Night of the Living Dead</em>: dominio público. Space Grotesk se distribuye bajo SIL OFL.
+        </p>
+        <p>Última actualización: 22 de noviembre de 2026.</p>
+      </div>
     </div>
+  </footer>
+
+  <script src="assets/estudio/estudio.js" defer></script>
 </body>
 </html>

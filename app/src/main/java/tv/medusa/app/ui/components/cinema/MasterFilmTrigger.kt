@@ -99,13 +99,7 @@ fun MasterFilmTrigger(
             shape = ButtonDefaults.shape(shape = shape),
             border = ButtonDefaults.border(
                 border = androidx.tv.material3.Border.None,
-                focusedBorder = androidx.tv.material3.Border(
-                    border = androidx.compose.foundation.BorderStroke(
-                        1.5.dp,
-                        Color.White
-                    ),
-                    shape = shape
-                )
+                focusedBorder = androidx.tv.material3.Border.None
             ),
             modifier = Modifier
                 .height(46.dp)

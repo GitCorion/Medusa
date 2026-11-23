@@ -1008,7 +1008,7 @@ private fun PlatformsCategory(
                 ),
                 border = ClickableSurfaceDefaults.border(
                     border = Border.None,
-                    focusedBorder = Border(border = BorderStroke(1.5.dp, Color.White))
+                    focusedBorder = Border.None
                 ),
                 scale = ClickableSurfaceDefaults.scale(focusedScale = 1.02f)
             ) {
@@ -1461,7 +1461,7 @@ private fun AboutCategory(
             ),
             border = ClickableSurfaceDefaults.border(
                 border = Border.None,
-                focusedBorder = Border(border = BorderStroke(1.5.dp, Color.White))
+                focusedBorder = Border(border = BorderStroke(1.5.dp, focusColor))
             ),
             scale = ClickableSurfaceDefaults.scale(focusedScale = 1.01f)
         ) {
@@ -1510,7 +1510,7 @@ private fun AboutCategory(
             ),
             border = ClickableSurfaceDefaults.border(
                 border = Border.None,
-                focusedBorder = Border(border = BorderStroke(1.5.dp, Color.White))
+                focusedBorder = Border(border = BorderStroke(1.5.dp, focusColor))
             ),
             scale = ClickableSurfaceDefaults.scale(focusedScale = 1.01f)
         ) {
@@ -1651,7 +1651,7 @@ private fun TvSettingRow(
             ),
             border = ClickableSurfaceDefaults.border(
                 border = Border.None,
-                focusedBorder = Border(border = BorderStroke(1.5.dp, Color.White))
+                focusedBorder = Border(border = BorderStroke(1.5.dp, focusColor))
             ),
             scale = ClickableSurfaceDefaults.scale(focusedScale = 1.01f)
         ) {
@@ -1762,7 +1762,7 @@ private fun <T> TvSegmentedSelector(
                 ),
                 border = ClickableSurfaceDefaults.border(
                     border = Border.None,
-                    focusedBorder = Border(border = BorderStroke(1.5.dp, Color.White))
+                    focusedBorder = Border.None
                 ),
                 scale = ClickableSurfaceDefaults.scale(focusedScale = 1.02f)
             ) {
@@ -1819,7 +1819,7 @@ private fun TvTraktListToggleRow(
         ),
         border = ClickableSurfaceDefaults.border(
             border = Border.None,
-            focusedBorder = Border(border = BorderStroke(1.5.dp, Color.White))
+            focusedBorder = Border(border = BorderStroke(1.5.dp, focusColor))
         ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1.01f)
     ) {
@@ -1919,7 +1919,7 @@ private fun TvPlatformToggleRow(
         ),
         border = ClickableSurfaceDefaults.border(
             border = Border.None,
-            focusedBorder = Border(border = BorderStroke(1.5.dp, Color.White))
+            focusedBorder = Border(border = BorderStroke(1.5.dp, focusColor))
         ),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1.01f)
     ) {

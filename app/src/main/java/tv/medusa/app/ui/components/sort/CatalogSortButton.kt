@@ -298,7 +298,7 @@ fun CatalogSortDialog(
                                 ),
                                 border = ButtonDefaults.border(
                                     border = androidx.tv.material3.Border.None,
-                                    focusedBorder = androidx.tv.material3.Border(border = BorderStroke(1.5.dp, Color.White))
+                                    focusedBorder = androidx.tv.material3.Border.None
                                 ),
                                 shape = ButtonDefaults.shape(RoundedCornerShape(10.dp)),
                                 modifier = Modifier

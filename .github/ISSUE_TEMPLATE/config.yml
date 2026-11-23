@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Estudio y documentación
+    url: https://gitcorion.github.io/Medusa/
+    about: Sistema de diseño, capturas, arquitectura y decisiones del producto.
+  - name: Reportar una vulnerabilidad
+    url: https://github.com/GitCorion/Medusa/security/advisories/new
+    about: Envía el informe en privado. No abras un issue público con secretos.
+  - name: Última versión
+    url: https://github.com/GitCorion/Medusa/releases/latest
+    about: Descarga el APK firmado y consulta las notas de la versión.

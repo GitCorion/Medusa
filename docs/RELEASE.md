@@ -9,7 +9,7 @@ Medusa se distribuye **públicamente desde GitHub Releases**. No hay Firebase ni
 | APK firmado | Asset `Medusa.apk` del Release de GitHub | La app (`AppUpdateManager`) |
 | Manifiesto OTA | `docs/api/version.json` en `main` (raw.githubusercontent.com) | La app, en cada arranque |
 | Catálogos de descubrimiento | `docs/catalogs/<REGION>/*.json` en `main` | `CatalogRemoteDataSource` |
-| Política de privacidad | GitHub Pages desde `/docs` | Ajustes → Acerca de |
+| Estudio y privacidad | GitHub Pages desde `/docs` (`index.html`, `privacy.html`) | Navegador; Ajustes → Acerca de |
 
 El `applicationId` se mantiene en `tv.medusa.app.beta` para que los usuarios de la beta
 reciban el Release como una actualización, no como una app nueva.

@@ -1,0 +1,128 @@
+name: Informe de error
+description: Algo no funciona como debería en la app.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Gracias por tomarte el tiempo de reportar. No incluyas tokens, contraseñas, IPs privadas
+        ni capturas de tu servidor. Para problemas de seguridad usa
+        [Security Advisories](https://github.com/GitCorion/Medusa/security/advisories/new).
+
+  - type: checkboxes
+    id: previous
+    attributes:
+      label: Antes de enviar
+      options:
+        - label: He buscado en los issues abiertos y cerrados.
+          required: true
+        - label: He probado con la última versión publicada.
+          required: true
+        - label: No he incluido credenciales ni datos privados.
+          required: true
+
+  - type: input
+    id: app-version
+    attributes:
+      label: Versión de Medusa
+      description: La ves en Ajustes o en el nombre del APK.
+      placeholder: "2.3.12 (1000159)"
+    validations:
+      required: true
+
+  - type: input
+    id: device
+    attributes:
+      label: Dispositivo
+      placeholder: "Chromecast con Google TV 4K, Nvidia Shield, Xiaomi TV Stick, tablet..."
+    validations:
+      required: true
+
+  - type: input
+    id: android
+    attributes:
+      label: Versión de Android
+      placeholder: "Android 12, Google TV 12, Fire OS 8..."
+    validations:
+      required: true
+
+  - type: input
+    id: jellyfin
+    attributes:
+      label: Versión de Jellyfin
+      description: Si el fallo está relacionado con el servidor o la reproducción.
+      placeholder: "10.10.7"
+
+  - type: dropdown
+    id: install
+    attributes:
+      label: Cómo instalaste la app
+      options:
+        - APK desde GitHub Releases
+        - ADB
+        - Actualización desde una versión anterior
+        - Otro
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Pasos para reproducir
+      description: Sé concreto. Indica la pantalla, el elemento enfocado y la tecla pulsada.
+      placeholder: |
+        1. Abrir Descubrir
+        2. Seleccionar Terror
+        3. Bajar hasta la tercera tarjeta
+        4. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Resultado esperado
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Resultado real
+      description: Si hay un mensaje de error, cópialo tal cual.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Área
+      options:
+        - Inicio
+        - Descubrir
+        - Favoritos
+        - Búsqueda
+        - Ficha
+        - Reproductor
+        - Ajustes
+        - Sincronización
+        - Actualización OTA
+        - Otro
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs o capturas
+      description: |
+        Pega solo las líneas relevantes y redacta tokens, IPs y nombres de usuario.
+        Puedes arrastrar imágenes aquí.
+      render: shell
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Contexto adicional
+      description: ¿Ocurre siempre? ¿Solo con un título concreto? ¿Cambió tras una actualización?

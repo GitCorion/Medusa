@@ -189,11 +189,13 @@ Tipografía cinematográfica embebida (DM Serif Display & DM Sans) renderizada c
 ### Do:
 - **Do** usar la tecla física `BACK` del mando de TV para cualquier acción de retroceso.
 - **Do** mantener la barra superior como una fila de iconos circulares limpios en la esquina derecha.
+- **Do** usar foco de relleno sólido (`focusedContainerColor = focusColor`, `focusedContentColor = focusContent`, `border = Border.None`) para todos los chips, filtros, botones y pestañas: cápsula de color sólido (Cian Medusa) sin marcos blancos externos.
 - **Do** colocar el título y metadatos de las tarjetas fuera de la imagen del póster sobre el fondo negro.
-- **Do** mantener las tarjetas no enfocadas a opacidad completa y apoyar el foco en `zIndex(10f)` + borde de acento de `1.5.dp`.
+- **Do** mantener las tarjetas no enfocadas a opacidad completa y apoyar el foco en `zIndex(10f)` + borde de acento de `1.5.dp` sobre la carátula.
 - **Do** aplicar autoscroll marquee en títulos largos solo cuando la tarjeta tiene el foco del D-Pad.
 
 ### Don't:
+- **Don't** añadir bordes blancos alrededor de chips, pestañas de navegación o botones al recibir foco (cero marcos blancos; el foco es la cápsula cian sólida con tinta oscura, igual que en Ajustes).
 - **Don't** poner botones de "Volver" o "Back" en pantalla cuando se ejecuta en Android TV.
 - **Don't** añadir bordes grises de 1px a tarjetas o botones en reposo (*cero border slop*).
 - **Don't** meter los pósteres dentro de cajones rectangulares grises con textos incrustados.

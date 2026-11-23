@@ -19,6 +19,12 @@ TMDB_API_KEY=... node scripts/catalog/generate-catalogs.mjs
 El workflow hace commit de los JSON generados en `main`, de modo que están disponibles
 inmediatamente en `https://raw.githubusercontent.com/GitCorion/Medusa/main/docs/catalogs/`.
 
+> **Requisito de publicación:** la carpeta `docs/catalogs/` debe estar versionada para que
+> `raw.githubusercontent.com` la sirva. El `.gitignore` actual la excluye, así que un fork debe
+> quitar esa regla o añadir los ficheros con `git add -f docs/catalogs` antes de publicar. Si una
+> región no existe, la app usa el fallback de TMDB en vivo (solo con clave de usuario) y lo que
+> pueda resolver de la biblioteca local.
+
 ## Región sin catálogo
 
 Si no existe catálogo para la región del dispositivo, la app usa el fallback de TMDB en vivo

@@ -1,0 +1,80 @@
+name: Propuesta de mejora
+description: Una idea para la app, la accesibilidad o la documentación.
+title: "[Idea]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Las mejores propuestas empiezan por el problema, no por la solución. Cuéntanos qué
+        intentas hacer y qué te lo impide.
+
+  - type: checkboxes
+    id: previous
+    attributes:
+      label: Antes de enviar
+      options:
+        - label: He buscado en los issues abiertos y cerrados.
+          required: true
+        - label: La propuesta respeta las reglas de diseño de DESIGN.md.
+          required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problema
+      description: ¿Qué situación duele hoy? ¿A quién afecta?
+      placeholder: "Al volver de la ficha, el foco salta al principio de la fila en lugar de..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Propuesta
+      description: Describe el comportamiento deseado, no solo la implementación.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternativas consideradas
+      description: Qué otras opciones has probado o descartado y por qué.
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Dónde aplica
+      options:
+        - Android TV
+        - Tablet
+        - Ambas
+        - Documentación o web
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Área
+      options:
+        - Inicio
+        - Descubrir
+        - Favoritos
+        - Búsqueda
+        - Ficha
+        - Reproductor
+        - Ajustes
+        - Accesibilidad
+        - Rendimiento
+        - Documentación
+        - Otra
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Contexto adicional
+      description: Capturas, referencias, medidas o cualquier detalle que ayude a evaluarlo.
