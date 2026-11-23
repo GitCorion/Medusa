@@ -19,18 +19,23 @@ val keystoreProperties = Properties().apply {
 fun envOr(key: String, default: String): String =
     System.getenv(key)?.takeIf { it.isNotBlank() } ?: keystoreProperties.getProperty(key) ?: default
 
+// El workflow de release inyecta la versión del tag y el canal; en local se usan estos valores.
+val appVersionCode = providers.gradleProperty("versionCode").orNull?.toIntOrNull() ?: 1_000_160
+val appVersionName = providers.gradleProperty("versionName").orNull?.takeIf { it.isNotBlank() } ?: "2.4.0"
+val updateChannel = providers.gradleProperty("updateChannel").orNull?.lowercase()?.takeIf { it == "beta" } ?: "stable"
+
 android {
     namespace = "tv.medusa.app"
     compileSdk = 36
 
     defaultConfig {
-        // Se conserva el applicationId de la beta pública para que los usuarios ya
-        // instalados reciban las actualizaciones de GitHub Releases como tales.
-        applicationId = "tv.medusa.app.beta"
+        // Identidad definitiva. Los usuarios que venían de tv.medusa.app.beta deben instalar
+        // esta versión una vez y desinstalar la anterior: Android las trata como apps distintas.
+        applicationId = "tv.medusa.app"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1_000_159
-        versionName = "2.3.12"
+        versionCode = appVersionCode
+        versionName = appVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -43,6 +48,8 @@ android {
         buildConfigField("String", "DEFAULT_TRAKT_CLIENT_ID", "\"${envOr("TRAKT_CLIENT_ID", "")}\"")
         // Distribución pública: la app se actualiza a sí misma desde GitHub Releases.
         buildConfigField("boolean", "ENABLE_IN_APP_UPDATER", "true")
+        // Canal de actualizaciones grabado en el APK: "stable" o "beta".
+        buildConfigField("String", "UPDATE_CHANNEL", "\"$updateChannel\"")
     }
 
     signingConfigs {

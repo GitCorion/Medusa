@@ -1,11 +1,13 @@
 name: Build & Publish (GitHub Releases)
 
-# Distribución pública: el APK se publica como asset de un GitHub Release y el manifiesto
-# que lee la app (docs/api/version.json) se versiona en main. Sin Firebase ni Play Store.
+# Distribución pública en dos canales, con una sola app (`tv.medusa.app`):
+#   - estable: tag vX.Y.Z        → Release "latest" + docs/api/version.json
+#   - beta:    tag vX.Y.Z-beta.N → pre-release     + docs/api/version-beta.json
 #
-# Disparadores:
-#   - push de un tag v* → compila, crea el Release y publica el manifiesto.
-#   - manual → compila; publica solo si `publish` está marcado.
+# El canal va grabado en el APK (BuildConfig.UPDATE_CHANNEL). Un estable actualiza también
+# version-beta.json, de modo que los equipos en beta pasan solos a la stable.
+#
+# versionName sale del tag; versionCode es el máximo publicado + 1 (nunca retrocede).
 #
 # Secretos: KEYSTORE_B64, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD,
 #           (opc.) TRAKT_CLIENT_ID, TRAKT_CLIENT_SECRET.
@@ -17,19 +19,20 @@ on:
   workflow_dispatch:
     inputs:
       publish:
-        description: "Publicar Release y manifiesto OTA"
+        description: "Publicar Release y manifiesto OTA (requiere ejecutar sobre un tag)"
         type: boolean
-        default: true
+        default: false
       release_notes:
-        description: "Notas de la versión (opcionales)"
+        description: "Notas de la versión (opcionales; si se omiten se leen de CHANGELOG.md)"
         type: string
         default: ""
 
 permissions:
   contents: write
 
+# Los dos canales escriben en main y comparten el contador de versionCode: se serializan.
 concurrency:
-  group: release-${{ github.ref }}
+  group: release
   cancel-in-progress: false
 
 jobs:
@@ -38,10 +41,116 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Resolve version and channel
+        id: version
+        env:
+          EVENT: ${{ github.event_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          TAG_NAME: ${{ github.ref_name }}
+          PUBLISH_INPUT: ${{ inputs.publish }}
+          INPUT_NOTES: ${{ inputs.release_notes }}
+        run: |
+          set -euo pipefail
+
+          if [ "$REF_TYPE" != "tag" ]; then
+            if [ "$EVENT" = "workflow_dispatch" ] && [ "$PUBLISH_INPUT" != "true" ]; then
+              {
+                echo "publish=false"
+                echo "channel="
+                echo "code="
+                echo "name="
+                echo "prerelease=false"
+                echo "notes="
+              } >> "$GITHUB_OUTPUT"
+              echo "Dry-run: solo compilación, sin Release ni manifiesto."
+              exit 0
+            fi
+            echo "::error::Publicar exige lanzar el workflow sobre un tag v*. Usa 'Run workflow' y elige el tag."
+            exit 1
+          fi
+
+          TAG="$TAG_NAME"
+          if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-beta\.[0-9]+)?$ ]]; then
+            echo "::error::Tag no válido: $TAG. Usa v2.4.0 o v2.4.0-beta.1."
+            exit 1
+          fi
+
+          NAME="${TAG#v}"
+          if [[ "$NAME" == *-beta.* ]]; then
+            CHANNEL=beta
+            PRERELEASE=true
+          else
+            CHANNEL=stable
+            PRERELEASE=false
+          fi
+
+          # Lee los manifiestos publicados en main, no los del tag: el contador no retrocede
+          # aunque el tag se cree desde un commit antiguo.
+          git fetch --no-tags origin main
+          STABLE_JSON="$(git show FETCH_HEAD:docs/api/version.json 2>/dev/null || echo '{}')"
+          BETA_JSON="$(git show FETCH_HEAD:docs/api/version-beta.json 2>/dev/null || echo '{}')"
+          CURRENT_CODE="$(printf '%s\n%s\n' "$STABLE_JSON" "$BETA_JSON" | jq -s 'map(.versionCode // 0) | max')"
+          CURRENT_NAME="$(jq -r '.versionName // "0.0.0"' <<<"$STABLE_JSON")"
+
+          python3 - "$CURRENT_NAME" "$NAME" <<'PY'
+          import sys
+          from itertools import zip_longest
+
+          def parse(value):
+              value = value.strip().removeprefix("v")
+              base, _, pre = value.partition("-")
+              return [int(part) for part in base.split(".") if part.isdigit()], pre
+
+          def compare(new, current):
+              new_base, new_pre = parse(new)
+              cur_base, cur_pre = parse(current)
+              for a, b in zip_longest(new_base, cur_base, fillvalue=0):
+                  if a != b:
+                      return 1 if a > b else -1
+              if new_pre == cur_pre:
+                  return 0
+              if not new_pre:
+                  return 1
+              if not cur_pre:
+                  return -1
+
+              def beta_number(pre):
+                  tail = pre.rsplit(".", 1)[-1]
+                  return int(tail) if tail.isdigit() else 0
+
+              return (beta_number(new_pre) > beta_number(cur_pre)) - (
+                  beta_number(new_pre) < beta_number(cur_pre)
+              )
+
+          if compare(sys.argv[2], sys.argv[1]) <= 0:
+              sys.exit(f"El tag {sys.argv[2]} no es posterior a la versión publicada {sys.argv[1]}")
+          PY
+
+          CODE=$((CURRENT_CODE + 1))
+          NOTES="${INPUT_NOTES:-}"
+          if [ -z "$NOTES" ]; then
+            NOTES="$(python3 scripts/release_notes.py "$NAME")"
+          fi
+
+          {
+            echo "publish=true"
+            echo "name=$NAME"
+            echo "code=$CODE"
+            echo "channel=$CHANNEL"
+            echo "prerelease=$PRERELEASE"
+            echo "notes<<RELEASE_NOTES_EOF"
+            printf '%s\n' "$NOTES"
+            echo "RELEASE_NOTES_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "▶ $TAG → versionCode $CODE, canal $CHANNEL, prerelease=$PRERELEASE"
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           java-version: '17'
           distribution: 'temurin'
@@ -64,54 +173,77 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
           TRAKT_CLIENT_ID: ${{ secrets.TRAKT_CLIENT_ID }}
           TRAKT_CLIENT_SECRET: ${{ secrets.TRAKT_CLIENT_SECRET }}
-        run: ./gradlew :app:assembleRelease --no-daemon
+        run: |
+          ARGS=()
+          if [ -n "${{ steps.version.outputs.code }}" ]; then
+            ARGS+=(
+              "-PversionCode=${{ steps.version.outputs.code }}"
+              "-PversionName=${{ steps.version.outputs.name }}"
+              "-PupdateChannel=${{ steps.version.outputs.channel }}"
+            )
+          fi
+          ./gradlew :app:assembleRelease --no-daemon "${ARGS[@]}"
 
       - name: Upload build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Medusa-APK
           path: app/build/outputs/apk/release/app-release.apk
           retention-days: 7
 
-      - name: Generate release manifest
-        if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.publish)
-        env:
-          APK_PATH: app/build/outputs/apk/release/app-release.apk
-          APK_URL: https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/Medusa.apk
-          OTA_RELEASE_NOTES: ${{ inputs.release_notes }}
-        run: SKIP_BUILD=1 ./scripts/publish-ota.sh
-
-      # action-gh-release no renombra con "origen:destino": copiamos el APK con el
-      # nombre final que espera el manifiesto OTA (Medusa.apk).
+      # action-gh-release no renombra con "origen:destino": copiamos el APK con el nombre
+      # final que espera el manifiesto OTA (Medusa.apk).
       - name: Prepare release asset
-        if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.publish)
+        if: steps.version.outputs.publish == 'true'
         run: cp app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/Medusa.apk"
 
       - name: Create GitHub Release with APK asset
-        if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.publish)
-        uses: softprops/action-gh-release@v2
+        if: steps.version.outputs.publish == 'true'
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
-          name: Medusa ${{ github.ref_name }}
-          body: ${{ inputs.release_notes || 'Publicado desde GitHub Actions. Cambios en docs/api/version.json.' }}
+          name: Medusa ${{ steps.version.outputs.name }}
+          body: ${{ steps.version.outputs.notes }}
           files: ${{ runner.temp }}/Medusa.apk
           fail_on_unmatched_files: true
+          prerelease: ${{ steps.version.outputs.prerelease == 'true' }}
+          make_latest: ${{ steps.version.outputs.prerelease != 'true' }}
 
-      - name: Publish manifest to main (OTA + GitHub Pages)
-        if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.publish)
+      - name: Generate and publish manifests to main (OTA + GitHub Pages)
+        if: steps.version.outputs.publish == 'true'
         env:
           RELEASE_TAG: ${{ github.ref_name }}
+          OTA_CHANNEL: ${{ steps.version.outputs.channel }}
+          OTA_RELEASE_NOTES: ${{ steps.version.outputs.notes }}
+          VERSION_CODE: ${{ steps.version.outputs.code }}
+          VERSION_NAME: ${{ steps.version.outputs.name }}
+          APK_URL: https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/Medusa.apk
         run: |
-          cp docs/api/version.json "$RUNNER_TEMP/version.json"
+          set -euo pipefail
+
+          # Se genera sobre el último main, no sobre el tag: los flags de control (kill-switch,
+          # mínimo soportado, firmas) salen siempre de lo último publicado.
           git fetch origin main
-          git checkout main
-          cp "$RUNNER_TEMP/version.json" docs/api/version.json
+          git checkout -f -B main origin/main
+          SKIP_BUILD=1 ./scripts/publish-ota.sh
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs/api/version.json
+          git add docs/api/version.json docs/api/version-beta.json
           if git diff --cached --quiet; then
-            echo "version.json sin cambios"
-          else
-            git commit -m "chore(ota): publicar manifiesto para $RELEASE_TAG"
-            git push origin main
+            echo "Manifiestos sin cambios"
+            exit 0
           fi
+          git commit -m "chore(ota): publicar $RELEASE_TAG"
+
+          for attempt in 1 2 3; do
+            if git push origin main; then
+              echo "Manifiestos publicados"
+              exit 0
+            fi
+            echo "Push rechazado (intento $attempt); integrando origin/main…"
+            git fetch origin main
+            git rebase origin/main || { git rebase --abort; exit 1; }
+          done
+          echo "::error::No se pudo publicar el manifiesto tras 3 intentos"
+          exit 1

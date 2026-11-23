@@ -1365,10 +1365,11 @@ private fun AboutCategory(
     if (BuildConfig.ENABLE_IN_APP_UPDATER) {
         TvSectionHeader(title = stringResource(R.string.settings_section_updates))
 
-        val channelText = if (uiState.isFamilyVipUser) {
-            stringResource(R.string.settings_channel_vip)
-        } else {
-            stringResource(R.string.settings_channel_ota)
+        val channelText = when {
+            uiState.isFamilyVipUser -> stringResource(R.string.settings_channel_vip)
+            BuildConfig.UPDATE_CHANNEL.equals("beta", ignoreCase = true) ->
+                stringResource(R.string.settings_channel_ota_beta)
+            else -> stringResource(R.string.settings_channel_ota)
         }
         TvSettingRow(
             title = stringResource(R.string.settings_row_channel),

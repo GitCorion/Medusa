@@ -21,7 +21,7 @@
 
 ![Medusa TV home screen on a 1080p television](docs/assets/estudio/captures/inicio-1600.webp)
 
-<p align="center"><sub>Home on a 1920 × 1080 television, with a 15,325-title test library.</sub></p>
+<p align="center"><sub>Home on a 1920 × 1080 television. Captures show the <code>main</code> visual layer; the published 2.3.12 APK does not include this pass yet.</sub></p>
 
 ## What it is
 
@@ -33,16 +33,17 @@ It is not a web wrapper and it does not host a catalog. The app talks directly t
 
 ## What makes it different
 
-- **Focus at three meters.** Navigation does not fill blocks: a turquoise *current* underlines the active tab and a 1.5 dp ring surrounds the focused card. The title moves from silt to parchment. Exactly one light is on at a time.
-- **60 fps by decision.** `Modifier.blur()` and `RenderEffect` are banned. There is no per-card scaling, no sibling dimming and no autonomous animation. Depth comes from static contour arcs and a single sonar pulse on entry.
-- **An abyssal identity, not a template.** Abyss ink, turquoise current, Medusa violet, halogen amber and Space Grotesk as the only voice. The identity lives in structure and motion, not in a sticker on a streaming clone.
+- **Focus at three meters.** Navigation uses Material TV pill tabs and focusing a tab changes destination without pressing OK. Carousel cards get a 3 dp border; buttons, tabs and isolated controls scale 1.1x. The title moves from silt to parchment.
+- **60 fps by decision.** `Modifier.blur()` and `RenderEffect` are banned. Cards inside a carousel neither scale nor dim their siblings; motion only exists when the remote acts. No autonomous animation.
+- **Abyssal skin over Material TV.** Abyss ink, turquoise current, Medusa violet, halogen amber and Space Grotesk as the only voice. The identity lives in the palette, emblem and artwork; behavior (tabs, focus, overscan) is the platform's.
 - **Privacy by architecture.** No Firebase, no analytics, no ads, no advertising ID. Credentials are encrypted with AES/GCM and the Android Keystore. There are no Medusa user servers.
 
 ## Features
 
 | Area | What is included |
 |---|---|
-| **Home** | Full-bleed hero with ClearLogo, favorite genres, platform tiles, Continue watching with progress, Top 10 and genre carousels. |
+| **Home** | Full-bleed hero with ClearLogo, favorite genres, platform tiles, Continue watching with progress, Top 10 and genre carousels. Scrim, pagination and one primary action. |
+| **Navigation** | Material TV pill tabs: focusing a tab changes destination without pressing OK. The bar supports icons, text or both. 58/28 dp overscan and 48 dp targets. |
 | **Discover** | Format filters (all, catalog, movies, series), theme rail and live results. Result count and remote shortcuts. |
 | **Search** | Ten-foot on-screen keyboard with predictive suggestions, instant results and remote Jellyfin search. |
 | **Detail** | Poster, editorial metadata, container-free synopsis, progress/favorite states, seasons and episodes, saga titles and recommendations. |
@@ -69,14 +70,16 @@ You can also sideload it with ADB:
 
 ```bash
 adb install -r Medusa.apk
-adb shell am start -n tv.medusa.app.beta/tv.medusa.app.MainActivity
+adb shell am start -n tv.medusa.app/tv.medusa.app.MainActivity
 ```
 
-> The `applicationId` is `tv.medusa.app.beta` on purpose: it keeps continuity with the public beta so updates install on top instead of appearing as a new app.
+> The `applicationId` is `tv.medusa.app`. Earlier versions used `tv.medusa.app.beta`: if you come from them, install this build and uninstall the old one once. Android treats them as different apps and settings are not migrated.
 
 ### Updates
 
 The app reads the [`docs/api/version.json`](docs/api/version.json) manifest on startup. When a new version exists, it downloads `Medusa.apk` from the GitHub Release, verifies the **SHA-256**, the maximum size and that the origin is GitHub, then launches the system installer. If the manifest cannot be verified for seven days, the app **fails closed** instead of running an unverified version. The manifest supports forced updates and a global kill switch.
+
+There are two channels: **stable** (`latest` Releases) and **beta** (pre-releases with their own manifest). You join beta by installing its APK once; the next stable brings the device back to the stable channel. Details in [`docs/RELEASE.md`](docs/RELEASE.md).
 
 ## First run
 
@@ -127,7 +130,7 @@ The decisions behind it:
 - **Encrypted credentials.** AES/GCM with an Android Keystore key. If the Keystore fails, the write fails; a token is never stored in plain text.
 - **Cascading playback.** `.strm` resolved on the server, remux, DirectStream, transcode and full transcoding. The device profile is serialized with `encodeDefaults = true` and verified by a golden test.
 - **Bounded background work.** Sync, collection indexing and synopsis enrichment run in separate workers with bounded concurrency and pause while the app is in the foreground.
-- **Performance measured on a TV.** Baseline Profile, zero blur, explicit focus cursors and a single entrance animation.
+- **Performance measured on a TV.** Baseline Profile, zero blur, Material TV components and focus scaling only on isolated controls. No autonomous animation.
 
 Full detail on layers, flows and tests is in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). The playback invariants that must not be broken are in [`docs/PLAYBACK.md`](docs/PLAYBACK.md).
 
@@ -259,7 +262,7 @@ Contributions are welcome, especially when they come with a test that describes 
 2. Run `./gradlew :app:testDebugUnitTest` and `./gradlew :app:lintDebug`.
 3. Do not break the playback invariants in [`docs/PLAYBACK.md`](docs/PLAYBACK.md).
 4. Keep both translations in sync (`values/strings.xml` and `values-en/strings.xml`).
-5. Respect the visual rules: zero blur, zero per-card scaling, one active current.
+5. Respect the visual rules: zero blur, zero per-card scaling inside carousels, one active focus.
 
 Commits follow a conventional style in Spanish, for example `fix(player): reintentar audio sin perder la posición`.
 

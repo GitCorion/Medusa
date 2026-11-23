@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Actualiza docs/api/version.json con los datos del build recién compilado.
+"""Actualiza un manifiesto OTA (`docs/api/version.json` o `docs/api/version-beta.json`).
 
 Solo sobrescribe los campos que dependen del build (versionCode, versionName, apkUrl,
 apkSha256). Los campos de CONTROL del responsable — minSupportedVersionCode, forceUpdate,
@@ -47,7 +47,7 @@ with open(path, "w", encoding="utf-8") as fh:
     fh.write("\n")
 
 print(
-    f"version.json → {data['versionName']} ({data['versionCode']}) | "
+    f"{path} → {data['versionName']} ({data['versionCode']}) | "
     f"killSwitch={data['killSwitch']} forceUpdate={data['forceUpdate']} "
     f"minSupported={data['minSupportedVersionCode']}"
 )

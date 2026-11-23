@@ -396,6 +396,7 @@
     <string name="settings_section_updates">Actualizaciones</string>
     <string name="settings_channel_vip">Beta Privada (Servidor Autorizado)</string>
     <string name="settings_channel_ota">GitHub Releases (público)</string>
+    <string name="settings_channel_ota_beta">GitHub Releases (beta)</string>
     <string name="settings_row_channel">Canal</string>
     <string name="settings_btn_checking">Comprobando…</string>
     <string name="settings_btn_check_updates">Buscar actualizaciones</string>

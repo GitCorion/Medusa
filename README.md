@@ -21,7 +21,7 @@
 
 ![Inicio de Medusa TV en un televisor de 1080p](docs/assets/estudio/captures/inicio-1600.webp)
 
-<p align="center"><sub>Inicio en un televisor de 1920 × 1080, con una biblioteca de prueba de 15.325 títulos.</sub></p>
+<p align="center"><sub>Inicio en un televisor de 1920 × 1080. Las capturas reflejan la capa visual de <code>main</code>; el APK publicado 2.3.12 aún no incluye esta pasada.</sub></p>
 
 ## Qué es
 
@@ -51,16 +51,17 @@ app.
 
 ## Lo que hace diferente
 
-- **Foco a tres metros.** La navegación no rellena bloques: una *corriente* turquesa subraya la pestaña activa y un anillo de 1,5 dp rodea la tarjeta enfocada. El título pasa de sedimento a pergamino. Siempre hay una sola luz encendida.
-- **60 fps por decisión.** `Modifier.blur()` y `RenderEffect` están prohibidos. No hay escalado por tarjeta, ni atenuación de vecinos, ni animaciones autónomas. La profundidad se dibuja con arcos estáticos y un único pulso de sonar al entrar.
-- **Identidad abisal, no plantilla.** Tinta abisal, corriente turquesa, violeta de medusa, ámbar de valoración y Space Grotesk como única voz. La identidad vive en la estructura y el movimiento, no en una pegatina sobre un clon de streaming.
+- **Foco a tres metros.** La navegación usa tabs pill de Material TV y el foco sobre una tab cambia de destino sin exigir OK. Las tarjetas de carrusel llevan borde de 3 dp; botones, tabs y controles aislados escalan 1,1x. El título pasa de sedimento a pergamino.
+- **60 fps por decisión.** `Modifier.blur()` y `RenderEffect` están prohibidos. Las tarjetas dentro de un carrusel no escalan ni atenúan a sus vecinas; el movimiento existe solo cuando el mando actúa. Cero animaciones autónomas.
+- **Piel abisal sobre Material TV.** Tinta abisal, corriente turquesa, violeta de medusa, ámbar de valoración y Space Grotesk como única voz. La identidad vive en la paleta, el emblema y el arte; el comportamiento (tabs, foco, overscan) es el de la plataforma.
 - **Privacidad por arquitectura.** Sin Firebase, sin analítica, sin publicidad, sin ID de publicidad. Las credenciales se cifran con AES/GCM y Android Keystore. La app no tiene servidores propios de usuario.
 
 ## Funciones
 
 | Área | Qué incluye |
 |---|---|
-| **Inicio** | Hero a sangre con ClearLogo, géneros favoritos, placas de plataformas, Continuar viendo con progreso, Top 10 y carruseles por género. |
+| **Inicio** | Hero a sangre con ClearLogo, géneros favoritos, placas de plataformas, Continuar viendo con progreso, Top 10 y carruseles por género. Scrim, paginación y una sola acción primaria. |
+| **Navegación** | Tabs pill de Material TV: el foco sobre una tab cambia de destino sin exigir OK. La barra admite iconos, texto o ambos. Overscan de 58/28 dp y objetivos de 48 dp. |
 | **Descubrir** | Filtros de formato (todo, catálogo, películas, series), rail de temáticas y resultados en tiempo real. Contador y atajos de mando. |
 | **Búsqueda** | Teclado de diez pies con sugerencias predictivas, resultados instantáneos y búsqueda remota en Jellyfin. |
 | **Ficha** | Póster, metadatos editoriales, sinopsis sin panel, estados de progreso/favorito, temporadas y episodios, títulos de la misma saga y recomendaciones. |
@@ -87,14 +88,16 @@ También puedes instalarlo por ADB:
 
 ```bash
 adb install -r Medusa.apk
-adb shell am start -n tv.medusa.app.beta/tv.medusa.app.MainActivity
+adb shell am start -n tv.medusa.app/tv.medusa.app.MainActivity
 ```
 
-> El `applicationId` es `tv.medusa.app.beta` a propósito: conserva la continuidad con la beta pública para que las actualizaciones se instalen encima, no como una app nueva.
+> El `applicationId` es `tv.medusa.app`. Las versiones anteriores usaban `tv.medusa.app.beta`: si vienes de ellas, instala esta y desinstala la antigua una vez. Android las trata como apps distintas y los ajustes no se migran.
 
 ### Actualizaciones
 
 La app consulta el manifiesto [`docs/api/version.json`](docs/api/version.json) en cada arranque. Si hay una versión nueva, descarga `Medusa.apk` del GitHub Release, comprueba el **SHA-256**, el tamaño máximo y que el origen sea GitHub, y lanza el instalador del sistema. Si el manifiesto no se puede verificar durante siete días, la app **falla cerrada** en lugar de seguir con una versión sin comprobar. El manifiesto admite actualización forzada y un kill-switch global.
+
+Hay dos canales: **estable** (Releases `latest`) y **beta** (pre-releases con manifiesto propio). Se entra en beta instalando una vez su APK; la siguiente estable devuelve el equipo al canal estable. Detalles en [`docs/RELEASE.md`](docs/RELEASE.md).
 
 ## Primer arranque
 
@@ -145,7 +148,7 @@ Decisiones que sostienen el resto:
 - **Credenciales cifradas.** AES/GCM con una clave del Android Keystore. Si el Keystore falla, la escritura falla; nunca se guarda un token en claro.
 - **Reproducción con cascada.** `.strm` resuelto en el servidor, remux, DirectStream, transcode y transcodificación completa. El perfil de dispositivo se serializa con `encodeDefaults = true` y está verificado por una prueba golden.
 - **Trabajo de fondo acotado.** Sincronización, indexado de colecciones y enriquecimiento de sinopsis en workers separados, con concurrencia limitada y pausa cuando la app está en primer plano.
-- **Rendimiento medido en la tele.** Baseline Profile, cero blur, cursores de foco explícitos y una sola animación de entrada.
+- **Rendimiento medido en la tele.** Baseline Profile, cero blur, componentes Material TV y foco con escala solo en controles aislados. Sin animaciones autónomas.
 
 El detalle completo, con capas, flujos y pruebas, está en [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). Las reglas de reproducción que no se deben romper están en [`docs/PLAYBACK.md`](docs/PLAYBACK.md).
 
@@ -277,7 +280,7 @@ Las contribuciones son bienvenidas, sobre todo si vienen con una prueba que desc
 2. Ejecuta `./gradlew :app:testDebugUnitTest` y `./gradlew :app:lintDebug`.
 3. No rompas las invariantes de reproducción de [`docs/PLAYBACK.md`](docs/PLAYBACK.md).
 4. Mantén las dos traducciones (`values/strings.xml` y `values-en/strings.xml`).
-5. Respeta las reglas visuales: cero blur, cero escala por tarjeta, una sola corriente activa.
+5. Respeta las reglas visuales: cero blur, cero escala por tarjeta dentro de carruseles, un solo foco activo.
 
 Los commits siguen un estilo convencional en español, por ejemplo `fix(player): reintentar audio sin perder la posición`.
 

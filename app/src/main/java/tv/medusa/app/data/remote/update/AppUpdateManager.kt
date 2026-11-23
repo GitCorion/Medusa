@@ -20,6 +20,7 @@ import kotlinx.serialization.json.Json
 import okhttp3.Request
 import okhttp3.Response
 import retrofit2.http.GET
+import retrofit2.http.Url
 import tv.medusa.app.BuildConfig
 import tv.medusa.app.R
 import tv.medusa.app.data.remote.ApiConfig
@@ -48,8 +49,8 @@ data class UpdateManifestDto(
 )
 
 interface UpdateManifestApiService {
-    @GET("api/version.json")
-    suspend fun getLatestVersion(): UpdateManifestDto
+    @GET
+    suspend fun getLatestVersion(@Url path: String): UpdateManifestDto
 }
 
 data class UpdateInfo(
@@ -164,12 +165,26 @@ class AppUpdateManager(private val context: Context) {
             .getOrDefault("1.0")
 
     private suspend fun fetchUpdateInfo(): UpdateInfo {
-        val remoteVersion = manifestApi.getLatestVersion()
-        if (remoteVersion.signatures.isNotEmpty()) {
-            ServerVerificationUtils.updateSignatures(remoteVersion.signatures)
+        // El canal beta lee ambos manifiestos: una estable posterior gradúa al equipo sin
+        // reinstalar y un fallo del manifiesto beta no bloquea la app.
+        val stable = runCatching {
+            manifestApi.getLatestVersion(UpdateManifestSelection.STABLE_PATH)
+        }.getOrNull()
+        val beta = if (UpdateManifestSelection.isBeta(BuildConfig.UPDATE_CHANNEL)) {
+            runCatching {
+                manifestApi.getLatestVersion(UpdateManifestSelection.BETA_PATH)
+            }.getOrNull()
+        } else {
+            null
         }
-        lastFetchedManifest = remoteVersion
-        return buildUpdateInfo(remoteVersion)
+        val merged = UpdateManifestSelection.merge(stable, beta)
+            ?: error("No se pudo leer ningún manifiesto de actualización")
+
+        if (merged.signatures.isNotEmpty()) {
+            ServerVerificationUtils.updateSignatures(merged.signatures)
+        }
+        lastFetchedManifest = merged
+        return buildUpdateInfo(merged)
     }
 
     private fun buildUpdateInfo(remoteVersion: UpdateManifestDto): UpdateInfo {
