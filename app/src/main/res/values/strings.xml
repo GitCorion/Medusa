@@ -369,6 +369,9 @@
     <string name="settings_section_updates">Actualizaciones</string>
     <string name="settings_channel_ota">GitHub Releases (público)</string>
     <string name="settings_channel_ota_beta">GitHub Releases (beta)</string>
+    <string name="settings_channel_option_stable">Estable</string>
+    <string name="settings_channel_option_beta">Beta</string>
+    <string name="settings_channel_beta_warning">Las betas incluyen cambios sin validar. Si vuelves a estable desde una beta más nueva, seguirás en ella hasta la próxima estable.</string>
     <string name="settings_row_channel">Canal</string>
     <string name="settings_btn_checking">Comprobando…</string>
     <string name="settings_btn_check_updates">Buscar actualizaciones</string>

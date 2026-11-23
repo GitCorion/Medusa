@@ -150,6 +150,7 @@ data class SettingsUiState(
     // GitHub App Updates
     val isCheckingUpdate: Boolean = false,
     val updateInfo: UpdateInfo? = null,
+    val updateChannel: String = "stable",
     val downloadProgress: Float? = null,
     val selectedPlatforms: Set<String> = emptySet(),
     val hiddenTraktLists: Set<String> = emptySet(),
@@ -194,6 +195,7 @@ class SettingsViewModel @Inject constructor(
     private var jellyfinQuickConnectJob: Job? = null
 
     init {
+        _uiState.value = _uiState.value.copy(updateChannel = appUpdateManager.currentChannel())
         loadCurrentPreferences()
         viewModelScope.launch {
             AppUpdateManager.updateInfo.collect { info ->
@@ -1342,6 +1344,15 @@ class SettingsViewModel @Inject constructor(
             )
             _uiState.value = _uiState.value.copy(statusMessage = context.getString(R.string.settings_full_sync_started))
         }
+    }
+
+    fun setUpdateChannel(channel: String) {
+        appUpdateManager.setChannel(channel)
+        _uiState.value = _uiState.value.copy(
+            updateChannel = appUpdateManager.currentChannel(),
+            updateInfo = null
+        )
+        checkForAppUpdates()
     }
 
     fun checkForAppUpdates() {

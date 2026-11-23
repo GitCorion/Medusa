@@ -1356,14 +1356,32 @@ private fun AboutCategory(
     if (BuildConfig.ENABLE_IN_APP_UPDATER) {
         TvSectionHeader(title = stringResource(R.string.settings_section_updates))
 
-        val channelText = if (BuildConfig.UPDATE_CHANNEL.equals("beta", ignoreCase = true)) {
-            stringResource(R.string.settings_channel_ota_beta)
-        } else {
-            stringResource(R.string.settings_channel_ota)
-        }
+        val isBetaChannel = uiState.updateChannel.equals("beta", ignoreCase = true)
         TvSettingRow(
             title = stringResource(R.string.settings_row_channel),
-            value = channelText
+            value = if (isBetaChannel) {
+                stringResource(R.string.settings_channel_ota_beta)
+            } else {
+                stringResource(R.string.settings_channel_ota)
+            }
+        )
+
+        TvSegmentedSelector(
+            options = listOf(
+                "stable" to stringResource(R.string.settings_channel_option_stable),
+                "beta" to stringResource(R.string.settings_channel_option_beta)
+            ),
+            selectedOption = uiState.updateChannel.lowercase(),
+            onOptionSelected = { viewModel.setUpdateChannel(it) },
+            focusColor = focusColor,
+            focusContent = focusContent
+        )
+
+        Text(
+            text = stringResource(R.string.settings_channel_beta_warning),
+            color = tv.medusa.app.ui.theme.TvPalette.TextMuted,
+            fontSize = 11.sp,
+            lineHeight = 15.sp
         )
 
         Row(

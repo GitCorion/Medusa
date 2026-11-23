@@ -8,6 +8,15 @@ Los binarios y las notas completas de cada versión se publican en
 [GitHub Releases](https://github.com/GitCorion/Medusa/releases). Las versiones anteriores a 2.3.12
 no tienen entrada detallada en este archivo; su histórico está en los Releases y en `git log`.
 
+## [2.4.1] - 2026-11-23
+
+### Añadido
+
+- Selector de canal en Ajustes → Acerca de: **Estable** o **Beta**. La elección se guarda y el
+  actualizador lee el manifiesto del canal correspondiente.
+- Aviso al cambiar de canal: desde una beta más nueva no se puede bajar a una estable anterior;
+  el equipo vuelve a estable con la siguiente publicación estable.
+
 ## [2.4.0] - 2026-11-23
 
 Primera estable de la etapa 2.4.0. Sustituye a `2.3.12`, cambia la identidad a `tv.medusa.app` y
@@ -91,5 +100,6 @@ cierra la beta pública.
 - APK: `Medusa.apk`, 15,2 MB.
 - SHA-256 publicado en el manifiesto OTA y en la página del Release.
 
+[2.4.1]: https://github.com/GitCorion/Medusa/releases/tag/v2.4.1
 [2.4.0]: https://github.com/GitCorion/Medusa/releases/tag/v2.4.0
 [2.3.12]: https://github.com/GitCorion/Medusa/releases/tag/v2.3.12

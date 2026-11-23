@@ -370,6 +370,9 @@
     <string name="settings_section_updates">Updates</string>
     <string name="settings_channel_ota">GitHub Releases (public)</string>
     <string name="settings_channel_ota_beta">GitHub Releases (beta)</string>
+    <string name="settings_channel_option_stable">Stable</string>
+    <string name="settings_channel_option_beta">Beta</string>
+    <string name="settings_channel_beta_warning">Betas include unvalidated changes. If you return to stable from a newer beta, you will stay on it until the next stable release.</string>
     <string name="settings_row_channel">Channel</string>
     <string name="settings_btn_checking">Checking…</string>
     <string name="settings_btn_check_updates">Check for updates</string>

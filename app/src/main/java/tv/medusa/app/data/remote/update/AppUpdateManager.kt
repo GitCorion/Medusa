@@ -78,6 +78,9 @@ class AppUpdateManager(private val context: Context) {
         private const val PREFS_NAME = "medusa_update_manifest"
         private const val KEY_MANIFEST = "manifest_json"
         private const val KEY_CHECKED_AT = "checked_at"
+        private const val KEY_CHANNEL = "channel"
+        private const val CHANNEL_STABLE = "stable"
+        private const val CHANNEL_BETA = "beta"
         private val updateJson = Json { ignoreUnknownKeys = true }
         private val SHA256_REGEX = Regex("^[0-9a-fA-F]{64}$")
         private val ALLOWED_DOWNLOAD_HOSTS = setOf(
@@ -106,6 +109,24 @@ class AppUpdateManager(private val context: Context) {
         hasAutoChecked = true
         checkForUpdates()
     }
+
+    /** Canal elegido en Ajustes; si no hay preferencia, el grabado en el APK instalado. */
+    fun currentChannel(): String {
+        val stored = channelPrefs().getString(KEY_CHANNEL, null)
+        return when {
+            stored.equals(CHANNEL_BETA, ignoreCase = true) -> CHANNEL_BETA
+            stored.equals(CHANNEL_STABLE, ignoreCase = true) -> CHANNEL_STABLE
+            BuildConfig.UPDATE_CHANNEL.equals(CHANNEL_BETA, ignoreCase = true) -> CHANNEL_BETA
+            else -> CHANNEL_STABLE
+        }
+    }
+
+    fun setChannel(channel: String) {
+        val normalized = if (channel.equals(CHANNEL_BETA, ignoreCase = true)) CHANNEL_BETA else CHANNEL_STABLE
+        channelPrefs().edit().putString(KEY_CHANNEL, normalized).apply()
+    }
+
+    private fun channelPrefs() = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
     /**
      * Consulta el manifiesto OTA con reintentos. Si la red falla, se usa el último manifiesto
@@ -170,7 +191,7 @@ class AppUpdateManager(private val context: Context) {
         val stable = runCatching {
             manifestApi.getLatestVersion(UpdateManifestSelection.STABLE_PATH)
         }.getOrNull()
-        val beta = if (UpdateManifestSelection.isBeta(BuildConfig.UPDATE_CHANNEL)) {
+        val beta = if (UpdateManifestSelection.isBeta(currentChannel())) {
             runCatching {
                 manifestApi.getLatestVersion(UpdateManifestSelection.BETA_PATH)
             }.getOrNull()
