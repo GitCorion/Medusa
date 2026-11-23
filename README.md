@@ -31,6 +31,24 @@ No es un envoltorio web ni un catálogo alojado. La app habla directamente con *
 
 **En este repositorio:** más de 140 archivos Kotlin, 36 pruebas unitarias, una prueba de migración, 13 regiones de catálogo y una identidad visual propia que puedes recorrer en el [estudio publicado](https://gitcorion.github.io/Medusa/).
 
+## Catálogo bajo demanda (TOD)
+
+Medusa reproduce lo que Jellyfin tiene en su biblioteca. Si además usas
+[TOD](https://github.com/GitCorion/TOD), el plugin
+[Medusa-Jellyfin-Plugin](https://github.com/GitCorion/Medusa-Jellyfin-Plugin)
+convierte los ítems `.strm` del catálogo bajo demanda en algo que la tele
+entiende:
+
+- Medusa pide `Prepare` al plugin cuando el ítem aún no está listo.
+- El plugin traduce el ítem de Jellyfin a una clave de TOD y consulta `/status`.
+- Medusa muestra el buffer y reproduce cuando `stream_ready` es verdadero.
+- Si TOD cambia de fuente, el plugin expone `stream_generation` y Medusa
+  reinicia la reproducción sin salir de la ficha.
+
+Sin el plugin, los `.strm` siguen siendo ítems de Jellyfin normales: se pueden
+reproducir si ya están preparados, pero no hay progreso ni preparación desde la
+app.
+
 ## Lo que hace diferente
 
 - **Foco a tres metros.** La navegación no rellena bloques: una *corriente* turquesa subraya la pestaña activa y un anillo de 1,5 dp rodea la tarjeta enfocada. El título pasa de sedimento a pergamino. Siempre hay una sola luz encendida.
