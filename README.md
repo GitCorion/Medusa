@@ -4,11 +4,11 @@
   Cliente nativo para Android TV y tablet, escrito en Kotlin y Compose TV.<br>
   Sin webviews, sin Firebase, sin analítica y sin Play Store.</p>
 
-  [![Release](https://img.shields.io/github/v/release/GitCorion/Medusa?style=flat-square&color=64E0D3&label=release)](https://github.com/GitCorion/Medusa/releases)
-  [![Android](https://img.shields.io/badge/Android-8.0%2B-64E0D3?style=flat-square)](#requisitos)
-  [![Kotlin](https://img.shields.io/badge/Kotlin-2.0.21-64E0D3?style=flat-square)](https://kotlinlang.org)
-  [![Compose TV](https://img.shields.io/badge/Compose%20TV-1.0.0--alpha07-64E0D3?style=flat-square)](https://developer.android.com/training/tv/use-apis/compose)
-  [![License](https://img.shields.io/badge/license-GPL--3.0-64E0D3?style=flat-square)](LICENSE)
+  [![Release](https://img.shields.io/github/v/release/GitCorion/Medusa?style=flat-square&color=00D2FF&label=release)](https://github.com/GitCorion/Medusa/releases)
+  [![Android](https://img.shields.io/badge/Android-8.0%2B-00D2FF?style=flat-square)](#requisitos)
+  [![Kotlin](https://img.shields.io/badge/Kotlin-2.0.21-00D2FF?style=flat-square)](https://kotlinlang.org)
+  [![Compose TV](https://img.shields.io/badge/Compose%20TV-1.0.0--alpha07-00D2FF?style=flat-square)](https://developer.android.com/training/tv/use-apis/compose)
+  [![License](https://img.shields.io/badge/license-GPL--3.0-00D2FF?style=flat-square)](LICENSE)
 
   <p>
     <a href="https://github.com/GitCorion/Medusa/releases/latest/download/Medusa.apk"><strong>Descargar el APK</strong></a>
@@ -25,36 +25,46 @@
 
 ## Qué es
 
-Medusa TV es un cliente Jellyfin nativo para el salón. Convierte tu biblioteca autoalojada en una interfaz de diez pies pensada para un sofá, un mando de cinco teclas y una pantalla OLED: arte a sangre, una sola luz de foco y cero adornos que compitan con el contenido.
+Medusa TV es un cliente Jellyfin nativo para el salón. Convierte tu biblioteca autoalojada en una interfaz de diez pies pensada para un sofá, un mando de cinco teclas y una pantalla OLED: arte a sangre, un foco de alto contraste y cero adornos que compitan con el contenido.
 
 No es un envoltorio web ni un catálogo alojado. La app habla directamente con **tu** servidor Jellyfin, guarda el catálogo en local y solo sale a internet para los metadatos, los catálogos de descubrimiento, Trakt (si lo vinculas) y las actualizaciones firmadas de GitHub Releases.
 
-**En este repositorio:** más de 140 archivos Kotlin, 38 pruebas unitarias, una prueba de migración, 13 regiones de catálogo y una identidad visual propia que puedes recorrer en el [estudio publicado](https://gitcorion.github.io/Medusa/).
+## Ecosistema
 
-## Catálogo bajo demanda (TOD)
+Medusa es la pieza de cliente. Las otras dos son opcionales y solo hacen falta si quieres catálogo bajo demanda.
 
-Medusa reproduce lo que Jellyfin tiene en su biblioteca. Si además usas
-[TOD](https://github.com/GitCorion/TOD), el plugin
-[Medusa-Jellyfin-Plugin](https://github.com/GitCorion/Medusa-Jellyfin-Plugin)
-convierte los ítems `.strm` del catálogo bajo demanda en algo que la tele
-entiende:
+| Pieza | Rol | Cuándo la necesitas |
+|---|---|---|
+| [Medusa](https://github.com/GitCorion/Medusa) (este repositorio) | Cliente nativo para Android TV y tablet. Reproduce desde Jellyfin. | Siempre |
+| [Medusa-Jellyfin-Plugin](https://github.com/GitCorion/Medusa-Jellyfin-Plugin) | Plugin de Jellyfin (C#) que expone estado, preparación y lease de reproducción. Traduce un ítem `.strm` a una clave de TOD. En Jellyfin aparece como **Catalogo**. | Si usas TOD |
+| [TOD](https://github.com/GitCorion/TOD) | Servicio Python de catálogo bajo demanda: busca fuentes, descarga con qBittorrent, crea los `.strm` y sirve el vídeo por rangos. También habla con Prowlarr/Jackett y, opcionalmente, Radarr/Sonarr. | Si quieres preparar y reproducir contenido que no está descargado |
 
-- Medusa pide `Prepare` al plugin cuando el ítem aún no está listo.
-- El plugin traduce el ítem de Jellyfin a una clave de TOD y consulta `/status`.
-- Medusa muestra el buffer y reproduce cuando `stream_ready` es verdadero.
-- Si TOD cambia de fuente, el plugin expone `stream_generation` y Medusa
-  reinicia la reproducción sin salir de la ficha.
+```text
+Medusa TV ──▶ Jellyfin ──▶ plugin Catalogo ──▶ TOD :8773 ──▶ qBittorrent
+                                                             ├── Prowlarr / Jackett
+                                                             └── Radarr / Sonarr (API)
+```
 
-Sin el plugin, los `.strm` siguen siendo ítems de Jellyfin normales: se pueden
-reproducir si ya están preparados, pero no hay progreso ni preparación desde la
-app.
+Medusa **no habla con TOD directamente**. Habla con Jellyfin; el plugin traduce la conversación. El cliente nunca usa la URL `play` del proxy: reproduce a través de Jellyfin para conservar la transcodificación, los subtítulos y el progreso de visionado.
 
-## Lo que hace diferente
+### Cómo encaja Medusa
 
-- **Foco a tres metros.** La navegación es un dock de iconos de 18 dp; el foco se lee por un borde de 1,5 dp sobre el póster, `zIndex` y el título a plena luminosidad. Las tarjetas vecinas conservan su opacidad: no hay spotlight ni escala.
-- **60 fps por decisión.** `Modifier.blur()` y `RenderEffect` están prohibidos. Las tarjetas no escalan ni atenúan a sus vecinas; el movimiento existe solo cuando el mando actúa. Cero animaciones autónomas.
-- **Piel abisal de cine.** Tinta `#04060A`, cian eléctrico `#00D2FF`, cobalto, aqua, ámbar y oro con DM Sans como única voz. La identidad vive en el arte, la luz y la tipografía; el comportamiento es el de una tele.
-- **Privacidad por arquitectura.** Sin Firebase, sin analítica, sin publicidad, sin ID de publicidad. Las credenciales se cifran con AES/GCM y Android Keystore. La app no tiene servidores propios de usuario.
+1. Medusa pide `PlaybackInfo` del ítem a Jellyfin.
+2. Si la ruta del `MediaSource` termina en `.strm`, consulta el estado del plugin: `GET /Catalogo/Status/{itemId}`.
+3. Si es un ítem de catálogo y `stream_ready` es falso, llama a `POST /Catalogo/Prepare/{itemId}`, muestra el buffer y consulta el estado cada 1–2 segundos.
+4. Cuando `stream_ready` es verdadero, reproduce con la reproducción normal de Jellyfin. El plugin mantiene un lease para seguir la sesión si TOD cambia de fuente.
+5. Si el plugin no está instalado o el ítem no es de catálogo, se reproduce como cualquier otro ítem de Jellyfin.
+
+Requisitos del puente: Jellyfin 12.4 o superior, el plugin instalado desde su manifiesto y un proxy TOD accesible desde Jellyfin, normalmente en loopback (`http://127.0.0.1:8773`). TOD está en beta activa; su interfaz y su API pueden cambiar entre versiones menores.
+
+Sin el plugin, los `.strm` siguen siendo ítems normales de Jellyfin: se reproducen si ya están preparados, pero no hay preparación ni progreso bajo demanda desde la app.
+
+## Diseño y comportamiento
+
+- **Foco y navegación.** Un dock de iconos de 18 dp. El foco se lee por un borde de 1,5 dp sobre el póster, `zIndex(10f)` y el título a plena luminosidad. Las tarjetas vecinas conservan su opacidad: no hay spotlight ni escala. La tecla física BACK es el retroceso en TV.
+- **Rendimiento.** `Modifier.blur()` y `RenderEffect` están prohibidos. Las tarjetas no escalan ni atenúan a sus vecinas y no hay animaciones autónomas; el movimiento solo existe cuando el mando actúa. El objetivo es 60 fps en hardware de entrada.
+- **Tipografía y color.** DM Sans en toda la interfaz, tinta `#04060A`, cian de foco `#00D2FF`, cobalto/aqua y ámbar/oro para valoraciones. Los tokens viven en `ui/theme/Color.kt` y `DESIGN.md`; no hay serif decorativa en la UI.
+- **Privacidad.** Sin Firebase, sin analítica, sin publicidad y sin Advertising ID. Las credenciales se cifran con AES/GCM y Android Keystore; la app no tiene servidores propios de usuario.
 
 ## Funciones
 
@@ -65,10 +75,10 @@ app.
 | **Descubrir** | Filtros de formato (todo, catálogo, películas, series), rail de temáticas y resultados en tiempo real. Contador y atajos de mando. |
 | **Búsqueda** | Teclado de diez pies con sugerencias predictivas, resultados instantáneos y búsqueda remota en Jellyfin. |
 | **Ficha** | Póster, metadatos editoriales, sinopsis sin panel, estados de progreso/favorito, temporadas y episodios, títulos de la misma saga y recomendaciones. |
-| **Reproductor** | Media3 + FFmpeg. DirectPlay, remux, HLS y transcodificación; `.strm`; preparación TOD con el plugin; subtítulos; pistas de audio; passthrough HDMI; siguiente episodio; salto de intro, recap y avance con Media Segments; frecuencia de refresco automática. |
+| **Reproductor** | Media3 + FFmpeg. DirectPlay, remux, HLS y transcodificación; `.strm`; preparación TOD con el [plugin Catalogo](https://github.com/GitCorion/Medusa-Jellyfin-Plugin); subtítulos; pistas de audio; passthrough HDMI; siguiente episodio; salto de intro, recap y avance con Media Segments; frecuencia de refresco automática. |
 | **Biblioteca** | Room con búsqueda FTS, caché local, filtros por accesibilidad parental, colecciones y sagas, sincronización incremental en segundo plano. |
 | **Personalización** | Temas de acento (cian bioluminiscente, ámbar cine, blanco puro), modo monocromo, estilos de botón, partículas, sonidos de navegación, música de fondo, tamaño y fondo de subtítulos, movimiento reducido. |
-| **Integraciones** | Jellyfin con descubrimiento en LAN, URL manual, subrutas, IPv6, certificado autofirmado con pin y Quick Connect. TOD con el plugin de Jellyfin. Trakt por código de dispositivo. TMDB con clave propia. Catálogos estáticos por región. OTA desde GitHub Releases. |
+| **Integraciones** | Jellyfin con descubrimiento en LAN, URL manual, subrutas, IPv6, certificado autofirmado con pin y Quick Connect. TOD con el [plugin Catalogo](https://github.com/GitCorion/Medusa-Jellyfin-Plugin). Trakt por código de dispositivo. TMDB con clave propia. Catálogos estáticos por región. OTA desde GitHub Releases. |
 
 ## Instalación
 
@@ -135,6 +145,8 @@ flowchart TD
     REPO --> TRAKT["TraktRepository"]
     JF --> SERVER[("Jellyfin")]
     SYNC --> SERVER
+    SERVER --> PLUGIN["Plugin Catalogo"]
+    PLUGIN --> TODS[("TOD")]
     TMDB --> TMDBAPI[("TMDB")]
     TRAKT --> TRAKTAPI[("Trakt")]
     UPDATE["AppUpdateManager"] --> GH[("GitHub Releases")]
@@ -244,6 +256,7 @@ Medusa no recopila datos, no muestra publicidad y no incluye analítica ni infor
 | Destino | Cuándo | Qué viaja |
 |---|---|---|
 | Tu servidor Jellyfin | Siempre | Credenciales, catálogo, imágenes, reproducción y progreso. Es tu servidor. |
+| Tu servidor Jellyfin + plugin Catalogo / TOD | Si usas TOD | Estado, preparación y lease del ítem. El vídeo se sirve desde tu Jellyfin. |
 | `raw.githubusercontent.com/GitCorion/Medusa` | Arranque y descubrimiento | Manifiesto OTA, catálogos estáticos y diccionario de etiquetas. Sin datos personales. |
 | `api.themoviedb.org` / `image.tmdb.org` | Si configuras tu clave TMDB | Consultas de metadatos y pósters. La clave es tuya y se guarda cifrada. |
 | `api.trakt.tv` | Si vinculas Trakt | Historial de visualización, listas y colecciones, bajo los términos de Trakt. |
@@ -251,6 +264,7 @@ Medusa no recopila datos, no muestra publicidad y no incluye analítica ni infor
 
 - **QR:** los códigos se generan en el propio dispositivo; el texto a codificar (URL del servidor o código QuickConnect) nunca se envía a un servicio externo.
 
+- **TOD y el plugin:** se ejecutan en tu servidor; Medusa les habla a través de Jellyfin. No hay un servicio de Medusa de por medio.
 - **Credenciales:** AES/GCM con clave del Android Keystore, respaldada por hardware cuando el dispositivo lo permite. Nunca se escriben en claro.
 - **TLS:** HTTP y HTTPS en cualquier host. Certificado autofirmado solo con activación explícita y pin SHA-256; no se aceptan CAs instaladas por el usuario.
 - **OTA:** origen limitado a GitHub, tamaño máximo de 150 MB, SHA-256 obligatorio, manifiesto con caducidad de siete días y kill-switch global.
@@ -287,6 +301,8 @@ Los commits siguen un estilo convencional en español, por ejemplo `fix(player):
 ## Créditos
 
 - [Jellyfin](https://jellyfin.org): el servidor y la razón de ser del cliente.
+- [Medusa-Jellyfin-Plugin](https://github.com/GitCorion/Medusa-Jellyfin-Plugin): puente GPL-3.0 entre Jellyfin y TOD.
+- [TOD](https://github.com/GitCorion/TOD): motor de catálogo bajo demanda, MIT.
 - [TMDB](https://www.themoviedb.org): metadatos y pósters. *This product uses the TMDB API but is not endorsed or certified by TMDB.*
 - [Trakt](https://trakt.tv): scrobbling, listas y colecciones.
 - [Android Media3](https://developer.android.com/media/media3): reproducción y sesión multimedia.
@@ -298,7 +314,7 @@ Los commits siguen un estilo convencional en español, por ejemplo `fix(player):
 
 Medusa TV se distribuye bajo **GNU General Public License v3.0**. Consulta [`LICENSE`](LICENSE).
 
-Medusa es un cliente independiente y no está afiliado ni respaldado por Jellyfin, TMDB o Trakt. Jellyfin es una marca de sus titulares.
+Medusa es un cliente independiente y no está afiliado ni respaldado por Jellyfin, TMDB o Trakt. Jellyfin es una marca de sus titulares. El plugin Catalogo se distribuye bajo GPL-3.0 y TOD bajo MIT, cada uno en su repositorio.
 
 <div align="center">
   <p><strong>Hecho para Jellyfin. Sin nube, sin cuentas de Medusa y sin rastrear lo que ves.</strong></p>

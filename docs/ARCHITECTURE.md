@@ -190,12 +190,13 @@ reintentos conservan `PlaySessionId`, posición y `MediaSourceId`.
 
 ### 6.1. TOD (catálogo bajo demanda)
 
-Si el usuario tiene [TOD](https://github.com/GitCorion/TOD) y el
-[Medusa-Jellyfin-Plugin](https://github.com/GitCorion/Medusa-Jellyfin-Plugin), los ítems `.strm`
-pueden no estar listos. Medusa llama a `Prepare`, consulta el estado y muestra un buffer hasta que
-`stream_ready` es verdadero; si el plugin expone `stream_generation` y cambia la fuente, la
-reproducción se reinicia sin salir de la ficha. Sin plugin, el `.strm` sigue siendo un ítem normal
-de Jellyfin y solo se reproduce si ya está preparado.
+Medusa no habla con TOD directamente. El plugin
+[Catalogo](https://github.com/GitCorion/Medusa-Jellyfin-Plugin) expone `Capabilities`, `Status` y
+`Prepare` bajo `/Catalogo/*`, traduce el `.strm` a una clave de TOD y mantiene un lease de
+reproducción. El cliente consulta el estado, pide `Prepare` si hace falta, muestra el buffer hasta
+que `stream_ready` es verdadero y reproduce a través de Jellyfin (nunca la URL `play` del proxy).
+El plugin requiere Jellyfin 12.4+ y un proxy TOD en loopback. Sin plugin, el `.strm` sigue siendo
+un ítem normal de Jellyfin y solo se reproduce si ya está preparado.
 
 Los detalles completos, incluidos los errores que rompieron `.strm` en versiones pasadas, están en
 [`PLAYBACK.md`](PLAYBACK.md). Es lectura obligatoria antes de tocar el reproductor.

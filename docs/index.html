@@ -103,8 +103,8 @@
               <dd>8.0, API 26</dd>
             </div>
             <div>
-              <dt>Biblioteca de prueba</dt>
-              <dd>15.360 títulos</dd>
+              <dt>Servidor</dt>
+              <dd>Jellyfin, autoalojado</dd>
             </div>
           </dl>
         </div>
@@ -429,7 +429,7 @@
             <h2 class="chapter__title">Siete pantallas, una gramática.</h2>
             <p class="chapter__intro">
               Todas las capturas están tomadas de la app real en un televisor de 1080p, con una
-              biblioteca de 15.360 títulos. No hay maquetas: lo que ves es lo que se renderiza.
+              biblioteca de prueba de 15.360 títulos. No hay maquetas: lo que ves es lo que se renderiza.
             </p>
           </div>
         </div>
@@ -648,9 +648,12 @@
         </div>
 
         <p class="playback__note">
-          Con TOD y el plugin de Jellyfin, Medusa llama a <code>Prepare</code>, muestra el buffer y
-          reproduce cuando <code>stream_ready</code> es verdadero. Si cambia la fuente, reinicia sin
-          salir de la ficha.
+          Con <a href="https://github.com/GitCorion/TOD">TOD</a> y el
+          <a href="https://github.com/GitCorion/Medusa-Jellyfin-Plugin">plugin Catalogo</a>, Medusa
+          consulta el estado del ítem, pide <code>Prepare</code> si hace falta, muestra el buffer y
+          reproduce cuando <code>stream_ready</code> es verdadero. El cliente no usa la URL
+          <code>play</code> del proxy: reproduce a través de Jellyfin para conservar transcodificación,
+          subtítulos y progreso.
         </p>
 
         <div class="budget">
@@ -836,6 +839,8 @@
           <h3>Datos y soporte</h3>
           <ul>
             <li><a href="https://jellyfin.org">Jellyfin</a></li>
+            <li><a href="https://github.com/GitCorion/Medusa-Jellyfin-Plugin">Plugin Catalogo</a></li>
+            <li><a href="https://github.com/GitCorion/TOD">TOD</a></li>
             <li><a href="https://www.themoviedb.org">TMDB</a></li>
             <li><a href="https://trakt.tv">Trakt</a></li>
             <li><a href="https://developer.android.com/media/media3">Media3</a></li>
