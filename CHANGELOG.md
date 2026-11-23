@@ -16,6 +16,16 @@ no tienen entrada detallada en este archivo; su histórico está en los Releases
   y sus tests, sin referencias desde la UI. Descubrir queda documentado como un rail de temáticas
   con filtros AND y `BACK` para deshacer.
 
+### Cambiado
+
+- README reescrito como landing: estado actual, instalación, configuración inicial, arquitectura,
+  privacidad y enlaces a los documentos técnicos. `README.en.md` queda alineado.
+
+### Corregido
+
+- Comprobación anti-rollback del APK descargado: se usa `PackageInfoCompat` para no llamar a
+  `longVersionCode` en API 26–27.
+
 ### Documentación
 
 - `DESIGN.md` se reescribe con los tokens, radios, tipografía, movimiento y pantallas reales.
