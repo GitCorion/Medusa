@@ -2,7 +2,7 @@
 
 **Una interfaz a tres metros**
 
-Capa visual 2.4.0-beta.3, 23 de noviembre de 2026 · Estable publicada: 2.3.12 · Madrid
+Capa visual de `main` (2.4.0), 23 de noviembre de 2026 · Estable publicada: 2.3.12 · Madrid
 
 > Este documento es la versión larga del estudio publicado en
 > <https://gitcorion.github.io/Medusa/>. Allí puedes probar el foco con las flechas del teclado y
@@ -17,8 +17,8 @@ Capa visual 2.4.0-beta.3, 23 de noviembre de 2026 · Estable publicada: 2.3.12 �
 | Distribución | APK firmado en GitHub Releases, actualización OTA desde la app |
 | Plataforma | Android 8.0+, `minSdk 26`, `targetSdk` 36 |
 | Construcción | Kotlin 2.0.21, Compose TV, Hilt, Room 22, Media3 |
-| Biblioteca de prueba | 15.360 títulos (12.978 películas, 2.382 series) |
-| Capturas | Televisor de 1920 × 1080, capa visual 2.4.0-beta.3 |
+| Biblioteca de prueba | Jellyfin local; capturas con la biblioteca sincronizada |
+| Capturas | Televisor de 1920 × 1080, capa visual de `main` (2.4.0) |
 | Licencia | GPL-3.0 |
 
 La interfaz es **cinematográfica y de diez pies**: arte a sangre, un dock de iconos, un foco de

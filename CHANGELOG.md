@@ -10,8 +10,8 @@ no tienen entrada detallada en este archivo; su histórico está en los Releases
 
 ## [Unreleased]
 
-2.4.0 en preparación. La capa visual y los cambios de esta sección ya están publicados en la beta
-**2.4.0-beta.3** (23 de noviembre de 2026); la estable sigue en 2.3.12.
+2.4.0 en preparación. La capa visual y los cambios de esta sección están en `main` y en las betas
+2.4.0-beta.x; la estable sigue en 2.3.12.
 
 ### Añadido
 

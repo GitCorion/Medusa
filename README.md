@@ -21,7 +21,7 @@
 
 ![Inicio de Medusa TV en un televisor de 1080p](docs/assets/estudio/captures/inicio-1600.webp)
 
-<p align="center"><sub>Inicio en un televisor de 1920 × 1080. Las capturas reflejan la capa visual 2.4.0-beta.3; la estable publicada sigue siendo 2.3.12.</sub></p>
+<p align="center"><sub>Inicio en un televisor de 1920 × 1080. Las capturas reflejan la capa visual actual de main (2.4.0); la estable publicada sigue siendo 2.3.12.</sub></p>
 
 ## Qué es
 
@@ -128,7 +128,7 @@ Hay dos canales: **estable** (Releases `latest`) y **beta** (pre-releases con ma
   <img src="docs/assets/estudio/captures/ajustes-960.webp" width="49%" alt="Ajustes con barra lateral y estado del servidor">
 </p>
 
-<p align="center"><sub>Capturas reales de la app en un televisor de 1080p. La barra superior admite solo iconos, solo texto o ambos; las capturas muestran los dos primeros modos. <a href="https://gitcorion.github.io/Medusa/#pantallas">Ver las siete pantallas y sus decisiones de diseño</a>.</sub></p>
+<p align="center"><sub>Capturas reales de la app en un televisor de 1080p. La barra superior admite solo iconos, solo texto o ambos; las capturas usan el modo solo iconos. <a href="https://gitcorion.github.io/Medusa/#pantallas">Ver las siete pantallas y sus decisiones de diseño</a>.</sub></p>
 
 ## Arquitectura
 

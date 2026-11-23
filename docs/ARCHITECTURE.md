@@ -4,7 +4,7 @@ Este documento describe cómo está construida la app, qué piezas se comunican 
 se tomaron las decisiones que no son obvias. Está pensado para alguien que va a tocar el código
 por primera vez, no para repetir el organigrama de carpetas.
 
-**Versión documentada:** 2.4.0-beta.3 (`versionCode 1000162`); estable publicada: 2.3.12.
+**Versión documentada:** 2.4.0 de `main` (`versionCode 1000165`); estable publicada: 2.3.12.
 **Plataforma:** Android TV, Google TV, Fire TV y tablet. `minSdk 26`, `compileSdk` y `targetSdk` 36.
 
 ## 1. Vista general

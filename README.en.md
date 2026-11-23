@@ -21,7 +21,7 @@
 
 ![Medusa TV home screen on a 1080p television](docs/assets/estudio/captures/inicio-1600.webp)
 
-<p align="center"><sub>Home on a 1920 × 1080 television. Captures show the 2.4.0-beta.3 visual layer; the published stable release is still 2.3.12.</sub></p>
+<p align="center"><sub>Home on a 1920 × 1080 television. Captures show the current main visual layer (2.4.0); the published stable release is still 2.3.12.</sub></p>
 
 ## What it is
 
@@ -128,7 +128,7 @@ There are two channels: **stable** (`latest` Releases) and **beta** (pre-release
   <img src="docs/assets/estudio/captures/ajustes-960.webp" width="49%" alt="Settings screen with sidebar and server status">
 </p>
 
-<p align="center"><sub>Real captures from the app on a 1080p television. The top bar supports icons only, text only or both; the captures show the first two modes. <a href="https://gitcorion.github.io/Medusa/#pantallas">See all seven screens and the design decisions behind them</a>.</sub></p>
+<p align="center"><sub>Real captures from the app on a 1080p television. The top bar supports icons only, text only or both; the captures use icons only. <a href="https://gitcorion.github.io/Medusa/#pantallas">See all seven screens and the design decisions behind them</a>.</sub></p>
 
 ## Architecture
 
