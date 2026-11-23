@@ -165,7 +165,7 @@ fun EpisodeCard(
                         Icon(
                             imageVector = Icons.Rounded.Check,
                             contentDescription = stringResource(R.string.common_watched),
-                            tint = if (isMonochrome) TextPrimary.copy(alpha = 0.90f) else tv.medusa.app.ui.theme.TvPalette.SemanticWatched,
+                            tint = if (isMonochrome) TextPrimary.copy(alpha = 0.90f) else focusColor,
                             modifier = Modifier.size(13.dp)
                         )
                     }

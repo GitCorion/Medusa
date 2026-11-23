@@ -92,8 +92,6 @@ fun MediaCard(
     cardWidth: Dp = 150.dp,
     /** En una cuadrícula, la tarjeta ocupa la celda completa en lugar de un ancho fijo. */
     fillWidth: Boolean = false,
-    /** En Favoritos el corazón es redundante: todas las tarjetas son favoritas. */
-    showFavoriteBadge: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     var isFocused by remember { mutableStateOf(false) }
@@ -278,7 +276,7 @@ fun MediaCard(
                         }
                     }
 
-                    if (item.isFavorite && showFavoriteBadge) {
+                    if (item.isFavorite) {
                         Box(
                             modifier = Modifier
                                 .size(22.dp)
@@ -291,7 +289,7 @@ fun MediaCard(
                             Icon(
                                 imageVector = Icons.Rounded.Favorite,
                                 contentDescription = stringResource(R.string.common_favorite),
-                                tint = if (isMonochrome) TextPrimary else tv.medusa.app.ui.theme.TvPalette.SemanticFavorite,
+                                tint = focusColor,
                                 modifier = Modifier.size(12.dp)
                             )
                         }
@@ -310,7 +308,7 @@ fun MediaCard(
                             Icon(
                                 imageVector = Icons.Rounded.Check,
                                 contentDescription = stringResource(R.string.common_watched),
-                                tint = if (isMonochrome) TextPrimary.copy(alpha = 0.90f) else tv.medusa.app.ui.theme.TvPalette.SemanticWatched,
+                                tint = if (isMonochrome) TextPrimary.copy(alpha = 0.90f) else focusColor,
                                 modifier = Modifier.size(14.dp)
                             )
                         }

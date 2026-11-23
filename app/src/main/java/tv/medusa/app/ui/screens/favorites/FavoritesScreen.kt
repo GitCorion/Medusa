@@ -104,7 +104,8 @@ fun FavoritesScreen(
     val showIcons = buttonStyleKey != BUTTON_STYLE_TEXT_ONLY
     val showText = buttonStyleKey != BUTTON_STYLE_ICONS_ONLY
 
-    var sortOption by rememberSaveable { mutableStateOf(CatalogSortOption.DEFAULT) }
+    // En Favoritos el orden natural es el contenido más reciente primero.
+    var sortOption by rememberSaveable { mutableStateOf(CatalogSortOption.YEAR_DESC) }
     val sortButtonFocusRequester = remember { FocusRequester() }
     val firstResultFocusRequester = remember { FocusRequester() }
     // Destino explícito de ARRIBA desde el contenido: la pestaña activa, no Inicio.
@@ -305,7 +306,6 @@ fun FavoritesScreen(
                             ) { index, item ->
                                 MediaCard(
                                     item = item,
-                                    showFavoriteBadge = false,
                                     onClick = {
                                         val targetId = if (item.type.equals("Episode", ignoreCase = true) && !item.seriesId.isNullOrBlank()) {
                                             item.seriesId!!

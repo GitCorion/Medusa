@@ -281,7 +281,7 @@ fun RankedMediaCard(
                                 Icon(
                                     imageVector = Icons.Rounded.Favorite,
                                     contentDescription = stringResource(R.string.common_favorite),
-                                    tint = if (isMonochrome) TextPrimary else tv.medusa.app.ui.theme.TvPalette.SemanticFavorite,
+                                    tint = focusColor,
                                     modifier = Modifier.size(11.dp)
                                 )
                             }
@@ -297,7 +297,7 @@ fun RankedMediaCard(
                                 Icon(
                                     imageVector = Icons.Rounded.Check,
                                     contentDescription = stringResource(R.string.common_watched),
-                                    tint = if (isMonochrome) TextPrimary.copy(alpha = 0.90f) else tv.medusa.app.ui.theme.TvPalette.SemanticWatched,
+                                    tint = if (isMonochrome) TextPrimary.copy(alpha = 0.90f) else focusColor,
                                     modifier = Modifier.size(12.dp)
                                 )
                             }
