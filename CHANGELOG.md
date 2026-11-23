@@ -8,10 +8,13 @@ Los binarios y las notas completas de cada versión se publican en
 [GitHub Releases](https://github.com/GitCorion/Medusa/releases). Las versiones anteriores a 2.3.12
 no tienen entrada detallada en este archivo; su histórico está en los Releases y en `git log`.
 
-## [Unreleased]
+## [2.4.0] - 2026-11-23
 
-2.4.0 en preparación. La capa visual y los cambios de esta sección están en `main` y en las betas
-2.4.0-beta.x; la estable sigue en 2.3.12.
+Primera estable de la etapa 2.4.0. Sustituye a `2.3.12`, cambia la identidad a `tv.medusa.app` y
+cierra la beta pública.
+
+> **Migración desde `tv.medusa.app.beta`:** instala esta versión y desinstala la antigua. Android
+> las trata como apps distintas; ajustes, servidor Jellyfin y clave TMDB no se migran.
 
 ### Añadido
 
@@ -31,6 +34,10 @@ no tienen entrada detallada en este archivo; su histórico está en los Releases
 
 ### Cambiado
 
+- La app pasa a `tv.medusa.app`. Los equipos que venían de `tv.medusa.app.beta` deben instalar
+  esta versión una vez y desinstalar la antigua.
+- Se retira el sistema Pro/VIP heredado de la etapa comercial: edición, compras, trial,
+  entitlement de servidor y badge PRO. Todas las funciones quedan disponibles sin licencia.
 - La navegación vuelve al dock de iconos: el foco no exige OK y la barra admite iconos, texto o
   ambos.
 - Las tarjetas conservan su opacidad y no escalan; el foco se lee por borde, zIndex y el título.
@@ -43,6 +50,14 @@ no tienen entrada detallada en este archivo; su histórico está en los Releases
 - Legibilidad y restos de la plantilla anterior detectados en un televisor real.
 - Contraste de los textos secundarios y de los metadatos.
 - Foco de la navegación y de los carruseles tras el cambio de estructura.
+- Botones de acción y diálogos: el reposo es neutro y solo el foco usa el acento; antes el botón
+  primario se pintaba como enfocado siempre.
+- Play del hero, la ficha y el reproductor: reposo neutro como el resto de acciones, con el acento
+  reservado al foco.
+- Ficha: el botón Reproducir recupera el foco al entrar y al volver del reproductor, sin exigir
+  mover el mando.
+- Buscar: los pósters pasan a tres columnas y quedan por debajo del tamaño de Descubrir.
+- Buscar: el micrófono y el modo de teclado son accesibles con ARRIBA y DERECHA desde las teclas.
 
 ### Descartado
 
@@ -76,5 +91,5 @@ no tienen entrada detallada en este archivo; su histórico está en los Releases
 - APK: `Medusa.apk`, 15,2 MB.
 - SHA-256 publicado en el manifiesto OTA y en la página del Release.
 
-[Unreleased]: https://github.com/GitCorion/Medusa/compare/v2.3.12...HEAD
+[2.4.0]: https://github.com/GitCorion/Medusa/releases/tag/v2.4.0
 [2.3.12]: https://github.com/GitCorion/Medusa/releases/tag/v2.3.12
