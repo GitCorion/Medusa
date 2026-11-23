@@ -1,11 +1,11 @@
 {
-  "versionCode": 1000167,
-  "versionName": "2.4.1",
+  "versionCode": 1000168,
+  "versionName": "2.4.2-beta.1",
   "minSupportedVersionCode": 1000105,
   "forceUpdate": false,
   "killSwitch": false,
-  "releaseNotes": "### Añadido\n\n- Selector de canal en Ajustes → Acerca de: **Estable** o **Beta**. La elección se guarda y el\n  actualizador lee el manifiesto del canal correspondiente.\n- Aviso al cambiar de canal: desde una beta más nueva no se puede bajar a una estable anterior;\n  el equipo vuelve a estable con la siguiente publicación estable.",
-  "apkUrl": "https://github.com/GitCorion/Medusa/releases/download/v2.4.1/Medusa.apk",
-  "apkSha256": "969f1341d66068dbbe40b47b17f130f0c561f4b6694e3339a8b1b0667bcadfae",
+  "releaseNotes": "### Eliminado\n\n- Restos del antiguo explorador espacial (constelación/nebula): canvas, motores, atractores, grid\n  y sus tests, sin referencias desde la UI. Descubrir queda documentado como un rail de temáticas\n  con filtros AND y `BACK` para deshacer.\n\n### Cambiado\n\n- README reescrito como landing: estado actual, instalación, configuración inicial, arquitectura,\n  privacidad y enlaces a los documentos técnicos. `README.en.md` queda alineado.\n\n### Corregido\n\n- Comprobación anti-rollback del APK descargado: se usa `PackageInfoCompat` para no llamar a\n  `longVersionCode` en API 26–27.\n\n### Documentación\n\n- `DESIGN.md` se reescribe con los tokens, radios, tipografía, movimiento y pantallas reales.\n- Se sincronizan versiones, conteo de pruebas, canales OTA, comandos Gradle, botón táctil y\n  catálogos manuales en README, PRODUCT, CONTRIBUTING, SECURITY y `docs/`.",
+  "apkUrl": "https://github.com/GitCorion/Medusa/releases/download/v2.4.2-beta.1/Medusa.apk",
+  "apkSha256": "58d68e2d9f5c132ecddff54ddd4722681911233e3eef48a348116f642bbf1552",
   "signatures": []
 }
