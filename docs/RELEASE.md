@@ -92,9 +92,6 @@ sha256sum /tmp/medusa.apk   # debe coincidir con apkSha256 del manifiesto
 
 ## Notas
 
-- `docs/PLAN_PLAY_STORE.md`, `docs/PLAY_CONSOLE_SETUP.md`, `docs/PLAY_STORE_METADATA.md` y
-  `docs/PLAN_MEDUSA_PROFESIONAL.md` son **documentación histórica** del antiguo plan de Play
-  Store / Firebase y ya no describen el proceso de publicación.
 - GitHub Pages publica el estudio y la privacidad desde `main` / `/docs`.
 - Los catálogos de descubrimiento (`docs/catalogs/`) están aparcados y se generan a mano; ver
   `docs/CATALOGS.md`.

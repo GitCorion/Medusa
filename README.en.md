@@ -237,17 +237,10 @@ app/src/main/java/tv/medusa/app/
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Layers, flows, caches, workers, tests and technical decisions. |
 | [`docs/PLAYBACK.md`](docs/PLAYBACK.md) | Candidate order, device profile, audio, subtitles and mistakes not to repeat. |
 | [`docs/RELEASE.md`](docs/RELEASE.md) | GitHub Releases distribution, OTA, signing and secrets. |
-| [`docs/CATALOGS.md`](docs/CATALOGS.md) | Regional discovery catalogs and the nightly workflow. |
+| [`docs/CATALOGS.md`](docs/CATALOGS.md) | Regional discovery catalogs and manual publishing. |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | Environment, style, tests and PR checklist. |
 | [`SECURITY.md`](SECURITY.md) | How to report a vulnerability and what the app guarantees. |
 | [`CHANGELOG.md`](CHANGELOG.md) | Current release changes and a link to the release history. |
-
-<details>
-<summary>Historical documentation for the former Play Store plan</summary>
-
-[`docs/PLAN_PLAY_STORE.md`](docs/PLAN_PLAY_STORE.md), [`docs/PLAY_CONSOLE_SETUP.md`](docs/PLAY_CONSOLE_SETUP.md), [`docs/PLAY_STORE_METADATA.md`](docs/PLAY_STORE_METADATA.md) and [`docs/PLAN_MEDUSA_PROFESIONAL.md`](docs/PLAN_MEDUSA_PROFESIONAL.md) describe an earlier stage. Distribution today is a signed APK on GitHub Releases.
-
-</details>
 
 ## Privacy and security
 

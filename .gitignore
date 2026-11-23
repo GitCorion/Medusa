@@ -25,6 +25,38 @@ MEMORIA_INSTRUCCIONES.md
 .codex/
 # Catálogos de descubrimiento generados (publicación manual con `git add -f`, no se versionan por defecto)
 docs/catalogs/
-.agents/
 apple_tv_ref/
+
+# Herramientas de agentes: se quedan en local, no se publican en el repo
+/.agents/
+/.impeccable/
+/.github/skills/
+/.github/agents/
+/.github/hooks/
+/.claude/
+/.cursor/
+/.windsurf/
+
+# Material antiguo de Play Store (la distribución actual es GitHub Releases)
+/docs/store_assets/
+/docs/PLAN_MEDUSA_PROFESIONAL.md
+/docs/PLAN_PLAY_STORE.md
+/docs/PLAY_CONSOLE_SETUP.md
+/docs/PLAY_STORE_METADATA.md
+
+# Configuración sensible o local
+google-services.json
+service-account*.json
+*.p12
+*.pfx
+.env
+.env.*
+!.env.example
+
+# Artefactos de depuración y merges
+*.log
+*.hprof
+*.bak
+*.orig
+*.rej
 

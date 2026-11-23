@@ -237,17 +237,10 @@ app/src/main/java/tv/medusa/app/
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Capas, flujos, cachés, workers, pruebas y decisiones técnicas. |
 | [`docs/PLAYBACK.md`](docs/PLAYBACK.md) | Orden de candidatos, perfil de dispositivo, audio, subtítulos y errores que no se deben repetir. |
 | [`docs/RELEASE.md`](docs/RELEASE.md) | Distribución por GitHub Releases, OTA, firma y secretos. |
-| [`docs/CATALOGS.md`](docs/CATALOGS.md) | Catálogos de descubrimiento por región y workflow nocturno. |
+| [`docs/CATALOGS.md`](docs/CATALOGS.md) | Catálogos de descubrimiento por región y publicación manual. |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | Entorno, estilo, pruebas y checklist de PR. |
 | [`SECURITY.md`](SECURITY.md) | Cómo reportar una vulnerabilidad y qué garantiza la app. |
 | [`CHANGELOG.md`](CHANGELOG.md) | Cambios de la versión actual y enlace al histórico de Releases. |
-
-<details>
-<summary>Documentación histórica del antiguo plan de Play Store</summary>
-
-[`docs/PLAN_PLAY_STORE.md`](docs/PLAN_PLAY_STORE.md), [`docs/PLAY_CONSOLE_SETUP.md`](docs/PLAY_CONSOLE_SETUP.md), [`docs/PLAY_STORE_METADATA.md`](docs/PLAY_STORE_METADATA.md) y [`docs/PLAN_MEDUSA_PROFESIONAL.md`](docs/PLAN_MEDUSA_PROFESIONAL.md) describen una etapa anterior. La distribución actual es un APK firmado en GitHub Releases.
-
-</details>
 
 ## Privacidad y seguridad
 
