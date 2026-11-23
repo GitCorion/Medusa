@@ -10,6 +10,13 @@ no tienen entrada detallada en este archivo; su histórico está en los Releases
 
 ## [Unreleased]
 
+## [2.4.2-beta.5] - 2026-11-24
+
+### Corregido
+
+- Reproductor: se eleva el timeout de resolución inicial a 15 minutos (`TORRENT_PREP_TIMEOUT_MS`) para streams On-Demand (TOD), evitando que el watchdog de 75 s salte prematuramente mientras Jellyfin y el enjambre torrent completan el buffer inicial.
+- Overlay TOD: corrección del cálculo y visualización del buffer cuando `buffer_bytes` es nulo o 0 pero `downloaded_bytes` ya contiene datos (>0 MB), garantizando que el porcentaje y la barra de progreso reflejen el avance real en la interfaz.
+
 ## [2.4.2-beta.4] - 2026-11-23
 
 ### Corregido

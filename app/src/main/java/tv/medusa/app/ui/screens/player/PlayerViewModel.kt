@@ -91,10 +91,11 @@ data class PlayerStreamInfo(
     val seriesId: String? = null,
     val playSessionId: String = "",
     val mediaSourceId: String = "",
-    val isStrm: Boolean = false
+    val isStrm: Boolean = false,
+    val isOnDemand: Boolean = false
 )
 
-private const val TORRENT_PREP_TIMEOUT_MS = 15L * 60 * 1000
+internal const val TORRENT_PREP_TIMEOUT_MS = 15L * 60 * 1000L
 
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
@@ -726,7 +727,8 @@ class PlayerViewModel @Inject constructor(
                 seriesId = seriesId,
                 playSessionId = activePlaySessionId,
                 mediaSourceId = activeMediaSourceId,
-                isStrm = chosenMediaSource?.let { JellyfinPlaybackSourceResolver.isStrm(it) } ?: false
+                isStrm = chosenMediaSource?.let { JellyfinPlaybackSourceResolver.isStrm(it) } ?: false,
+                isOnDemand = isCurrentItemOnDemand
             )
             if (isCurrentItemOnDemand) {
                 startOnDemandGenerationWatch(playableId = playableId, releaseId = activeOnDemandReleaseId)
@@ -1745,10 +1747,10 @@ class PlayerViewModel @Inject constructor(
         }
 
         val sizeBytes = status.sizeBytes ?: 0L
-        // Buffer contiguo real desde el inicio del fichero (no total descargado)
-        val bufferBytes = status.bufferBytes ?: status.downloadedBytes
+        val rawDownloaded = (status.downloadedBytes ?: 0L).takeIf { it > 0L }
             ?: if (sizeBytes > 0) (status.safeProgress * sizeBytes).toLong() else 0L
-        val downloadedBytes = status.downloadedBytes ?: bufferBytes
+        val bufferBytes = status.bufferBytes?.takeIf { it > 0L } ?: rawDownloaded
+        val effectiveDownloaded = if (rawDownloaded > 0L) rawDownloaded else bufferBytes
 
         // Meta de búfer de arranque: del backend (buffer_required) si existe,
         // o cálculo local: tamaño / 120 clampeado a [32 MB, 128 MB]
@@ -1758,10 +1760,10 @@ class PlayerViewModel @Inject constructor(
             else -> 50L * 1024L * 1024L
         }
 
-        // Progreso del búfer de arranque (0f a 1f) basado en buffer contiguo
+        // Progreso del búfer de arranque (0f a 1f) basado en buffer contiguo o datos descargados
         val bufferProgress = when {
             status.streamReady -> 1.0f
-            targetBufferBytes > 0L -> (bufferBytes.toFloat() / targetBufferBytes.toFloat()).coerceIn(0f, 0.98f)
+            targetBufferBytes > 0L -> (effectiveDownloaded.toFloat() / targetBufferBytes.toFloat()).coerceIn(0f, 0.98f)
             else -> status.safeProgress
         }
 
@@ -1820,7 +1822,7 @@ class PlayerViewModel @Inject constructor(
             backdropUrl = backdropUrl,
             state = status.state,
             progress = bufferProgress,
-            downloadedBytes = bufferBytes,
+            downloadedBytes = effectiveDownloaded,
             targetBufferBytes = targetBufferBytes,
             speedBps = speedBps,
             etaSeconds = bufferEtaSeconds,

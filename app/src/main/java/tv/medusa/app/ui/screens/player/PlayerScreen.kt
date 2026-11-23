@@ -1292,13 +1292,15 @@ private fun PlayerContent(
     }
 
     // 75-second timeout for initial slow proxy resolution (resolving RD / rescue can take 10-40s)
-    // No debe correr mientras el overlay de preparación TOD esté activo.
+    // Si el ítem es On-Demand (TOD), se eleva a TORRENT_PREP_TIMEOUT_MS (15 min) para no cortar la descarga.
+    // Tampoco debe correr mientras el overlay de preparación TOD esté activo.
     val isTodPreparing = torrentOverlayState != null &&
             torrentOverlayState?.state != "ERROR" &&
             torrentOverlayState?.state != "UNAVAILABLE"
+    val timeoutMs = if (info.isOnDemand) TORRENT_PREP_TIMEOUT_MS else 75_000L
     LaunchedEffect(info, retryTrigger, isTodPreparing) {
         if (isTodPreparing) return@LaunchedEffect
-        delay(75_000L)
+        delay(timeoutMs)
         if (!hasEverBeenReady && exoPlayer.playbackState == Player.STATE_BUFFERING && exoPlayer.currentPosition <= 0L) {
             playerErrorMessage = context.applicationContext.getString(R.string.player_resolve_timeout)
             isBuffering = false
