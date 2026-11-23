@@ -677,8 +677,8 @@ private fun JellyfinCategory(
                     onClick = { viewModel.saveAndConnect() },
                     modifier = Modifier.handleTouchClick(enabled = !uiState.isLoading) { viewModel.saveAndConnect() },
                     colors = ButtonDefaults.colors(
-                        containerColor = focusColor,
-                        contentColor = focusContent,
+                        containerColor = tv.medusa.app.ui.theme.TvPalette.GlassRaised,
+                        contentColor = TextPrimary,
                         focusedContainerColor = focusColor,
                         focusedContentColor = focusContent
                     ),
@@ -1395,8 +1395,8 @@ private fun AboutCategory(
                 Button(
                     onClick = { viewModel.downloadAndInstallUpdate() },
                     colors = ButtonDefaults.colors(
-                        containerColor = focusColor,
-                        contentColor = focusContent,
+                        containerColor = tv.medusa.app.ui.theme.TvPalette.GlassRaised,
+                        contentColor = TextPrimary,
                         focusedContainerColor = focusColor,
                         focusedContentColor = focusContent
                     )
@@ -2315,8 +2315,8 @@ private fun TvEditDialog(
                                 .weight(1f)
                                 .handleTouchClick { onCommit() },
                             colors = ButtonDefaults.colors(
-                                containerColor = focusColor,
-                                contentColor = focusContent,
+                                containerColor = tv.medusa.app.ui.theme.TvPalette.GlassRaised,
+                                contentColor = TextPrimary,
                                 focusedContainerColor = focusColor,
                                 focusedContentColor = focusContent
                             )

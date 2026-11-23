@@ -219,8 +219,8 @@ fun DetailScreen(
                             Button(
                                 onClick = { viewModel.loadDetail(itemId) },
                                 colors = ButtonDefaults.colors(
-                                    containerColor = errFocusColor,
-                                    contentColor = errFocusContent,
+                                    containerColor = tv.medusa.app.ui.theme.TvPalette.GlassRaised,
+                                    contentColor = TextPrimary,
                                     focusedContainerColor = errFocusColor,
                                     focusedContentColor = errFocusContent
                                 )

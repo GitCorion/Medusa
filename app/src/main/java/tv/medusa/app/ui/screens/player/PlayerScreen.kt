@@ -1861,8 +1861,8 @@ private fun PlayerContent(
                                     }
                                     .focusRequester(retryFocusRequester),
                                 colors = ButtonDefaults.colors(
-                                    containerColor = focusColor,
-                                    contentColor = focusContent,
+                                    containerColor = tv.medusa.app.ui.theme.TvPalette.GlassRaised,
+                                    contentColor = TextPrimary,
                                     focusedContainerColor = focusColor,
                                     focusedContentColor = focusContent
                                 )
@@ -2690,9 +2690,9 @@ private fun PostCreditsBoard(
                         onClick = { onPlayNow(nextEpisode) },
                         shape = ClickableSurfaceDefaults.shape(shape = RoundedCornerShape(12.dp)),
                         colors = ClickableSurfaceDefaults.colors(
-                            containerColor = if (isMonochrome) TextPrimary else focusColor,
-                            focusedContainerColor = if (isMonochrome) Color(0xFFE0E7FF) else focusColor,
-                            contentColor = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else focusContent,
+                            containerColor = tv.medusa.app.ui.theme.TvPalette.GlassRaised,
+                            focusedContainerColor = if (isMonochrome) TextPrimary else focusColor,
+                            contentColor = TextPrimary,
                             focusedContentColor = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else focusContent
                         ),
                         modifier = Modifier
@@ -4574,9 +4574,9 @@ private fun ResumePlaybackDialog(
                     .handleTouchClick { onResume() }
                     .focusRequester(resumeFocusRequester),
                 colors = ButtonDefaults.colors(
-                    containerColor = if (isMonochrome) TextPrimary else focusColor,
-                    contentColor = focusContent,
-                    focusedContainerColor = focusColor,
+                    containerColor = tv.medusa.app.ui.theme.TvPalette.GlassRaised,
+                    contentColor = TextPrimary,
+                    focusedContainerColor = if (isMonochrome) TextPrimary else focusColor,
                     focusedContentColor = focusContent
                 ),
                 shape = ButtonDefaults.shape(shape = RoundedCornerShape(12.dp))

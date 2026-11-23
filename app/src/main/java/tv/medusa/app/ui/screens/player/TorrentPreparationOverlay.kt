@@ -401,8 +401,8 @@ fun TorrentPreparationOverlay(
                                 .handleTouchClick { onRetry() }
                                 .focusRequester(primaryButtonFocusRequester),
                             colors = ButtonDefaults.colors(
-                                containerColor = focusColor,
-                                contentColor = focusContent,
+                                containerColor = tv.medusa.app.ui.theme.TvPalette.GlassRaised,
+                                contentColor = TextPrimary,
                                 focusedContainerColor = focusColor,
                                 focusedContentColor = focusContent
                             ),
@@ -474,8 +474,8 @@ fun TorrentPreparationOverlay(
                         colors = ButtonDefaults.colors(
                             containerColor = tv.medusa.app.ui.theme.TvPalette.GlassIdle,
                             contentColor = TextPrimary,
-                            focusedContainerColor = if (state.availableVersions.size <= 1) focusColor else Color(0x40FFFFFF),
-                            focusedContentColor = if (state.availableVersions.size <= 1) focusContent else TextPrimary
+                            focusedContainerColor = focusColor,
+                            focusedContentColor = focusContent
                         ),
                         scale = ButtonDefaults.scale(focusedScale = 1.05f),
                         shape = ButtonDefaults.shape(RoundedCornerShape(10.dp))
