@@ -1,10 +1,10 @@
 package tv.medusa.app.ui.screens.player
 
 import android.media.MediaCodecList
-import tv.medusa.app.data.remote.jellyfin.CatalogoFormatUtils
-import tv.medusa.app.data.remote.jellyfin.CatalogoHttpException
-import tv.medusa.app.data.remote.jellyfin.CatalogoTorrentStatusDto
-import tv.medusa.app.data.remote.jellyfin.catalogoErrorMessage
+import tv.medusa.app.data.remote.jellyfin.TodFormatUtils
+import tv.medusa.app.data.remote.jellyfin.MedusaHttpException
+import tv.medusa.app.data.remote.jellyfin.TodTorrentStatusDto
+import tv.medusa.app.data.remote.jellyfin.medusaErrorMessage
 import tv.medusa.app.data.remote.jellyfin.JellyfinAuthRequest
 import tv.medusa.app.data.remote.jellyfin.JellyfinDeviceProfile
 import tv.medusa.app.data.remote.jellyfin.JellyfinDeviceProfileBuilder
@@ -220,10 +220,10 @@ class PlayerViewModel @Inject constructor(
 
     private var loadStreamJob: Job? = null
     private var torrentZeroProgressStartMs: Long? = null
-    private var catalogoStreamGeneration: Long? = null
+    private var onDemandStreamGeneration: Long? = null
     private var generationJob: Job? = null
-    private var isCurrentItemCatalogo: Boolean = false
-    private var activeCatalogoReleaseId: Long? = null
+    private var isCurrentItemOnDemand: Boolean = false
+    private var activeOnDemandReleaseId: Long? = null
     private var currentPlayableTitle: String = ""
     private var currentPlayableBackdropUrl: String? = null
 
@@ -336,12 +336,12 @@ class PlayerViewModel @Inject constructor(
                 activeAudioStreamIndex = null
                 activeSubtitleStreamIndex = null
                 activeMediaSourceId = ""
-                catalogoStreamGeneration = null
+                onDemandStreamGeneration = null
             }
             generationJob?.cancel()
             generationJob = null
-            isCurrentItemCatalogo = false
-            activeCatalogoReleaseId = null
+            isCurrentItemOnDemand = false
+            activeOnDemandReleaseId = null
             // Nueva carga de reproducción: la sesión anterior ya no está activa.
             sessionFinished = false
             hasReportedStart = false
@@ -481,7 +481,7 @@ class PlayerViewModel @Inject constructor(
                         android.net.Uri.parse(path).getQueryParameter("release")?.toLongOrNull()
                     }.getOrNull()
                 }
-                val isReady = handleCatalogoTorrentPreparation(
+                val isReady = handleOnDemandPreparation(
                     api = api,
                     effectiveAuthHeader = effectiveAuthHeader,
                     playableId = playableId,
@@ -492,7 +492,7 @@ class PlayerViewModel @Inject constructor(
                     currentMediaSourceId = chosenMsForPrep?.id
                 )
                 if (!isReady) {
-                    Log.i("PlayerViewModel", "Catalogo preparation halted or cancelled for $playableId")
+                    Log.i("PlayerViewModel", "Medusa preparation halted or cancelled for $playableId")
                     return@launch
                 }
             }
@@ -728,8 +728,8 @@ class PlayerViewModel @Inject constructor(
                 mediaSourceId = activeMediaSourceId,
                 isStrm = chosenMediaSource?.let { JellyfinPlaybackSourceResolver.isStrm(it) } ?: false
             )
-            if (isCurrentItemCatalogo) {
-                startCatalogoGenerationWatch(playableId = playableId, releaseId = activeCatalogoReleaseId)
+            if (isCurrentItemOnDemand) {
+                startOnDemandGenerationWatch(playableId = playableId, releaseId = activeOnDemandReleaseId)
             }
         }
     }
@@ -1019,7 +1019,7 @@ class PlayerViewModel @Inject constructor(
         if (durationMs > 0L) lastDurationMs = durationMs
         // Coalescencia: en servidores lentos varios reportes podían terminar fuera de orden y
         // hacer que Jellyfin retrocediera el punto de reanudación. position=0 es un reinicio
-        // legítimo (por ejemplo al cambiar de fuente del addon Catalogo) y nunca se descarta.
+        // legítimo (por ejemplo al cambiar de fuente del addon Medusa) y nunca se descarta.
         if (positionMs > 0L && lastDispatchedPositionMs >= 0L && positionMs < lastDispatchedPositionMs) return
         progressJob?.cancel()
         lastDispatchedPositionMs = positionMs
@@ -1488,11 +1488,11 @@ class PlayerViewModel @Inject constructor(
     }
 
     /**
-     * Gestiona la detección y preparación de torrents bajo demanda a través del plugin Catalogo.
+     * Gestiona la detección y preparación de torrents bajo demanda a través del plugin Medusa.
      * Devuelve true si el ítem ya está listo para reproducir (o si el plugin no aplica/falla en modo fail-open).
      * Devuelve false si la preparación fue cancelada o detenida por un error no recuperable.
      */
-    private suspend fun handleCatalogoTorrentPreparation(
+    private suspend fun handleOnDemandPreparation(
         api: JellyfinApiService,
         effectiveAuthHeader: String,
         playableId: String,
@@ -1502,24 +1502,24 @@ class PlayerViewModel @Inject constructor(
         availableVersions: List<JellyfinMediaSourceDto> = emptyList(),
         currentMediaSourceId: String? = null
     ): Boolean {
-        // 1. Detección del plugin: GET /Catalogo/Capabilities
-        val capsRes = runCatching { api.getCatalogoCapabilities() }.getOrNull()
+        // 1. Detección del plugin: GET /Medusa/Capabilities
+        val capsRes = runCatching { api.getMedusaCapabilities() }.getOrNull()
         if (capsRes == null || !capsRes.isSuccessful || capsRes.body()?.isSupported != true) {
-            Log.i("PlayerViewModel", "Catalogo plugin not available or unsupported (code=${capsRes?.code()}). Proceeding normally with Jellyfin.")
+            Log.i("PlayerViewModel", "Medusa plugin not available or unsupported (code=${capsRes?.code()}). Proceeding normally with Jellyfin.")
             return true
         }
 
-        // 2. Consultar estado: GET /Catalogo/Status/{itemId}?release=...
+        // 2. Consultar estado: GET /Medusa/Status/{itemId}?release=...
         var authHeader = effectiveAuthHeader
-        var statusRes = runCatching { api.getCatalogoStatus(authHeader = authHeader, itemId = playableId, releaseId = releaseId) }.getOrNull()
+        var statusRes = runCatching { api.getMedusaStatus(authHeader = authHeader, itemId = playableId, releaseId = releaseId) }.getOrNull()
 
         if (statusRes == null || statusRes.code() == 404) {
-            Log.i("PlayerViewModel", "Catalogo status 404/network error. Proceeding normally.")
+            Log.i("PlayerViewModel", "Medusa status 404/network error. Proceeding normally.")
             return true
         }
 
         if (statusRes.code() == 401) {
-            Log.w("PlayerViewModel", "Catalogo status 401. Re-authenticating with Jellyfin...")
+            Log.w("PlayerViewModel", "Medusa status 401. Re-authenticating with Jellyfin...")
             val reAuthSuccess = runCatching {
                 val prefs = userPreferencesRepository.userPreferencesFlow.first()
                 if (prefs.jellyfinUsername.isNotBlank() && prefs.jellyfinPassword.isNotBlank()) {
@@ -1533,7 +1533,7 @@ class PlayerViewModel @Inject constructor(
             }.getOrDefault(false)
 
             if (reAuthSuccess) {
-                statusRes = runCatching { api.getCatalogoStatus(authHeader = authHeader, itemId = playableId, releaseId = releaseId) }.getOrNull()
+                statusRes = runCatching { api.getMedusaStatus(authHeader = authHeader, itemId = playableId, releaseId = releaseId) }.getOrNull()
             }
             if (statusRes == null || statusRes.code() == 401) {
                 _fatalPlaybackError.value = appContext.getString(R.string.player_error_http_401)
@@ -1543,7 +1543,7 @@ class PlayerViewModel @Inject constructor(
 
         if (statusRes.code() == 503) {
             val body = runCatching { statusRes.errorBody()?.string() }.getOrNull()
-            val message = catalogoErrorMessage(body) ?: "No se pudo preparar la descarga."
+            val message = medusaErrorMessage(body) ?: "No se pudo preparar la descarga."
             val unavailable = message.contains("No hay ninguna fuente", ignoreCase = true)
             _torrentOverlayState.value = TorrentOverlayUiState(
                 itemId = playableId,
@@ -1566,22 +1566,22 @@ class PlayerViewModel @Inject constructor(
             return true
         }
 
-        isCurrentItemCatalogo = true
+        isCurrentItemOnDemand = true
         val effectiveReleaseId = releaseId ?: initialBody.releaseId ?: initialBody.status?.releaseId
-        activeCatalogoReleaseId = effectiveReleaseId
+        activeOnDemandReleaseId = effectiveReleaseId
 
         val initialStatus = initialBody.status
         val initialGeneration = initialStatus?.streamGeneration
         if (
-            catalogoStreamGeneration != null &&
+            onDemandStreamGeneration != null &&
             initialGeneration != null &&
-            initialGeneration != catalogoStreamGeneration
+            initialGeneration != onDemandStreamGeneration
         ) {
-            restartCatalogoPlayback(initialStatus)
+            restartOnDemandPlayback(initialStatus)
             return false
         }
         if (initialGeneration != null) {
-            catalogoStreamGeneration = initialGeneration
+            onDemandStreamGeneration = initialGeneration
         }
 
         if (initialStatus?.streamReady == true) {
@@ -1600,19 +1600,19 @@ class PlayerViewModel @Inject constructor(
         torrentZeroProgressStartMs = System.currentTimeMillis()
         updateTorrentOverlay(playableId, title, backdropUrl, initialStatus, availableVersions, currentMediaSourceId)
 
-        // POST /Catalogo/Prepare/{itemId} una sola vez
+        // POST /Medusa/Prepare/{itemId} una sola vez
         runCatching {
-            val prepRes = api.prepareCatalogoItem(authHeader = authHeader, itemId = playableId, releaseId = effectiveReleaseId)
+            val prepRes = api.prepareMedusaItem(authHeader = authHeader, itemId = playableId, releaseId = effectiveReleaseId)
             if (prepRes.code() == 503 || !prepRes.isSuccessful) {
                 val body = runCatching { prepRes.errorBody()?.string() }.getOrNull()
-                throw CatalogoHttpException(
+                throw MedusaHttpException(
                     statusCode = prepRes.code(),
-                    serverMessage = catalogoErrorMessage(body)
+                    serverMessage = medusaErrorMessage(body)
                 )
             }
         }.onFailure { e ->
-            Log.w("PlayerViewModel", "Catalogo prepare request failed: ${e.message}")
-            val message = (e as? CatalogoHttpException)?.serverMessage
+            Log.w("PlayerViewModel", "Medusa prepare request failed: ${e.message}")
+            val message = (e as? MedusaHttpException)?.serverMessage
                 ?: "No se pudo preparar la descarga."
             val unavailable = message.contains("No hay ninguna fuente", ignoreCase = true)
             _torrentOverlayState.value = (_torrentOverlayState.value ?: TorrentOverlayUiState(
@@ -1647,14 +1647,14 @@ class PlayerViewModel @Inject constructor(
                 return false
             }
 
-            val pollRes = runCatching { api.getCatalogoStatus(authHeader = authHeader, itemId = playableId, releaseId = effectiveReleaseId) }.getOrNull()
+            val pollRes = runCatching { api.getMedusaStatus(authHeader = authHeader, itemId = playableId, releaseId = effectiveReleaseId) }.getOrNull()
             if (pollRes == null) {
                 continue
             }
 
             if (pollRes.code() == 503) {
                 val body = runCatching { pollRes.errorBody()?.string() }.getOrNull()
-                val message = catalogoErrorMessage(body) ?: "No se pudo preparar la descarga."
+                val message = medusaErrorMessage(body) ?: "No se pudo preparar la descarga."
                 val unavailable = message.contains("No hay ninguna fuente", ignoreCase = true)
                 _torrentOverlayState.value = _torrentOverlayState.value?.copy(
                     state = if (unavailable) "UNAVAILABLE" else "ERROR",
@@ -1667,7 +1667,7 @@ class PlayerViewModel @Inject constructor(
             }
 
             if (pollRes.code() == 404) {
-                Log.w("PlayerViewModel", "Catalogo status 404 during polling. Proceeding normally.")
+                Log.w("PlayerViewModel", "Medusa status 404 during polling. Proceeding normally.")
                 _torrentOverlayState.value = null
                 return true
             }
@@ -1681,15 +1681,15 @@ class PlayerViewModel @Inject constructor(
             val currStatus = pollBody.status ?: continue
             val pollGeneration = currStatus.streamGeneration
             if (
-                catalogoStreamGeneration != null &&
+                onDemandStreamGeneration != null &&
                 pollGeneration != null &&
-                pollGeneration != catalogoStreamGeneration
+                pollGeneration != onDemandStreamGeneration
             ) {
-                restartCatalogoPlayback(currStatus)
+                restartOnDemandPlayback(currStatus)
                 return false
             }
             if (pollGeneration != null) {
-                catalogoStreamGeneration = pollGeneration
+                onDemandStreamGeneration = pollGeneration
             }
 
             updateTorrentOverlay(playableId, title, backdropUrl, currStatus, availableVersions, currentMediaSourceId)
@@ -1726,7 +1726,7 @@ class PlayerViewModel @Inject constructor(
         playableId: String,
         title: String,
         backdropUrl: String?,
-        status: CatalogoTorrentStatusDto?,
+        status: TodTorrentStatusDto?,
         availableVersions: List<JellyfinMediaSourceDto> = emptyList(),
         currentMediaSourceId: String? = null
     ) {
@@ -1841,7 +1841,7 @@ class PlayerViewModel @Inject constructor(
         )
     }
 
-    private fun startCatalogoGenerationWatch(playableId: String, releaseId: Long? = null) {
+    private fun startOnDemandGenerationWatch(playableId: String, releaseId: Long? = null) {
         generationJob?.cancel()
         generationJob = viewModelScope.launch {
             while (isActive && !sessionFinished) {
@@ -1849,26 +1849,26 @@ class PlayerViewModel @Inject constructor(
                 if (jellyfinBaseUrl.isBlank() || jellyfinAuthHeader.isBlank()) continue
                 runCatching {
                     val api = NetworkClientFactory.createJellyfinService(jellyfinBaseUrl, JellyfinApiService::class.java)
-                    api.getCatalogoStatus(authHeader = jellyfinAuthHeader, itemId = playableId, releaseId = releaseId)
+                    api.getMedusaStatus(authHeader = jellyfinAuthHeader, itemId = playableId, releaseId = releaseId)
                 }.onSuccess { response ->
                     if (!response.isSuccessful) return@onSuccess
                     val status = response.body()?.status ?: return@onSuccess
                     val generation = status.streamGeneration
                     if (
-                        catalogoStreamGeneration != null &&
+                        onDemandStreamGeneration != null &&
                         generation != null &&
-                        generation != catalogoStreamGeneration
+                        generation != onDemandStreamGeneration
                     ) {
-                        restartCatalogoPlayback(status)
+                        restartOnDemandPlayback(status)
                     } else if (generation != null) {
-                        catalogoStreamGeneration = generation
+                        onDemandStreamGeneration = generation
                     }
                 }
             }
         }
     }
 
-    private fun restartCatalogoPlayback(status: CatalogoTorrentStatusDto) {
+    private fun restartOnDemandPlayback(status: TodTorrentStatusDto) {
         val reason = status.streamSwitchReason
         val switchMessage = when (reason) {
             "no_contiguous_buffer" -> "La fuente no tenía el inicio; cambiando de versión…"
@@ -1891,7 +1891,7 @@ class PlayerViewModel @Inject constructor(
             isUnavailable = false,
             currentMediaSourceId = activeMediaSourceId.takeIf { it.isNotBlank() }
         )
-        catalogoStreamGeneration = status.streamGeneration
+        onDemandStreamGeneration = status.streamGeneration
         // loadStreamUrl ya cancela y reemplaza su propio loadStreamJob: un launch exterior
         // añadía un segundo coroutine sin seguimiento en cada cambio de generación del addon.
         loadStreamUrl(

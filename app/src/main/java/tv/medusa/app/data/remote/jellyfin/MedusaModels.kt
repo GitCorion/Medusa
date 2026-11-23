@@ -4,7 +4,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class CatalogoCapabilitiesDto(
+data class MedusaCapabilitiesDto(
     @SerialName("api_version") val apiVersion: Int = 0,
     @SerialName("plugin_version") val pluginVersion: String? = null,
     @SerialName("features") val features: List<String> = emptyList(),
@@ -17,7 +17,7 @@ data class CatalogoCapabilitiesDto(
 }
 
 @Serializable
-data class CatalogoTorrentStatusDto(
+data class TodTorrentStatusDto(
     @SerialName("state") val state: String = "",
     @SerialName("progress") val progress: Float? = null,
     @SerialName("downloaded_bytes") val downloadedBytes: Long? = null,
@@ -51,33 +51,33 @@ data class CatalogoTorrentStatusDto(
 }
 
 @Serializable
-data class CatalogoStatusDto(
+data class MedusaStatusDto(
     @SerialName("is_catalog") val isCatalog: Boolean = false,
     @SerialName("item_id") val itemId: String? = null,
     @SerialName("key") val key: String? = null,
     @SerialName("release_id") val releaseId: Long? = null,
-    @SerialName("status") val status: CatalogoTorrentStatusDto? = null
+    @SerialName("status") val status: TodTorrentStatusDto? = null
 )
 
 @Serializable
-data class CatalogoStatusResponse(
+data class MedusaStatusResponse(
     @SerialName("is_catalog") val isCatalog: Boolean = false,
-    @SerialName("status") val status: CatalogoTorrentStatusDto? = null
+    @SerialName("status") val status: TodTorrentStatusDto? = null
 ) {
     val is_catalog: Boolean get() = isCatalog
 }
 
 @Serializable
-data class CatalogoErrorDto(
+data class MedusaErrorDto(
     @SerialName("error") val error: String? = null,
     @SerialName("message") val message: String? = null,
     @SerialName("reason") val reason: String? = null,
     @SerialName("detail") val detail: String? = null,
-    @SerialName("attempts") val attempts: List<CatalogoAttemptDto> = emptyList()
+    @SerialName("attempts") val attempts: List<MedusaAttemptDto> = emptyList()
 )
 
 @Serializable
-data class CatalogoAttemptDto(
+data class MedusaAttemptDto(
     @SerialName("release_id") val releaseId: Long? = null,
     @SerialName("tracker") val tracker: String? = null,
     @SerialName("error") val error: String? = null,
@@ -85,37 +85,37 @@ data class CatalogoAttemptDto(
     @SerialName("detail") val detail: String? = null
 )
 
-val catalogoJson: kotlinx.serialization.json.Json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+val medusaJson: kotlinx.serialization.json.Json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
 
-fun catalogoErrorMessage(body: String?): String? = runCatching {
+fun medusaErrorMessage(body: String?): String? = runCatching {
     if (body.isNullOrBlank()) return null
-    catalogoJson.decodeFromString<CatalogoErrorDto>(body).message
+    medusaJson.decodeFromString<MedusaErrorDto>(body).message
 }.getOrNull()
 
-class CatalogoHttpException(
+class MedusaHttpException(
     val statusCode: Int,
     val serverMessage: String?,
     cause: Throwable? = null
-) : java.io.IOException(serverMessage ?: "Catálogo HTTP $statusCode", cause)
+) : java.io.IOException(serverMessage ?: "Medusa HTTP $statusCode", cause)
 
 @Serializable
-data class CatalogoPrepareDetailDto(
+data class MedusaPrepareDetailDto(
     @SerialName("prepared") val prepared: Boolean = false,
-    @SerialName("status") val status: CatalogoTorrentStatusDto? = null
+    @SerialName("status") val status: TodTorrentStatusDto? = null
 )
 
 @Serializable
-data class CatalogoPrepareResponseDto(
+data class MedusaPrepareResponseDto(
     @SerialName("is_catalog") val isCatalog: Boolean = false,
     @SerialName("key") val key: String? = null,
     @SerialName("release_id") val releaseId: Long? = null,
-    @SerialName("prepared") val prepared: CatalogoPrepareDetailDto? = null
+    @SerialName("prepared") val prepared: MedusaPrepareDetailDto? = null
 )
 
 /**
  * Utilidades para formatear velocidad, bytes y ETA en el overlay del torrent.
  */
-object CatalogoFormatUtils {
+object TodFormatUtils {
     fun formatBytes(bytes: Long): String {
         if (bytes <= 0) return "0 MB"
         val mb = bytes / (1024.0 * 1024.0)

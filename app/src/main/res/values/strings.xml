@@ -705,7 +705,7 @@
     <string name="context_menu_view_details">Ver detalles</string>
     <string name="context_menu_go_to_series">Ir a la serie</string>
 
-    <!-- Catálogo Torrent on Demand -->
+    <!-- Medusa Torrent on Demand -->
     <string name="torrent_preparing">Preparando búfer de reproducción…</string>
     <string name="torrent_buffering">Cargando búfer de arranque…</string>
     <string name="torrent_buffering_desc">Almacenando los primeros megas para una reproducción fluida sin cortes.</string>

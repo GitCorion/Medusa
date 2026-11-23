@@ -50,11 +50,11 @@ bajo demanda.
 | Pieza | Rol | Cuándo la necesitas |
 |---|---|---|
 | [Medusa](https://github.com/GitCorion/Medusa) (este repositorio) | Cliente nativo para Android TV y tablet. Reproduce desde Jellyfin. | Siempre |
-| [Medusa-Jellyfin-Plugin](https://github.com/GitCorion/Medusa-Jellyfin-Plugin) | Puente Jellyfin↔TOD: estado, preparación y lease. En Jellyfin aparece como **Catalogo**. | Si usas TOD |
+| [Medusa-Jellyfin-Plugin](https://github.com/GitCorion/Medusa-Jellyfin-Plugin) | Puente Jellyfin↔TOD: estado, preparación y lease. En Jellyfin aparece como **Medusa**. | Si usas TOD |
 | [TOD](https://github.com/GitCorion/TOD) | Catálogo bajo demanda: fuentes, qBittorrent, `.strm` y proxy por rangos. Opcionalmente Prowlarr/Jackett y Radarr/Sonarr. | Si preparas contenido que no está descargado |
 
 ```text
-Medusa TV ──▶ Jellyfin ──▶ plugin Catalogo ──▶ TOD :8773 ──▶ qBittorrent
+Medusa TV ──▶ Jellyfin ──▶ plugin Medusa ──▶ TOD :8773 ──▶ qBittorrent
                                                              ├── Prowlarr / Jackett
                                                              └── Radarr / Sonarr (API)
 ```
@@ -233,7 +233,7 @@ en [`docs/RELEASE.md`](docs/RELEASE.md).
 Medusa no recopila datos, no muestra publicidad y no incluye analítica ni informes de fallos de
 terceros. El permiso de Advertising ID se elimina explícitamente del manifiesto. Solo habla con:
 
-- **Tu Jellyfin** (siempre) y, si usas TOD, el plugin Catalogo en el mismo servidor.
+- **Tu Jellyfin** (siempre) y, si usas TOD, el plugin Medusa en el mismo servidor.
 - **GitHub raw** para el manifiesto OTA, los catálogos estáticos opcionales y el diccionario de
   etiquetas.
 - **TMDB** solo si configuras tu clave, **Trakt** solo si lo vinculas y **YouTube nocookie** solo al
@@ -295,7 +295,7 @@ resto de pósters y capturas pertenecen a sus titulares y se muestran con fines 
 Medusa TV se distribuye bajo **GNU General Public License v3.0**. Consulta [`LICENSE`](LICENSE).
 
 Medusa es un cliente independiente y no está afiliado ni respaldado por Jellyfin, TMDB o Trakt.
-Jellyfin es una marca de sus titulares. El plugin Catalogo se distribuye bajo GPL-3.0 y TOD bajo MIT,
+Jellyfin es una marca de sus titulares. El plugin Medusa se distribuye bajo GPL-3.0 y TOD bajo MIT,
 cada uno en su repositorio.
 
 <div align="center">

@@ -53,15 +53,15 @@ servidor. La lista **nunca puede quedar vacía** si hay un ítem reproducible.
 ### 2.3. TOD (catálogo bajo demanda con `.strm`)
 
 Medusa no habla con [TOD](https://github.com/GitCorion/TOD) directamente. Habla con Jellyfin; el
-[plugin Catalogo](https://github.com/GitCorion/Medusa-Jellyfin-Plugin) traduce la conversación.
+[plugin Medusa](https://github.com/GitCorion/Medusa-Jellyfin-Plugin) traduce la conversación.
 
 Flujo del cliente:
 
 1. `POST /Items/{itemId}/PlaybackInfo`.
 2. Se lee `MediaSources[].Path`. Si termina en `.strm`, se consulta
-   `GET /Catalogo/Status/{itemId}`.
+   `GET /Medusa/Status/{itemId}`.
 3. Si `is_catalog` es verdadero y `stream_ready` es falso, se llama a
-   `POST /Catalogo/Prepare/{itemId}`, se muestra el buffer y se consulta el estado cada 1–2 s.
+   `POST /Medusa/Prepare/{itemId}`, se muestra el buffer y se consulta el estado cada 1–2 s.
 4. Cuando `stream_ready` es verdadero, se reproduce con la reproducción normal de Jellyfin. El
    plugin mantiene un lease para seguir la sesión si TOD cambia de fuente.
 5. Si `is_catalog` es falso o el plugin no está instalado, se reproduce como un `.strm` normal.

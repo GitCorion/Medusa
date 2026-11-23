@@ -50,11 +50,11 @@ playback.
 | Piece | Role | When you need it |
 |---|---|---|
 | [Medusa](https://github.com/GitCorion/Medusa) (this repository) | Native Android TV and tablet client. Plays through Jellyfin. | Always |
-| [Medusa-Jellyfin-Plugin](https://github.com/GitCorion/Medusa-Jellyfin-Plugin) | Jellyfin↔TOD bridge: status, preparation and lease. It appears in Jellyfin as **Catalogo**. | If you use TOD |
+| [Medusa-Jellyfin-Plugin](https://github.com/GitCorion/Medusa-Jellyfin-Plugin) | Jellyfin↔TOD bridge: status, preparation and lease. It appears in Jellyfin as **Medusa**. | If you use TOD |
 | [TOD](https://github.com/GitCorion/TOD) | Catalog on demand: sources, qBittorrent, `.strm` and range proxy. Optionally Prowlarr/Jackett and Radarr/Sonarr. | If you prepare undownloaded content |
 
 ```text
-Medusa TV ──▶ Jellyfin ──▶ Catalogo plugin ──▶ TOD :8773 ──▶ qBittorrent
+Medusa TV ──▶ Jellyfin ──▶ Medusa plugin ──▶ TOD :8773 ──▶ qBittorrent
                                                              ├── Prowlarr / Jackett
                                                              └── Radarr / Sonarr (API)
 ```
@@ -231,7 +231,7 @@ Publishing by tag and the [`release.yml`](.github/workflows/release.yml) workflo
 Medusa does not collect data, show ads or include analytics or third-party crash reporting. The
 Advertising ID permission is explicitly removed from the manifest. It only talks to:
 
-- **Your Jellyfin** (always) and, if you use TOD, the Catalogo plugin on the same server.
+- **Your Jellyfin** (always) and, if you use TOD, the Medusa plugin on the same server.
 - **GitHub raw** for the OTA manifest, optional static catalogs and the tag dictionary.
 - **TMDB** only if you configure your key, **Trakt** only if you link it and **YouTube nocookie** only
   when you open a trailer.
@@ -291,7 +291,7 @@ remaining posters and captures belong to their owners and are shown for document
 Medusa TV is distributed under the **GNU General Public License v3.0**. See [`LICENSE`](LICENSE).
 
 Medusa is an independent client and is not affiliated with or endorsed by Jellyfin, TMDB or Trakt.
-Jellyfin is a trademark of its owners. The Catalogo plugin is distributed under GPL-3.0 and TOD
+Jellyfin is a trademark of its owners. The Medusa plugin is distributed under GPL-3.0 and TOD
 under MIT, each in its own repository.
 
 <div align="center">

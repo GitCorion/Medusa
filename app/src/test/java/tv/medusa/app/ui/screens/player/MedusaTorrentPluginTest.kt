@@ -7,20 +7,20 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Assume
 import org.junit.Test
-import tv.medusa.app.data.remote.jellyfin.CatalogoCapabilitiesDto
-import tv.medusa.app.data.remote.jellyfin.CatalogoFormatUtils
-import tv.medusa.app.data.remote.jellyfin.CatalogoHttpException
-import tv.medusa.app.data.remote.jellyfin.CatalogoPrepareResponseDto
-import tv.medusa.app.data.remote.jellyfin.CatalogoStatusDto
-import tv.medusa.app.data.remote.jellyfin.CatalogoStatusResponse
-import tv.medusa.app.data.remote.jellyfin.CatalogoTorrentStatusDto
-import tv.medusa.app.data.remote.jellyfin.catalogoErrorMessage
-import tv.medusa.app.data.remote.jellyfin.catalogoJson
+import tv.medusa.app.data.remote.jellyfin.MedusaCapabilitiesDto
+import tv.medusa.app.data.remote.jellyfin.TodFormatUtils
+import tv.medusa.app.data.remote.jellyfin.MedusaHttpException
+import tv.medusa.app.data.remote.jellyfin.MedusaPrepareResponseDto
+import tv.medusa.app.data.remote.jellyfin.MedusaStatusDto
+import tv.medusa.app.data.remote.jellyfin.MedusaStatusResponse
+import tv.medusa.app.data.remote.jellyfin.TodTorrentStatusDto
+import tv.medusa.app.data.remote.jellyfin.medusaErrorMessage
+import tv.medusa.app.data.remote.jellyfin.medusaJson
 import tv.medusa.app.data.remote.jellyfin.JellyfinMediaSourceDto
 import tv.medusa.app.data.remote.jellyfin.JellyfinPlaybackSourceResolver
 import tv.medusa.app.data.remote.jellyfin.TorrentOverlayUiState
 
-class CatalogoTorrentPluginTest {
+class MedusaTorrentPluginTest {
 
     private val json = Json {
         ignoreUnknownKeys = true
@@ -38,7 +38,7 @@ class CatalogoTorrentPluginTest {
             }
         """.trimIndent()
 
-        val caps = json.decodeFromString<CatalogoCapabilitiesDto>(rawJson)
+        val caps = json.decodeFromString<MedusaCapabilitiesDto>(rawJson)
         assertEquals(1, caps.apiVersion)
         assertEquals("1.0.0.0", caps.pluginVersion)
         assertEquals(2, caps.features.size)
@@ -78,7 +78,7 @@ class CatalogoTorrentPluginTest {
             }
         """.trimIndent()
 
-        val status = json.decodeFromString<CatalogoStatusDto>(rawJson)
+        val status = json.decodeFromString<MedusaStatusDto>(rawJson)
         assertTrue(status.isCatalog)
         assertNotNull(status.status)
         assertTrue("9 lunas debe tener stream_ready=true", status.status!!.streamReady)
@@ -96,7 +96,7 @@ class CatalogoTorrentPluginTest {
             }
         """.trimIndent()
 
-        val status = json.decodeFromString<CatalogoStatusDto>(rawJson)
+        val status = json.decodeFromString<MedusaStatusDto>(rawJson)
         assertFalse(status.isCatalog)
         assertEquals("normal-jf-item-999", status.itemId)
         assertEquals(null, status.status)
@@ -126,7 +126,7 @@ class CatalogoTorrentPluginTest {
             }
         """.trimIndent()
 
-        val statusCold = json.decodeFromString<CatalogoStatusDto>(rawStatusCold)
+        val statusCold = json.decodeFromString<MedusaStatusDto>(rawStatusCold)
         assertTrue(statusCold.isCatalog)
         assertFalse("Título frío no debe estar stream_ready", statusCold.status!!.streamReady)
         assertEquals("COLD", statusCold.status!!.state)
@@ -148,7 +148,7 @@ class CatalogoTorrentPluginTest {
             }
         """.trimIndent()
 
-        val prepResp = json.decodeFromString<CatalogoPrepareResponseDto>(rawPrepare)
+        val prepResp = json.decodeFromString<MedusaPrepareResponseDto>(rawPrepare)
         assertTrue(prepResp.isCatalog)
         assertTrue(prepResp.prepared!!.prepared)
         assertEquals("DOWNLOADING", prepResp.prepared!!.status!!.state)
@@ -172,7 +172,7 @@ class CatalogoTorrentPluginTest {
             }
         """.trimIndent()
 
-        val statusDownloading = json.decodeFromString<CatalogoStatusDto>(rawDownloading)
+        val statusDownloading = json.decodeFromString<MedusaStatusDto>(rawDownloading)
         assertFalse(statusDownloading.status!!.streamReady)
         assertEquals(0.28f, statusDownloading.status!!.safeProgress, 0.001f)
         assertEquals(15133798L, statusDownloading.status!!.safeSpeedBps)
@@ -196,18 +196,18 @@ class CatalogoTorrentPluginTest {
 
     @Test
     fun formatUtils_speedAndEta() {
-        assertEquals("0 KB/s", CatalogoFormatUtils.formatSpeed(0L))
-        assertEquals("500 KB/s", CatalogoFormatUtils.formatSpeed(500 * 1024L))
-        assertEquals("14.4 MB/s", CatalogoFormatUtils.formatSpeed(15133798L))
+        assertEquals("0 KB/s", TodFormatUtils.formatSpeed(0L))
+        assertEquals("500 KB/s", TodFormatUtils.formatSpeed(500 * 1024L))
+        assertEquals("14.4 MB/s", TodFormatUtils.formatSpeed(15133798L))
 
-        assertEquals("0 MB", CatalogoFormatUtils.formatBytes(0L))
-        assertEquals("25 MB", CatalogoFormatUtils.formatBytes(25L * 1024L * 1024L))
-        assertEquals("1.5 GB", CatalogoFormatUtils.formatBytes((1.5 * 1024.0 * 1024.0 * 1024.0).toLong()))
+        assertEquals("0 MB", TodFormatUtils.formatBytes(0L))
+        assertEquals("25 MB", TodFormatUtils.formatBytes(25L * 1024L * 1024L))
+        assertEquals("1.5 GB", TodFormatUtils.formatBytes((1.5 * 1024.0 * 1024.0 * 1024.0).toLong()))
 
-        assertEquals("", CatalogoFormatUtils.formatEta(0L))
-        assertEquals("45 s", CatalogoFormatUtils.formatEta(45L))
-        assertEquals("2 min", CatalogoFormatUtils.formatEta(172L))
-        assertEquals("1 h 1 min", CatalogoFormatUtils.formatEta(3660L))
+        assertEquals("", TodFormatUtils.formatEta(0L))
+        assertEquals("45 s", TodFormatUtils.formatEta(45L))
+        assertEquals("2 min", TodFormatUtils.formatEta(172L))
+        assertEquals("1 h 1 min", TodFormatUtils.formatEta(3660L))
     }
 
     @Test
@@ -238,18 +238,19 @@ class CatalogoTorrentPluginTest {
 
     /**
      * Integración manual contra un Jellyfin real. No se ejecuta por defecto:
-     * exporta CATALOGO_TEST_SERVER para habilitarla.
+     * exporta MEDUSA_TEST_SERVER o CATALOGO_TEST_SERVER para habilitarla.
      */
     @Test
     fun liveServer_capabilitiesCheck() {
-        val serverUrl = System.getenv("CATALOGO_TEST_SERVER").orEmpty()
+        val serverUrl = System.getenv("MEDUSA_TEST_SERVER")
+            ?: System.getenv("CATALOGO_TEST_SERVER").orEmpty()
         Assume.assumeTrue(
-            "Configura CATALOGO_TEST_SERVER para ejecutar el test de integración",
+            "Configura MEDUSA_TEST_SERVER para ejecutar el test de integración",
             serverUrl.isNotBlank()
         )
 
         val isReachable = runCatching {
-            val url = java.net.URL("$serverUrl/Catalogo/Capabilities")
+            val url = java.net.URL("$serverUrl/Medusa/Capabilities")
             val conn = url.openConnection() as java.net.HttpURLConnection
             conn.connectTimeout = 2000
             conn.readTimeout = 2000
@@ -260,10 +261,10 @@ class CatalogoTorrentPluginTest {
 
         if (isReachable != null) {
             assertEquals(200, isReachable.first)
-            val caps = json.decodeFromString<CatalogoCapabilitiesDto>(isReachable.second)
+            val caps = json.decodeFromString<MedusaCapabilitiesDto>(isReachable.second)
             assertEquals(1, caps.apiVersion)
             assertTrue(caps.isSupported)
-            println("Live Jellyfin Catalogo Plugin verified: $caps")
+            println("Live Jellyfin Medusa Plugin verified: $caps")
         }
     }
 
@@ -298,7 +299,7 @@ class CatalogoTorrentPluginTest {
             }
         """.trimIndent()
 
-        val statusDto = json.decodeFromString<CatalogoStatusDto>(rawJson)
+        val statusDto = json.decodeFromString<MedusaStatusDto>(rawJson)
         assertTrue(statusDto.isCatalog)
         assertEquals(13318L, statusDto.status?.releaseId)
     }
@@ -326,7 +327,7 @@ class CatalogoTorrentPluginTest {
             }
         """.trimIndent()
 
-        val statusDto = json.decodeFromString<CatalogoStatusDto>(rawJson)
+        val statusDto = json.decodeFromString<MedusaStatusDto>(rawJson)
         assertTrue(statusDto.isCatalog)
         val st = statusDto.status!!
         assertEquals(50331648L, st.bufferBytes)
@@ -360,22 +361,24 @@ class CatalogoTorrentPluginTest {
 
     /**
      * Integración manual contra un Jellyfin real. No se ejecuta por defecto:
-     * exporta CATALOGO_TEST_SERVER y CATALOGO_TEST_TOKEN para habilitarla.
+     * exporta MEDUSA_TEST_SERVER (o CATALOGO_TEST_SERVER) y MEDUSA_TEST_TOKEN (o CATALOGO_TEST_TOKEN) para habilitarla.
      */
     @Test
     fun liveServer_realTokenStatusTests() {
-        val serverUrl = System.getenv("CATALOGO_TEST_SERVER").orEmpty()
-        val token = System.getenv("CATALOGO_TEST_TOKEN").orEmpty()
+        val serverUrl = System.getenv("MEDUSA_TEST_SERVER")
+            ?: System.getenv("CATALOGO_TEST_SERVER").orEmpty()
+        val token = System.getenv("MEDUSA_TEST_TOKEN")
+            ?: System.getenv("CATALOGO_TEST_TOKEN").orEmpty()
         Assume.assumeTrue(
-            "Configura CATALOGO_TEST_SERVER y CATALOGO_TEST_TOKEN para ejecutar el test de integración",
+            "Configura MEDUSA_TEST_SERVER y MEDUSA_TEST_TOKEN para ejecutar el test de integración",
             serverUrl.isNotBlank() && token.isNotBlank()
         )
 
-        val authHeader = "MediaBrowser Client=\"Tujelly\", Device=\"MacTest\", DeviceId=\"tujelly-test-suite\", Version=\"2.2.99\", Token=\"$token\""
+        val authHeader = "MediaBrowser Client=\"Medusa\", Device=\"MacTest\", DeviceId=\"medusa-test-suite\", Version=\"2.4.2\", Token=\"$token\""
 
-        fun getStatus(itemId: String, releaseId: Long? = null): CatalogoStatusDto? {
+        fun getStatus(itemId: String, releaseId: Long? = null): MedusaStatusDto? {
             return runCatching {
-                val urlStr = if (releaseId != null) "$serverUrl/Catalogo/Status/$itemId?release=$releaseId" else "$serverUrl/Catalogo/Status/$itemId"
+                val urlStr = if (releaseId != null) "$serverUrl/Medusa/Status/$itemId?release=$releaseId" else "$serverUrl/Medusa/Status/$itemId"
                 val url = java.net.URL(urlStr)
                 val conn = url.openConnection() as java.net.HttpURLConnection
                 conn.setRequestProperty("Authorization", authHeader)
@@ -383,7 +386,7 @@ class CatalogoTorrentPluginTest {
                 conn.readTimeout = 3000
                 if (conn.responseCode == 200) {
                     val text = conn.inputStream.bufferedReader().readText()
-                    json.decodeFromString<CatalogoStatusDto>(text)
+                    json.decodeFromString<MedusaStatusDto>(text)
                 } else null
             }.getOrNull()
         }
@@ -421,7 +424,7 @@ class CatalogoTorrentPluginTest {
               "stream_switch_reason":"slow_swarm"
             }}
         """.trimIndent()
-        val response = catalogoJson.decodeFromString<CatalogoStatusResponse>(json)
+        val response = medusaJson.decodeFromString<MedusaStatusResponse>(json)
         assertEquals(7L, response.status?.streamGeneration)
         assertEquals("slow_swarm", response.status?.streamSwitchReason)
         assertEquals("2026-11-20T08:00:00Z", response.status?.streamSwitchedAt)
@@ -434,15 +437,15 @@ class CatalogoTorrentPluginTest {
         """.trimIndent()
         assertEquals(
             "No hay ninguna fuente reproducible para este título.",
-            catalogoErrorMessage(body),
+            medusaErrorMessage(body),
         )
     }
 
     @Test
     fun `error parses null or blank or non-json gracefully`() {
-        assertEquals(null, catalogoErrorMessage(null))
-        assertEquals(null, catalogoErrorMessage(""))
-        assertEquals(null, catalogoErrorMessage("   "))
-        assertEquals(null, catalogoErrorMessage("<html>502 Bad Gateway</html>"))
+        assertEquals(null, medusaErrorMessage(null))
+        assertEquals(null, medusaErrorMessage(""))
+        assertEquals(null, medusaErrorMessage("   "))
+        assertEquals(null, medusaErrorMessage("<html>502 Bad Gateway</html>"))
     }
 }

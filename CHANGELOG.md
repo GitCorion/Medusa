@@ -18,6 +18,7 @@ no tienen entrada detallada en este archivo; su histórico está en los Releases
 
 ### Cambiado
 
+- Rebranding: el puente pasa de Catalogo a Medusa.
 - README reescrito como landing: estado actual, instalación, configuración inicial, arquitectura,
   privacidad y enlaces a los documentos técnicos. `README.en.md` queda alineado.
 - Pantallas de carga del reproductor y de preparación de torrent sin tarjetas contenedoras: layout

@@ -256,7 +256,7 @@ La fluidez no sale del renderizado: sale de decidir qué no se dibuja.
   ese orden. El feed tiene TTL de 15 minutos y se emite antes de completar la generación.
 - **Reproducción con fallback.** `.strm` resuelto en el servidor, remux, DirectStream, transcode y
   transcodificación completa. La lista de candidatos nunca queda vacía. Con [TOD](https://github.com/GitCorion/TOD) y el
-  [plugin Catalogo](https://github.com/GitCorion/Medusa-Jellyfin-Plugin), la app consulta el
+  [plugin Medusa](https://github.com/GitCorion/Medusa-Jellyfin-Plugin), la app consulta el
   estado, pide `Prepare` y espera `stream_ready` antes de montar el player.
 - **DeviceProfile serializado con `encodeDefaults`.** Sin eso, Jellyfin sustituye el perfil por
   `Type: Audio`, listas vacías y códecs vacíos. Hay una prueba golden.

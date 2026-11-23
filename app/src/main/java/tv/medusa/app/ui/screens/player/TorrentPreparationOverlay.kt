@@ -68,7 +68,7 @@ import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import kotlinx.coroutines.delay
 import tv.medusa.app.R
-import tv.medusa.app.data.remote.jellyfin.CatalogoFormatUtils
+import tv.medusa.app.data.remote.jellyfin.TodFormatUtils
 import tv.medusa.app.data.remote.jellyfin.JellyfinMediaSourceDto
 import tv.medusa.app.data.remote.jellyfin.TorrentOverlayUiState
 import tv.medusa.app.ui.theme.TvPill
@@ -189,11 +189,11 @@ fun TorrentPreparationOverlay(
             }
 
             if (!state.isError && !state.isUnavailable) {
-                val downloadedStr = CatalogoFormatUtils.formatBytes(state.downloadedBytes)
-                val targetStr = CatalogoFormatUtils.formatBytes(state.targetBufferBytes)
+                val downloadedStr = TodFormatUtils.formatBytes(state.downloadedBytes)
+                val targetStr = TodFormatUtils.formatBytes(state.targetBufferBytes)
                 val pct = (animatedProgress * 100).toInt().coerceIn(0, 100)
                 val speedText = if (state.speedBps > 0) {
-                    CatalogoFormatUtils.formatSpeed(state.speedBps)
+                    TodFormatUtils.formatSpeed(state.speedBps)
                 } else if (state.isZeroProgressFor10s) {
                     stringResource(R.string.torrent_connecting_swarm)
                 } else {

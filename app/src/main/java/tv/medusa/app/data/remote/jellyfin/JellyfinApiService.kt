@@ -277,21 +277,21 @@ interface JellyfinApiService {
         @Query("InheritFromParent") inheritFromParent: Boolean = true
     ): JellyfinItemsResponse
 
-    // ─── Catalogo Torrent on Demand Plugin: /Catalogo/... ──────────────
-    @GET("Catalogo/Capabilities")
-    suspend fun getCatalogoCapabilities(): retrofit2.Response<CatalogoCapabilitiesDto>
+    // ─── Medusa Torrent on Demand Plugin: /Medusa/... ──────────────
+    @GET("Medusa/Capabilities")
+    suspend fun getMedusaCapabilities(): retrofit2.Response<MedusaCapabilitiesDto>
 
-    @GET("Catalogo/Status/{itemId}")
-    suspend fun getCatalogoStatus(
+    @GET("Medusa/Status/{itemId}")
+    suspend fun getMedusaStatus(
         @Header("Authorization") authHeader: String,
         @Path("itemId") itemId: String,
         @Query("release") releaseId: Long? = null
-    ): retrofit2.Response<CatalogoStatusDto>
+    ): retrofit2.Response<MedusaStatusDto>
 
-    @POST("Catalogo/Prepare/{itemId}")
-    suspend fun prepareCatalogoItem(
+    @POST("Medusa/Prepare/{itemId}")
+    suspend fun prepareMedusaItem(
         @Header("Authorization") authHeader: String,
         @Path("itemId") itemId: String,
         @Query("release") releaseId: Long? = null
-    ): retrofit2.Response<CatalogoPrepareResponseDto>
+    ): retrofit2.Response<MedusaPrepareResponseDto>
 }
