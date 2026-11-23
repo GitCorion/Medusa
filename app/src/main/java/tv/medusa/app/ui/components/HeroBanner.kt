@@ -44,8 +44,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBackIos
-import androidx.compose.material.icons.automirrored.rounded.ArrowForwardIos
 import androidx.compose.material.icons.automirrored.rounded.PlaylistPlay
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Movie
@@ -141,8 +139,6 @@ fun HeroBanner(
     val cleanFeatured = remember(featuredItems) { featuredItems.take(6) }
     var carouselIndex by remember { mutableIntStateOf(0) }
     var isHeroFocused by remember { mutableStateOf(false) }
-    var isCarouselFocused by remember { mutableStateOf(false) }
-    val carouselFocusRequester = remember { FocusRequester() }
     val internalActionButtonFocusRequester = remember { FocusRequester() }
     val effectiveActionFocusRequester = actionFocusRequester ?: internalActionButtonFocusRequester
 
@@ -150,9 +146,9 @@ fun HeroBanner(
     val totalSlides = cleanFeatured.size + (if (hasSeasonalSlide) 1 else 0)
 
     // WCAG 2.2.2: la rotación automática se detiene en cuanto el usuario enfoca
-    // el hero o el propio carrusel. El foco actúa como pausa explícita.
-    LaunchedEffect(item, totalSlides, isHeroFocused, isCarouselFocused, carouselIndex) {
-        if (item == null && !isHeroFocused && !isCarouselFocused && totalSlides > 1) {
+    // los botones de acción del hero. El foco actúa como pausa explícita.
+    LaunchedEffect(item, totalSlides, isHeroFocused, carouselIndex) {
+        if (item == null && !isHeroFocused && totalSlides > 1) {
             delay(12000L)
             carouselIndex = (carouselIndex + 1) % totalSlides
         }
@@ -574,16 +570,12 @@ fun HeroBanner(
                         focusColor = focusColor,
                         focusContentColor = focusContent,
                         focusRequester = effectiveActionFocusRequester,
+                        buttonStyle = buttonStyle,
                         modifier = Modifier
                             .onPreviewKeyEvent { keyEvent ->
                                 if (keyEvent.type == KeyEventType.KeyDown) {
                                     if (keyEvent.key == Key.DirectionUp && onUpFromHero != null) {
                                         onUpFromHero()
-                                        true
-                                    } else if (keyEvent.key == Key.DirectionDown && totalSlides > 1) {
-                                        // El carrusel está en otra rama: el foco geomérico saltaba
-                                        // a los chips de género. Lo enlazamos explícitamente.
-                                        carouselFocusRequester.requestFocus()
                                         true
                                     } else if (keyEvent.key == Key.DirectionLeft && totalSlides > 1) {
                                         carouselIndex = if (carouselIndex > 0) carouselIndex - 1 else totalSlides - 1
@@ -606,96 +598,75 @@ fun HeroBanner(
                     )
 
                     if (hasInfoButton) {
-                        CinemaOrbitDial(
-                            icon = Icons.Rounded.Info,
-                            contentDescription = stringResource(R.string.common_details),
-                            focusColor = focusColor,
-                            focusContentColor = focusContent,
-                            modifier = Modifier.onPreviewKeyEvent { keyEvent ->
-                                if (keyEvent.type == KeyEventType.KeyDown) {
-                                    if (keyEvent.key == Key.DirectionUp && onUpFromHero != null) {
-                                        onUpFromHero()
-                                        true
-                                    } else if (keyEvent.key == Key.DirectionDown && totalSlides > 1) {
-                                        carouselFocusRequester.requestFocus()
-                                        true
-                                    } else if (keyEvent.key == Key.DirectionRight && totalSlides > 1) {
-                                        carouselIndex = (carouselIndex + 1) % totalSlides
-                                        effectiveActionFocusRequester.requestFocus()
-                                        true
+                        val showDetailsText = buttonStyle != BUTTON_STYLE_ICONS_ONLY
+                        if (!showDetailsText) {
+                            CinemaOrbitDial(
+                                icon = Icons.Rounded.Info,
+                                contentDescription = stringResource(R.string.common_details),
+                                focusColor = focusColor,
+                                focusContentColor = focusContent,
+                                modifier = Modifier.onPreviewKeyEvent { keyEvent ->
+                                    if (keyEvent.type == KeyEventType.KeyDown) {
+                                        if (keyEvent.key == Key.DirectionUp && onUpFromHero != null) {
+                                            onUpFromHero()
+                                            true
+                                        } else if (keyEvent.key == Key.DirectionRight && totalSlides > 1) {
+                                            carouselIndex = (carouselIndex + 1) % totalSlides
+                                            effectiveActionFocusRequester.requestFocus()
+                                            true
+                                        } else false
                                     } else false
-                                } else false
-                            },
-                            onClick = {
-                                onDetailClick((currentSlideState as HeroSlideState.Movie).item)
-                            }
-                        )
+                                },
+                                onClick = {
+                                    onDetailClick((currentSlideState as HeroSlideState.Movie).item)
+                                }
+                            )
+                        } else {
+                            MasterFilmTrigger(
+                                label = stringResource(R.string.common_details),
+                                icon = Icons.Rounded.Info,
+                                focusColor = focusColor,
+                                focusContentColor = focusContent,
+                                buttonStyle = buttonStyle,
+                                modifier = Modifier.onPreviewKeyEvent { keyEvent ->
+                                    if (keyEvent.type == KeyEventType.KeyDown) {
+                                        if (keyEvent.key == Key.DirectionUp && onUpFromHero != null) {
+                                            onUpFromHero()
+                                            true
+                                        } else if (keyEvent.key == Key.DirectionRight && totalSlides > 1) {
+                                            carouselIndex = (carouselIndex + 1) % totalSlides
+                                            effectiveActionFocusRequester.requestFocus()
+                                            true
+                                        } else false
+                                    } else false
+                                },
+                                onClick = {
+                                    onDetailClick((currentSlideState as HeroSlideState.Movie).item)
+                                }
+                            )
+                        }
                     }
                 }
             }
         }
 
-        // Carousel Indicators & Subtle Navigation Chevrons (Bottom Right)
-        // Un único objetivo de foco: las flechas y los puntos aislados tenían
-        // canFocus = false y eran inalcanzables con D-Pad y TalkBack.
+        // Indicador de posición visual del carrusel (esquina inferior derecha, sin foco ni flechas)
         if (item == null && totalSlides > 1) {
             val focusColor = TvAccent.getColor(accentColor)
-            val carouselFocusColor = if (isMonochrome) Color.White else focusColor
-            val carouselFocusContent = tv.medusa.app.ui.theme.CyanFocusedContent
-            val carouselContentDescription = stringResource(R.string.hero_carousel_cd)
-            val goPrevious = {
-                carouselIndex = if (carouselIndex > 0) carouselIndex - 1 else totalSlides - 1
-            }
-            val goNext = { carouselIndex = (carouselIndex + 1) % totalSlides }
             val currentActiveIdx = if (totalSlides > 0) carouselIndex % totalSlides else 0
 
             Row(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(end = TvSpacing.ScreenSafeHorizontal, bottom = 24.dp)
-                    .focusable()
-                    .focusRequester(carouselFocusRequester)
-                    .onFocusChanged { isCarouselFocused = it.isFocused }
-                    .onKeyEvent { keyEvent ->
-                        if (keyEvent.type != KeyEventType.KeyDown) {
-                            false
-                        } else {
-                            when (keyEvent.key) {
-                                Key.DirectionLeft -> { goPrevious(); true }
-                                Key.DirectionRight -> { goNext(); true }
-                                Key.DirectionUp -> {
-                                    effectiveActionFocusRequester.requestFocus()
-                                    true
-                                }
-                                else -> false
-                            }
-                        }
-                    }
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = goNext
-                    )
                     .background(
-                        color = if (isCarouselFocused) carouselFocusColor else Color(0x10070709),
-                        shape = RoundedCornerShape(16.dp)
+                        color = Color(0x66000000),
+                        shape = RoundedCornerShape(12.dp)
                     )
-                    .border(
-                        width = if (isCarouselFocused) 0.dp else 0.6.dp,
-                        color = if (isCarouselFocused) Color.Transparent else Color(0x1CFFFFFF),
-                        shape = RoundedCornerShape(16.dp)
-                    )
-                    .padding(horizontal = 10.dp, vertical = 7.dp)
-                    .semantics { contentDescription = carouselContentDescription },
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Rounded.ArrowBackIos,
-                    contentDescription = null,
-                    tint = if (isCarouselFocused) carouselFocusContent else Color.White.copy(alpha = 0.60f),
-                    modifier = Modifier.size(11.dp)
-                )
                 repeat(totalSlides) { idx ->
                     val isActive = idx == currentActiveIdx
                     val isEventSlide = hasSeasonalSlide && idx == 0
@@ -707,7 +678,7 @@ fun HeroBanner(
                     }
                     val activeColor = if (isMonochrome) Color.White else eventAccent
                     val indicatorWidth by animateDpAsState(
-                        targetValue = if (isActive) 26.dp else 8.dp,
+                        targetValue = if (isActive) 24.dp else 6.dp,
                         animationSpec = tween(durationMillis = 350),
                         label = "carouselIndicatorWidth"
                     )
@@ -717,21 +688,10 @@ fun HeroBanner(
                             .width(indicatorWidth)
                             .clip(RoundedCornerShape(1.5.dp))
                             .background(
-                                when {
-                                    !isActive && isCarouselFocused -> carouselFocusContent.copy(alpha = 0.40f)
-                                    isActive && isCarouselFocused -> carouselFocusContent
-                                    isActive -> activeColor
-                                    else -> Color(0x35FFFFFF)
-                                }
+                                if (isActive) activeColor else Color(0x40FFFFFF)
                             )
                     )
                 }
-                Icon(
-                    imageVector = Icons.AutoMirrored.Rounded.ArrowForwardIos,
-                    contentDescription = null,
-                    tint = if (isCarouselFocused) carouselFocusContent else Color.White.copy(alpha = 0.60f),
-                    modifier = Modifier.size(11.dp)
-                )
             }
         }
     }
