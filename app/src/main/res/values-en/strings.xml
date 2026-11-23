@@ -75,13 +75,13 @@
 
     <!-- Home -->
     <string name="home_loading">Loading catalog...</string>
-    <string name="home_welcome">Your jellyfish needs a home</string>
-    <string name="home_setup_desc">Connect your Jellyfin server to awaken your abyssal cinema on the big screen.</string>
+    <string name="home_welcome">Connect your server</string>
+    <string name="home_setup_desc">Connect your Jellyfin server to enjoy your movies and series on the big screen.</string>
     <string name="home_config_button">Connect Jellyfin Server</string>
-    <string name="home_server_connected">Connected waters, empty library</string>
-    <string name="home_empty_library">Your jellyfish drifts in quiet waters with no content.\nAdd movies or series to your Jellyfin library to start.</string>
+    <string name="home_server_connected">Library is empty</string>
+    <string name="home_empty_library">No content found in your Jellyfin libraries.\nAdd movies or series to your server to start watching.</string>
     <string name="home_sync">Scan Library</string>
-    <string name="home_error">Something got tangled in the depths</string>
+    <string name="home_error">Could not load catalog</string>
 
     <!-- Detail -->
     <string name="detail_loading">Loading details...</string>

@@ -32,50 +32,50 @@ val DmSansFamily = FontFamily(
 
 /**
  * Tipografía unificada para Android TV Material3.
- * Rigor de diseño:
- * - Editorial Serif (DmSerifDisplayFamily) para grandes displays y titulares monumentales.
- * - Interface Clean Sans (DmSansFamily) para toda la interfaz funcional, títulos, cuerpos y etiquetas.
+ * Diseño Digital TV (Anti-Slop, 10-foot UI):
+ * - DmSansFamily: Sans-Serif moderna, limpia, nítida y geométrica para toda la interfaz (displays, títulos, cuerpo, etiquetas y rankings).
+ * - Cero fuentes Serif de imprenta/novela/papel en interfaz de TV.
  * Todos los estilos se declaran explícitamente para evitar cualquier fallback no deseado a Roboto.
  */
 @OptIn(ExperimentalTvMaterial3Api::class)
 val Typography = Typography(
     displayLarge = TextStyle(
-        fontFamily = DmSerifDisplayFamily,
+        fontFamily = DmSansFamily,
         fontWeight = FontWeight.Bold,
         fontSize = 36.sp,
         lineHeight = 42.sp,
         letterSpacing = (-0.5).sp
     ),
     displayMedium = TextStyle(
-        fontFamily = DmSerifDisplayFamily,
+        fontFamily = DmSansFamily,
         fontWeight = FontWeight.Bold,
         fontSize = 28.sp,
         lineHeight = 34.sp,
         letterSpacing = (-0.3).sp
     ),
     displaySmall = TextStyle(
-        fontFamily = DmSerifDisplayFamily,
+        fontFamily = DmSansFamily,
         fontWeight = FontWeight.Bold,
         fontSize = 22.sp,
         lineHeight = 28.sp,
         letterSpacing = (-0.2).sp
     ),
     headlineLarge = TextStyle(
-        fontFamily = DmSerifDisplayFamily,
+        fontFamily = DmSansFamily,
         fontWeight = FontWeight.Bold,
         fontSize = 24.sp,
         lineHeight = 30.sp,
         letterSpacing = 0.sp
     ),
     headlineMedium = TextStyle(
-        fontFamily = DmSerifDisplayFamily,
+        fontFamily = DmSansFamily,
         fontWeight = FontWeight.Bold,
         fontSize = 20.sp,
         lineHeight = 26.sp,
         letterSpacing = 0.sp
     ),
     headlineSmall = TextStyle(
-        fontFamily = DmSerifDisplayFamily,
+        fontFamily = DmSansFamily,
         fontWeight = FontWeight.Bold,
         fontSize = 18.sp,
         lineHeight = 24.sp,
@@ -152,42 +152,42 @@ val Typography = Typography(
  */
 val M3Typography = Material3Typography(
     displayLarge = TextStyle(
-        fontFamily = DmSerifDisplayFamily,
+        fontFamily = DmSansFamily,
         fontWeight = FontWeight.Bold,
         fontSize = 36.sp,
         lineHeight = 42.sp,
         letterSpacing = (-0.5).sp
     ),
     displayMedium = TextStyle(
-        fontFamily = DmSerifDisplayFamily,
+        fontFamily = DmSansFamily,
         fontWeight = FontWeight.Bold,
         fontSize = 28.sp,
         lineHeight = 34.sp,
         letterSpacing = (-0.3).sp
     ),
     displaySmall = TextStyle(
-        fontFamily = DmSerifDisplayFamily,
+        fontFamily = DmSansFamily,
         fontWeight = FontWeight.Bold,
         fontSize = 22.sp,
         lineHeight = 28.sp,
         letterSpacing = (-0.2).sp
     ),
     headlineLarge = TextStyle(
-        fontFamily = DmSerifDisplayFamily,
+        fontFamily = DmSansFamily,
         fontWeight = FontWeight.Bold,
         fontSize = 24.sp,
         lineHeight = 30.sp,
         letterSpacing = 0.sp
     ),
     headlineMedium = TextStyle(
-        fontFamily = DmSerifDisplayFamily,
+        fontFamily = DmSansFamily,
         fontWeight = FontWeight.Bold,
         fontSize = 20.sp,
         lineHeight = 26.sp,
         letterSpacing = 0.sp
     ),
     headlineSmall = TextStyle(
-        fontFamily = DmSerifDisplayFamily,
+        fontFamily = DmSansFamily,
         fontWeight = FontWeight.Bold,
         fontSize = 18.sp,
         lineHeight = 24.sp,
@@ -263,19 +263,19 @@ val M3Typography = Material3Typography(
  */
 object CinematicTypography {
     val HeroDisplay = TextStyle(
-        fontFamily = DmSerifDisplayFamily,
+        fontFamily = DmSansFamily,
         fontWeight = FontWeight.Bold,
         fontSize = 32.sp,
         lineHeight = 38.sp,
-        letterSpacing = (-0.3).sp,
+        letterSpacing = (-0.5).sp,
         color = TextPrimary
     )
 
     val SectionTitle = TextStyle(
-        fontFamily = DmSerifDisplayFamily,
+        fontFamily = DmSansFamily,
         fontWeight = FontWeight.Bold,
-        fontSize = 19.sp,
-        lineHeight = 25.sp,
+        fontSize = 20.sp,
+        lineHeight = 26.sp,
         letterSpacing = 0.sp,
         color = TextPrimary
     )
@@ -314,9 +314,8 @@ object CinematicTypography {
     )
 
     val RankedDisplay = TextStyle(
-        fontFamily = DmSerifDisplayFamily,
-        fontWeight = FontWeight.Bold,
-        fontStyle = FontStyle.Italic,
+        fontFamily = DmSansFamily,
+        fontWeight = FontWeight.Black,
         fontSize = 114.sp,
         letterSpacing = (-4).sp
     )

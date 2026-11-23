@@ -26,12 +26,12 @@ val PlatinumSilver = Color(0xFFE2E4E9)         // Monocromo platino de alta cost
 val BorderSubtle = Color(0x20FFFFFF)           // Borde sutil modal anti-slop
  
 // =============================================================================
-// Tipografía con Temperatura Noble (Reemplaza los grises fríos de Tailwind)
+// Tipografía Digital Limpia para TV OLED (Alto contraste sin tintes de papel)
 // =============================================================================
-val TextPrimary = Color(0xFFF7F5F0)            // Blanco marfil cálido para lectura descansada a 3m
-val TextSecondary = Color(0xFFA39E93)          // Gris pergamino cinematográfico
-val TextTertiary = Color(0xFF827D73)           // Grafito atenuado para micro-metadatos (4.9:1 sobre abismo, WCAG AA)
-val TextGold = Color(0xFFE5C07B)               // Oro suave para clasificaciones y distinciones
+val TextPrimary = Color(0xFFFFFFFF)            // Blanco puro digital OLED para máxima nitidez y descanso visual a 3m
+val TextSecondary = Color(0xFFA1A1AA)          // Gris neutro zinc/slate limpio (estilo Apple TV / Netflix)
+val TextTertiary = Color(0xFF71717A)           // Grafito neutro para metadatos y micro-etiquetas (WCAG AA)
+val TextGold = Color(0xFFFACC15)               // Dorado nítido para clasificaciones y distinciones
  
 /**
  * Valores recurrentes centralizados (Anti-Slop Token System).
@@ -39,7 +39,7 @@ val TextGold = Color(0xFFE5C07B)               // Oro suave para clasificaciones
  */
 object TvPalette {
     val FocusInk = Color(0xFF04060A)
-    val TextSecondaryCool = Color(0xFFA39E93)   // Unificado con TextSecondary para evitar choque térmico
+    val TextSecondaryCool = Color(0xFFA1A1AA)   // Gris neutro limpio sin tinte pergamino
     val GlassIdle = Color(0x18FFFFFF)
     val GlassRaised = Color(0x22FFFFFF)
     val TextMuted = Color(0xFFCBD5E1)

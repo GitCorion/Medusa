@@ -75,13 +75,13 @@
 
     <!-- Inicio (Home) -->
     <string name="home_loading">Cargando catálogo...</string>
-    <string name="home_welcome">Tu medusa necesita un hogar</string>
-    <string name="home_setup_desc">Conecta tu servidor Jellyfin para encender tu cine abisal en la gran pantalla.</string>
+    <string name="home_welcome">Conecta tu servidor</string>
+    <string name="home_setup_desc">Conecta tu servidor Jellyfin para disfrutar de tus películas y series en la gran pantalla.</string>
     <string name="home_config_button">Conectar Servidor Jellyfin</string>
-    <string name="home_server_connected">Aguas conectadas, biblioteca vacía</string>
-    <string name="home_empty_library">Tu medusa nada en aguas tranquilas sin contenido.\nAñade títulos a tus bibliotecas de Jellyfin para comenzar.</string>
+    <string name="home_server_connected">Biblioteca vacía</string>
+    <string name="home_empty_library">No se encontró contenido en tus bibliotecas de Jellyfin.\nAñade películas o series a tu servidor para comenzar.</string>
     <string name="home_sync">Escanear Biblioteca</string>
-    <string name="home_error">Algo se enredó en las profundidades</string>
+    <string name="home_error">No se pudo cargar el catálogo</string>
 
     <!-- Detalle (Detail) -->
     <string name="detail_loading">Cargando detalles...</string>
