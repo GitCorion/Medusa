@@ -35,8 +35,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
@@ -130,17 +132,13 @@ fun RankedMediaCard(
         label = "rankedTextAlpha"
     )
 
-    val numberBrush = remember(focusColor, isFocused) {
-        Brush.verticalGradient(
-            colors = listOf(
-                if (isFocused) Color.White else focusColor,
-                focusColor.copy(alpha = 0.50f),
-                Color.Transparent
-            )
-        )
-    }
-
+    val cardWidth = if (rank >= 10) 245.dp else 210.dp
     val posterShape = remember { RoundedCornerShape(10.dp) }
+    val numberColor = if (isFocused) {
+        if (isMonochrome) Color.White else focusColor
+    } else {
+        Color(0xFFE2E8F0)
+    }
 
     Card(
         onClick = safeOnClick,
@@ -153,7 +151,7 @@ fun RankedMediaCard(
         border = CardDefaults.border(border = Border.None, focusedBorder = Border.None),
         shape = CardDefaults.shape(shape = RoundedCornerShape(0.dp)),
         modifier = modifier
-            .width(215.dp)
+            .width(cardWidth)
             .zIndex(if (isFocused) 10f else 0f)
             .onFocusChanged {
                 isFocused = it.isFocused
@@ -172,15 +170,22 @@ fun RankedMediaCard(
                     .fillMaxWidth()
                     .height(218.dp)
             ) {
-                // 1. Número Gigante estilizado a la izquierda
+                // 1. Número Gigante estilizado a la izquierda (completo, visible y elegante)
                 Text(
                     text = "$rank",
                     style = CinematicTypography.RankedDisplay.copy(
-                        brush = numberBrush
+                        fontSize = if (rank >= 10) 96.sp else 112.sp,
+                        letterSpacing = if (rank >= 10) (-6).sp else (-3).sp,
+                        color = numberColor,
+                        shadow = Shadow(
+                            color = Color(0xDD000000),
+                            blurRadius = 14f,
+                            offset = Offset(2f, 4f)
+                        )
                     ),
                     modifier = Modifier
                         .align(Alignment.BottomStart)
-                        .offset(x = (-4).dp, y = 8.dp)
+                        .offset(x = 0.dp, y = 6.dp)
                         .zIndex(1f)
                 )
 
