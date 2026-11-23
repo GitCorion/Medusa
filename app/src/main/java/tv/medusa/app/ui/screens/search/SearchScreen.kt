@@ -81,6 +81,8 @@ import tv.medusa.app.ui.components.TvNavTab
 import tv.medusa.app.ui.components.TvTopBar
 import tv.medusa.app.ui.components.sort.CatalogSortButton
 import tv.medusa.app.ui.components.sort.CatalogSortOption
+import tv.medusa.app.ui.theme.CinematicTypography
+import tv.medusa.app.ui.theme.TextPrimary
 import tv.medusa.app.ui.theme.TvAccent
 import tv.medusa.app.ui.theme.adaptiveKeyboardColumnWidth
 import tv.medusa.app.ui.theme.TvPill
@@ -401,9 +403,8 @@ fun SearchScreen(
 
                             Text(
                                 text = stringResource(R.string.search_catalog_title),
-                                style = MaterialTheme.typography.titleMedium,
-                                color = tv.medusa.app.ui.theme.TvPalette.TextSecondaryCool,
-                                fontWeight = FontWeight.Medium
+                                style = CinematicTypography.SectionTitle,
+                                color = TextPrimary
                             )
                         }
                     }
@@ -537,9 +538,8 @@ fun SearchScreen(
                                 ) {
                                     Text(
                                         text = counterText,
-                                        style = MaterialTheme.typography.titleMedium,
+                                        style = CinematicTypography.SectionTitle.copy(fontSize = 17.sp),
                                         color = if (uiState.totalHits > 0) Color.White else tv.medusa.app.ui.theme.TvPalette.TextSecondaryCool,
-                                        fontWeight = FontWeight.Bold,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
                                     )

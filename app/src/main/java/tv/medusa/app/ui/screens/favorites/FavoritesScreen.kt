@@ -266,9 +266,8 @@ fun FavoritesScreen(
                                 ) {
                                     Text(
                                         text = stringResource(R.string.favorites_collection_count, sortedItems.size),
-                                        style = MaterialTheme.typography.titleLarge,
-                                        color = Color.White,
-                                        fontWeight = FontWeight.SemiBold
+                                        style = CinematicTypography.SectionTitle,
+                                        color = Color.White
                                     )
 
                                     CatalogSortButton(

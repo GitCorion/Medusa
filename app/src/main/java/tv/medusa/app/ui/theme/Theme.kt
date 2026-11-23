@@ -56,6 +56,7 @@ fun MedusaTheme(
     ) {
         M3MaterialTheme(
             colorScheme = m3ColorScheme,
+            typography = M3Typography,
             content = content
         )
     }

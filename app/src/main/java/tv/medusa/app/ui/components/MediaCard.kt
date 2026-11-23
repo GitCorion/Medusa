@@ -40,6 +40,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -58,6 +59,7 @@ import coil.compose.AsyncImage
 import tv.medusa.app.R
 import tv.medusa.app.data.local.INDICATOR_THEME_MONOCHROME
 import tv.medusa.app.domain.model.MediaItem
+import tv.medusa.app.ui.theme.DmSansFamily
 import tv.medusa.app.ui.theme.TextPrimary
 import tv.medusa.app.ui.theme.TextSecondary
 import tv.medusa.app.ui.theme.LocalAccentColor
@@ -316,12 +318,15 @@ fun MediaCard(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 8.dp, start = 2.dp, end = 2.dp)
+                    .padding(top = 6.dp, start = 2.dp, end = 2.dp)
                     .graphicsLayer { this.alpha = textAlpha }
             ) {
                 Text(
                     text = item.title,
-                    style = MaterialTheme.typography.labelMedium,
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontFamily = DmSansFamily,
+                        platformStyle = PlatformTextStyle(includeFontPadding = false)
+                    ),
                     color = if (isFocused) Color.White else TextPrimary,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 12.sp,
@@ -339,7 +344,10 @@ fun MediaCard(
                     if (item.year != null) {
                         Text(
                             text = item.year.toString(),
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontFamily = DmSansFamily,
+                                platformStyle = PlatformTextStyle(includeFontPadding = false)
+                            ),
                             color = if (isFocused) focusColor else TextSecondary,
                             fontSize = 11.sp,
                             fontWeight = if (isFocused) FontWeight.SemiBold else FontWeight.Normal
@@ -348,7 +356,10 @@ fun MediaCard(
                     if (item.year != null) {
                         Text(
                             text = " • ",
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontFamily = DmSansFamily,
+                                platformStyle = PlatformTextStyle(includeFontPadding = false)
+                            ),
                             color = tv.medusa.app.ui.theme.TextTertiary,
                             fontSize = 11.sp,
                             modifier = Modifier.clearAndSetSemantics { }
@@ -359,7 +370,10 @@ fun MediaCard(
                             item.type.equals("Episode", ignoreCase = true)
                     Text(
                         text = stringResource(if (isTv) R.string.type_series else R.string.type_movie),
-                        style = MaterialTheme.typography.bodySmall,
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontFamily = DmSansFamily,
+                            platformStyle = PlatformTextStyle(includeFontPadding = false)
+                        ),
                         color = TextSecondary,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Medium

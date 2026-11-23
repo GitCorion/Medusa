@@ -265,7 +265,7 @@ fun MedusaScreen(
                     JellyLoadingIndicator(size = 84.dp, isMonochrome = isMonochrome)
                 }
             } else {
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
                 // =========================================================================
                 // 3. ETIQUETAS ACTIVAS SELECCIONADAS (Navegables con mando TV para borrar)
@@ -301,7 +301,7 @@ fun MedusaScreen(
                             )
                         }
                     }
-                    Spacer(modifier = Modifier.height(6.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
                 }
 
                 // =========================================================================
@@ -323,7 +323,7 @@ fun MedusaScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(6.dp))
 
                 // =========================================================================
                 // 5. SECCIÓN PROTAGONISTA: PELÍCULAS DESCUBIERTAS
@@ -358,7 +358,7 @@ fun MedusaScreen(
                             )
                         }
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(6.dp))
 
                         LazyRow(
                             modifier = Modifier
@@ -368,7 +368,7 @@ fun MedusaScreen(
                                         isFocusedOnMoviesRow = true
                                     }
                                 },
-                            contentPadding = PaddingValues(start = 48.dp, end = 48.dp, top = 8.dp, bottom = 20.dp),
+                            contentPadding = PaddingValues(start = 48.dp, end = 48.dp, top = 4.dp, bottom = 4.dp),
                             horizontalArrangement = Arrangement.spacedBy(14.dp),
                             verticalAlignment = Alignment.Top
                         ) {
@@ -379,7 +379,7 @@ fun MedusaScreen(
                             ) { _, movie ->
                                 MediaCard(
                                     item = movie,
-                                    cardWidth = 148.dp,
+                                    cardWidth = 120.dp,
                                     onClick = {
                                         onDetailMedia(movie.id)
                                     },
@@ -395,8 +395,6 @@ fun MedusaScreen(
                 } else {
                     Spacer(modifier = Modifier.weight(1f))
                 }
-
-                Spacer(modifier = Modifier.height(12.dp))
             }
         }
     }
@@ -454,6 +452,7 @@ private fun MedusaMoviesHeader(
                 text = focusedMovie.title,
                 color = Color.White,
                 fontSize = 13.sp,
+                fontFamily = DmSansFamily,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -464,6 +463,7 @@ private fun MedusaMoviesHeader(
                     text = "${focusedMovie.year}",
                     color = tv.medusa.app.ui.theme.TvPalette.TextSecondaryCool,
                     fontSize = 11.sp,
+                    fontFamily = DmSansFamily,
                     fontWeight = FontWeight.SemiBold
                 )
             }

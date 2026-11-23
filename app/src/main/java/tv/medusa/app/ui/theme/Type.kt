@@ -8,6 +8,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Typography
+import androidx.compose.material3.Typography as Material3Typography
 import tv.medusa.app.R
 
 // =============================================================================
@@ -29,6 +30,13 @@ val DmSansFamily = FontFamily(
     Font(R.font.dm_sans_italic, FontWeight.Bold, FontStyle.Italic)
 )
 
+/**
+ * Tipografía unificada para Android TV Material3.
+ * Rigor de diseño:
+ * - Editorial Serif (DmSerifDisplayFamily) para grandes displays y titulares monumentales.
+ * - Interface Clean Sans (DmSansFamily) para toda la interfaz funcional, títulos, cuerpos y etiquetas.
+ * Todos los estilos se declaran explícitamente para evitar cualquier fallback no deseado a Roboto.
+ */
 @OptIn(ExperimentalTvMaterial3Api::class)
 val Typography = Typography(
     displayLarge = TextStyle(
@@ -45,11 +53,32 @@ val Typography = Typography(
         lineHeight = 34.sp,
         letterSpacing = (-0.3).sp
     ),
+    displaySmall = TextStyle(
+        fontFamily = DmSerifDisplayFamily,
+        fontWeight = FontWeight.Bold,
+        fontSize = 22.sp,
+        lineHeight = 28.sp,
+        letterSpacing = (-0.2).sp
+    ),
     headlineLarge = TextStyle(
         fontFamily = DmSerifDisplayFamily,
         fontWeight = FontWeight.Bold,
         fontSize = 24.sp,
         lineHeight = 30.sp,
+        letterSpacing = 0.sp
+    ),
+    headlineMedium = TextStyle(
+        fontFamily = DmSerifDisplayFamily,
+        fontWeight = FontWeight.Bold,
+        fontSize = 20.sp,
+        lineHeight = 26.sp,
+        letterSpacing = 0.sp
+    ),
+    headlineSmall = TextStyle(
+        fontFamily = DmSerifDisplayFamily,
+        fontWeight = FontWeight.Bold,
+        fontSize = 18.sp,
+        lineHeight = 24.sp,
         letterSpacing = 0.sp
     ),
     titleLarge = TextStyle(
@@ -66,6 +95,13 @@ val Typography = Typography(
         lineHeight = 22.sp,
         letterSpacing = 0.sp
     ),
+    titleSmall = TextStyle(
+        fontFamily = DmSansFamily,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 14.sp,
+        lineHeight = 20.sp,
+        letterSpacing = 0.1.sp
+    ),
     bodyLarge = TextStyle(
         fontFamily = DmSansFamily,
         fontWeight = FontWeight.Normal,
@@ -80,6 +116,13 @@ val Typography = Typography(
         lineHeight = 19.sp,
         letterSpacing = 0.sp
     ),
+    bodySmall = TextStyle(
+        fontFamily = DmSansFamily,
+        fontWeight = FontWeight.Normal,
+        fontSize = 11.sp,
+        lineHeight = 16.sp,
+        letterSpacing = 0.sp
+    ),
     labelLarge = TextStyle(
         fontFamily = DmSansFamily,
         fontWeight = FontWeight.SemiBold,
@@ -87,10 +130,129 @@ val Typography = Typography(
         lineHeight = 16.sp,
         letterSpacing = 0.3.sp
     ),
+    labelMedium = TextStyle(
+        fontFamily = DmSansFamily,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 12.sp,
+        lineHeight = 16.sp,
+        letterSpacing = 0.2.sp
+    ),
     labelSmall = TextStyle(
         fontFamily = DmSansFamily,
         fontWeight = FontWeight.SemiBold,
-        fontSize = 11.sp, // Calibrado para legibilidad a 3m (anti-slop 10-foot)
+        fontSize = 11.sp,
+        lineHeight = 15.sp,
+        letterSpacing = 0.3.sp
+    )
+)
+
+/**
+ * Tipografía unificada para componentes estándar de Compose Material3 (diálogos, switches, popups),
+ * garantizando que NUNCA recurran a la fuente genérica del sistema.
+ */
+val M3Typography = Material3Typography(
+    displayLarge = TextStyle(
+        fontFamily = DmSerifDisplayFamily,
+        fontWeight = FontWeight.Bold,
+        fontSize = 36.sp,
+        lineHeight = 42.sp,
+        letterSpacing = (-0.5).sp
+    ),
+    displayMedium = TextStyle(
+        fontFamily = DmSerifDisplayFamily,
+        fontWeight = FontWeight.Bold,
+        fontSize = 28.sp,
+        lineHeight = 34.sp,
+        letterSpacing = (-0.3).sp
+    ),
+    displaySmall = TextStyle(
+        fontFamily = DmSerifDisplayFamily,
+        fontWeight = FontWeight.Bold,
+        fontSize = 22.sp,
+        lineHeight = 28.sp,
+        letterSpacing = (-0.2).sp
+    ),
+    headlineLarge = TextStyle(
+        fontFamily = DmSerifDisplayFamily,
+        fontWeight = FontWeight.Bold,
+        fontSize = 24.sp,
+        lineHeight = 30.sp,
+        letterSpacing = 0.sp
+    ),
+    headlineMedium = TextStyle(
+        fontFamily = DmSerifDisplayFamily,
+        fontWeight = FontWeight.Bold,
+        fontSize = 20.sp,
+        lineHeight = 26.sp,
+        letterSpacing = 0.sp
+    ),
+    headlineSmall = TextStyle(
+        fontFamily = DmSerifDisplayFamily,
+        fontWeight = FontWeight.Bold,
+        fontSize = 18.sp,
+        lineHeight = 24.sp,
+        letterSpacing = 0.sp
+    ),
+    titleLarge = TextStyle(
+        fontFamily = DmSansFamily,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 20.sp,
+        lineHeight = 26.sp,
+        letterSpacing = 0.sp
+    ),
+    titleMedium = TextStyle(
+        fontFamily = DmSansFamily,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 16.sp,
+        lineHeight = 22.sp,
+        letterSpacing = 0.sp
+    ),
+    titleSmall = TextStyle(
+        fontFamily = DmSansFamily,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 14.sp,
+        lineHeight = 20.sp,
+        letterSpacing = 0.1.sp
+    ),
+    bodyLarge = TextStyle(
+        fontFamily = DmSansFamily,
+        fontWeight = FontWeight.Normal,
+        fontSize = 15.sp,
+        lineHeight = 23.sp,
+        letterSpacing = 0.sp
+    ),
+    bodyMedium = TextStyle(
+        fontFamily = DmSansFamily,
+        fontWeight = FontWeight.Normal,
+        fontSize = 13.sp,
+        lineHeight = 19.sp,
+        letterSpacing = 0.sp
+    ),
+    bodySmall = TextStyle(
+        fontFamily = DmSansFamily,
+        fontWeight = FontWeight.Normal,
+        fontSize = 11.sp,
+        lineHeight = 16.sp,
+        letterSpacing = 0.sp
+    ),
+    labelLarge = TextStyle(
+        fontFamily = DmSansFamily,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 12.sp,
+        lineHeight = 16.sp,
+        letterSpacing = 0.3.sp
+    ),
+    labelMedium = TextStyle(
+        fontFamily = DmSansFamily,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 12.sp,
+        lineHeight = 16.sp,
+        letterSpacing = 0.2.sp
+    ),
+    labelSmall = TextStyle(
+        fontFamily = DmSansFamily,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 11.sp,
         lineHeight = 15.sp,
         letterSpacing = 0.3.sp
     )
