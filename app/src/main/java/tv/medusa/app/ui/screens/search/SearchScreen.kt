@@ -155,6 +155,11 @@ fun SearchScreen(
     // ARRIBA desde el teclado o los controles del campo vuelve a la pestaña Buscar.
     val topBarSearchFocusRequester = remember { FocusRequester() }
     val sortButtonFocusRequester = remember { FocusRequester() }
+    val micFocusRequester = remember { FocusRequester() }
+    val predictiveFocusRequester = remember { FocusRequester() }
+    // ARRIBA desde el teclado entra en los controles del campo (micrófono/teclado), no en la barra.
+    val keyboardUpFocusRequester =
+        if (isVoiceSearchAvailable) micFocusRequester else predictiveFocusRequester
 
     LaunchedEffect(Unit) {
         delay(180)
@@ -292,8 +297,10 @@ fun SearchScreen(
                                 ),
                                 modifier = Modifier
                                     .height(44.dp)
+                                    .focusRequester(micFocusRequester)
                                     .focusProperties {
-                                        right = if (sortedResults.isNotEmpty()) sortButtonFocusRequester else FocusRequester.Default
+                                        right = predictiveFocusRequester
+                                        down = initialKeyFocusRequester
                                         up = topBarSearchFocusRequester
                                     }
                             ) {
@@ -328,7 +335,16 @@ fun SearchScreen(
                             ),
                             modifier = Modifier
                                 .height(34.dp)
-                                .focusProperties { up = topBarSearchFocusRequester }
+                                .focusRequester(predictiveFocusRequester)
+                                .focusProperties {
+                                    left = if (isVoiceSearchAvailable) {
+                                        micFocusRequester
+                                    } else {
+                                        FocusRequester.Default
+                                    }
+                                    down = initialKeyFocusRequester
+                                    up = topBarSearchFocusRequester
+                                }
                         ) {
                             Text(
                                 text = if (uiState.isPredictiveActive) {
@@ -357,7 +373,7 @@ fun SearchScreen(
                     onBackspace = { viewModel.onBackspace() },
                     onClear = { viewModel.onClear() },
                     initialFocusRequester = initialKeyFocusRequester,
-                    upRequester = topBarSearchFocusRequester
+                    upRequester = keyboardUpFocusRequester
                 )
             }
 
