@@ -24,6 +24,7 @@ import tv.medusa.app.util.toOptimizedMediaItem
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.async
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -150,12 +151,20 @@ class DetailViewModel @Inject constructor(
                 val entity: JellyfinMediaEntity = if (initialEntity != null) {
                     initialEntity
                 } else {
-                    val remote = mediaRepository.getItemDetail(
-                        serverUrl = baseUrl,
-                        userId = prefs.jellyfinUserId,
-                        token = token,
-                        itemId = itemId
-                    ).getOrNull()
+                    // Sin límite, un servidor lento dejaba la ficha en "Cargando…" para siempre.
+                    val remoteResult = withTimeoutOrNull(20_000L) {
+                        mediaRepository.getItemDetail(
+                            serverUrl = baseUrl,
+                            userId = prefs.jellyfinUserId,
+                            token = token,
+                            itemId = itemId
+                        )
+                    }
+                    if (remoteResult == null) {
+                        _uiState.value = DetailUiState.Error(context.getString(R.string.detail_load_timeout))
+                        return@launch
+                    }
+                    val remote = remoteResult.getOrNull()
                     remote ?: run {
                         _uiState.value = DetailUiState.Error(context.getString(R.string.detail_not_found))
                         return@launch

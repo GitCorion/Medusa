@@ -1,27 +1,15 @@
 package tv.medusa.app.ui.screens.medusa
 
 import java.text.Normalizer
-import tv.medusa.app.data.remote.ApiConfig
-import android.content.Context
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import org.json.JSONObject
-import java.io.File
-import java.net.HttpURLConnection
-import java.net.URL
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Diccionario de traducción dinámico para etiquetas cinematográficas (TMDB y Jellyfin).
- * Incluye diccionario base estático, persistencia en caché local y sincronización
- * en vivo desde el repositorio de GitHub sin necesidad de actualizar la APK.
+ * Diccionario de traducción para etiquetas cinematográficas (TMDB y Jellyfin).
+ * El diccionario vive compilado en la APK: no hay descargas ni dependencias de red.
+ * Para añadir o corregir traducciones, se edita `baseMap` y se publica una nueva versión.
  */
 object TagTranslations {
-
-    private const val GITHUB_DICTIONARY_URL =
-        ApiConfig.MEDUSA_TAGS_JSON_URL
-    private const val CACHE_FILE_NAME = "medusa_tags_cache.json"
 
     private val dynamicMap = ConcurrentHashMap<String, String>()
     private val DIACRITICS_REGEX = Regex("\\p{InCombiningDiacriticalMarks}+")
@@ -462,61 +450,6 @@ object TagTranslations {
         baseMap.forEach { (_, value) ->
             val unaccentedValueKey = stripAccents(value.trim().lowercase(Locale.ROOT))
             dynamicMap[unaccentedValueKey] = value
-        }
-    }
-
-    /**
-     * Inicializa y carga la caché local guardada previamente.
-     */
-    fun initCache(context: Context) {
-        val cacheFile = File(context.filesDir, CACHE_FILE_NAME)
-        if (cacheFile.exists()) {
-            runCatching {
-                val jsonStr = cacheFile.readText()
-                val json = JSONObject(jsonStr)
-                json.keys().forEach { key ->
-                    val value = json.optString(key)
-                    if (value.isNotBlank()) {
-                        dynamicMap[key.lowercase().trim()] = value
-                    }
-                }
-            }
-        }
-    }
-
-    /**
-     * Sincroniza en segundo plano el diccionario remoto de GitHub.
-     * Si descarga nuevas traducciones, las guarda en caché local.
-     */
-    suspend fun syncRemoteDictionary(context: Context) {
-        withContext(Dispatchers.IO) {
-            runCatching {
-                val url = URL(GITHUB_DICTIONARY_URL)
-                val connection = url.openConnection() as HttpURLConnection
-                connection.connectTimeout = 4000
-                connection.readTimeout = 4000
-                connection.requestMethod = "GET"
-
-                if (connection.responseCode == HttpURLConnection.HTTP_OK) {
-                    val response = connection.inputStream.bufferedReader().use { it.readText() }
-                    val json = JSONObject(response)
-                    var addedCount = 0
-
-                    json.keys().forEach { key ->
-                        val value = json.optString(key)
-                        if (value.isNotBlank()) {
-                            dynamicMap[key.lowercase().trim()] = value
-                            addedCount++
-                        }
-                    }
-
-                    if (addedCount > 0) {
-                        val cacheFile = File(context.filesDir, CACHE_FILE_NAME)
-                        cacheFile.writeText(response)
-                    }
-                }
-                connection.disconnect()
-            }
         }
     }
 

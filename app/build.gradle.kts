@@ -141,6 +141,7 @@ dependencies {
     // Navigation & Images
     implementation(libs.navigation.compose)
     implementation(libs.coil.compose)
+    implementation(libs.zxing.core)
 
     // Media Player
     implementation(libs.media3.exoplayer)

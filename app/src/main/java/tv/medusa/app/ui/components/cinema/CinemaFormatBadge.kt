@@ -38,7 +38,7 @@ fun CinemaFormatBadge(
     modifier: Modifier = Modifier,
     icon: ImageVector? = null,
     isHighlighted: Boolean = false,
-    highlightColor: Color = Color.White,
+    highlightColor: Color = TextPrimary,
     horizontalPad: Dp = 8.dp,
     verticalPad: Dp = 4.dp
 ) {

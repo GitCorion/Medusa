@@ -150,7 +150,9 @@ class OverviewEnrichmentWorker @AssistedInject constructor(
                 if (!tmdbOverview.isNullOrBlank()) {
                     jellyfinDao.updateOverview(media.id, tmdbOverview)
                 } else {
-                    jellyfinDao.updateOverview(media.id, "Sin descripción disponible.")
+                    // No guardar el texto de relleno como sinopsis: la UI ya tiene su propio
+                    // mensaje de "sin sinopsis" y el hero filtra estos títulos.
+                    jellyfinDao.updateOverview(media.id, "")
                 }
                 batchUpdated++
             }

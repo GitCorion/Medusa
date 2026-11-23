@@ -65,6 +65,7 @@ fun TvIntegratedKeyboard(
     onBackspace: () -> Unit,
     onClear: () -> Unit,
     initialFocusRequester: FocusRequester? = null,
+    upRequester: FocusRequester? = null,
     modifier: Modifier = Modifier
 ) {
     val keyboardRows = remember { KeyboardDirectionResolver.KEYBOARD_ROWS }
@@ -162,7 +163,7 @@ fun TvIntegratedKeyboard(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // Filas de Letras y Números (6 columnas)
-        for (row in keyboardRows) {
+        for ((rowIndex, row) in keyboardRows.withIndex()) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally)
@@ -185,8 +186,12 @@ fun TvIntegratedKeyboard(
                     } else FocusRequester.Cancel
 
                     val upTarget = if (isEnabled) {
-                        KeyboardDirectionResolver.findNextKey(char, KeyboardDirectionResolver.Direction.UP, activeChars)
-                            ?.let { keyFocusRequesters[it] } ?: FocusRequester.Default
+                        if (rowIndex == 0 && upRequester != null) {
+                            upRequester
+                        } else {
+                            KeyboardDirectionResolver.findNextKey(char, KeyboardDirectionResolver.Direction.UP, activeChars)
+                                ?.let { keyFocusRequesters[it] } ?: FocusRequester.Default
+                        }
                     } else FocusRequester.Cancel
 
                     val downTarget = if (isEnabled) {
@@ -280,7 +285,7 @@ fun TvIntegratedKeyboard(
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = stringResource(R.string.keyboard_space_label),
-                        fontSize = 10.sp,
+                        fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1
                     )
@@ -328,12 +333,12 @@ fun TvIntegratedKeyboard(
                     Icon(
                         imageVector = Icons.AutoMirrored.Rounded.Backspace,
                         contentDescription = stringResource(R.string.keyboard_delete),
-                        modifier = Modifier.size(14.dp)
+                        modifier = Modifier.size(15.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = stringResource(R.string.keyboard_delete_label),
-                        fontSize = 10.sp,
+                        fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1
                     )
@@ -385,12 +390,12 @@ fun TvIntegratedKeyboard(
                     Icon(
                         imageVector = Icons.Rounded.Clear,
                         contentDescription = stringResource(R.string.keyboard_clear),
-                        modifier = Modifier.size(13.dp)
+                        modifier = Modifier.size(15.dp)
                     )
                     Spacer(modifier = Modifier.width(3.dp))
                     Text(
                         text = stringResource(R.string.keyboard_clear_label),
-                        fontSize = 9.sp,
+                        fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1
                     )
@@ -428,8 +433,8 @@ private fun TvKeyButton(
             contentColor = Color(0xFFF1EDE6),
             focusedContainerColor = focusColor,
             focusedContentColor = focusContentColor,
-            disabledContainerColor = Color(0xFF0F111A).copy(alpha = 0.20f),
-            disabledContentColor = Color(0xFF827D73)
+            disabledContainerColor = Color(0xFF0F111A).copy(alpha = 0.35f),
+            disabledContentColor = Color(0xFFA1A1AA)
         ),
         border = ButtonDefaults.border(
             border = Border(
@@ -449,7 +454,7 @@ private fun TvKeyButton(
                 down = downRequester
             }
             .onFocusChanged { if (it.isFocused) onFocused() }
-            .alpha(if (isEnabled) 1f else 0.12f)
+            .alpha(if (isEnabled) 1f else 0.55f)
     ) {
         Box(
             modifier = Modifier.size(width = 48.dp, height = 48.dp),
@@ -457,7 +462,7 @@ private fun TvKeyButton(
         ) {
             Text(
                 text = text,
-                fontSize = 14.sp,
+                fontSize = 18.sp,
                 fontWeight = FontWeight.Bold
             )
         }

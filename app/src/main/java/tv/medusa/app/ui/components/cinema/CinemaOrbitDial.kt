@@ -55,7 +55,7 @@ fun CinemaOrbitDial(
     sizeDp: Dp = 46.dp,
     iconSizeDp: Dp = 20.dp,
     isActive: Boolean = false,
-    focusColor: Color = Color.White,
+    focusColor: Color = TextPrimary,
     focusContentColor: Color = Color(0xFF070709),
     focusRequester: FocusRequester? = null
 ) {

@@ -63,7 +63,7 @@ fun JellyLoadingIndicator(
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
                     text = message,
-                    color = Color.White,
+                    color = tv.medusa.app.ui.theme.TvPalette.TextMuted,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium
                 )

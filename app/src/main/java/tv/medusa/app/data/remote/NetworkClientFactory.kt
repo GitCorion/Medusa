@@ -459,13 +459,10 @@ object NetworkClientFactory {
         // Strip fragments (#...) and query parameters (?...)
         url = url.substringBefore("#").substringBefore("?")
 
-        // Determine if it looks like an IP or localhost
+        // Determine if it looks like an IP or localhost (incluye IPv6 entre corchetes)
         val withoutProto = url.substringAfter("://")
-        val hostPart = withoutProto.substringBefore("/").substringBefore(":")
-        val isIpOrLocalhost = hostPart.equals("localhost", ignoreCase = true)
-                || hostPart.startsWith("127.0.0.1")
-                || hostPart.startsWith("10.0.2.2")
-                || hostPart.matches(Regex("^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$"))
+        val hostPart = hostOf(withoutProto.substringBefore("/"))
+        val isIpOrLocalhost = isLocalAddress(hostPart)
 
         // If scheme is missing:
         // Domains (e.g. jellyfin.example.com) default to https://
@@ -494,13 +491,10 @@ object NetworkClientFactory {
 
         // Only append port 8096 for local HTTP connections without a port (e.g. 192.168.1.50 or 10.0.2.2)
         // Never append port 8096 for HTTPS or external domain names (like jellyfin.example.com)
-        val currentHost = rest.substringBefore("/").substringBefore(":")
-        val isLocalTarget = currentHost.equals("localhost", ignoreCase = true)
-                || currentHost.startsWith("10.0.2.2")
-                || currentHost.startsWith("127.0.0.1")
-                || currentHost.matches(Regex("^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$"))
+        val currentHost = hostOf(rest.substringBefore("/"))
+        val isLocalTarget = isLocalAddress(currentHost)
 
-        if (scheme == "http://" && isLocalTarget && !rest.contains(":")) {
+        if (scheme == "http://" && isLocalTarget && !hasExplicitPort(rest)) {
             val h = rest.substringBefore("/")
             val p = if (rest.contains("/")) "/" + rest.substringAfter("/") else ""
             rest = "$h:8096$p"
@@ -508,6 +502,36 @@ object NetworkClientFactory {
 
         return "$scheme$rest"
     }
+
+    /**
+     * Host de una authority (`host[:puerto]`), respetando la forma IPv6 entre corchetes
+     * (`[2001:db8::1]:8096`). Sin esto, `substringBefore(":")` partía la dirección en `[2001`.
+     */
+    private fun hostOf(authority: String): String {
+        if (authority.startsWith("[")) {
+            val end = authority.indexOf(']')
+            if (end > 0) return authority.substring(1, end)
+        }
+        return authority.substringBefore(':')
+    }
+
+    /** ¿La authority declara puerto explícito? (`host:8096` o `[::1]:8096`) */
+    private fun hasExplicitPort(authority: String): Boolean {
+        if (authority.startsWith("[")) {
+            val end = authority.indexOf(']')
+            return end >= 0 && authority.getOrNull(end + 1) == ':'
+        }
+        return authority.contains(':')
+    }
+
+    /** Localhost, IPv4 privada/loopback o cualquier literal IPv6 (LAN). */
+    private fun isLocalAddress(host: String): Boolean =
+        host.equals("localhost", ignoreCase = true) ||
+            host == "::1" ||
+            host.contains(':') ||
+            host.startsWith("127.0.0.1") ||
+            host.startsWith("10.0.2.2") ||
+            host.matches(Regex("^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$"))
 
     /**
      * Servicio Retrofit genérico (Trakt, TMDB, updater…). Usa el JSON compartido, que no

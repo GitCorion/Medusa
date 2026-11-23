@@ -245,7 +245,8 @@ Medusa no recopila datos, no muestra publicidad y no incluye analítica ni infor
 | `api.themoviedb.org` / `image.tmdb.org` | Si configuras tu clave TMDB | Consultas de metadatos y pósters. La clave es tuya y se guarda cifrada. |
 | `api.trakt.tv` | Si vinculas Trakt | Historial de visualización, listas y colecciones, bajo los términos de Trakt. |
 | `youtube-nocookie.com` | Si abres un tráiler | La reproducción del tráiler incrustado. |
-| `api.qrserver.com` | Al mostrar un QR | El texto a codificar (por ejemplo, una URL). |
+
+- **QR:** los códigos se generan en el propio dispositivo; el texto a codificar (URL del servidor o código QuickConnect) nunca se envía a un servicio externo.
 
 - **Credenciales:** AES/GCM con clave del Android Keystore, respaldada por hardware cuando el dispositivo lo permite. Nunca se escriben en claro.
 - **TLS:** HTTP y HTTPS en cualquier host. Certificado autofirmado solo con activación explícita y pin SHA-256; no se aceptan CAs instaladas por el usuario.

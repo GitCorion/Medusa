@@ -51,6 +51,7 @@ import tv.medusa.app.domain.model.MediaItem
 import tv.medusa.app.ui.theme.TextSecondary
 import tv.medusa.app.ui.theme.TvAccent
 import tv.medusa.app.ui.theme.TvRatingBadge
+import tv.medusa.app.ui.theme.TextPrimary
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
@@ -65,7 +66,7 @@ fun CompactFocusedHeader(
 ) {
     if (item == null) return
 
-    val focusColor = if (isMonochrome) Color.White else TvAccent.getColor(accentColor)
+    val focusColor = if (isMonochrome) TextPrimary else TvAccent.getColor(accentColor)
     val focusContent = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else TvAccent.getFocusedContentColor(accentColor)
     val showIcons = buttonStyle != BUTTON_STYLE_TEXT_ONLY
     val showText = buttonStyle != BUTTON_STYLE_ICONS_ONLY
@@ -112,7 +113,7 @@ fun CompactFocusedHeader(
                             Text(
                                 text = item.title,
                                 style = MaterialTheme.typography.titleLarge,
-                                color = Color.White,
+                                color = TextPrimary,
                                 fontWeight = FontWeight.SemiBold,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
@@ -123,7 +124,7 @@ fun CompactFocusedHeader(
                     Text(
                         text = item.title,
                         style = MaterialTheme.typography.titleLarge,
-                        color = Color.White,
+                        color = TextPrimary,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -135,11 +136,7 @@ fun CompactFocusedHeader(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (item.rating != null && item.rating > 0f) {
                         TvRatingBadge(rating = item.rating, compact = true)
-                        Text(
-                            text = " • ",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = TextSecondary.copy(alpha = 0.5f)
-                        )
+                        Spacer(modifier = Modifier.width(8.dp))
                     }
 
                     if (item.year != null) {
@@ -149,11 +146,7 @@ fun CompactFocusedHeader(
                             color = TextSecondary,
                             fontWeight = FontWeight.Medium
                         )
-                        Text(
-                            text = " • ",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = TextSecondary.copy(alpha = 0.5f)
-                        )
+                        Spacer(modifier = Modifier.width(8.dp))
                     }
 
                     val isTv = item.type.equals("Series", ignoreCase = true) ||
@@ -166,11 +159,7 @@ fun CompactFocusedHeader(
                     )
 
                     if (!item.overview.isNullOrBlank()) {
-                        Text(
-                            text = " • ",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = TextSecondary.copy(alpha = 0.5f)
-                        )
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = item.overview,
                             style = MaterialTheme.typography.bodySmall,
@@ -195,7 +184,7 @@ fun CompactFocusedHeader(
                     border = tv.medusa.app.ui.theme.TvChipDefaults.buttonBorder(),
                     colors = ButtonDefaults.colors(
                         containerColor = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.GlassSelected else focusColor.copy(alpha = 0.20f),
-                        contentColor = if (isMonochrome) Color.White else Color(0xFFE0F2FE),
+                        contentColor = if (isMonochrome) TextPrimary else Color(0xFFE0F2FE),
                         focusedContainerColor = focusColor,
                         focusedContentColor = focusContent
                     ),

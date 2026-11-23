@@ -90,6 +90,10 @@ fun MediaCard(
     onLongClick: (() -> Unit)? = null,
     isRowFocused: Boolean = false,
     cardWidth: Dp = 150.dp,
+    /** En una cuadrícula, la tarjeta ocupa la celda completa en lugar de un ancho fijo. */
+    fillWidth: Boolean = false,
+    /** En Favoritos el corazón es redundante: todas las tarjetas son favoritas. */
+    showFavoriteBadge: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     var isFocused by remember { mutableStateOf(false) }
@@ -99,7 +103,7 @@ fun MediaCard(
     val indicatorTheme = LocalIndicatorTheme.current
     val isMonochrome = LocalIsMonochromeTheme.current ||
             indicatorTheme == INDICATOR_THEME_MONOCHROME
-    val focusColor = if (isMonochrome) Color.White else accentColor
+    val focusColor = if (isMonochrome) TextPrimary else accentColor
 
     val contextMenuController = tv.medusa.app.ui.components.contextmenu.LocalContextMenuController.current
     val view = androidx.compose.ui.platform.LocalView.current
@@ -144,7 +148,7 @@ fun MediaCard(
         border = CardDefaults.border(border = Border.None, focusedBorder = Border.None),
         shape = CardDefaults.shape(shape = RoundedCornerShape(0.dp)),
         modifier = modifier
-            .width(cardWidth)
+            .then(if (fillWidth) Modifier.fillMaxWidth() else Modifier.width(cardWidth))
             .zIndex(if (isFocused) 10f else 0f)
             .onFocusChanged {
                 isFocused = it.isFocused
@@ -207,7 +211,7 @@ fun MediaCard(
                             Spacer(modifier = Modifier.height(6.dp))
                             Text(
                                 text = item.title,
-                                color = Color.White,
+                                color = TextPrimary,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 11.sp,
                                 textAlign = TextAlign.Center,
@@ -266,7 +270,7 @@ fun MediaCard(
                             ) {
                                 Text(
                                     text = progressText,
-                                    color = Color.White.copy(alpha = 0.95f),
+                                    color = TextPrimary.copy(alpha = 0.95f),
                                     fontWeight = FontWeight.SemiBold,
                                     fontSize = 11.sp
                                 )
@@ -274,7 +278,7 @@ fun MediaCard(
                         }
                     }
 
-                    if (item.isFavorite) {
+                    if (item.isFavorite && showFavoriteBadge) {
                         Box(
                             modifier = Modifier
                                 .size(22.dp)
@@ -287,7 +291,7 @@ fun MediaCard(
                             Icon(
                                 imageVector = Icons.Rounded.Favorite,
                                 contentDescription = stringResource(R.string.common_favorite),
-                                tint = if (isMonochrome) Color.White else tv.medusa.app.ui.theme.TvPalette.SemanticFavorite,
+                                tint = if (isMonochrome) TextPrimary else tv.medusa.app.ui.theme.TvPalette.SemanticFavorite,
                                 modifier = Modifier.size(12.dp)
                             )
                         }
@@ -306,7 +310,7 @@ fun MediaCard(
                             Icon(
                                 imageVector = Icons.Rounded.Check,
                                 contentDescription = stringResource(R.string.common_watched),
-                                tint = if (isMonochrome) Color.White.copy(alpha = 0.90f) else tv.medusa.app.ui.theme.TvPalette.SemanticWatched,
+                                tint = if (isMonochrome) TextPrimary.copy(alpha = 0.90f) else tv.medusa.app.ui.theme.TvPalette.SemanticWatched,
                                 modifier = Modifier.size(14.dp)
                             )
                         }
@@ -327,7 +331,7 @@ fun MediaCard(
                         fontFamily = DmSansFamily,
                         platformStyle = PlatformTextStyle(includeFontPadding = false)
                     ),
-                    color = if (isFocused) Color.White else TextPrimary,
+                    color = if (isFocused) TextPrimary else TextPrimary,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 12.sp,
                     letterSpacing = 0.2.sp,
@@ -354,16 +358,7 @@ fun MediaCard(
                         )
                     }
                     if (item.year != null) {
-                        Text(
-                            text = " • ",
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                fontFamily = DmSansFamily,
-                                platformStyle = PlatformTextStyle(includeFontPadding = false)
-                            ),
-                            color = tv.medusa.app.ui.theme.TextTertiary,
-                            fontSize = 11.sp,
-                            modifier = Modifier.clearAndSetSemantics { }
-                        )
+                        Spacer(modifier = Modifier.width(8.dp))
                     }
                     val isTv = item.type.equals("Series", ignoreCase = true) ||
                             item.type.equals("TvProgram", ignoreCase = true) ||

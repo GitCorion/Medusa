@@ -35,15 +35,15 @@ object BillboardPoolBuilder {
         val continueWatchingSection = sections.firstOrNull { it.title == "Continuar Viendo" }
 
         val top10Candidates = top10Section?.items
-            ?.filter(::isValidCandidate)
+            ?.let(::heroCandidates)
             ?.take(4)
             .orEmpty()
         val traktCandidates = traktTrendingSection?.items
-            ?.filter(::isValidCandidate)
+            ?.let(::heroCandidates)
             ?.take(2)
             .orEmpty()
         val newReleaseCandidates = newReleasesSection?.items
-            ?.filter(::isValidCandidate)
+            ?.let(::heroCandidates)
             ?.take(4)
             .orEmpty()
 
@@ -72,8 +72,8 @@ object BillboardPoolBuilder {
         // Último recurso: actividad reciente del usuario.
         if (distinct.isEmpty()) {
             distinct = continueWatchingSection?.items
+                ?.let(::heroCandidates)
                 .orEmpty()
-                .filter(::isValidCandidate)
                 .distinctBy { it.id }
         }
 
@@ -91,9 +91,13 @@ object BillboardPoolBuilder {
         return rotated.take(MAX_BILLBOARD_ITEMS)
     }
 
-    private fun isValidCandidate(item: MediaItem): Boolean {
-        // El HeroBanner pinta póster 2:3 si no hay backdrop: no descartar títulos por eso.
-        val hasImage = !item.backdropUrl.isNullOrBlank() || !item.posterUrl.isNullOrBlank()
-        return hasImage && !item.isPlayed
-    }
+    /**
+     * El hero exige material completo: backdrop 16:9 y sinopsis real (ver [HeroEligibility]).
+     * Los títulos con ClearLogo van primero.
+     */
+    private fun isValidCandidate(item: MediaItem): Boolean = HeroEligibility.isWorthy(item)
+
+    private fun heroCandidates(items: List<MediaItem>): List<MediaItem> =
+        items.filter(::isValidCandidate)
+            .sortedByDescending { !it.logoUrl.isNullOrBlank() }
 }

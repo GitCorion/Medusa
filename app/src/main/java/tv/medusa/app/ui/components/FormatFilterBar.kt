@@ -18,6 +18,9 @@ import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -41,6 +44,7 @@ import tv.medusa.app.ui.theme.TvAccent
 import tv.medusa.app.ui.theme.TvChipDefaults
 import tv.medusa.app.ui.theme.TvSpacing
 import tv.medusa.app.ui.util.handleTouchClick
+import tv.medusa.app.ui.theme.TextPrimary
 
 /**
  * Barra universal de filtros de formato (Todo / Películas / Series) con conmutador de vistos.
@@ -61,9 +65,11 @@ fun FormatFilterBar(
     hideWatched: Boolean = false,
     onToggleHideWatched: (() -> Unit)? = null,
     contentPadding: PaddingValues = PaddingValues(horizontal = TvSpacing.ScreenSafeHorizontal, vertical = 6.dp),
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    firstFilterFocusRequester: FocusRequester? = null,
+    upFocusRequester: FocusRequester? = null
 ) {
-    val focusColor = if (isMonochrome) Color.White else TvAccent.getColor(accentColorKey)
+    val focusColor = if (isMonochrome) TextPrimary else TvAccent.getColor(accentColorKey)
     val focusContent = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else TvAccent.getFocusedContentColor(accentColorKey)
 
     val showIcons = buttonStyleKey != BUTTON_STYLE_TEXT_ONLY
@@ -88,6 +94,16 @@ fun FormatFilterBar(
                 ),
                 border = TvChipDefaults.border(),
                 modifier = Modifier
+                    .then(
+                        if (firstFilterFocusRequester != null) {
+                            Modifier.focusRequester(firstFilterFocusRequester)
+                        } else Modifier
+                    )
+                    .then(
+                        if (upFocusRequester != null) {
+                            Modifier.focusProperties { up = upFocusRequester }
+                        } else Modifier
+                    )
                     .handleTouchClick { onToggleHideWatched() }
                     .semantics {
                         role = Role.Switch
@@ -145,6 +161,19 @@ fun FormatFilterBar(
                 ),
                 border = TvChipDefaults.border(),
                 modifier = Modifier
+                    .then(
+                        if (firstFilterFocusRequester != null &&
+                            onToggleHideWatched == null &&
+                            format == MediaFormatFilter.ALL
+                        ) {
+                            Modifier.focusRequester(firstFilterFocusRequester)
+                        } else Modifier
+                    )
+                    .then(
+                        if (upFocusRequester != null) {
+                            Modifier.focusProperties { up = upFocusRequester }
+                        } else Modifier
+                    )
                     .handleTouchClick { onSelect(format) }
                     .semantics {
                         role = Role.Tab

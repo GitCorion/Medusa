@@ -4,7 +4,6 @@ import tv.medusa.app.data.local.DEFAULT_TMDB_API_KEY
 import tv.medusa.app.data.remote.tmdb.TmdbItemDto
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import android.content.Context
 import tv.medusa.app.data.local.UserPreferencesRepository
 import tv.medusa.app.data.local.db.JellyfinDao
 import tv.medusa.app.data.local.db.JellyfinMediaEntity
@@ -13,7 +12,6 @@ import tv.medusa.app.domain.model.MediaItem
 import tv.medusa.app.domain.usecase.FilterToLibraryUseCase
 import tv.medusa.app.util.toOptimizedMediaItem
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -52,7 +50,6 @@ typealias ConstellationUiState = MedusaUiState
 
 @HiltViewModel
 class MedusaViewModel @Inject constructor(
-    @ApplicationContext private val context: Context,
     private val userPreferencesRepository: UserPreferencesRepository,
     private val jellyfinDao: JellyfinDao,
     private val mediaRepository: MediaRepository,
@@ -86,10 +83,6 @@ class MedusaViewModel @Inject constructor(
     val selectedMovie: StateFlow<MediaItem?> = _selectedMovie.asStateFlow()
 
     init {
-        TagTranslations.initCache(context)
-        viewModelScope.launch {
-            TagTranslations.syncRemoteDictionary(context)
-        }
         viewModelScope.launch {
             userPreferencesRepository.hideWatched.collect { hide ->
                 if (_uiState.value.hideWatched != hide) {

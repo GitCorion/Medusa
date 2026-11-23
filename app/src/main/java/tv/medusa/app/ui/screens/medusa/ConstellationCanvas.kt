@@ -57,6 +57,7 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.sin
+import tv.medusa.app.ui.theme.TextPrimary
 
 /**
  * Lienzo de la Gran Galaxia Medusa para TV:
@@ -270,7 +271,7 @@ fun ConstellationCanvas(
                 // Velo violeta / púrpura cósmico
                 drawCircle(
                     brush = Brush.radialGradient(
-                        colors = listOf(Color(0x187C3AED), Color(0x074C1D95), Color.Transparent),
+                        colors = listOf(Color(0x180B5EFF), Color(0x070B3B8F), Color.Transparent),
                         center = Offset(w * 0.30f + driftX, h * 0.35f + driftY),
                         radius = w * 0.60f
                     ),
@@ -280,7 +281,7 @@ fun ConstellationCanvas(
                 // Velo cian eléctrico
                 drawCircle(
                     brush = Brush.radialGradient(
-                        colors = listOf(Color(0x1800E5FF), Color(0x06005577), Color.Transparent),
+                        colors = listOf(Color(0x1800D2FF), Color(0x06003D4D), Color.Transparent),
                         center = Offset(w * 0.75f - driftX, h * 0.60f - driftY),
                         radius = w * 0.60f
                     ),
@@ -290,7 +291,7 @@ fun ConstellationCanvas(
                 // Velo central cálido alrededor del Sol
                 drawCircle(
                     brush = Brush.radialGradient(
-                        colors = listOf(Color(0x14F59E0B), Color(0x087C3AED), Color.Transparent),
+                        colors = listOf(Color(0x14E5A44D), Color(0x080B5EFF), Color.Transparent),
                         center = Offset(w * 0.50f + driftX * 0.5f, h * 0.50f + driftY * 0.5f),
                         radius = w * 0.40f
                     ),
@@ -326,7 +327,7 @@ fun ConstellationCanvas(
                         if (isSunRay) {
                             // Rayo de energía pulsante que fluye desde el tag hacia el Sol Central
                             val rayGlow = if (isMonochrome) Color(0x50FFFFFF) else Color(0x6000E5FF)
-                            val rayCore = if (isMonochrome) Color.White else Color(0xFFE0F7FA)
+                            val rayCore = if (isMonochrome) TextPrimary else Color(0xFFE0F7FA)
 
                             drawLine(
                                 color = rayGlow,
@@ -358,7 +359,7 @@ fun ConstellationCanvas(
                             drawCircle(
                                 brush = Brush.radialGradient(
                                     colors = listOf(
-                                        Color.White,
+                                        TextPrimary,
                                         if (isMonochrome) Color(0x70FFFFFF) else Color(0x9000E5FF),
                                         Color.Transparent
                                     ),
@@ -411,7 +412,7 @@ fun ConstellationCanvas(
                             cap = StrokeCap.Round
                         )
                         drawLine(
-                            color = if (isMonochrome) Color.White else Color(0xFFF3E8FF),
+                            color = if (isMonochrome) TextPrimary else Color(0xFFF3E8FF),
                             start = p1,
                             end = p2,
                             strokeWidth = 1.8.dp.toPx(),
@@ -611,7 +612,7 @@ private fun DrawScope.drawTagNode(
 
         // Núcleo estelar
         drawCircle(
-            color = Color.White.copy(alpha = 0.88f * starlightPulse),
+            color = TextPrimary.copy(alpha = 0.88f * starlightPulse),
             radius = starRadius,
             center = screenPos
         )
@@ -653,10 +654,10 @@ private fun DrawScope.drawTagNode(
     }
 
     val textColor = when {
-        isFocused -> if (isMonochrome) Color.White else Color(0xFF05070B)
-        isConnected -> if (isMonochrome) Color.White else Color(0xFFF3E8FF)
-        isCaptain -> if (isMonochrome) Color.White else Color(0xFFE0F2FE)
-        else -> Color.White
+        isFocused -> if (isMonochrome) TextPrimary else Color(0xFF05070B)
+        isConnected -> if (isMonochrome) TextPrimary else Color(0xFFF3E8FF)
+        isCaptain -> if (isMonochrome) TextPrimary else Color(0xFFE0F2FE)
+        else -> TextPrimary
     }
 
     val textLayout = textMeasurer.measure(
@@ -700,7 +701,7 @@ private fun DrawScope.drawTagNode(
         val waveR = badgeW * 0.55f + waveT * 26.dp.toPx()
         val waveAlpha = (1.0f - waveT) * 0.45f
         drawCircle(
-            color = (if (isMonochrome) Color.White else Color(0xFF00E5FF)).copy(alpha = waveAlpha),
+            color = (if (isMonochrome) TextPrimary else Color(0xFF00E5FF)).copy(alpha = waveAlpha),
             radius = waveR,
             center = screenPos,
             style = Stroke(width = 1.4.dp.toPx())
@@ -746,7 +747,7 @@ private fun DrawScope.drawTagNode(
 
     // Cápsula principal
     val capsuleBg = when {
-        isFocused -> if (isMonochrome) Color.White else Color(0xFF00E5FF)
+        isFocused -> if (isMonochrome) TextPrimary else Color(0xFF00E5FF)
         isConnected -> if (isMonochrome) Color(0xF01E293B) else Color(0xF01A0E2E)
         isCaptain -> if (isMonochrome) Color(0xD01E293B) else Color(0xD00A182E)
         else -> Color(0xD008101C)
@@ -762,8 +763,8 @@ private fun DrawScope.drawTagNode(
 
     // Borde
     val borderColor = when {
-        isFocused -> Color.White
-        isConnected -> if (isMonochrome) Color.White else Color(0xFFC084FC)
+        isFocused -> TextPrimary
+        isConnected -> if (isMonochrome) TextPrimary else Color(0xFFC084FC)
         isCaptain -> if (isMonochrome) Color(0x90FFFFFF) else Color(0x9038BDF8)
         else -> Color(0x40FFFFFF)
     }
@@ -788,7 +789,7 @@ private fun DrawScope.drawTagNode(
         val countLayout = textMeasurer.measure(
             text = countText,
             style = TextStyle(
-                color = if (isMonochrome) Color.White else Color(0xFF00E5FF),
+                color = if (isMonochrome) TextPrimary else Color(0xFF00E5FF),
                 fontSize = 8.5.sp,
                 fontFamily = FontFamily.SansSerif,
                 letterSpacing = 1.0.sp,
@@ -865,7 +866,7 @@ private fun DrawScope.drawSunCoreNode(
     // 2. Anillo orbital primario rotatorio punteado (Disco de Acreción Exterior)
     val ringRadius1 = coreRadius * 1.65f
     val ringColor1 = if (isMonochrome) {
-        if (isFocused) Color.White else tv.medusa.app.ui.theme.TvPalette.TextSoft
+        if (isFocused) TextPrimary else tv.medusa.app.ui.theme.TvPalette.TextSoft
     } else {
         if (isFocused) Color(0xFF00E5FF) else (if (node.movieCount > 0) Color(0xFF38BDF8) else Color(0xFFFBBF24))
     }
@@ -905,20 +906,20 @@ private fun DrawScope.drawSunCoreNode(
     // 3. Núcleo Estelar de Fusión
     val coreColors = if (isMonochrome) {
         listOf(
-            Color.White,
-            if (isFocused) Color.White else tv.medusa.app.ui.theme.TvPalette.TextMuted,
+            TextPrimary,
+            if (isFocused) TextPrimary else tv.medusa.app.ui.theme.TvPalette.TextMuted,
             if (isFocused) tv.medusa.app.ui.theme.TvPalette.TextSecondaryCool else Color(0xFF334155)
         )
     } else {
         if (node.movieCount > 0) {
             listOf(
-                Color.White,
+                TextPrimary,
                 if (isFocused) Color(0xFFE0F7FA) else Color(0xFF67E8F9),
                 if (isFocused) Color(0xFF00E5FF) else Color(0xFF0284C7)
             )
         } else {
             listOf(
-                Color.White,
+                TextPrimary,
                 if (isFocused) Color(0xFF00E5FF) else Color(0xFFFDE68A),
                 if (isFocused) Color(0xFF0288D1) else Color(0xFFD97706)
             )
@@ -938,7 +939,7 @@ private fun DrawScope.drawSunCoreNode(
     // 4. Badge / Cápsula interactiva del Sol
     val labelText = if (isFocused && node.movieCount > 0) "${node.label}  ➔ [PULSA OK]" else node.label
     val badgeTextColor = if (isMonochrome) {
-        if (isFocused) Color(0xFF05070B) else Color.White
+        if (isFocused) Color(0xFF05070B) else TextPrimary
     } else {
         if (isFocused) Color(0xFF05070B) else Color(0xFFFEF3C7)
     }
@@ -969,7 +970,7 @@ private fun DrawScope.drawSunCoreNode(
     )
 
     val badgeBgColor = if (isMonochrome) {
-        if (isFocused) Color.White else Color(0xF01E293B)
+        if (isFocused) TextPrimary else Color(0xF01E293B)
     } else {
         if (isFocused) Color(0xFF00E5FF) else Color(0xF02A1A05)
     }
@@ -982,9 +983,9 @@ private fun DrawScope.drawSunCoreNode(
     )
 
     val badgeBorderColor = if (isMonochrome) {
-        if (isFocused) Color.White else Color(0x60FFFFFF)
+        if (isFocused) TextPrimary else Color(0x60FFFFFF)
     } else {
-        if (isFocused) Color.White else Color(0xFFF59E0B).copy(alpha = 0.85f)
+        if (isFocused) TextPrimary else Color(0xFFF59E0B).copy(alpha = 0.85f)
     }
     drawRoundRect(
         color = badgeBorderColor,

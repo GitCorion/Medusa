@@ -19,6 +19,7 @@ import tv.medusa.app.data.local.PLATFORM_LOGO_MONOCHROME
 import tv.medusa.app.data.local.UserPreferencesRepository
 import tv.medusa.app.data.remote.NetworkClientFactory
 import tv.medusa.app.data.remote.update.AppUpdateManager
+import tv.medusa.app.ui.theme.AbyssVoid
 import tv.medusa.app.ui.theme.LocalAccentColor
 import tv.medusa.app.ui.theme.LocalAppWindowSize
 import tv.medusa.app.ui.theme.rememberAppWindowSize
@@ -98,6 +99,7 @@ import tv.medusa.app.ui.components.contextmenu.ContextMenuHost
 import tv.medusa.app.ui.components.contextmenu.MediaActionHandler
 import tv.medusa.app.ui.theme.MedusaTheme
 import tv.medusa.app.util.AppForeground
+import tv.medusa.app.ui.theme.TextPrimary
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -157,7 +159,7 @@ class MainActivity : ComponentActivity() {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color(0xFF0C0C12))
+                        .background(AbyssVoid)
                 )
                 return@setContent
             }
@@ -173,7 +175,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     shape = RectangleShape,
                     colors = NonInteractiveSurfaceDefaults.colors(
-                        containerColor = Color(0xFF0C0C12)
+                        containerColor = AbyssVoid
                     )
                 ) {
                     CompositionLocalProvider(
@@ -655,7 +657,7 @@ fun MedusaApp(
                                 isForce -> stringResource(R.string.update_beta_expired)
                                 else -> stringResource(R.string.update_new_version, updateInfo?.latestVersion ?: "")
                             },
-                            color = Color.White,
+                            color = TextPrimary,
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -708,7 +710,7 @@ fun MedusaApp(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             val canUpdate = updateInfo?.apkUrl != null
-                            val themeFocusColor = if (isMonochrome) Color.White else TvAccent.getColor(accentColor)
+                            val themeFocusColor = if (isMonochrome) TextPrimary else TvAccent.getColor(accentColor)
                             val themeFocusContent = if (isMonochrome) Color(0xFF0F172A) else TvAccent.getFocusedContentColor(accentColor)
 
                             if (canUpdate) {
@@ -725,8 +727,8 @@ fun MedusaApp(
                                     enabled = !isDownloading,
                                     modifier = Modifier.focusRequester(updateButtonFocusRequester),
                                     colors = ButtonDefaults.colors(
-                                        containerColor = if (isForce) Color(0xFFEF4444) else (if (isMonochrome) Color.White else themeFocusColor),
-                                        contentColor = if (isForce) Color.White else themeFocusContent,
+                                        containerColor = if (isForce) Color(0xFFEF4444) else (if (isMonochrome) TextPrimary else themeFocusColor),
+                                        contentColor = if (isForce) TextPrimary else themeFocusContent,
                                         focusedContainerColor = themeFocusColor,
                                         focusedContentColor = themeFocusContent
                                     ),
@@ -747,7 +749,7 @@ fun MedusaApp(
                                     onClick = { coroutineScope.launch { appUpdateManager.checkForUpdates() } },
                                     colors = ButtonDefaults.colors(
                                         containerColor = Color(0x18FFFFFF),
-                                        contentColor = Color.White,
+                                        contentColor = TextPrimary,
                                         focusedContainerColor = themeFocusColor,
                                         focusedContentColor = themeFocusContent
                                     ),
@@ -759,7 +761,7 @@ fun MedusaApp(
                                     onClick = { (context as? Activity)?.finish() },
                                     colors = ButtonDefaults.colors(
                                         containerColor = Color(0x18FFFFFF),
-                                        contentColor = Color.White,
+                                        contentColor = TextPrimary,
                                         focusedContainerColor = themeFocusColor,
                                         focusedContentColor = themeFocusContent
                                     ),

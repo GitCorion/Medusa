@@ -68,7 +68,7 @@ fun EpisodeCard(
 ) {
     val isMonochrome = LocalIsMonochromeTheme.current
     val effectiveAccent = if (accentColor.isNotBlank()) accentColor else LocalAccentColor.current
-    val focusColor = if (isMonochrome) Color.White else TvAccent.getColor(effectiveAccent)
+    val focusColor = if (isMonochrome) TextPrimary else TvAccent.getColor(effectiveAccent)
     val focusContent = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else TvAccent.getFocusedContentColor(effectiveAccent)
     var isFocused by remember { mutableStateOf(false) }
 
@@ -165,7 +165,7 @@ fun EpisodeCard(
                         Icon(
                             imageVector = Icons.Rounded.Check,
                             contentDescription = stringResource(R.string.common_watched),
-                            tint = if (isMonochrome) Color.White.copy(alpha = 0.90f) else tv.medusa.app.ui.theme.TvPalette.SemanticWatched,
+                            tint = if (isMonochrome) TextPrimary.copy(alpha = 0.90f) else tv.medusa.app.ui.theme.TvPalette.SemanticWatched,
                             modifier = Modifier.size(13.dp)
                         )
                     }
@@ -189,7 +189,7 @@ fun EpisodeCard(
                             modifier = Modifier
                                 .fillMaxWidth(progressFraction)
                                 .height(3.dp)
-                                .background(if (isMonochrome) Color.White else focusColor)
+                                .background(if (isMonochrome) TextPrimary else focusColor)
                         )
                     }
                 }
@@ -204,7 +204,7 @@ fun EpisodeCard(
                         TvPill(
                             text = episode.formattedDuration!!,
                             containerColor = Color(0xCC000000),
-                            textColor = Color.White.copy(alpha = 0.90f),
+                            textColor = TextPrimary.copy(alpha = 0.90f),
                             borderColor = Color(0x24FFFFFF)
                         )
                     }
@@ -216,7 +216,7 @@ fun EpisodeCard(
                         modifier = Modifier
                             .align(Alignment.Center)
                             .size(36.dp)
-                            .background(Color.White, CircleShape),
+                            .background(TextPrimary, CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -244,7 +244,7 @@ fun EpisodeCard(
                         platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false)
                     ),
                     fontWeight = FontWeight.SemiBold,
-                    color = if (isFocused) Color.White else TextPrimary,
+                    color = if (isFocused) TextPrimary else TextPrimary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )

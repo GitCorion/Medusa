@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
  * Genera los catálogos de descubrimiento (plataformas, tendencias y popular regional) a
- * partir de TMDB y los deja en `docs/catalogs/<REGION>/` para servirlos con Firebase Hosting.
+ * partir de TMDB y los deja en `docs/catalogs/<REGION>/`. Se publican versionándolos en el
+ * repositorio y se sirven por raw.githubusercontent.com; no hay Hosting de terceros.
  *
  * La app descarga estos ficheros ya preparados y solo cruza los `tmdbId` contra la biblioteca
  * del usuario. La clave de TMDB vive aquí (GitHub Actions), nunca en el APK.

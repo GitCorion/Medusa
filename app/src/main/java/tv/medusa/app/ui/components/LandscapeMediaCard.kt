@@ -33,6 +33,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -45,6 +46,7 @@ import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Icon
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
+import tv.medusa.app.R
 import tv.medusa.app.data.local.INDICATOR_THEME_MONOCHROME
 import tv.medusa.app.domain.model.MediaItem
 import tv.medusa.app.ui.theme.TextPrimary
@@ -85,7 +87,7 @@ fun LandscapeMediaCard(
     val indicatorTheme = LocalIndicatorTheme.current
     val isMonochrome = LocalIsMonochromeTheme.current ||
             indicatorTheme == INDICATOR_THEME_MONOCHROME
-    val focusColor = if (isMonochrome) Color.White else accentColor
+    val focusColor = if (isMonochrome) TextPrimary else accentColor
 
     val contextMenuController = tv.medusa.app.ui.components.contextmenu.LocalContextMenuController.current
     val view = androidx.compose.ui.platform.LocalView.current
@@ -256,7 +258,7 @@ fun LandscapeMediaCard(
                                 .replace(" Colección", "", ignoreCase = true)
                             Text(
                                 text = cleanTitle,
-                                color = if (isFocused) Color.White else TextPrimary,
+                                color = if (isFocused) TextPrimary else TextPrimary,
                                 fontFamily = tv.medusa.app.ui.theme.DmSansFamily,
                                 style = androidx.compose.ui.text.TextStyle(
                                     platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false)
@@ -272,9 +274,9 @@ fun LandscapeMediaCard(
                             Spacer(modifier = Modifier.height(2.dp))
 
                             val subtitle = buildList {
-                                add("COLECCIÓN")
+                                add(stringResource(R.string.detail_collection))
                                 item.year?.let { add(it.toString()) }
-                            }.joinToString(" • ")
+                            }.joinToString("   ")
 
                             Text(
                                 text = subtitle,

@@ -135,11 +135,11 @@ data class SettingsUiState(
     val isTraktConnected: Boolean = false,
     val traktUsername: String? = null,
     val traktUserCode: String? = null,
-    val traktQrUrl: String? = null,
+    val traktQrPayload: String? = null,
     val isWaitingTraktAuth: Boolean = false,
     // Jellyfin Quick Connect Flow
     val jellyfinQuickConnectCode: String? = null,
-    val jellyfinQrUrl: String? = null,
+    val jellyfinQrPayload: String? = null,
     val isWaitingJellyfinQuickConnect: Boolean = false,
     // Descubrimiento de servidores en la red local
     val isDiscoveringServers: Boolean = false,
@@ -779,6 +779,8 @@ class SettingsViewModel @Inject constructor(
                 username = "",
                 password = ""
             )
+            // No dejar credenciales descifradas en memoria tras cerrar sesión.
+            tv.medusa.app.util.CryptoUtils.clearCache()
             _uiState.value = _uiState.value.copy(
                 isJellyfinConnected = false,
                 serverUrl = "",
@@ -841,7 +843,7 @@ class SettingsViewModel @Inject constructor(
                 traktToken = "",
                 traktUsername = null,
                 traktUserCode = null,
-                traktQrUrl = null,
+                traktQrPayload = null,
                 isWaitingTraktAuth = false,
                 traktUserLists = emptyList(),
                 statusMessage = context.getString(R.string.settings_trakt_unlinked)
@@ -868,11 +870,12 @@ class SettingsViewModel @Inject constructor(
                 )
 
                 val verifyUrl = ApiConfig.TRAKT_ACTIVATE_URL
-                val qrUrl = "${ApiConfig.QR_GENERATOR_BASE_URL}?size=350x350&data=" + URLEncoder.encode(verifyUrl, "UTF-8")
+                // El payload se codifica como QR en el dispositivo; nunca se envía a un tercero.
+                val qrPayload = verifyUrl
 
                 _uiState.value = _uiState.value.copy(
                     traktUserCode = codeResponse.userCode,
-                    traktQrUrl = qrUrl,
+                    traktQrPayload = qrPayload,
                     statusMessage = context.getString(R.string.settings_scan_qr)
                 )
 
@@ -960,7 +963,7 @@ class SettingsViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(
             isWaitingTraktAuth = false,
             traktUserCode = null,
-            traktQrUrl = null
+            traktQrPayload = null
         )
     }
 
@@ -1063,7 +1066,7 @@ class SettingsViewModel @Inject constructor(
             _uiState.value = _uiState.value.copy(
                 isWaitingJellyfinQuickConnect = true,
                 jellyfinQuickConnectCode = null,
-                jellyfinQrUrl = null,
+                jellyfinQrPayload = null,
                 statusMessage = context.getString(R.string.settings_starting_quick_connect)
             )
 
@@ -1076,11 +1079,10 @@ class SettingsViewModel @Inject constructor(
                     .getOrDefault("")
 
                 val webQuickConnectUrl = buildQuickConnectWebUrl(cleanUrl, detectedVersion, initResult.effectiveCode)
-                val qrUrl = "${ApiConfig.QR_GENERATOR_BASE_URL}?size=300x300&data=" + URLEncoder.encode(webQuickConnectUrl, "UTF-8")
 
                 _uiState.value = _uiState.value.copy(
                     jellyfinQuickConnectCode = initResult.effectiveCode,
-                    jellyfinQrUrl = qrUrl,
+                    jellyfinQrPayload = webQuickConnectUrl,
                     statusMessage = context.getString(R.string.settings_qc_code, initResult.effectiveCode)
                 )
 
@@ -1186,7 +1188,7 @@ class SettingsViewModel @Inject constructor(
                     _uiState.value = _uiState.value.copy(
                         isWaitingJellyfinQuickConnect = false,
                         jellyfinQuickConnectCode = null,
-                        jellyfinQrUrl = null,
+                        jellyfinQrPayload = null,
                         statusMessage = authFailure?.let {
                             context.getString(R.string.settings_quick_connect_token_error, it)
                         } ?: context.getString(R.string.settings_quick_connect_expired)
@@ -1207,7 +1209,7 @@ class SettingsViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(
             isWaitingJellyfinQuickConnect = false,
             jellyfinQuickConnectCode = null,
-            jellyfinQrUrl = null,
+            jellyfinQrPayload = null,
             statusMessage = null
         )
     }

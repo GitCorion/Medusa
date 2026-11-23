@@ -98,7 +98,7 @@ fun ContinueWatchingCard(
     val indicatorTheme = LocalIndicatorTheme.current
     val isMonochrome = LocalIsMonochromeTheme.current ||
             indicatorTheme == INDICATOR_THEME_MONOCHROME
-    val focusColor = if (isMonochrome) Color.White else accentColor
+    val focusColor = if (isMonochrome) TextPrimary else accentColor
 
     val contextMenuController = tv.medusa.app.ui.components.contextmenu.LocalContextMenuController.current
     val view = androidx.compose.ui.platform.LocalView.current
@@ -242,7 +242,7 @@ fun ContinueWatchingCard(
                     Icon(
                         imageVector = Icons.Rounded.PlayArrow,
                         contentDescription = null,
-                        tint = Color.White,
+                        tint = TextPrimary,
                         modifier = Modifier
                             .size(26.dp)
                             .offset(x = 1.5.dp) // Compensación óptica: el centro visual del triángulo está desplazado a la derecha
@@ -294,7 +294,7 @@ fun ContinueWatchingCard(
 
                 Text(
                     text = displayTitle,
-                    color = if (isFocused) Color.White else TextPrimary,
+                    color = if (isFocused) TextPrimary else TextPrimary,
                     fontFamily = tv.medusa.app.ui.theme.DmSansFamily,
                     style = androidx.compose.ui.text.TextStyle(
                         platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false)
@@ -333,7 +333,7 @@ fun ContinueWatchingCard(
                         .fillMaxWidth(progressFraction)
                         .fillMaxHeight()
                         .clip(RoundedCornerShape(2.dp))
-                        .background(if (isFocused) Color.White else focusColor)
+                        .background(if (isFocused) TextPrimary else focusColor)
                 )
             }
         }

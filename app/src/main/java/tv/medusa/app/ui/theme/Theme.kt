@@ -9,6 +9,7 @@ import androidx.compose.material3.MaterialTheme as M3MaterialTheme
 import androidx.compose.material3.darkColorScheme as m3DarkColorScheme
 
 import tv.medusa.app.data.local.ACCENT_CYAN
+import tv.medusa.app.ui.theme.TextPrimary
 
 private val DeepBackground = AbyssVoid
 private val SurfaceDark = AbyssSurface
@@ -22,7 +23,7 @@ fun MedusaTheme(
     isMonochrome: Boolean = false,
     content: @Composable () -> Unit,
 ) {
-    val primaryColor = if (isMonochrome) Color.White else TvAccent.getColor(accentColorKey)
+    val primaryColor = if (isMonochrome) TextPrimary else TvAccent.getColor(accentColorKey)
     val onPrimaryColor = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else TvAccent.getFocusedContentColor(accentColorKey)
     val secondaryColor = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.TextMuted else primaryColor.copy(alpha = 0.75f)
 
@@ -32,7 +33,7 @@ fun MedusaTheme(
         background = DeepBackground,
         surface = SurfaceDark,
         onPrimary = onPrimaryColor,
-        onSecondary = Color.White,
+        onSecondary = TextPrimary,
         onBackground = TextWhite,
         onSurface = TextWhite,
         onSurfaceVariant = TextMuted
@@ -44,7 +45,7 @@ fun MedusaTheme(
         background = DeepBackground,
         surface = SurfaceDark,
         onPrimary = onPrimaryColor,
-        onSecondary = Color.White,
+        onSecondary = TextPrimary,
         onBackground = TextWhite,
         onSurface = TextWhite,
         onSurfaceVariant = TextMuted

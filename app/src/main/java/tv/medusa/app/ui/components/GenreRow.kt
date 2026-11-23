@@ -65,7 +65,7 @@ fun GenreRow(
     ) {
         val isMonochrome = LocalIsMonochromeTheme.current
         val accentKey = LocalAccentColor.current
-        val focusColor = if (isMonochrome) Color.White else TvAccent.getColor(accentKey)
+        val focusColor = if (isMonochrome) TextPrimary else TvAccent.getColor(accentKey)
 
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -104,7 +104,7 @@ private fun GenreChip(
 ) {
     val isMonochrome = LocalIsMonochromeTheme.current
     val accentKey = LocalAccentColor.current
-    val focusColor = if (isMonochrome) Color.White else TvAccent.getColor(accentKey)
+    val focusColor = if (isMonochrome) TextPrimary else TvAccent.getColor(accentKey)
     val focusContent = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else TvAccent.getFocusedContentColor(accentKey)
 
     Surface(
@@ -127,11 +127,11 @@ private fun GenreChip(
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = genreName.uppercase(),
+                text = genreName,
                 style = TvChipDefaults.textStyle.copy(
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.2.sp
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 0.2.sp
                 )
             )
         }

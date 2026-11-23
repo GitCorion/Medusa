@@ -98,7 +98,7 @@ fun FavoritesScreen(
     val accentColorKey by viewModel.accentColor.collectAsStateWithLifecycle()
     val buttonStyleKey by viewModel.buttonStyle.collectAsStateWithLifecycle()
     val isMonochrome = LocalIsMonochromeTheme.current
-    val focusColor = if (isMonochrome) Color.White else TvAccent.getColor(accentColorKey)
+    val focusColor = if (isMonochrome) TextPrimary else TvAccent.getColor(accentColorKey)
     val focusContent = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else TvAccent.getFocusedContentColor(accentColorKey)
 
     val showIcons = buttonStyleKey != BUTTON_STYLE_TEXT_ONLY
@@ -107,6 +107,8 @@ fun FavoritesScreen(
     var sortOption by rememberSaveable { mutableStateOf(CatalogSortOption.DEFAULT) }
     val sortButtonFocusRequester = remember { FocusRequester() }
     val firstResultFocusRequester = remember { FocusRequester() }
+    // Destino explícito de ARRIBA desde el contenido: la pestaña activa, no Inicio.
+    val topBarFavoritesFocusRequester = remember { FocusRequester() }
     val gridState = rememberLazyGridState()
     val coroutineScope = rememberCoroutineScope()
 
@@ -163,7 +165,7 @@ fun FavoritesScreen(
                             modifier = Modifier.handleTouchClick { viewModel.loadFavorites() },
                             colors = ButtonDefaults.colors(
                                 containerColor = tv.medusa.app.ui.theme.TvPalette.GlassRaised,
-                                contentColor = Color.White,
+                                contentColor = TextPrimary,
                                 focusedContainerColor = focusColor,
                                 focusedContentColor = focusContent
                             )
@@ -190,7 +192,8 @@ fun FavoritesScreen(
                         onOpenSettings = onOpenSettings,
                         accentColorKey = accentColorKey,
                         buttonStyleKey = buttonStyleKey,
-                        isMonochrome = isMonochrome
+                        isMonochrome = isMonochrome,
+                        favoritesFocusRequester = topBarFavoritesFocusRequester
                     )
 
                     FormatFilterBar(
@@ -201,6 +204,7 @@ fun FavoritesScreen(
                         isMonochrome = isMonochrome,
                         hideWatched = state.hideWatched,
                         onToggleHideWatched = { viewModel.toggleHideWatched() },
+                        upFocusRequester = topBarFavoritesFocusRequester,
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
 
@@ -267,7 +271,7 @@ fun FavoritesScreen(
                                     Text(
                                         text = stringResource(R.string.favorites_collection_count, sortedItems.size),
                                         style = CinematicTypography.SectionTitle,
-                                        color = Color.White
+                                        color = TextPrimary
                                     )
 
                                     CatalogSortButton(
@@ -288,6 +292,7 @@ fun FavoritesScreen(
                                             .focusRequester(sortButtonFocusRequester)
                                             .focusProperties {
                                                 down = firstResultFocusRequester
+                                                up = topBarFavoritesFocusRequester
                                             }
                                     )
                                 }
@@ -300,6 +305,7 @@ fun FavoritesScreen(
                             ) { index, item ->
                                 MediaCard(
                                     item = item,
+                                    showFavoriteBadge = false,
                                     onClick = {
                                         val targetId = if (item.type.equals("Episode", ignoreCase = true) && !item.seriesId.isNullOrBlank()) {
                                             item.seriesId!!

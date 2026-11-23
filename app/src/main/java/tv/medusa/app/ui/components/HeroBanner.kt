@@ -137,8 +137,21 @@ fun HeroBanner(
     val isMonochrome = LocalIsMonochromeTheme.current ||
             indicatorTheme == INDICATOR_THEME_MONOCHROME
 
-    // 1. Carrusel de destacados con rotación reposada (12s) que se pausa cuando el usuario interactúa
-    val cleanFeatured = remember(featuredItems) { featuredItems.take(6) }
+    // 1. Carrusel de destacados con rotación reposada (12s) que se pausa cuando el usuario interactúa.
+    // Solo entran títulos con backdrop real y sinopsis real (HeroEligibility).
+    val eligibleFeatured = remember(featuredItems) {
+        featuredItems.filter { tv.medusa.app.domain.HeroEligibility.isWorthy(it) }.take(6)
+    }
+
+    // Un backdrop puede existir como URL y devolver 404: al fallar, la slide sale de la portada.
+    var failedBackdrops by remember { mutableStateOf<Set<String>>(emptySet()) }
+    val cleanFeatured = remember(eligibleFeatured, failedBackdrops) {
+        eligibleFeatured.filterNot { it.backdropUrl in failedBackdrops }
+    }
+    val previewItem = item?.takeIf {
+        tv.medusa.app.domain.HeroEligibility.isWorthy(it) && it.backdropUrl !in failedBackdrops
+    }
+
     var carouselIndex by remember { mutableIntStateOf(0) }
     var isHeroFocused by remember { mutableStateOf(false) }
     val internalActionButtonFocusRequester = remember { FocusRequester() }
@@ -149,17 +162,17 @@ fun HeroBanner(
 
     // WCAG 2.2.2: la rotación automática se detiene en cuanto el usuario enfoca
     // los botones de acción del hero. El foco actúa como pausa explícita.
-    LaunchedEffect(item, totalSlides, isHeroFocused, carouselIndex) {
-        if (item == null && !isHeroFocused && totalSlides > 1) {
+    LaunchedEffect(previewItem, totalSlides, isHeroFocused, carouselIndex) {
+        if (previewItem == null && !isHeroFocused && totalSlides > 1) {
             delay(12000L)
             carouselIndex = (carouselIndex + 1) % totalSlides
         }
     }
 
     val currentSlideIndex = if (totalSlides > 0) carouselIndex % totalSlides else 0
-    val isSeasonalSlide = item == null && hasSeasonalSlide && currentSlideIndex == 0
+    val isSeasonalSlide = previewItem == null && hasSeasonalSlide && currentSlideIndex == 0
     val movieSlideIndex = if (hasSeasonalSlide) currentSlideIndex - 1 else currentSlideIndex
-    val effectiveItem = item ?: if (!isSeasonalSlide && cleanFeatured.isNotEmpty() && movieSlideIndex in cleanFeatured.indices) cleanFeatured[movieSlideIndex] else null
+    val effectiveItem = previewItem ?: if (!isSeasonalSlide && cleanFeatured.isNotEmpty() && movieSlideIndex in cleanFeatured.indices) cleanFeatured[movieSlideIndex] else null
 
     // Notificar al contenedor principal para sincronizar el ambient backlight
     LaunchedEffect(effectiveItem?.id) {
@@ -172,7 +185,8 @@ fun HeroBanner(
         else -> HeroSlideState.Empty
     }
 
-
+    // Sin material completo no hay portada: las filas suben y no se reserva un panel negro.
+    if (currentSlideState is HeroSlideState.Empty) return
 
     Box(
         modifier = modifier
@@ -254,27 +268,26 @@ fun HeroBanner(
                     }
                     is HeroSlideState.Movie -> {
                         val currentItem = slideState.item
-                        val isBackdrop = !currentItem.backdropUrl.isNullOrBlank()
-                        val imageModel = currentItem.backdropUrl ?: currentItem.posterUrl
+                        val backdrop = currentItem.backdropUrl
 
-                        if (imageModel != null) {
+                        // El pool de la portada garantiza backdrop 16:9 y sinopsis (ver
+                        // BillboardPoolBuilder): el hero nunca recorta un póster 2:3 ni rellena
+                        // con un fondo inventado. El else es solo una red de seguridad.
+                        if (!backdrop.isNullOrBlank()) {
                             Box(
                                 modifier = Modifier
                                     .fillMaxHeight()
-                                    .then(
-                                        if (isBackdrop) {
-                                            Modifier.aspectRatio(16f / 9f, matchHeightConstraintsFirst = true)
-                                        } else {
-                                            Modifier.aspectRatio(2f / 3f, matchHeightConstraintsFirst = true)
-                                        }
-                                    )
+                                    .aspectRatio(16f / 9f, matchHeightConstraintsFirst = true)
                                     .align(Alignment.CenterEnd)
                             ) {
                                 AsyncImage(
-                                    model = imageModel,
+                                    model = backdrop,
                                     contentDescription = currentItem.title,
                                     contentScale = ContentScale.Crop,
                                     alignment = Alignment.Center,
+                                    onError = {
+                                        failedBackdrops = failedBackdrops + backdrop
+                                    },
                                     modifier = Modifier.fillMaxSize()
                                 )
                                 // Suave desvanecimiento horizontal a la izquierda para fundirse con la zona de texto
@@ -350,7 +363,7 @@ fun HeroBanner(
 
         if (currentSlideState !is HeroSlideState.Empty) {
             val isMonochrome = LocalIsMonochromeTheme.current
-            val focusColor = if (isMonochrome) Color.White else TvAccent.getColor(accentColor)
+            val focusColor = if (isMonochrome) TextPrimary else TvAccent.getColor(accentColor)
             val focusContent = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else TvAccent.getFocusedContentColor(accentColor)
 
             Column(
@@ -370,7 +383,7 @@ fun HeroBanner(
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.TextSecondaryCool else Color(0xFFFDBA74),
-                                letterSpacing = 1.4.sp
+                                letterSpacing = 0.2.sp
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
@@ -488,12 +501,11 @@ fun HeroBanner(
                                     Spacer(modifier = Modifier.width(3.dp))
                                     Text(
                                         text = String.format(Locale.US, "%.1f", effectiveItem.rating),
-                                        color = Color.White,
+                                        color = TextPrimary,
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 13.sp
                                     )
                                 }
-                                Text(text = "•", color = TextSecondary.copy(alpha = 0.5f), fontSize = 12.sp)
                             }
 
                             if (effectiveItem.year != null) {
@@ -503,7 +515,6 @@ fun HeroBanner(
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Medium
                                 )
-                                Text(text = "•", color = TextSecondary.copy(alpha = 0.5f), fontSize = 12.sp)
                             }
 
                             val isTv = effectiveItem.type.equals("Series", ignoreCase = true) ||
@@ -531,7 +542,6 @@ fun HeroBanner(
                                 } else {
                                     "${effectiveItem.playedEpisodes} CAPS"
                                 }
-                                Text(text = "•", color = TextSecondary.copy(alpha = 0.5f), fontSize = 12.sp)
                                 Text(
                                     text = progressText,
                                     color = focusColor,
@@ -539,7 +549,6 @@ fun HeroBanner(
                                     fontWeight = FontWeight.SemiBold
                                 )
                             } else if (hasMovieProgress) {
-                                Text(text = "•", color = TextSecondary.copy(alpha = 0.5f), fontSize = 12.sp)
                                 Text(
                                     text = stringResource(R.string.badge_in_progress),
                                     color = focusColor,
@@ -547,7 +556,6 @@ fun HeroBanner(
                                     fontWeight = FontWeight.SemiBold
                                 )
                             } else if (effectiveItem.isPlayed) {
-                                Text(text = "•", color = TextSecondary.copy(alpha = 0.5f), fontSize = 12.sp)
                                 Text(
                                     text = stringResource(R.string.badge_watched),
                                     color = Color(0xFF34D399),
@@ -555,10 +563,9 @@ fun HeroBanner(
                                     fontWeight = FontWeight.SemiBold
                                 )
                             } else if (effectiveItem.isFavorite) {
-                                Text(text = "•", color = TextSecondary.copy(alpha = 0.5f), fontSize = 12.sp)
                                 Text(
                                     text = stringResource(R.string.badge_favorite),
-                                    color = if (isMonochrome) Color.White else Color(0xFFFDA4AF),
+                                    color = if (isMonochrome) TextPrimary else Color(0xFFFDA4AF),
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.SemiBold
                                 )
@@ -712,7 +719,7 @@ fun HeroBanner(
                     } else {
                         focusColor
                     }
-                    val activeColor = if (isMonochrome) Color.White else eventAccent
+                    val activeColor = if (isMonochrome) TextPrimary else eventAccent
                     val indicatorWidth by animateDpAsState(
                         targetValue = if (isActive) 24.dp else 6.dp,
                         animationSpec = tween(durationMillis = 350),

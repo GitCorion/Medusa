@@ -23,7 +23,7 @@ MEMORIA_INSTRUCCIONES.md
 *.strm
 .firebase/
 .codex/
-# Catálogos de descubrimiento generados (se publican en Firebase Hosting, no se versionan)
+# Catálogos de descubrimiento generados (publicación manual con `git add -f`, no se versionan por defecto)
 docs/catalogs/
 .agents/
 apple_tv_ref/

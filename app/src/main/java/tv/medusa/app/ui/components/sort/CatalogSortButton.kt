@@ -60,6 +60,7 @@ import kotlinx.coroutines.delay
 import tv.medusa.app.R
 import tv.medusa.app.ui.theme.TvAccent
 import tv.medusa.app.ui.util.handleTouchClick
+import tv.medusa.app.ui.theme.TextPrimary
 
 /**
  * Botón y selector elegante de ordenación para vistas de catálogo en cuadrícula ("muro").
@@ -94,13 +95,13 @@ fun CatalogSortButton(
         }
     }
 
-    val focusColor = if (isMonochrome) Color.White else TvAccent.getColor(accentColorKey)
+    val focusColor = if (isMonochrome) TextPrimary else TvAccent.getColor(accentColorKey)
     val focusContent = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else TvAccent.getFocusedContentColor(accentColorKey)
     val isCustomSort = currentSort != CatalogSortOption.DEFAULT
 
     val contentColor = when {
         isFocused -> focusContent
-        isCustomSort -> if (isMonochrome) Color.White else focusColor
+        isCustomSort -> if (isMonochrome) TextPrimary else focusColor
         else -> tv.medusa.app.ui.theme.TvPalette.TextSoft
     }
 
@@ -187,7 +188,7 @@ fun CatalogSortDialog(
     isMonochrome: Boolean
 ) {
     val view = LocalView.current
-    val focusColor = if (isMonochrome) Color.White else TvAccent.getColor(accentColorKey)
+    val focusColor = if (isMonochrome) TextPrimary else TvAccent.getColor(accentColorKey)
     val focusContent = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else TvAccent.getFocusedContentColor(accentColorKey)
     val selectedFocusRequester = remember { FocusRequester() }
 
@@ -265,7 +266,7 @@ fun CatalogSortDialog(
                             Text(
                                 text = stringResource(R.string.sort_dialog_title),
                                 style = MaterialTheme.typography.titleMedium,
-                                color = Color.White,
+                                color = TextPrimary,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
@@ -289,7 +290,7 @@ fun CatalogSortDialog(
 
                             val itemContentColor = when {
                                 isItemFocused -> focusContent
-                                isSelected -> if (isMonochrome) Color.White else focusColor
+                                isSelected -> if (isMonochrome) TextPrimary else focusColor
                                 else -> tv.medusa.app.ui.theme.TvPalette.TextSoft
                             }
 
@@ -335,7 +336,7 @@ fun CatalogSortDialog(
                                         Icon(
                                             imageVector = Icons.Rounded.Check,
                                             contentDescription = null,
-                                            tint = if (isItemFocused) focusContent else (if (isMonochrome) Color.White else focusColor),
+                                            tint = if (isItemFocused) focusContent else (if (isMonochrome) TextPrimary else focusColor),
                                             modifier = Modifier.size(16.dp)
                                         )
                                     }

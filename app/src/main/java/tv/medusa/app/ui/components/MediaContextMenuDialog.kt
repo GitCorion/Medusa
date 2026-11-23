@@ -77,6 +77,7 @@ import tv.medusa.app.ui.theme.TvAccent
 import tv.medusa.app.ui.theme.adaptiveDialogWidth
 import tv.medusa.app.ui.theme.TvRatingBadge
 import java.util.Locale
+import tv.medusa.app.ui.theme.TextPrimary
 
 private data class ContextActionItem(
     val id: String,
@@ -102,7 +103,7 @@ fun MediaContextMenuDialog(
     onDismiss: () -> Unit
 ) {
     val view = LocalView.current
-    val focusColor = if (isMonochrome) Color.White else TvAccent.getColor(accentColorKey)
+    val focusColor = if (isMonochrome) TextPrimary else TvAccent.getColor(accentColorKey)
     val focusContent = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else TvAccent.getFocusedContentColor(accentColorKey)
     val dialogOpenedTime = remember { android.os.SystemClock.uptimeMillis() }
     var hasReleasedInitialPress by remember { mutableStateOf(false) }
@@ -387,7 +388,7 @@ fun MediaContextMenuDialog(
                         Text(
                             text = item.title,
                             style = MaterialTheme.typography.titleMedium,
-                            color = Color.White,
+                            color = TextPrimary,
                             fontWeight = FontWeight.Bold,
                             textAlign = TextAlign.Center,
                             maxLines = 2,
@@ -481,7 +482,7 @@ fun MediaContextMenuDialog(
                                         tint = if (isBtnFocused) {
                                             focusContent
                                         } else {
-                                            actionItem.iconTint ?: Color.White
+                                            actionItem.iconTint ?: TextPrimary
                                         },
                                         modifier = Modifier.size(18.dp)
                                     )
@@ -492,7 +493,7 @@ fun MediaContextMenuDialog(
                                             fontWeight = FontWeight.SemiBold,
                                             fontSize = 14.sp
                                         ),
-                                        color = if (isBtnFocused) focusContent else Color.White,
+                                        color = if (isBtnFocused) focusContent else TextPrimary,
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
                                     )

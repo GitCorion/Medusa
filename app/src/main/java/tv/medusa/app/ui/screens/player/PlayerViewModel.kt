@@ -1426,7 +1426,7 @@ class PlayerViewModel @Inject constructor(
             }
 
             val mappedInfoList = candidateDtos.take(5).map { dto ->
-                val year = dto.productionYear?.let { " • $it" } ?: ""
+                val year = dto.productionYear?.let { "   $it" } ?: ""
                 val thumbUrl = if (dto.imageTags?.containsKey("Primary") == true) {
                     "$jellyfinBaseUrl/Items/${dto.id}/Images/Primary?fillWidth=400"
                 } else null
@@ -1809,7 +1809,7 @@ class PlayerViewModel @Inject constructor(
         if (!status.quality.isNullOrBlank()) detailParts.add(status.quality)
         if (!status.audio.isNullOrBlank()) detailParts.add(status.audio)
         if (seeds > 0 || peers > 0) {
-            detailParts.add("Seeds: $seeds • Peers: $peers")
+            detailParts.add(appContext.getString(R.string.torrent_seeds_peers, seeds, peers))
         }
 
         val isUnavailable = status.state.equals("UNAVAILABLE", ignoreCase = true)
@@ -1832,7 +1832,7 @@ class PlayerViewModel @Inject constructor(
             audio = status.audio,
             statusText = statusText,
             reasonText = reasonText,
-            detailText = detailParts.joinToString(" · "),
+            detailText = detailParts.joinToString("   "),
             isZeroProgressFor10s = isZeroProgressFor10s,
             isError = isError,
             isUnavailable = isUnavailable,

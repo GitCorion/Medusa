@@ -98,17 +98,35 @@ object CryptoUtils {
             if (combined.size <= IV_SIZE_BYTES) return null
             val iv = combined.copyOfRange(0, IV_SIZE_BYTES)
             val ciphertext = combined.copyOfRange(IV_SIZE_BYTES, combined.size)
+            // Fail-closed: si la clave no existe (p. ej. Keystore desincronizado tras un
+            // reinicio de TV), NO se genera una nueva. Generarla sobrescribiría la anterior y
+            // dejaría ilegibles todas las credenciales guardadas.
+            val key = getExistingKey() ?: run {
+                android.util.Log.w("CryptoUtils", "Clave del Keystore no disponible; se aborta el descifrado.")
+                return null
+            }
             val cipher = Cipher.getInstance(TRANSFORMATION)
-            cipher.init(Cipher.DECRYPT_MODE, getOrCreateKey(), GCMParameterSpec(TAG_SIZE_BITS, iv))
+            cipher.init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(TAG_SIZE_BITS, iv))
             String(cipher.doFinal(ciphertext), Charsets.UTF_8)
         } catch (_: Exception) {
             null
         }
     }
 
-    private fun getOrCreateKey(): SecretKey {
+    /** Vacía la caché de credenciales en claro. Llamar al cerrar sesión. */
+    fun clearCache() {
+        decryptedCache.clear()
+    }
+
+    private fun getExistingKey(): SecretKey? = try {
         val keyStore = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
-        (keyStore.getKey(KEY_ALIAS, null) as? SecretKey)?.let { return it }
+        keyStore.getKey(KEY_ALIAS, null) as? SecretKey
+    } catch (_: Exception) {
+        null
+    }
+
+    private fun getOrCreateKey(): SecretKey {
+        getExistingKey()?.let { return it }
 
         val generator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore")
         generator.init(

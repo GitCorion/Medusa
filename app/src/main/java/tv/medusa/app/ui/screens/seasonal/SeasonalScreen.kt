@@ -73,6 +73,7 @@ import tv.medusa.app.ui.components.TvTopBar
 import tv.medusa.app.ui.theme.TvAccent
 import tv.medusa.app.ui.util.handleTouchClick
 import tv.medusa.app.util.DeviceUtils
+import tv.medusa.app.ui.theme.TextPrimary
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
@@ -257,7 +258,7 @@ private fun SeasonalHeading(
                     offset = Offset(0f, 2f)
                 )
             ),
-            color = Color.White
+            color = TextPrimary
         )
         Spacer(modifier = Modifier.height(6.dp))
         Text(
@@ -339,8 +340,8 @@ private fun SeasonalLanding(
                     shape = ButtonDefaults.shape(tv.medusa.app.ui.theme.TvChipDefaults.Shape),
                     colors = ButtonDefaults.colors(
                         containerColor = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.GlassRaised else eventAccent.copy(alpha = 0.18f),
-                        contentColor = Color.White,
-                        focusedContainerColor = if (isMonochrome) Color.White else eventAccent,
+                        contentColor = TextPrimary,
+                        focusedContainerColor = if (isMonochrome) TextPrimary else eventAccent,
                         focusedContentColor = tv.medusa.app.ui.theme.TvPalette.FocusInk
                     ),
                     border = tv.medusa.app.ui.theme.TvChipDefaults.buttonBorder(),

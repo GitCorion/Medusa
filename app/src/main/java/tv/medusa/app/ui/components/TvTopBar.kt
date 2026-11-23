@@ -22,9 +22,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.wrapContentWidth
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.ArrowCircleUp
 import androidx.compose.material.icons.rounded.Explore
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.Home
@@ -59,6 +59,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import tv.medusa.app.ui.theme.AmberCinema
 import tv.medusa.app.ui.theme.DmSansFamily
 import androidx.tv.material3.Border
 import androidx.tv.material3.Button
@@ -73,6 +74,7 @@ import tv.medusa.app.data.local.BUTTON_STYLE_TEXT_ONLY
 import tv.medusa.app.data.repository.SyncProgress
 import tv.medusa.app.ui.theme.TvAccent
 import tv.medusa.app.ui.theme.TvSpacing
+import tv.medusa.app.ui.theme.TextPrimary
 
 enum class TvNavTab {
     HOME,
@@ -105,10 +107,13 @@ fun TvTopBar(
     localMediaCount: Int = 0,
     homeFocusRequester: FocusRequester? = null,
     medusaFocusRequester: FocusRequester? = null,
+    favoritesFocusRequester: FocusRequester? = null,
+    searchFocusRequester: FocusRequester? = null,
+    settingsFocusRequester: FocusRequester? = null,
     onDownFromMedusa: (() -> Unit)? = null,
     onDownNav: (() -> Unit)? = null
 ) {
-    val focusColor = if (isMonochrome) Color.White else TvAccent.getColor(accentColorKey)
+    val focusColor = if (isMonochrome) TextPrimary else TvAccent.getColor(accentColorKey)
     val focusContent = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else TvAccent.getFocusedContentColor(accentColorKey)
     val showTopIcons = buttonStyleKey != BUTTON_STYLE_TEXT_ONLY
     val showTopText = buttonStyleKey != BUTTON_STYLE_ICONS_ONLY
@@ -164,7 +169,7 @@ fun TvTopBar(
                         .padding(horizontal = 8.dp, vertical = 6.dp)
                 ) {
                     CircularProgressIndicator(
-                        color = if (isMonochrome) Color.White else focusColor,
+                        color = if (isMonochrome) TextPrimary else focusColor,
                         strokeWidth = 2.dp,
                         modifier = Modifier.size(13.dp)
                     )
@@ -201,7 +206,9 @@ fun TvTopBar(
         // Sección derecha: Pestañas de navegación en Lens Carriage Dock
         var isDockFocused by remember { mutableStateOf(false) }
         val dockBgColor by animateColorAsState(
-            targetValue = if (isDockFocused) Color(0x240A0F1D) else Color(0x100A0F1D),
+            // Un velo translúcido al 6 % desaparecía sobre arte claro (damasco, cielos, pósters
+            // blancos). El dock se mantiene translúcido pero garantiza contraste a 3 m.
+            targetValue = if (isDockFocused) Color(0xA60A0F1D) else Color(0x8C0A0F1D),
             animationSpec = tween(300),
             label = "dockBg"
         )
@@ -238,7 +245,7 @@ fun TvTopBar(
                         Icon(
                             imageVector = Icons.Rounded.Home,
                             contentDescription = stringResource(R.string.nav_home),
-                            modifier = Modifier.size(15.dp)
+                            modifier = Modifier.size(18.dp)
                         )
                     }
                     if (showTopText) {
@@ -288,7 +295,7 @@ fun TvTopBar(
                         Icon(
                             imageVector = Icons.Rounded.Explore,
                             contentDescription = stringResource(R.string.nav_discover),
-                            modifier = Modifier.size(15.dp)
+                            modifier = Modifier.size(18.dp)
                         )
                     }
                     if (showTopText) {
@@ -313,6 +320,7 @@ fun TvTopBar(
                 onClick = onOpenFavorites,
                 scale = ButtonDefaults.scale(scale = 1.0f, focusedScale = 1.0f),
                 modifier = Modifier
+                    .then(if (favoritesFocusRequester != null) Modifier.focusRequester(favoritesFocusRequester) else Modifier)
                     .then(navDownModifier)
                     .handleTouchClick { onOpenFavorites() },
                 colors = topBarButtonColors(isFavoritesActive, isMonochrome, focusColor, focusContent, isDockFocused),
@@ -327,7 +335,7 @@ fun TvTopBar(
                         Icon(
                             imageVector = Icons.Rounded.Favorite,
                             contentDescription = stringResource(R.string.nav_favorites),
-                            modifier = Modifier.size(15.dp)
+                            modifier = Modifier.size(18.dp)
                         )
                     }
                     if (showTopText) {
@@ -352,6 +360,7 @@ fun TvTopBar(
                 onClick = onOpenSearch,
                 scale = ButtonDefaults.scale(scale = 1.0f, focusedScale = 1.0f),
                 modifier = Modifier
+                    .then(if (searchFocusRequester != null) Modifier.focusRequester(searchFocusRequester) else Modifier)
                     .then(navDownModifier)
                     .handleTouchClick { onOpenSearch() },
                 colors = topBarButtonColors(isSearchActive, isMonochrome, focusColor, focusContent, isDockFocused),
@@ -366,7 +375,7 @@ fun TvTopBar(
                         Icon(
                             imageVector = Icons.Rounded.Search,
                             contentDescription = stringResource(R.string.nav_search),
-                            modifier = Modifier.size(15.dp)
+                            modifier = Modifier.size(18.dp)
                         )
                     }
                     if (showTopText) {
@@ -391,6 +400,7 @@ fun TvTopBar(
                 onClick = onOpenSettings,
                 scale = ButtonDefaults.scale(scale = 1.0f, focusedScale = 1.0f),
                 modifier = Modifier
+                    .then(if (settingsFocusRequester != null) Modifier.focusRequester(settingsFocusRequester) else Modifier)
                     .then(navDownModifier)
                     .handleTouchClick { onOpenSettings() },
                 colors = topBarButtonColors(isSettingsActive, isMonochrome, focusColor, focusContent, isDockFocused),
@@ -405,7 +415,7 @@ fun TvTopBar(
                         Icon(
                             imageVector = Icons.Rounded.Tune,
                             contentDescription = stringResource(R.string.nav_settings),
-                            modifier = Modifier.size(15.dp)
+                            modifier = Modifier.size(18.dp)
                         )
                     }
                     if (showTopText) {
@@ -422,18 +432,20 @@ fun TvTopBar(
                         )
                         if (hasAvailableUpdate) {
                             Spacer(modifier = Modifier.width(6.dp))
-                            Box(
-                                modifier = Modifier
-                                    .size(6.dp)
-                                    .background(Color(0xFF10B981), CircleShape)
+                            Icon(
+                                imageVector = Icons.Rounded.ArrowCircleUp,
+                                contentDescription = stringResource(R.string.update_badge_content_description),
+                                tint = AmberCinema,
+                                modifier = Modifier.size(14.dp)
                             )
                         }
                     } else if (hasAvailableUpdate) {
                         Spacer(modifier = Modifier.width(4.dp))
-                        Box(
-                            modifier = Modifier
-                                .size(6.dp)
-                                .background(Color(0xFF10B981), CircleShape)
+                        Icon(
+                            imageVector = Icons.Rounded.ArrowCircleUp,
+                            contentDescription = stringResource(R.string.update_badge_content_description),
+                            tint = AmberCinema,
+                            modifier = Modifier.size(14.dp)
                         )
                     }
                 }
@@ -456,8 +468,8 @@ private fun topBarButtonColors(
         if (isMonochrome) Color(0x30FFFFFF) else focusColor.copy(alpha = 0.20f)
     } else Color.Transparent,
     contentColor = if (isActive) {
-        if (isMonochrome) Color.White else focusColor
-    } else Color(0xFFA39E93),
+        if (isMonochrome) TextPrimary else focusColor
+    } else tv.medusa.app.ui.theme.TvPalette.TextSecondaryCool,
     focusedContainerColor = focusColor,
     focusedContentColor = focusContent
 )

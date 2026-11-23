@@ -36,17 +36,74 @@ documenta el [estudio](docs/ESTUDIO.md).
 - Se retira Fraunces y la estructura editorial. La única voz display variable son los ClearLogo.
 - Se retira el escalado por tarjeta y la atenuación de vecinos para conservar 60 fps y evitar el
   temblor horizontal.
+- Medusa: el diccionario de etiquetas deja de intentar descargarse de GitHub. Vive compilado en
+  la APK; el archivo remoto nunca existió y la petición solo generaba un 404 silencioso.
 
 ### Corregido
 
 - Legibilidad y restos de la plantilla anterior detectados en un televisor real.
 - Contraste de los textos secundarios sobre pergamino.
 - Foco de la navegación y de los carruseles tras el cambio de estructura.
+- Teclado de Búsqueda: modo **Libre** por defecto (nunca oculta letras). El modo Auto es opt-in,
+  se guarda en DataStore y, si se activa, las letras sin resultados se atenúan sin desaparecer.
+- Servidores con dirección IPv6 literal (`http://[2001:db8::1]:8096`): la normalización de URL y
+  la extracción de host respetan los corchetes en lugar de cortar en el primer `:`.
+- Etiquetas de Ajustes, cabeceras de sección y chips de género en caja oracional, sin tracking
+  artificial. La ceja de nombre de serie en fichas de episodio deja de ir en mayúsculas.
+- Metadatos separados por espacio estructural en hero, tarjetas, ficha y reproductor; se retiran
+  los puntos medios (`·`, `•`).
+- Fondo raíz en `AbyssVoid` (`#04060A`) en lugar de un cuarto negro. Nebulosa de Descubrir en
+  cobalto, cian y ámbar de la paleta; scrubber del reproductor y selección de onboarding con el
+  acento del sistema.
+- Indicador de actualización en la barra superior: icono con descripción accesible en lugar del
+  punto verde decorativo.
+- Búsqueda: campo de 52 dp con el micrófono contenido (antes desbordaba), teclas a 18 sp y
+  acciones a 11 sp, estado vacío con una línea de guía y tarjetas que llenan su celda de la
+  cuadrícula (sin desbordar el borde derecho).
+- Home: la fila de logos de plataformas lleva rótulo («Tus plataformas») y ya no aparece como un
+  muro de marcas sin contexto.
+- Home: la fila de plataformas se oculta si el usuario no ha configurado su clave TMDB, porque sin
+  catálogo remoto sus pantallas quedaban vacías y parecían rotas.
+- Ajustes: los interruptores de plataformas se ocultan hasta que hay clave TMDB; sin catálogo no
+  filtraban nada y daban la impresión de estar averiados.
+- Favoritos: se retira el corazón de cada tarjeta; en una pantalla donde todo es favorito era
+  ruido sobre el arte.
+- Hero: solo admite títulos con backdrop 16:9 real y sinopsis real (`HeroEligibility`). Los que
+  no tienen material completo van a las filas; la portada ya no recorta pósters 2:3 ni rellena
+  con plazas inventadas. Un backdrop que devuelve error se retira de la rotación.
+- Ficha: la carga remota tiene timeout de 20 s con estado de error y botón Reintentar; antes
+  podía quedarse en «Cargando…» indefinidamente.
+- Pantalla de género: al entrar se enfoca el primer filtro de formato (antes no había foco
+  visible hasta pulsar una dirección).
+- Navegación: ARRIBA desde el contenido vuelve a la **pestaña activa** en Favoritos, Buscar y
+  Ajustes, en lugar de caer siempre en Inicio.
+- Ficha: si falta el backdrop, el póster ocupa el lateral derecho al 55 % de opacidad para que la
+  ficha no quede como texto sobre negro; secciones en caja oracional y sinopsis de reserva más
+  breve.
+- Hero y ficha: el botón primario (Reproducir) lleva un tinte del acento en reposo y el icono en
+  color, para leerse como acción principal sin competir con el relleno sólido del foco.
+- Cargas de Descubrir y Plataformas: mensaje explícito en lugar de una medusa sola sin contexto.
+  Sin pistas de teclas: en TV el botón BACK se sobreentiende y esas líneas ensucian la carga.
+- Error de reproducción: tarjeta neutra sin borde rojo de 1 px; cuando no existe fuente
+  reproducible se ofrece Volver en vez de un Reintentar en bucle.
+- Tokens: 288 usos de `Color.White` pasan al token `TextPrimary`. `DESIGN.md` y `PRODUCT.md`
+  quedan reconciliados con lo que se pinta (DM Sans, `#04060A`, cian `#00D2FF`, oro `#FACC15`).
+- Overlay de preparación de torrent: cadenas localizadas (semillas y pares, versiones, ETA,
+  estados de descarga), sin el emoji `⚡` ni «seeds/peers» en inglés.
+- HUD del reproductor y cabeceras compactas: se retiran los puntos medios restantes entre
+  metadatos y pistas; los botones de ajuste (`−`/`+`) usan iconos en lugar de glifos de texto.
 
 ### Seguridad
 
-- Sin cambios de modelo de seguridad en esta pasada. Se mantienen el cifrado de credenciales, el
-  pin TLS, la verificación SHA-256 del OTA y el modo fail-closed.
+- Los códigos QR (QuickConnect de Jellyfin, activación de Trakt y política de privacidad) se
+  generan en el dispositivo con ZXing. Se elimina `api.qrserver.com`, que recibía la URL del
+  servidor y el código de emparejamiento.
+- OTA: se siguen manualmente las redirecciones 302 de GitHub Releases, validando en cada salto
+  HTTPS y el host contra el allowlist (máximo tres saltos). Antes la descarga fallaba siempre.
+- Keystore: el descifrado ya no genera una clave nueva si la existente no está disponible (lo que
+  dejaba ilegibles todas las credenciales); la caché en claro se purga al cerrar sesión.
+- Release: ProGuard elimina también `Log.i`, que filtraba URL del servidor, `userId` y prefijos de
+  token en logcat.
 
 ## [2.3.12] - 2026-11-22
 

@@ -79,6 +79,7 @@ import tv.medusa.app.data.remote.jellyfin.JellyfinMediaSourceDto
 import tv.medusa.app.data.remote.jellyfin.TorrentOverlayUiState
 import tv.medusa.app.ui.theme.TvPill
 import tv.medusa.app.ui.util.handleTouchClick
+import tv.medusa.app.ui.theme.TextPrimary
 
 /**
  * Pantalla de búfer y preparación de torrent con diseño Anti-Slop cinemático:
@@ -212,7 +213,7 @@ fun TorrentPreparationOverlay(
                         text = state.title,
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White,
+                        color = TextPrimary,
                         textAlign = TextAlign.Center,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
@@ -244,14 +245,14 @@ fun TorrentPreparationOverlay(
                     // Badge de enjambre (Semillas / Pares)
                     if (state.seeds > 0 || state.peers > 0) {
                         TvPill(
-                            text = "${state.seeds} seeds • ${state.peers} peers",
+                            text = stringResource(R.string.torrent_seeds_peers, state.seeds, state.peers),
                             containerColor = Color(0x1822C55E),
                             textColor = Color(0xFF4ADE80),
                             borderColor = Color(0x3322C55E)
                         )
                     } else if (!state.isError && !state.isUnavailable && !state.streamReady) {
                         TvPill(
-                            text = "Buscando semillas…",
+                            text = stringResource(R.string.torrent_searching_seeds),
                             containerColor = Color(0x18EAB308),
                             textColor = Color(0xFFFBBF24),
                             borderColor = Color(0x33EAB308)
@@ -261,7 +262,7 @@ fun TorrentPreparationOverlay(
                     // Badge de versión activa si hay múltiples versiones disponibles
                     if (state.availableVersions.size > 1) {
                         val currentVer = state.availableVersions.firstOrNull { it.id == state.currentMediaSourceId }
-                        val verName = currentVer?.name?.takeIf { it.isNotBlank() } ?: "Versión 1"
+                        val verName = currentVer?.name?.takeIf { it.isNotBlank() } ?: stringResource(R.string.torrent_version_n, 1)
                         TvPill(
                             text = verName,
                             containerColor = focusColor.copy(alpha = 0.16f),
@@ -292,7 +293,7 @@ fun TorrentPreparationOverlay(
                                 text = state.statusText,
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = Color.White
+                                color = TextPrimary
                             )
 
                             val downloadedStr = CatalogoFormatUtils.formatBytes(state.downloadedBytes)
@@ -342,11 +343,11 @@ fun TorrentPreparationOverlay(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             val speedText = if (state.speedBps > 0) {
-                                "⚡ ${CatalogoFormatUtils.formatSpeed(state.speedBps)}"
+                                CatalogoFormatUtils.formatSpeed(state.speedBps)
                             } else if (state.isZeroProgressFor10s) {
-                                "Conectando al enjambre…"
+                                stringResource(R.string.torrent_connecting_swarm)
                             } else {
-                                "Iniciando descarga…"
+                                stringResource(R.string.torrent_starting_download)
                             }
 
                             Text(
@@ -358,9 +359,9 @@ fun TorrentPreparationOverlay(
 
                             val etaText = when {
                                 state.streamReady -> "¡Listo! Iniciando…"
-                                state.etaSeconds > 0 -> "Faltan ~${CatalogoFormatUtils.formatEta(state.etaSeconds)}"
-                                state.seeds == 0 -> "Esperando respuesta de pares…"
-                                else -> "Almacenando búfer inicial…"
+                                state.etaSeconds > 0 -> stringResource(R.string.torrent_eta_remaining, CatalogoFormatUtils.formatEta(state.etaSeconds))
+                                state.seeds == 0 -> stringResource(R.string.torrent_waiting_peers)
+                                else -> stringResource(R.string.torrent_buffering_initial)
                             }
 
                             Text(
@@ -375,7 +376,7 @@ fun TorrentPreparationOverlay(
 
                 // Mensaje de error
                 if (state.isError || state.isUnavailable) {
-                    val errText = state.errorMessage ?: state.statusText.takeIf { it.isNotBlank() } ?: "No se pudo preparar la descarga."
+                    val errText = state.errorMessage ?: state.statusText.takeIf { it.isNotBlank() } ?: stringResource(R.string.torrent_prepare_failed)
                     Spacer(modifier = Modifier.height(10.dp))
                     Text(
                         text = errText,
@@ -435,7 +436,7 @@ fun TorrentPreparationOverlay(
                                 .focusRequester(versionsButtonFocusRequester),
                             colors = ButtonDefaults.colors(
                                 containerColor = tv.medusa.app.ui.theme.TvPalette.GlassRaised,
-                                contentColor = Color.White,
+                                contentColor = TextPrimary,
                                 focusedContainerColor = focusColor,
                                 focusedContentColor = focusContent
                             ),
@@ -453,7 +454,7 @@ fun TorrentPreparationOverlay(
                                     modifier = Modifier.size(18.dp)
                                 )
                                 Text(
-                                    text = "Versiones (${state.availableVersions.size})",
+                                    text = stringResource(R.string.torrent_versions_count, state.availableVersions.size),
                                     fontWeight = FontWeight.SemiBold
                                 )
                             }
@@ -472,9 +473,9 @@ fun TorrentPreparationOverlay(
                             ),
                         colors = ButtonDefaults.colors(
                             containerColor = tv.medusa.app.ui.theme.TvPalette.GlassIdle,
-                            contentColor = Color.White,
+                            contentColor = TextPrimary,
                             focusedContainerColor = if (state.availableVersions.size <= 1) focusColor else Color(0x40FFFFFF),
-                            focusedContentColor = if (state.availableVersions.size <= 1) focusContent else Color.White
+                            focusedContentColor = if (state.availableVersions.size <= 1) focusContent else TextPrimary
                         ),
                         scale = ButtonDefaults.scale(focusedScale = 1.05f),
                         shape = ButtonDefaults.shape(RoundedCornerShape(10.dp))
@@ -585,15 +586,15 @@ private fun VersionSelectorModal(
                             modifier = Modifier.size(20.dp)
                         )
                         Text(
-                            text = "Elegir versión disponible",
+                            text = stringResource(R.string.torrent_choose_version),
                             fontSize = 17.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = TextPrimary
                         )
                     }
 
                     Text(
-                        text = "${versions.size} opciones",
+                        text = stringResource(R.string.torrent_options_count, versions.size),
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
                         color = tv.medusa.app.ui.theme.TvPalette.TextSecondaryCool
@@ -613,7 +614,7 @@ private fun VersionSelectorModal(
                     ) { index, version ->
                         val isSelected = version.id == currentMediaSourceId ||
                                 (currentMediaSourceId.isNullOrBlank() && index == 0)
-                        val label = version.name?.takeIf { it.isNotBlank() } ?: "Versión ${index + 1}"
+                        val label = version.name?.takeIf { it.isNotBlank() } ?: stringResource(R.string.torrent_version_n, index + 1)
                         val container = version.container?.uppercase() ?: ""
 
                         Surface(

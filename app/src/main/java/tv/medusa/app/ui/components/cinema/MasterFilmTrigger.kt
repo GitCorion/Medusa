@@ -70,7 +70,7 @@ fun MasterFilmTrigger(
     modifier: Modifier = Modifier,
     technicalSpec: String? = null,
     icon: ImageVector = Icons.Rounded.PlayArrow,
-    focusColor: Color = Color.White,
+    focusColor: Color = TextPrimary,
     focusContentColor: Color = Color(0xFF070709),
     focusRequester: FocusRequester? = null,
     showIcon: Boolean = true,
@@ -112,8 +112,10 @@ fun MasterFilmTrigger(
             contentPadding = PaddingValues(0.dp),
             scale = ButtonDefaults.scale(scale = 1.0f, focusedScale = 1.0f),
             colors = ButtonDefaults.colors(
-                containerColor = if (isFocused) focusColor else tv.medusa.app.ui.theme.AbyssSurface,
-                contentColor = if (isFocused) focusContentColor else TextPrimary,
+                // En reposo el botón primario lleva un tinte del acento con el icono en color:
+                // se lee como acción principal sin competir con el relleno sólido del foco.
+                containerColor = if (isFocused) focusColor else focusColor.copy(alpha = 0.16f),
+                contentColor = if (isFocused) focusContentColor else focusColor,
                 focusedContainerColor = focusColor,
                 focusedContentColor = focusContentColor
             ),

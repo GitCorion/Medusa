@@ -54,8 +54,8 @@ Unlike sluggish web-based Jellyfin wrappers, Medusa TV is built 100% natively in
 
 - **Name:** Medusa TV (Tujelly).
 - **Emblem:** Bioluminescent Jellyfish header mark.
-- **Palette Identity:** Pure pitch-black ground (`#06080D`), obsidian glass (`0x16FFFFFF`), electric focus cyan (`#00F2FE`), and warm amber rating (`#F59E0B`).
-- **Typography:** Modern neutral grotesk (Inter / Roboto) with focus marquee autoscroll.
+- **Palette Identity:** Pure pitch-black ground (`#04060A`), obsidian glass (`0x18FFFFFF`), electric focus cyan (`#00D2FF`), and crisp gold rating (`#FACC15`).
+- **Typography:** DM Sans (bundled) across the whole interface; DM Serif Display is no longer used in UI. Focus marquee autoscroll on long card titles.
 
 ## Evidence on Hand
 

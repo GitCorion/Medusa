@@ -41,6 +41,7 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.Text
 import tv.medusa.app.R
 import tv.medusa.app.data.remote.ApiConfig
+import tv.medusa.app.ui.theme.TextPrimary
 
 @OptIn(ExperimentalTvMaterial3Api::class)
 @SuppressLint("SetJavaScriptEnabled")
@@ -154,7 +155,7 @@ fun InAppTrailerPlayer(
                 ) {
                     Text(
                         text = stringResource(R.string.trailer_load_error),
-                        color = Color.White
+                        color = TextPrimary
                     )
                 }
             }
@@ -167,9 +168,9 @@ fun InAppTrailerPlayer(
                     .padding(24.dp),
                 colors = ButtonDefaults.colors(
                     containerColor = Color(0xD91E1E2C),
-                    contentColor = Color.White,
+                    contentColor = TextPrimary,
                     focusedContainerColor = Color(0xFFDC2626),
-                    focusedContentColor = Color.White
+                    focusedContentColor = TextPrimary
                 )
             ) {
                 Row(

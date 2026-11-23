@@ -129,10 +129,11 @@ fun HomeScreen(
     val seasonalAudioEnabled by viewModel.seasonalAudioEnabled.collectAsStateWithLifecycle()
     val particleScale by viewModel.particleScale.collectAsStateWithLifecycle()
     val watchRegion by viewModel.watchRegion.collectAsStateWithLifecycle()
+    val hasDiscoverySource by viewModel.hasDiscoverySource.collectAsStateWithLifecycle()
     val showTopIcons = buttonStyleKey != BUTTON_STYLE_TEXT_ONLY
     val showTopText = buttonStyleKey != BUTTON_STYLE_ICONS_ONLY
 
-    val focusColor = if (isMonochrome) Color.White else TvAccent.getColor(accentColorKey)
+    val focusColor = if (isMonochrome) TextPrimary else TvAccent.getColor(accentColorKey)
     val focusContent = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else TvAccent.getFocusedContentColor(accentColorKey)
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
@@ -243,7 +244,7 @@ fun HomeScreen(
                                 fontSize = 26.sp,
                                 lineHeight = 32.sp
                             ),
-                            color = Color.White,
+                            color = TextPrimary,
                             textAlign = TextAlign.Center
                         )
                         Spacer(modifier = Modifier.height(10.dp))
@@ -284,7 +285,7 @@ fun HomeScreen(
                                 fontSize = 26.sp,
                                 lineHeight = 32.sp
                             ),
-                            color = Color.White,
+                            color = TextPrimary,
                             textAlign = TextAlign.Center
                         )
                         Spacer(modifier = Modifier.height(10.dp))
@@ -324,7 +325,7 @@ fun HomeScreen(
                                 fontSize = 24.sp,
                                 lineHeight = 30.sp
                             ),
-                            color = Color.White,
+                            color = TextPrimary,
                             textAlign = TextAlign.Center
                         )
                         Spacer(modifier = Modifier.height(8.dp))
@@ -383,7 +384,10 @@ fun HomeScreen(
                                 }
                         ) {
                             HeroBanner(
-                                item = focusedItem ?: state.focusedItem,
+                                // Solo se previsualiza en el hero un título con material completo;
+                                // el resto no debe deformar la portada al recibir foco.
+                                item = (focusedItem ?: state.focusedItem)
+                                    ?.takeIf { tv.medusa.app.domain.HeroEligibility.isWorthy(it) },
                                 featuredItems = featuredBillboardItems,
                                 onPlayClick = { item -> onPlayMedia(item.id) },
                                 onDetailClick = { item -> onDetailMedia(item.id) },
@@ -423,20 +427,25 @@ fun HomeScreen(
                         }
                     }
 
-                    item(key = "home_brand_row", contentType = "brand_row") {
-                        BrandTileRow(
-                            onSelectBrand = { brandId ->
-                                onOpenBrand(brandId)
-                            },
-                            visiblePlatforms = selectedPlatforms.takeIf { it.isNotEmpty() },
-                            watchRegion = watchRegion,
-                            isProUser = true,
-                            modifier = Modifier.onFocusChanged { focusState ->
-                                if (focusState.hasFocus) {
-                                    viewModel.setFocusedItem(null)
+                    // Sin clave TMDB (y sin catálogo remoto) las pantallas de plataforma no
+                    // tienen contenido: ocultamos el acceso para no ofrecer un callejón sin salida.
+                    if (hasDiscoverySource) {
+                        item(key = "home_brand_row", contentType = "brand_row") {
+                            BrandTileRow(
+                                onSelectBrand = { brandId ->
+                                    onOpenBrand(brandId)
+                                },
+                                title = stringResource(R.string.home_platforms_title),
+                                visiblePlatforms = selectedPlatforms.takeIf { it.isNotEmpty() },
+                                watchRegion = watchRegion,
+                                isProUser = true,
+                                modifier = Modifier.onFocusChanged { focusState ->
+                                    if (focusState.hasFocus) {
+                                        viewModel.setFocusedItem(null)
+                                    }
                                 }
-                            }
-                        )
+                            )
+                        }
                     }
 
                     items(

@@ -227,7 +227,8 @@ Medusa does not collect data, show ads or include third-party analytics or crash
 | `api.themoviedb.org` / `image.tmdb.org` | If you configure a TMDB key | Metadata queries and posters. The key is yours and stored encrypted. |
 | `api.trakt.tv` | If you link Trakt | Watch history, lists and collections, under Trakt's terms. |
 | `youtube-nocookie.com` | If you open a trailer | The embedded trailer playback. |
-| `api.qrserver.com` | When showing a QR code | The text to encode (for example, a URL). |
+
+- **QR:** codes are generated on the device itself; the text being encoded (server URL or QuickConnect code) is never sent to an external service.
 
 - **Credentials:** AES/GCM with an Android Keystore key, hardware-backed where available. They are never written in plain text.
 - **TLS:** HTTP and HTTPS on any host. Self-signed certificates require explicit opt-in and a SHA-256 pin; user-installed CAs are not accepted.

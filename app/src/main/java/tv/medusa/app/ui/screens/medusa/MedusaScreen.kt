@@ -110,7 +110,7 @@ fun MedusaScreen(
     val isMonochrome = LocalIsMonochromeTheme.current || isMonochromeByVm
     val accentColorKey = LocalAccentColor.current
     val accentColor = remember(accentColorKey, isMonochrome) {
-        if (isMonochrome) Color.White else TvAccent.getColor(accentColorKey)
+        if (isMonochrome) TextPrimary else TvAccent.getColor(accentColorKey)
     }
 
     val formatNounPlural = when (uiState.format) {
@@ -262,7 +262,11 @@ fun MedusaScreen(
 
             if (uiState.isLoading) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    JellyLoadingIndicator(size = 84.dp, isMonochrome = isMonochrome)
+                    JellyLoadingIndicator(
+                        size = 84.dp,
+                        message = stringResource(R.string.medusa_loading),
+                        isMonochrome = isMonochrome
+                    )
                 }
             } else {
                 Spacer(modifier = Modifier.height(4.dp))
@@ -450,7 +454,7 @@ private fun MedusaMoviesHeader(
             Spacer(modifier = Modifier.width(16.dp))
             Text(
                 text = focusedMovie.title,
-                color = Color.White,
+                color = TextPrimary,
                 fontSize = 13.sp,
                 fontFamily = DmSansFamily,
                 fontWeight = FontWeight.SemiBold,

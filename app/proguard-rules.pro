@@ -96,13 +96,14 @@
 }
 
 # ---------------------------------------------------------------------------
-# Logging: eliminar Log.d() y Log.v() del bytecode en release para no filtrar
-# información de debug (IDs de items, tokens parciales, metadata) en logcat.
-# Se conservan Log.e(), Log.w() y Log.i() para diagnóstico vía Crashlytics.
+# Logging: eliminar Log.d(), Log.v() y Log.i() del bytecode en release para no filtrar
+# información de debug (URLs de servidor, userId, nombres de usuario y prefijos de tokens)
+# en logcat. Se conservan Log.w() y Log.e() para diagnóstico.
 # ---------------------------------------------------------------------------
 -assumenosideeffects class android.util.Log {
     public static int d(...);
     public static int v(...);
+    public static int i(...);
 }
 
 # OkHttp HttpLoggingInterceptor: eliminar logs de red en release.

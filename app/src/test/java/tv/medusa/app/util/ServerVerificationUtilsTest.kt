@@ -32,6 +32,14 @@ class ServerVerificationUtilsTest {
     }
 
     @Test
+    fun extractHost_supportsIpv6Literals() {
+        assertEquals("2001:db8::1", ServerVerificationUtils.extractHost("http://[2001:db8::1]:8096"))
+        assertEquals("2001:db8::1", ServerVerificationUtils.extractHost("https://[2001:db8::1]:8096/web/index.html"))
+        assertEquals("::1", ServerVerificationUtils.extractHost("http://[::1]:8096"))
+        assertEquals("2001:db8::1", ServerVerificationUtils.extractHost("[2001:db8::1]"))
+    }
+
+    @Test
     fun isAuthorizedServer_returnsTrueForAuthorizedDomainAndSubdomains() {
         assertTrue(ServerVerificationUtils.isAuthorizedServer("https://$testTargetHost"))
         assertTrue(ServerVerificationUtils.isAuthorizedServer("https://$testTargetHost/"))

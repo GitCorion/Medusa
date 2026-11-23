@@ -101,7 +101,7 @@ fun RankedMediaCard(
     val indicatorTheme = LocalIndicatorTheme.current
     val isMonochrome = LocalIsMonochromeTheme.current ||
             indicatorTheme == INDICATOR_THEME_MONOCHROME
-    val focusColor = if (isMonochrome) Color.White else accentColor
+    val focusColor = if (isMonochrome) TextPrimary else accentColor
 
     val contextMenuController = tv.medusa.app.ui.components.contextmenu.LocalContextMenuController.current
     val view = androidx.compose.ui.platform.LocalView.current
@@ -135,7 +135,7 @@ fun RankedMediaCard(
     val cardWidth = if (rank >= 10) 245.dp else 210.dp
     val posterShape = remember { RoundedCornerShape(10.dp) }
     val numberColor = if (isFocused) {
-        if (isMonochrome) Color.White else focusColor
+        if (isMonochrome) TextPrimary else focusColor
     } else {
         Color(0xFFE2E8F0)
     }
@@ -239,7 +239,7 @@ fun RankedMediaCard(
                                 Spacer(modifier = Modifier.height(6.dp))
                                 Text(
                                     text = item.title,
-                                    color = Color.White,
+                                    color = TextPrimary,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 11.sp,
                                     textAlign = TextAlign.Center,
@@ -281,7 +281,7 @@ fun RankedMediaCard(
                                 Icon(
                                     imageVector = Icons.Rounded.Favorite,
                                     contentDescription = stringResource(R.string.common_favorite),
-                                    tint = if (isMonochrome) Color.White else tv.medusa.app.ui.theme.TvPalette.SemanticFavorite,
+                                    tint = if (isMonochrome) TextPrimary else tv.medusa.app.ui.theme.TvPalette.SemanticFavorite,
                                     modifier = Modifier.size(11.dp)
                                 )
                             }
@@ -297,7 +297,7 @@ fun RankedMediaCard(
                                 Icon(
                                     imageVector = Icons.Rounded.Check,
                                     contentDescription = stringResource(R.string.common_watched),
-                                    tint = if (isMonochrome) Color.White.copy(alpha = 0.90f) else tv.medusa.app.ui.theme.TvPalette.SemanticWatched,
+                                    tint = if (isMonochrome) TextPrimary.copy(alpha = 0.90f) else tv.medusa.app.ui.theme.TvPalette.SemanticWatched,
                                     modifier = Modifier.size(12.dp)
                                 )
                             }
@@ -324,7 +324,7 @@ fun RankedMediaCard(
                                 fontFamily = tv.medusa.app.ui.theme.DmSansFamily,
                                 platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false)
                             ),
-                            color = if (isFocused) Color.White else TextPrimary,
+                            color = if (isFocused) TextPrimary else TextPrimary,
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 12.sp,
                             letterSpacing = 0.2.sp,
@@ -349,15 +349,7 @@ fun RankedMediaCard(
                                 )
                             }
                             if (item.year != null) {
-                                Text(
-                                    text = " • ",
-                                    style = MaterialTheme.typography.bodySmall.copy(
-                                        fontFamily = tv.medusa.app.ui.theme.DmSansFamily,
-                                        platformStyle = androidx.compose.ui.text.PlatformTextStyle(includeFontPadding = false)
-                                    ),
-                                    color = tv.medusa.app.ui.theme.TextTertiary,
-                                    fontSize = 10.sp
-                                )
+                                Spacer(modifier = Modifier.width(8.dp))
                             }
                             val isTv = item.type.equals("Series", ignoreCase = true) ||
                                     item.type.equals("TvProgram", ignoreCase = true) ||

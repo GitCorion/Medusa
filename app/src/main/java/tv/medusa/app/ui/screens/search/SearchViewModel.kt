@@ -36,7 +36,8 @@ data class SearchUiState(
     val statusMessage: String? = null,
     val validNextChars: Set<Char> = emptySet(),
     val suggestions: List<String> = emptyList(),
-    val isPredictiveActive: Boolean = true
+    /** Libre por defecto: el teclado nunca oculta letras. Auto degrada las letras sin resultados. */
+    val isPredictiveActive: Boolean = false
 )
 
 @HiltViewModel
@@ -65,6 +66,16 @@ class SearchViewModel @Inject constructor(
             }
             indexedCatalog = indexed
             updatePredictiveState(_uiState.value.query)
+        }
+
+        // El modo del teclado es una preferencia del usuario, no un estado de pantalla:
+        // Libre por defecto y, si el usuario activa Auto, se recuerda entre sesiones.
+        viewModelScope.launch {
+            val storedAuto = userPreferencesRepository.searchKeyboardAuto.first()
+            if (_uiState.value.isPredictiveActive != storedAuto) {
+                _uiState.update { it.copy(isPredictiveActive = storedAuto) }
+                updatePredictiveState(_uiState.value.query)
+            }
         }
     }
 
@@ -116,6 +127,7 @@ class SearchViewModel @Inject constructor(
         val newActive = !_uiState.value.isPredictiveActive
         _uiState.update { it.copy(isPredictiveActive = newActive) }
         updatePredictiveState(_uiState.value.query)
+        viewModelScope.launch { userPreferencesRepository.setSearchKeyboardAuto(newActive) }
     }
 
     fun onQueryChange(newQuery: String) {

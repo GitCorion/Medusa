@@ -39,18 +39,11 @@ object ApiConfig {
     /** Página pública de activación de dispositivo de Trakt. */
     const val TRAKT_ACTIVATE_URL = "https://trakt.tv/activate"
 
-    /** Servicio público de generación de QR (el parámetro `data` se añade en el llamante). */
-    const val QR_GENERATOR_BASE_URL = "https://api.qrserver.com/v1/create-qr-code/"
-
     /** Base de vídeos de YouTube (tráilers). */
     const val YOUTUBE_WATCH_URL = "https://www.youtube.com/watch?v="
 
     /** Origen permitido para incrustar el reproductor de tráilers. */
     const val YOUTUBE_EMBED_ORIGIN = "https://www.youtube-nocookie.com"
-
-    /** Diccionario de etiquetas/géneros de Medusa alojado en GitHub. */
-    const val MEDUSA_TAGS_JSON_URL =
-        "https://raw.githubusercontent.com/GitCorion/Medusa/main/data/medusa_tags_es.json"
 
     /**
      * Idioma con el que se piden los metadatos a TMDB, alineado con el idioma de la app: español

@@ -45,9 +45,11 @@ import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Card
 import androidx.tv.material3.CardDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
+import androidx.tv.material3.Text
 import tv.medusa.app.ui.util.handleTouchClick
 import tv.medusa.app.R
 import tv.medusa.app.data.model.SUPPORTED_PLATFORMS
+import tv.medusa.app.ui.theme.TextPrimary
 
 @Composable
 fun BrandTileRow(
@@ -55,7 +57,8 @@ fun BrandTileRow(
     modifier: Modifier = Modifier,
     visiblePlatforms: Set<String>? = null,
     watchRegion: String? = null,
-    isProUser: Boolean = true
+    isProUser: Boolean = true,
+    title: String? = null
 ) {
     val platforms = remember(visiblePlatforms, watchRegion) {
         val base = if (visiblePlatforms != null) {
@@ -72,6 +75,18 @@ fun BrandTileRow(
             .fillMaxWidth()
             .padding(vertical = 12.dp)
     ) {
+        if (!title.isNullOrBlank()) {
+            Text(
+                text = title,
+                style = tv.medusa.app.ui.theme.CinematicTypography.SectionTitle,
+                color = tv.medusa.app.ui.theme.TextPrimary,
+                modifier = Modifier.padding(
+                    horizontal = TvSpacing.ScreenSafeHorizontal,
+                    vertical = 6.dp
+                )
+            )
+        }
+
         LazyRow(
             modifier = Modifier.fillMaxWidth(),
             contentPadding = PaddingValues(horizontal = TvSpacing.ScreenSafeHorizontal),
@@ -111,7 +126,7 @@ private fun BrandCard(
 
     val accentKey = LocalAccentColor.current
     val accentColor = TvAccent.getColor(accentKey)
-    val focusColor = if (isMonochrome) Color.White else accentColor
+    val focusColor = if (isMonochrome) TextPrimary else accentColor
 
     val cardShape = RoundedCornerShape(10.dp)
 
@@ -160,7 +175,7 @@ private fun BrandCard(
                 ) {
                     Text(
                         text = stringResource(R.string.pro_badge),
-                        color = Color.White,
+                        color = TextPrimary,
                         fontSize = 8.sp,
                         fontWeight = FontWeight.Black
                     )

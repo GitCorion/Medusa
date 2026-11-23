@@ -67,6 +67,7 @@ import androidx.tv.material3.Text
 import tv.medusa.app.R
 import tv.medusa.app.data.model.StreamPlatform
 import tv.medusa.app.data.model.SUPPORTED_PLATFORMS
+import tv.medusa.app.ui.theme.TextPrimary
 
 fun Modifier.handleTouchClick(
     enabled: Boolean = true,
@@ -129,7 +130,7 @@ fun PlatformSelectionScreen(
                         modifier = Modifier.handleTouchClick { viewModel.selectAll() },
                         colors = ButtonDefaults.colors(
                             containerColor = Color(0x1AFFFFFF),
-                            contentColor = Color.White,
+                            contentColor = TextPrimary,
                             focusedContainerColor = focusColor,
                             focusedContentColor = focusContent
                         ),
@@ -161,7 +162,7 @@ fun PlatformSelectionScreen(
             Text(
                 text = stringResource(R.string.onboarding_title),
                 style = MaterialTheme.typography.headlineLarge,
-                color = Color.White,
+                color = TextPrimary,
                 fontWeight = FontWeight.ExtraBold
             )
             Spacer(modifier = Modifier.height(4.dp))
@@ -218,7 +219,7 @@ fun PlatformSelectionScreen(
                     Text(
                         text = stringResource(R.string.onboarding_platforms_count, selected.size, viewModel.availablePlatforms.size),
                         fontSize = 14.sp,
-                        color = Color.White,
+                        color = TextPrimary,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -229,7 +230,7 @@ fun PlatformSelectionScreen(
                     shape = ButtonDefaults.shape(RoundedCornerShape(8.dp)),
                     modifier = Modifier.handleTouchClick { viewModel.onContinue(onDone) },
                     colors = ButtonDefaults.colors(
-                        containerColor = if (isMonochrome) Color.White else focusColor,
+                        containerColor = if (isMonochrome) TextPrimary else focusColor,
                         contentColor = focusContent,
                         focusedContainerColor = focusColor,
                         focusedContentColor = focusContent
@@ -285,7 +286,7 @@ private fun PlatformTileCard(
             .border(
                 width = if (isFocused) 2.dp else 1.dp,
                 color = when {
-                    isFocused -> Color.White
+                    isFocused -> TextPrimary
                     isSelected -> Color(0xFF4F46E5)
                     else -> tv.medusa.app.ui.theme.TvPalette.GlassSubtle
                 },
@@ -320,11 +321,15 @@ private fun PlatformTileCard(
                     .size(26.dp)
                     .clip(CircleShape)
                     .background(
-                        if (isSelected) Color(0xFF4F46E5) else Color(0x10FFFFFF)
+                        if (isSelected) {
+                            if (isMonochrome) TextPrimary else tv.medusa.app.ui.theme.CyanBioluminescent
+                        } else Color(0x10FFFFFF)
                     )
                     .border(
                         width = 1.dp,
-                        color = if (isSelected) Color(0xFF6366F1) else Color(0x30FFFFFF),
+                        color = if (isSelected) {
+                            if (isMonochrome) TextPrimary else tv.medusa.app.ui.theme.CyanBioluminescent
+                        } else Color(0x30FFFFFF),
                         shape = CircleShape
                     ),
                 contentAlignment = Alignment.Center
@@ -333,7 +338,7 @@ private fun PlatformTileCard(
                     Icon(
                         imageVector = Icons.Rounded.Check,
                         contentDescription = null,
-                        tint = Color.White,
+                        tint = TextPrimary,
                         modifier = Modifier.size(15.dp)
                     )
                 }

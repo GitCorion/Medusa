@@ -18,6 +18,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import okhttp3.Request
+import okhttp3.Response
 import retrofit2.http.GET
 import tv.medusa.app.BuildConfig
 import tv.medusa.app.R
@@ -83,6 +84,9 @@ class AppUpdateManager(private val context: Context) {
             "objects.githubusercontent.com",
             "release-assets.githubusercontent.com"
         )
+
+        /** Saltos máximos tolerados al descargar un APK (GitHub: 1→objects). */
+        private const val MAX_DOWNLOAD_REDIRECTS = 3
 
         private val _updateInfo = MutableStateFlow<UpdateInfo?>(null)
         val updateInfo: StateFlow<UpdateInfo?> = _updateInfo.asStateFlow()
@@ -239,13 +243,15 @@ class AppUpdateManager(private val context: Context) {
                     throw IllegalArgumentException("Missing or invalid APK SHA-256 in update manifest")
                 }
 
-                // Cliente propio sin redirects: un 302 a otro host/scheme eludiría el allowlist.
+                // Cliente propio sin redirects automáticos: un 302 a otro host/scheme eludiría
+                // el allowlist. GitHub Releases responde siempre 302 hacia
+                // objects.githubusercontent.com, así que se sigue el salto a mano validando
+                // cada Location contra el mismo allowlist (máx. MAX_DOWNLOAD_REDIRECTS).
                 val client = NetworkClientFactory.okHttpClient.newBuilder()
                     .followRedirects(false)
                     .followSslRedirects(false)
                     .build()
-                val request = Request.Builder().url(apkUrl).build()
-                client.newCall(request).execute().use { response ->
+                executeFollowingAllowedRedirects(client, apkUrl).use { response ->
                     if (!response.isSuccessful) {
                         throw Exception(context.getString(R.string.update_error_apk_http, response.code))
                     }
@@ -321,5 +327,33 @@ class AppUpdateManager(private val context: Context) {
                 _downloadProgress.value = null
             }
         }
+    }
+
+    /**
+     * Sigue las redirecciones de descarga a mano (OkHttp va con `followRedirects=false`) para
+     * que un 302 de GitHub Releases funcione sin abrir la puerta a un Open Redirect: cada salto
+     * debe ser HTTPS y aterrizar en un host del allowlist. Lanza si se agotan los saltos.
+     *
+     * El llamador es responsable de cerrar la respuesta devuelta.
+     */
+    private fun executeFollowingAllowedRedirects(client: okhttp3.OkHttpClient, apkUrl: String): Response {
+        var currentUrl = apkUrl
+        repeat(MAX_DOWNLOAD_REDIRECTS + 1) {
+            val request = Request.Builder().url(currentUrl).build()
+            val response = client.newCall(request).execute()
+            if (!response.isRedirect) return response
+
+            response.use { redirect ->
+                val location = redirect.header("Location")
+                    ?: throw IllegalStateException(context.getString(R.string.update_error_redirect))
+                val next = redirect.request.url.resolve(location)
+                    ?: throw IllegalStateException(context.getString(R.string.update_error_redirect))
+                if (!next.isHttps || next.host !in ALLOWED_DOWNLOAD_HOSTS) {
+                    throw IllegalArgumentException("Untrusted redirect: $next")
+                }
+                currentUrl = next.toString()
+            }
+        }
+        throw IllegalStateException(context.getString(R.string.update_error_redirect))
     }
 }

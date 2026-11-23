@@ -22,6 +22,7 @@ import tv.medusa.app.domain.model.ParticleType
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
+import tv.medusa.app.ui.theme.TextPrimary
 
 private enum class LeafShape {
     MAPLE,
@@ -574,7 +575,7 @@ private fun DrawScope.drawHolidayStar(
         }
     }
     drawCircle(
-        color = Color.White.copy(alpha = alpha),
+        color = TextPrimary.copy(alpha = alpha),
         radius = r * 0.18f,
         center = center
     )

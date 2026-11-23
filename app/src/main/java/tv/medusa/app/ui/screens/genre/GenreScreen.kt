@@ -27,6 +27,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.delay
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,6 +35,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -196,8 +199,16 @@ private fun GenreLanding(
     onDetailMedia: (String) -> Unit,
     onItemFocus: (MediaItem) -> Unit
 ) {
-    val accentColor = if (isMonochrome) Color.White else TvAccent.getColor(accentColorKey)
+    val accentColor = if (isMonochrome) TextPrimary else TvAccent.getColor(accentColorKey)
     val focusedContent = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else TvAccent.getFocusedContentColor(accentColorKey)
+
+    // Al entrar sin foco el mando no tiene destino visible hasta pulsar una dirección:
+    // se enfoca el primer filtro de formato en cuanto la pantalla se compone.
+    val firstFilterFocusRequester = remember { FocusRequester() }
+    LaunchedEffect(Unit) {
+        delay(180)
+        runCatching { firstFilterFocusRequester.requestFocus() }
+    }
 
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         item(key = "genre_header", contentType = "header") {
@@ -212,7 +223,7 @@ private fun GenreLanding(
                         fontWeight = FontWeight.Bold,
                         fontSize = 26.sp
                     ),
-                    color = Color.White
+                    color = TextPrimary
                 )
             }
         }
@@ -226,6 +237,7 @@ private fun GenreLanding(
                 isMonochrome = isMonochrome,
                 hideWatched = state.hideWatched,
                 onToggleHideWatched = onToggleHideWatched,
+                firstFilterFocusRequester = firstFilterFocusRequester,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
         }
@@ -296,7 +308,7 @@ private fun GenreAllGrid(
     onToggleHideWatched: () -> Unit,
     onDetailMedia: (String) -> Unit
 ) {
-    val accentColor = if (isMonochrome) Color.White else TvAccent.getColor(accentColorKey)
+    val accentColor = if (isMonochrome) TextPrimary else TvAccent.getColor(accentColorKey)
     val focusedContent = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else TvAccent.getFocusedContentColor(accentColorKey)
     val context = LocalContext.current
     val isTouchDevice = remember(context) { DeviceUtils.isTouchDevice(context) }
@@ -330,7 +342,7 @@ private fun GenreAllGrid(
                     text = state.genreName,
                     style = MaterialTheme.typography.headlineLarge,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    color = TextPrimary
                 )
             }
         }

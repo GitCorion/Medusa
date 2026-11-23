@@ -158,7 +158,8 @@ Endpoints externos centralizados en `ApiConfig`:
 | `api.trakt.tv/` | Trakt, solo si se vincula |
 | `image.tmdb.org` | Pósters y backdrops |
 | `youtube-nocookie.com` | Tráilers incrustados |
-| `api.qrserver.com` | Generación de QR para enlaces y activaciones |
+
+Los códigos QR (QuickConnect de Jellyfin, activación de Trakt y política de privacidad) se generan localmente con ZXing; el payload no se envía a ningún servicio externo.
 
 ## 6. Reproducción
 

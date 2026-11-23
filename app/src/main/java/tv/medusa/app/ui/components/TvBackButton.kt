@@ -35,6 +35,7 @@ import tv.medusa.app.ui.theme.LocalAccentColor
 import tv.medusa.app.ui.theme.LocalIsMonochromeTheme
 import tv.medusa.app.ui.theme.TvAccent
 import tv.medusa.app.ui.util.handleTouchClick
+import tv.medusa.app.ui.theme.TextPrimary
 
 /**
  * Botón "Volver" cinemático para Android TV y pantallas táctiles.
@@ -61,7 +62,7 @@ fun TvBackButton(
         showLabel
     }
     val effectiveAccent = if (accentColorKey.isNotBlank()) accentColorKey else LocalAccentColor.current
-    val focusColor = if (isMonochrome) Color.White else TvAccent.getColor(effectiveAccent)
+    val focusColor = if (isMonochrome) TextPrimary else TvAccent.getColor(effectiveAccent)
     val focusContent = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else TvAccent.getFocusedContentColor(effectiveAccent)
 
     var isFocused by remember { mutableStateOf(false) }
@@ -101,7 +102,7 @@ fun TvBackButton(
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
                     text = stringResource(R.string.common_back),
-                    color = if (isFocused) focusContent else Color.White,
+                    color = if (isFocused) focusContent else TextPrimary,
                     style = tv.medusa.app.ui.theme.TvChipDefaults.textStyle
                 )
             }

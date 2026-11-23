@@ -40,6 +40,7 @@
     <string name="common_details">Details</string>
     <string name="common_close">Close</string>
     <string name="common_loading">Loading</string>
+    <string name="medusa_loading">Loading catalog…</string>
     <string name="common_watched">Watched</string>
     <string name="common_watched_check">✓ Watched</string>
     <string name="common_favorite">Favorite</string>
@@ -64,8 +65,9 @@
     <string name="hero_carousel_cd">Featured titles. Use left and right to change title, or press to advance.</string>
 
     <!-- Genres -->
-    <string name="genre_favorites_title">Favorite Genres</string>
-    <string name="seasonal_thematic_collection">THEMATIC COLLECTION</string>
+    <string name="genre_favorites_title">Favorite genres</string>
+    <string name="home_platforms_title">Your platforms</string>
+    <string name="seasonal_thematic_collection">Thematic collection</string>
     <string name="seasonal_catalog_count">%1$d titles in catalog</string>
     <string name="seasonal_updating">Updating…</string>
     <string name="seasonal_view_collection">View Collection</string>
@@ -89,17 +91,18 @@
     <string name="detail_progress">PROGRESS: %1$d/%2$d</string>
     <string name="detail_watch_trailer">Trailer</string>
     <string name="detail_synopsis">Synopsis</string>
-    <string name="detail_no_description">No description available for this title.</string>
-    <string name="detail_seasons">SEASONS</string>
+    <string name="detail_no_description">This title has no synopsis.</string>
+    <string name="detail_load_timeout">The server took too long to load this title.</string>
+    <string name="detail_seasons">Seasons</string>
     <string name="detail_episodes_count">EPISODES (%1$d)</string>
     <string name="detail_loading_episodes">Loading episodes...</string>
     <string name="detail_no_episodes">No episodes were found on the server for this season.</string>
-    <string name="detail_collection">COLLECTION</string>
-    <string name="detail_collection_titles">TITLES IN THIS COLLECTION (%1$d)</string>
-    <string name="detail_recommended">RECOMMENDED</string>
-    <string name="detail_similar_titles">SIMILAR TITLES</string>
+    <string name="detail_collection">Collection</string>
+    <string name="detail_collection_titles">Titles in this collection (%1$d)</string>
+    <string name="detail_recommended">Recommended</string>
+    <string name="detail_similar_titles">Similar titles</string>
     <string name="detail_genre">GENRE</string>
-    <string name="detail_more_from_genre">MORE FROM %1$s</string>
+    <string name="detail_more_from_genre">More from %1$s</string>
     <string name="detail_starting_player">Starting player...</string>
     <string name="detail_type_episode">EPISODE • S%1$s:E%2$s</string>
     <string name="detail_type_series">SERIES</string>
@@ -114,6 +117,9 @@
     <!-- Search -->
     <string name="search_placeholder">Search...</string>
     <string name="search_voice_title">Voice search</string>
+    <string name="search_keyboard_auto">Auto keyboard</string>
+    <string name="search_keyboard_free">Free keyboard</string>
+    <string name="search_empty_hint">Type a title, a year or a genre.</string>
     <string name="search_voice_prompt">Say a movie or series title</string>
     <string name="search_catalog_title">Catalog search</string>
     <string name="search_no_results">No titles found for \"%1$s\"</string>
@@ -207,7 +213,7 @@
     <string name="settings_tmdb_key_unset">Not configured</string>
 
     <!-- Side navigation -->
-    <string name="settings_title">SETTINGS</string>
+    <string name="settings_title">Settings</string>
     <string name="settings_nav_jellyfin">Jellyfin Server</string>
     <string name="settings_nav_platforms">Streaming Networks</string>
     <string name="settings_nav_library">Library &amp; Trakt</string>
@@ -219,7 +225,7 @@
     <string name="settings_section_appearance_perf">Interface &amp; Display</string>
 
     <!-- Jellyfin -->
-    <string name="settings_section_server_session">SERVER AND SESSION</string>
+    <string name="settings_section_server_session">Server and session</string>
     <string name="settings_row_server">Server</string>
     <string name="settings_row_user">User</string>
     <string name="settings_row_status">Status</string>
@@ -228,22 +234,22 @@
     <string name="settings_library_count">%1$s titles (%2$s movies, %3$s series)</string>
     <string name="settings_library_empty">No titles in memory</string>
     <string name="settings_row_last_sync">Last sync</string>
-    <string name="settings_section_actions">ACTIONS</string>
+    <string name="settings_section_actions">Actions</string>
     <string name="settings_btn_syncing">Syncing…</string>
     <string name="settings_btn_sync_library">Sync library</string>
     <string name="settings_btn_check_connection">Check connection</string>
     <string name="settings_btn_logout">Log out</string>
-    <string name="settings_section_server_address">SERVER ADDRESS</string>
+    <string name="settings_section_server_address">Server address</string>
     <string name="settings_btn_discover_servers">Search servers on network</string>
     <string name="settings_btn_searching_servers">Searching servers…</string>
-    <string name="settings_section_servers_found">SERVERS FOUND</string>
+    <string name="settings_section_servers_found">Servers found</string>
     <string name="settings_discovering_servers">Searching for Jellyfin servers on the local network…</string>
     <string name="settings_no_servers_found">No servers found. Check that you are on the same network or enter the URL manually.</string>
     <string name="settings_one_server_found">1 server found. Select it to connect.</string>
     <string name="settings_servers_found">%1$d servers found. Select one to connect.</string>
     <string name="settings_placeholder_enter_url">Enter URL…</string>
     <string name="settings_btn_check_server">Check server</string>
-    <string name="settings_section_login_method">SIGN-IN METHOD</string>
+    <string name="settings_section_login_method">Sign-in method</string>
     <string name="settings_login_quick_connect">Quick Connect (QR)</string>
     <string name="settings_login_user_pass">Username and password</string>
     <string name="settings_btn_waiting_confirmation">Waiting for confirmation…</string>
@@ -256,7 +262,7 @@
     <string name="settings_btn_login">Sign in</string>
 
     <!-- TLS / self-signed certificate -->
-    <string name="settings_section_tls">SERVER CERTIFICATE</string>
+    <string name="settings_section_tls">Server certificate</string>
     <string name="settings_row_tls_self_signed">Self-signed certificate</string>
     <string name="settings_tls_not_pinned">Not pinned</string>
     <string name="settings_tls_pinned">Fingerprint pinned</string>
@@ -269,19 +275,19 @@
     <string name="settings_tls_pin_hint">Only allow if the fingerprint matches your server.</string>
 
     <!-- Trakt -->
-    <string name="settings_section_account_linked">LINKED ACCOUNT</string>
+    <string name="settings_section_account_linked">Linked account</string>
     <string name="settings_row_trakt_user">Trakt user</string>
     <string name="settings_status_linked">Linked</string>
     <string name="settings_status_active">active</string>
-    <string name="settings_section_lists_collections">LISTS AND COLLECTIONS</string>
+    <string name="settings_section_lists_collections">Lists and collections</string>
     <string name="settings_trakt_lists_desc">Manage which lists appear in the Trakt carousel and on the home screen. If Trakt duplicated your library movies or series, deselect them to hide them.</string>
     <string name="settings_loading_trakt_lists">Loading Trakt lists…</string>
     <string name="settings_trakt_no_lists">No lists were found in your Trakt account.</string>
-    <string name="settings_section_link_account">LINK ACCOUNT</string>
+    <string name="settings_section_link_account">Link account</string>
     <string name="settings_btn_generating_code">Generating code…</string>
     <string name="settings_btn_link_qr">Link with QR code</string>
     <string name="settings_trakt_step1">Go to trakt.tv/activate from your phone or PC</string>
-    <string name="settings_section_advanced_api">ADVANCED API SETTINGS</string>
+    <string name="settings_section_advanced_api">Advanced API settings</string>
     <string name="settings_row_client_id">Client ID</string>
     <string name="settings_row_client_secret">Client Secret</string>
     <string name="settings_row_manual_token">Manual token</string>
@@ -291,48 +297,48 @@
     <string name="settings_btn_unlink">Unlink account</string>
 
     <!-- Platforms -->
-    <string name="settings_section_catalog_country">CATALOG COUNTRY</string>
+    <string name="settings_section_catalog_country">Catalog country</string>
     <string name="settings_row_region">Catalog region</string>
-    <string name="settings_section_filter_platform">FILTER BY PLATFORM</string>
+    <string name="settings_section_filter_platform">Filter by platform</string>
 
     <!-- Appearance -->
-    <string name="settings_section_theme">THEME</string>
+    <string name="settings_section_theme">Theme</string>
     <string name="settings_theme_neon">Medusa Cyan</string>
     <string name="settings_theme_amber">Cinema Amber</string>
     <string name="settings_theme_monochrome">Monochrome</string>
-    <string name="settings_section_buttons">BUTTONS ON CARDS</string>
+    <string name="settings_section_buttons">Buttons on cards</string>
     <string name="settings_btn_style_icons">Icons only</string>
     <string name="settings_btn_style_text">Text only</string>
     <string name="settings_btn_style_both">Icons and text</string>
-    <string name="settings_section_perf">PERFORMANCE &amp; PARTICLES</string>
+    <string name="settings_section_perf">Performance &amp; particles</string>
     <string name="settings_perf_auto">Automatic</string>
     <string name="settings_perf_high">High</string>
     <string name="settings_perf_low">Battery saver</string>
-    <string name="settings_section_seasonal_audio">SEASONAL EVENT AUDIO</string>
+    <string name="settings_section_seasonal_audio">Seasonal event audio</string>
     <string name="settings_seasonal_audio_enabled">Enabled</string>
     <string name="settings_seasonal_audio_disabled">Disabled</string>
-    <string name="settings_section_theme_songs_audio">THEME SONGS (BACKGROUND MUSIC)</string>
+    <string name="settings_section_theme_songs_audio">Theme songs (background music)</string>
     <string name="settings_theme_songs_audio_enabled">Enabled</string>
     <string name="settings_theme_songs_audio_disabled">Disabled</string>
-    <string name="settings_section_navigation_sound">SYSTEM NAVIGATION SOUNDS</string>
+    <string name="settings_section_navigation_sound">System navigation sounds</string>
     <string name="settings_navigation_sound_enabled">Enabled</string>
     <string name="settings_navigation_sound_disabled">Disabled</string>
 
     <!-- 2. Playback -->
-    <string name="settings_section_playback_auto">CONTINUOUS PLAYBACK</string>
+    <string name="settings_section_playback_auto">Continuous playback</string>
     <string name="settings_playback_next_episode_title">Auto-play next episode</string>
     <string name="settings_playback_next_episode_desc">Show countdown and automatically start the next episode when current finishes.</string>
     <string name="settings_playback_next_movie_title">Next movie in collection</string>
     <string name="settings_playback_next_movie_desc">Suggest or link the next movie in a saga when ending credits start.</string>
-    <string name="settings_section_video_display">DISPLAY &amp; REFRESH RATE</string>
+    <string name="settings_section_video_display">Display &amp; refresh rate</string>
     <string name="settings_playback_afr_title">Auto Frame Rate matching (AFR)</string>
     <string name="settings_playback_afr_desc">Match TV refresh rate (24p, 50p, 60p) to video source to eliminate motion judder.</string>
 
     <!-- 3. Audio & Sound -->
-    <string name="settings_section_audio_output">DIGITAL AUDIO OUTPUT</string>
+    <string name="settings_section_audio_output">Digital audio output</string>
     <string name="settings_audio_passthrough_title">HDMI audio passthrough</string>
     <string name="settings_audio_passthrough_desc">Send uncompressed or bitstream audio directly to your AV receiver or soundbar.</string>
-    <string name="settings_section_audio_enhancements">AUDIO &amp; DIALOGUE ENHANCEMENTS</string>
+    <string name="settings_section_audio_enhancements">Audio &amp; dialogue enhancements</string>
     <string name="settings_audio_night_mode_title">Night mode (Dynamic range)</string>
     <string name="settings_audio_night_mode_desc">Compress loud action and explosions for comfortable late-night viewing.</string>
     <string name="settings_audio_night_off">Off</string>
@@ -344,13 +350,13 @@
     <string name="settings_audio_boost_5db">+5 dB</string>
     <string name="settings_audio_boost_10db">+10 dB</string>
     <string name="settings_audio_boost_15db">+15 dB</string>
-    <string name="settings_section_ambient_audio">AMBIENT SOUNDS &amp; MUSIC</string>
+    <string name="settings_section_ambient_audio">Ambient sounds &amp; music</string>
     <string name="settings_audio_theme_songs_desc">Play theme songs and soundtrack music on movie and TV show detail screens.</string>
     <string name="settings_audio_seasonal_desc">Subtle atmospheric background sounds during seasonal app events.</string>
     <string name="settings_audio_navigation_desc">Auditory feedback when navigating through the interface with the remote.</string>
 
     <!-- 4. Subtitles -->
-    <string name="settings_section_subtitles_style">TEXT STYLE &amp; SIZE</string>
+    <string name="settings_section_subtitles_style">Text style &amp; size</string>
     <string name="settings_subtitles_size_title">Subtitle size</string>
     <string name="settings_subtitles_size_desc">Choose the optimal font size for comfortable 10-foot living room reading.</string>
     <string name="settings_subtitles_size_small">Small</string>
@@ -367,15 +373,15 @@
     <string name="settings_perf_desc">Control background particles and effects. Choose battery saver for low-power HDMI sticks.</string>
 
     <!-- 6. Library & Trakt -->
-    <string name="settings_section_library_view">CONTENT PRESENTATION</string>
+    <string name="settings_section_library_view">Content presentation</string>
     <string name="settings_library_hide_watched_title">Hide watched media</string>
     <string name="settings_library_hide_watched_desc">Omit completed movies and episodes from discovery and home rows.</string>
-    <string name="settings_section_library_database">LOCAL DATABASE &amp; CACHE</string>
+    <string name="settings_section_library_database">Local database &amp; cache</string>
     <string name="settings_library_db_stats_title">Local Room database</string>
-    <string name="settings_library_db_stats_desc">%1$d movies · %2$d series (%3$d episodes) cached for instant 0ms browsing.</string>
+    <string name="settings_library_db_stats_desc">%1$d movies, %2$d series (%3$d episodes) cached for instant 0ms browsing.</string>
 
     <!-- About -->
-    <string name="settings_section_system">SYSTEM</string>
+    <string name="settings_section_system">System</string>
     <string name="settings_row_app">Application</string>
     <string name="settings_row_version">Installed version</string>
     <string name="settings_edition_vip">Medusa Pro (Authorized Server) 👑</string>
@@ -387,22 +393,22 @@
     <string name="settings_btn_unlock_pro">Unlock Medusa Pro</string>
     <string name="settings_status_update_available">Update available (%1$s)</string>
     <string name="settings_status_up_to_date">Up to date</string>
-    <string name="settings_section_updates">UPDATES</string>
+    <string name="settings_section_updates">Updates</string>
     <string name="settings_channel_vip">Private Beta (Authorized Server)</string>
     <string name="settings_channel_ota">GitHub Releases (public)</string>
     <string name="settings_row_channel">Channel</string>
     <string name="settings_btn_checking">Checking…</string>
     <string name="settings_btn_check_updates">Check for updates</string>
     <string name="settings_btn_download_install">Download and install%1$s</string>
-    <string name="settings_section_distribution">DISTRIBUTION</string>
+    <string name="settings_section_distribution">Distribution</string>
     <string name="settings_channel_play">Google Play Store</string>
-    <string name="settings_section_release_notes">NEW IN VERSION %1$s</string>
+    <string name="settings_section_release_notes">New in version %1$s</string>
 
     <!-- Legal -->
-    <string name="settings_section_legal">LEGAL</string>
+    <string name="settings_section_legal">Legal</string>
     <string name="settings_row_privacy_policy">Privacy Policy</string>
     <string name="settings_privacy_policy_value">View link / QR</string>
-    <string name="settings_section_data_sources">DATA SOURCES</string>
+    <string name="settings_section_data_sources">Data sources</string>
     <string name="settings_row_tmdb">TMDB (The Movie Database)</string>
     <string name="settings_tmdb_attribution">This product uses the TMDB API but is not endorsed or certified by TMDB.</string>
     <string name="settings_row_trakt_data">Trakt.tv</string>
@@ -638,12 +644,12 @@
     <string name="medusa_noun_movies">movies</string>
     <string name="medusa_noun_series">series</string>
     <string name="medusa_available_count">%1$d %2$s available</string>
-    <string name="medusa_hint_movies_short">[UP] Back to filters  ·  [OK] View details</string>
-    <string name="medusa_hint_nav_movies_short">[DOWN] Browse movies  ·  [BACK] Undo</string>
-    <string name="medusa_hint_movies">[UP] Back to filters  ·  [OK] View details  ·  [BACK] Undo</string>
-    <string name="medusa_hint_active_chain">[OK] Remove this theme  ·  [DOWN] Themes rail  ·  [BACK] Back</string>
-    <string name="medusa_hint_chain">[OK] Filter more  ·  [UP] Edit filters  ·  [DOWN] Movies  ·  [BACK] Undo</string>
-    <string name="medusa_hint_default">[OK] Select  ·  [← →] Browse  ·  [BACK] Exit</string>
+    <string name="medusa_hint_movies_short">[UP] Back to filters     [OK] View details</string>
+    <string name="medusa_hint_nav_movies_short">[DOWN] Browse movies     [BACK] Undo</string>
+    <string name="medusa_hint_movies">[UP] Back to filters     [OK] View details     [BACK] Undo</string>
+    <string name="medusa_hint_active_chain">[OK] Remove this theme     [DOWN] Themes rail     [BACK] Back</string>
+    <string name="medusa_hint_chain">[OK] Filter more     [UP] Edit filters     [DOWN] Movies     [BACK] Undo</string>
+    <string name="medusa_hint_default">[OK] Select     [← →] Browse     [BACK] Exit</string>
 
     <!-- Sync -->
     <string name="sync_background">Syncing in the background...</string>
@@ -676,6 +682,8 @@
     <string name="update_error_apk_http">Error downloading APK: HTTP %1$d</string>
     <string name="update_error_empty_body">Empty response while downloading APK</string>
     <string name="update_error_integrity">Integrity check failed: the downloaded APK does not match the expected hash.</string>
+    <string name="update_error_redirect">The APK download tried to redirect to a destination that is not allowed.</string>
+    <string name="update_badge_content_description">Update available</string>
 
     <!-- Media context menu -->
     <string name="context_menu_resume">Resume</string>
@@ -705,5 +713,17 @@
     <string name="torrent_server_unavailable">Download server unavailable</string>
     <string name="torrent_cancel">Cancel</string>
     <string name="torrent_retry">Retry</string>
+    <string name="torrent_seeds_peers">%1$d seeds and %2$d peers</string>
+    <string name="torrent_searching_seeds">Looking for seeds…</string>
+    <string name="torrent_connecting_swarm">Connecting to the swarm…</string>
+    <string name="torrent_starting_download">Starting download…</string>
+    <string name="torrent_eta_remaining">About %1$s left</string>
+    <string name="torrent_waiting_peers">Waiting for peers…</string>
+    <string name="torrent_buffering_initial">Storing the initial buffer…</string>
+    <string name="torrent_prepare_failed">The download could not be prepared.</string>
+    <string name="torrent_versions_count">Versions (%1$d)</string>
+    <string name="torrent_choose_version">Choose an available version</string>
+    <string name="torrent_options_count">%1$d options</string>
+    <string name="torrent_version_n">Version %1$d</string>
 
 </resources>

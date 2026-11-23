@@ -16,6 +16,8 @@ class BillboardPoolBuilderTest {
         title: String,
         backdropUrl: String? = "https://example.com/bd/$id.jpg",
         posterUrl: String? = "https://example.com/po/$id.jpg",
+        overview: String? = "Sinopsis completa de $title para la portada del catálogo.",
+        logoUrl: String? = "https://example.com/logo/$id.png",
         isPlayed: Boolean = false,
         rank: Int? = null,
         year: Int = java.time.Year.now().value
@@ -25,6 +27,8 @@ class BillboardPoolBuilderTest {
             title = title,
             backdropUrl = backdropUrl,
             posterUrl = posterUrl,
+            overview = overview,
+            logoUrl = logoUrl,
             isPlayed = isPlayed,
             source = MediaSource.JELLYFIN,
             rank = rank,
@@ -68,21 +72,66 @@ class BillboardPoolBuilderTest {
     }
 
     @Test
-    fun `excludes items without any image`() {
+    fun `excludes items without complete hero art and synopsis`() {
         val newReleases = HomeSection(
             title = "Últimos estrenos",
             items = listOf(
                 createMediaItem("no_image", "No Image", backdropUrl = null, posterUrl = null),
                 createMediaItem("poster_only", "Poster Only", backdropUrl = null),
-                createMediaItem("has_backdrop", "Has Backdrop")
+                createMediaItem("no_overview", "No Overview", overview = null),
+                createMediaItem("complete", "Complete")
             )
         )
 
         val pool = BillboardPoolBuilder.buildBillboardPool(listOf(newReleases), seed = 0L)
 
+        assertFalse("Sin backdrop no hay hero", pool.any { it.id == "poster_only" })
         assertFalse(pool.any { it.id == "no_image" })
-        assertTrue("Un póster también sirve para el hero", pool.any { it.id == "poster_only" })
-        assertTrue(pool.any { it.id == "has_backdrop" })
+        assertFalse("Sin sinopsis no hay hero", pool.any { it.id == "no_overview" })
+        assertTrue(pool.any { it.id == "complete" })
+    }
+
+    @Test
+    fun `excludes placeholder overview from enrichment`() {
+        val newReleases = HomeSection(
+            title = "Últimos estrenos",
+            items = listOf(
+                createMediaItem("placeholder", "Placeholder", overview = "Sin descripción disponible."),
+                createMediaItem("real", "Real")
+            )
+        )
+
+        val pool = BillboardPoolBuilder.buildBillboardPool(listOf(newReleases), seed = 0L)
+
+        assertFalse(pool.any { it.id == "placeholder" })
+        assertTrue(pool.any { it.id == "real" })
+    }
+
+    @Test
+    fun `accepts complete art without clear logo`() {
+        val newReleases = HomeSection(
+            title = "Últimos estrenos",
+            items = listOf(createMediaItem("no_logo", "No Logo", logoUrl = null))
+        )
+
+        val pool = BillboardPoolBuilder.buildBillboardPool(listOf(newReleases), seed = 0L)
+
+        assertTrue(pool.any { it.id == "no_logo" })
+    }
+
+    @Test
+    fun `prefers titles with clear logo`() {
+        val newReleases = HomeSection(
+            title = "Últimos estrenos",
+            items = listOf(
+                createMediaItem("no_logo", "No Logo", logoUrl = null),
+                createMediaItem("with_logo", "With Logo")
+            )
+        )
+
+        val pool = BillboardPoolBuilder.buildBillboardPool(listOf(newReleases), seed = 0L)
+
+        assertEquals("with_logo", pool.first().id)
     }
 
     @Test

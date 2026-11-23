@@ -26,6 +26,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import tv.medusa.app.ui.theme.TextPrimary
 
 /**
  * Cinta de Constelación Compacta y Sobria para Medusa 2.0.
@@ -67,7 +68,7 @@ fun MedusaConstellationCanvas(
     )
 
     val activeColor = remember(isMonochrome, accentColor) {
-        if (isMonochrome) Color.White else accentColor
+        if (isMonochrome) TextPrimary else accentColor
     }
 
     Box(modifier = modifier) {
@@ -121,7 +122,7 @@ fun MedusaConstellationCanvas(
                     val tx = p1.x + (p2.x - p1.x) * filamentPhase
                     val ty = p1.y + (p2.y - p1.y) * filamentPhase
                     drawCircle(
-                        color = Color.White.copy(alpha = 0.90f),
+                        color = TextPrimary.copy(alpha = 0.90f),
                         radius = 2.dp.toPx(),
                         center = Offset(tx, ty)
                     )
@@ -141,7 +142,7 @@ fun MedusaConstellationCanvas(
 
                     // Núcleo blanco
                     drawCircle(
-                        color = Color.White,
+                        color = TextPrimary,
                         radius = 2.5.dp.toPx(),
                         center = pos
                     )
@@ -149,7 +150,7 @@ fun MedusaConstellationCanvas(
                     // Etiqueta tipográfica al lado de la estrella
                     val labelText = "${i + 1}. ${tag.label.uppercase()}"
                     val labelStyle = TextStyle(
-                        color = Color.White,
+                        color = TextPrimary,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         fontFamily = FontFamily.SansSerif,

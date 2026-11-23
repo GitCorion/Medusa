@@ -50,6 +50,7 @@ import tv.medusa.app.ui.theme.LocalIsMonochromeTheme
 import tv.medusa.app.ui.theme.TvAccent
 import tv.medusa.app.ui.theme.TvColors
 import tv.medusa.app.ui.util.handleTouchClick
+import tv.medusa.app.ui.theme.TextPrimary
 
 /**
  * Contenedor de tarjeta agrupada para secciones de ajustes.
@@ -70,10 +71,10 @@ fun TvSettingsGroupCard(
         if (!title.isNullOrBlank()) {
             Text(
                 text = title,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
                 color = TvColors.TextTertiary,
-                letterSpacing = 1.2.sp,
+                letterSpacing = 0.2.sp,
                 modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
             )
         }
@@ -141,7 +142,7 @@ fun TvSettingSwitchRow(
                     text = title,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
-                    color = Color.White
+                    color = TextPrimary
                 )
                 if (!description.isNullOrBlank()) {
                     Spacer(modifier = Modifier.height(2.dp))
@@ -249,7 +250,7 @@ fun TvSettingActionRow(
                         text = title,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
-                        color = Color.White
+                        color = TextPrimary
                     )
                     if (!description.isNullOrBlank()) {
                         Spacer(modifier = Modifier.height(2.dp))
@@ -349,7 +350,7 @@ fun <T> TvSettingsSegmentedRow(
             text = title,
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
-            color = Color.White
+            color = TextPrimary
         )
         if (!description.isNullOrBlank()) {
             Spacer(modifier = Modifier.height(2.dp))
@@ -386,7 +387,7 @@ fun <T> TvSettingsSegmentedRow(
                     colors = ClickableSurfaceDefaults.colors(
                         containerColor = if (isSelected) (if (isMonochrome) Color(0x30FFFFFF) else focusColor.copy(alpha = 0.20f)) else Color.Transparent,
                         focusedContainerColor = focusColor,
-                        contentColor = if (isSelected) (if (isMonochrome) Color.White else focusColor) else tv.medusa.app.ui.theme.TvPalette.TextMuted,
+                        contentColor = if (isSelected) (if (isMonochrome) TextPrimary else focusColor) else tv.medusa.app.ui.theme.TvPalette.TextMuted,
                         focusedContentColor = focusContent
                     ),
                     border = ClickableSurfaceDefaults.border(
@@ -406,7 +407,7 @@ fun <T> TvSettingsSegmentedRow(
                             Icon(
                                 imageVector = Icons.Rounded.Check,
                                 contentDescription = null,
-                                tint = if (isFocused) focusContent else (if (isMonochrome) Color.White else focusColor),
+                                tint = if (isFocused) focusContent else (if (isMonochrome) TextPrimary else focusColor),
                                 modifier = Modifier
                                     .size(14.dp)
                                     .padding(end = 4.dp)
@@ -416,7 +417,7 @@ fun <T> TvSettingsSegmentedRow(
                             text = label,
                             fontSize = 13.sp,
                             fontWeight = if (isSelected || isFocused) FontWeight.SemiBold else FontWeight.Normal,
-                            color = if (isFocused) focusContent else (if (isSelected) (if (isMonochrome) Color.White else focusColor) else tv.medusa.app.ui.theme.TvPalette.TextMuted),
+                            color = if (isFocused) focusContent else (if (isSelected) (if (isMonochrome) TextPrimary else focusColor) else tv.medusa.app.ui.theme.TvPalette.TextMuted),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -470,7 +471,7 @@ fun TvSubtitlePreviewBox(
             text = sampleText,
             fontSize = fontSize,
             fontWeight = FontWeight.Medium,
-            color = Color.White,
+            color = TextPrimary,
             textAlign = TextAlign.Center,
             modifier = textModifier
         )

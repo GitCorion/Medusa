@@ -304,7 +304,7 @@ private fun BrandLanding(
                         Text(
                             text = stringResource(R.string.brand_no_titles, brand.name),
                             style = MaterialTheme.typography.titleMedium,
-                            color = Color.White
+                            color = TextPrimary
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
@@ -376,7 +376,7 @@ private fun BrandAllGrid(
     onDetailMedia: (String) -> Unit,
     onLoadMore: () -> Unit
 ) {
-    val focusColor = if (isMonochrome) Color.White else TvAccent.getColor(accentColorKey)
+    val focusColor = if (isMonochrome) TextPrimary else TvAccent.getColor(accentColorKey)
     val focusContent = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else TvAccent.getFocusedContentColor(accentColorKey)
     val context = LocalContext.current
     val isTouchDevice = remember(context) { DeviceUtils.isTouchDevice(context) }

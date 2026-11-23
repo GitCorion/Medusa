@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.sp
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.Icon
 import androidx.tv.material3.Text
+import tv.medusa.app.ui.theme.TextPrimary
 
 object MedusaCategoryColors {
     val Cyan = Color(0xFF00A4DC)
@@ -53,7 +54,7 @@ object MedusaCategoryColors {
     val Indigo = Color(0xFF6366F1)
 
     fun getColorFor(category: String, isMonochrome: Boolean = false): Color {
-        if (isMonochrome) return Color.White
+        if (isMonochrome) return TextPrimary
         // Solo azulitos y morados (identidad oficial Medusa), cero colorines
         return when (category) {
             "Acción", "Aventura", "Ciencia Ficción" -> Cyan
@@ -135,7 +136,7 @@ fun MedusaMosaicChip(
                         modifier = Modifier
                             .size(16.dp)
                             .clip(CircleShape)
-                            .background(Color.White),
+                            .background(TextPrimary),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -159,8 +160,8 @@ fun MedusaMosaicChip(
                 Text(
                     text = tag.label,
                     color = when {
-                        isFocused -> Color.White
-                        tag.isSelected -> Color.White
+                        isFocused -> TextPrimary
+                        tag.isSelected -> TextPrimary
                         else -> tv.medusa.app.ui.theme.TvPalette.TextSoft
                     },
                     fontSize = 13.sp,
@@ -182,7 +183,7 @@ fun MedusaMosaicChip(
             ) {
                 Text(
                     text = "${tag.movieCount}",
-                    color = if (isFocused) Color.White else tv.medusa.app.ui.theme.TvPalette.TextSecondaryCool,
+                    color = if (isFocused) TextPrimary else tv.medusa.app.ui.theme.TvPalette.TextSecondaryCool,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold,
                     fontFamily = FontFamily.SansSerif

@@ -58,7 +58,7 @@ object ServerVerificationUtils {
     }
 
     /**
-     * Extrae el nombre de host limpio de una URL o dominio.
+     * Extrae el nombre de host limpio de una URL o dominio (IPv6 entre corchetes incluida).
      */
     fun extractHost(serverUrl: String): String {
         var clean = serverUrl.trim().lowercase()
@@ -68,17 +68,16 @@ object ServerVerificationUtils {
             clean = clean.substring("http://".length)
         }
 
-        val slashIndex = clean.indexOf('/')
-        if (slashIndex != -1) {
-            clean = clean.substring(0, slashIndex)
+        clean = clean.substringBefore('/').substringBefore('?').substringBefore('#')
+
+        val host = if (clean.startsWith("[")) {
+            val end = clean.indexOf(']')
+            if (end > 0) clean.substring(1, end) else clean.removePrefix("[")
+        } else {
+            clean.substringBefore(':')
         }
 
-        val colonIndex = clean.indexOf(':')
-        if (colonIndex != -1) {
-            clean = clean.substring(0, colonIndex)
-        }
-
-        return clean.removePrefix("www.")
+        return host.removePrefix("www.")
     }
 
     /**

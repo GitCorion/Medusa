@@ -113,7 +113,9 @@ data class UserPreferences(
     val audioPassthroughMode: Int = AUDIO_PASSTHROUGH_OFF,
     val hideWatched: Boolean = false,
     val autoPlayNextMovieEnabled: Boolean = true,
-    val autoPlayNextEpisodeEnabled: Boolean = true
+    val autoPlayNextEpisodeEnabled: Boolean = true,
+    /** Teclado predictivo de Búsqueda. Por defecto Libre: nunca se ocultan letras. */
+    val searchKeyboardAuto: Boolean = false
 ) {
     val isMonochrome: Boolean
         get() = indicatorTheme == INDICATOR_THEME_MONOCHROME || accentColor == ACCENT_WHITE
@@ -191,6 +193,7 @@ class UserPreferencesRepository(context: Context) {
         val HIDE_WATCHED = stringPreferencesKey("hide_watched")
         val AUTO_PLAY_NEXT_MOVIE = stringPreferencesKey("auto_play_next_movie")
         val AUTO_PLAY_NEXT_EPISODE = stringPreferencesKey("auto_play_next_episode")
+        val SEARCH_KEYBOARD_AUTO = booleanPreferencesKey("search_keyboard_auto")
         // Versión del algoritmo de sincronización aplicada. Si la almacenada es menor que la
         // actual, se fuerza un sync completo para reconstruir catálogos truncados por versiones
         // anteriores (p. ej. paginación que cortaba al recibir páginas más cortas que el límite).
@@ -268,6 +271,10 @@ class UserPreferencesRepository(context: Context) {
 
     val hideWatched: StateFlow<Boolean> =
         userPreferences.map { it.hideWatched }.stateIn(appScope, SharingStarted.Eagerly, false)
+
+    /** Modo del teclado predictivo de Búsqueda; Libre por defecto. */
+    val searchKeyboardAuto: StateFlow<Boolean> =
+        userPreferences.map { it.searchKeyboardAuto }.stateIn(appScope, SharingStarted.Eagerly, false)
 
     val autoFrameRateEnabled: StateFlow<Boolean> =
         userPreferences.map { it.autoFrameRateEnabled }.stateIn(appScope, SharingStarted.Eagerly, false)
@@ -511,6 +518,13 @@ class UserPreferencesRepository(context: Context) {
     suspend fun setHideWatched(enabled: Boolean) {
         appContext.dataStore.edit { prefs ->
             prefs[Keys.HIDE_WATCHED] = enabled.toString()
+        }
+    }
+
+    /** Recuerda el modo del teclado de Búsqueda entre sesiones. */
+    suspend fun setSearchKeyboardAuto(enabled: Boolean) {
+        appContext.dataStore.edit { prefs ->
+            prefs[Keys.SEARCH_KEYBOARD_AUTO] = enabled
         }
     }
 
@@ -772,7 +786,8 @@ class UserPreferencesRepository(context: Context) {
                 audioPassthroughMode = this[Keys.AUDIO_PASSTHROUGH_MODE] ?: AUDIO_PASSTHROUGH_OFF,
                 hideWatched = this[Keys.HIDE_WATCHED] == "true",
                 autoPlayNextMovieEnabled = (this[Keys.AUTO_PLAY_NEXT_MOVIE] ?: "true") != "false",
-                autoPlayNextEpisodeEnabled = (this[Keys.AUTO_PLAY_NEXT_EPISODE] ?: "true") != "false"
+                autoPlayNextEpisodeEnabled = (this[Keys.AUTO_PLAY_NEXT_EPISODE] ?: "true") != "false",
+                searchKeyboardAuto = this[Keys.SEARCH_KEYBOARD_AUTO] ?: false
             )
         }
     }

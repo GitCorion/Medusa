@@ -22,6 +22,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -214,16 +215,29 @@ fun DetailScreen(
                         Spacer(modifier = Modifier.height(16.dp))
                         val errFocusColor = currentFocusColor(isMonochrome)
                         val errFocusContent = currentFocusContentColor(isMonochrome)
-                        Button(
-                            onClick = onBack,
-                            colors = ButtonDefaults.colors(
-                                containerColor = tv.medusa.app.ui.theme.TvPalette.GlassRaised,
-                                contentColor = Color.White,
-                                focusedContainerColor = errFocusColor,
-                                focusedContentColor = errFocusContent
-                            )
-                        ) {
-                            Text(stringResource(R.string.common_back), fontWeight = FontWeight.Bold)
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Button(
+                                onClick = { viewModel.loadDetail(itemId) },
+                                colors = ButtonDefaults.colors(
+                                    containerColor = errFocusColor,
+                                    contentColor = errFocusContent,
+                                    focusedContainerColor = errFocusColor,
+                                    focusedContentColor = errFocusContent
+                                )
+                            ) {
+                                Text(stringResource(R.string.common_retry), fontWeight = FontWeight.Bold)
+                            }
+                            Button(
+                                onClick = onBack,
+                                colors = ButtonDefaults.colors(
+                                    containerColor = tv.medusa.app.ui.theme.TvPalette.GlassRaised,
+                                    contentColor = TextPrimary,
+                                    focusedContainerColor = errFocusColor,
+                                    focusedContentColor = errFocusContent
+                                )
+                            ) {
+                                Text(stringResource(R.string.common_back), fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
                 }
@@ -231,7 +245,7 @@ fun DetailScreen(
 
             is DetailUiState.Success -> {
                 val entity = state.entity
-                val focusColor = if (isMonochrome) Color.White else TvAccent.getColor(state.accentColor)
+                val focusColor = if (isMonochrome) TextPrimary else TvAccent.getColor(state.accentColor)
                 val focusContent = if (isMonochrome) tv.medusa.app.ui.theme.TvPalette.FocusInk else TvAccent.getFocusedContentColor(state.accentColor)
                 val isTv = entity.type.equals("Series", ignoreCase = true) || entity.type.equals("Episode", ignoreCase = true)
                 val isTvSeries = entity.type.equals("Series", ignoreCase = true)
@@ -245,6 +259,44 @@ fun DetailScreen(
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize()
                     )
+                } else if (state.posterUrl != null) {
+                    // Sin backdrop: el propio póster ocupa el lateral derecho para que la ficha
+                    // no quede como texto sobre un vacío negro. El degradado horizontal existente
+                    // lo funde con la columna de texto.
+                    AsyncImage(
+                        model = state.posterUrl,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        alignment = Alignment.CenterEnd,
+                        alpha = 0.55f,
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .fillMaxWidth(0.55f)
+                            .align(Alignment.CenterEnd)
+                    )
+                } else {
+                    // Ni backdrop ni póster: placa de marca con gradiente estático.
+                    Box(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .fillMaxWidth(0.55f)
+                            .align(Alignment.CenterEnd)
+                            .background(
+                                Brush.linearGradient(
+                                    listOf(Color.Transparent, Color(0xFF10162A), Color(0xFF0A0F1D))
+                                )
+                            )
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .background(
+                                    Brush.radialGradient(
+                                        listOf(Color(0x380B5EFF), Color.Transparent)
+                                    )
+                                )
+                        )
+                    }
                 }
 
                 // Dark Gradient Overlays
@@ -332,11 +384,11 @@ fun DetailScreen(
 
                             if (isEpisode && sName.isNotBlank()) {
                                 Text(
-                                    text = sName.uppercase(),
-                                    color = if (isMonochrome) Color.White else focusColor,
+                                    text = sName,
+                                    color = if (isMonochrome) TextPrimary else focusColor,
                                     fontSize = 15.sp,
                                     fontWeight = FontWeight.Bold,
-                                    letterSpacing = 1.sp
+                                    letterSpacing = 0.2.sp
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                             }
@@ -405,12 +457,11 @@ fun DetailScreen(
                                         Spacer(modifier = Modifier.width(4.dp))
                                         Text(
                                             text = String.format(Locale.US, "%.1f", entity.communityRating),
-                                            color = Color.White,
+                                            color = TextPrimary,
                                             fontWeight = FontWeight.Bold,
                                             fontSize = 13.sp
                                         )
                                     }
-                                    Text(text = "•", color = TextSecondary.copy(alpha = 0.5f), fontSize = 12.sp)
                                 }
 
                                 // 2. Año de producción
@@ -421,7 +472,6 @@ fun DetailScreen(
                                         fontSize = 13.sp,
                                         fontWeight = FontWeight.Medium
                                     )
-                                    Text(text = "•", color = TextSecondary.copy(alpha = 0.5f), fontSize = 12.sp)
                                 }
 
                                 // 3. Tipo (Película / Serie / Episodio)
@@ -440,7 +490,6 @@ fun DetailScreen(
 
                                 // 4. Calificación por edad (OfficialRating: PG-13, 16+, R, etc.)
                                 if (!entity.officialRating.isNullOrBlank()) {
-                                    Text(text = "•", color = TextSecondary.copy(alpha = 0.5f), fontSize = 12.sp)
                                     Box(
                                         modifier = Modifier
                                             .border(0.8.dp, TextSecondary.copy(alpha = 0.45f), RoundedCornerShape(3.dp))
@@ -465,7 +514,6 @@ fun DetailScreen(
                                         SeriesStatusType.UNKNOWN -> ""
                                     }
                                     if (statusLabel.isNotBlank()) {
-                                        Text(text = "•", color = TextSecondary.copy(alpha = 0.5f), fontSize = 12.sp)
                                         Text(
                                             text = statusLabel,
                                             color = if (state.seriesStatus.type == SeriesStatusType.CONTINUING) Color(0xFF34D399) else TextSecondary,
@@ -484,7 +532,6 @@ fun DetailScreen(
                                 val hasItemProgress = !isTvSeries && entity.playbackPositionTicks > 0 && !entity.isPlayed
 
                                 if (hasSeriesProgress) {
-                                    Text(text = "•", color = TextSecondary.copy(alpha = 0.5f), fontSize = 12.sp)
                                     Text(
                                         text = stringResource(R.string.detail_progress, playedEps, totalEps ?: 0),
                                         color = focusColor,
@@ -492,7 +539,6 @@ fun DetailScreen(
                                         fontWeight = FontWeight.SemiBold
                                     )
                                 } else if (hasItemProgress) {
-                                    Text(text = "•", color = TextSecondary.copy(alpha = 0.5f), fontSize = 12.sp)
                                     Text(
                                         text = stringResource(R.string.badge_in_progress),
                                         color = focusColor,
@@ -500,7 +546,6 @@ fun DetailScreen(
                                         fontWeight = FontWeight.SemiBold
                                     )
                                 } else if (isSeriesFinished || state.isPlayed) {
-                                    Text(text = "•", color = TextSecondary.copy(alpha = 0.5f), fontSize = 12.sp)
                                     Text(
                                         text = stringResource(R.string.badge_watched),
                                         color = Color(0xFF34D399),
@@ -520,7 +565,7 @@ fun DetailScreen(
                             if (genreList.isNotEmpty()) {
                                 Spacer(modifier = Modifier.height(6.dp))
                                 Text(
-                                    text = genreList.joinToString("  •  "),
+                                    text = genreList.joinToString("     "),
                                     color = TextSecondary.copy(alpha = 0.85f),
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Normal,
@@ -639,7 +684,13 @@ fun DetailScreen(
                             }
 
                             // Overview Synopsis - Clean editorial typography (Zero SaaS box slop)
-                            val overviewText = entity.overview?.takeIf { it.isNotBlank() }
+                            // Los placeholders antiguos del enriquecedor no son sinopsis: se
+                            // muestran como "sin sinopsis" en lugar de repetir el relleno.
+                            val overviewText = entity.overview?.trim()?.takeIf {
+                                it.isNotBlank() &&
+                                    !it.startsWith("Sin descripción disponible", ignoreCase = true) &&
+                                    !it.startsWith("No description available", ignoreCase = true)
+                            }
                             if (!overviewText.isNullOrBlank()) {
                                 Spacer(modifier = Modifier.height(18.dp))
                                 Text(
@@ -698,7 +749,7 @@ fun DetailScreen(
                                     ) {
                                         Text(
                                             text = season.name,
-                                            color = if (isSelected) (if (isMonochrome) Color.White else focusColor) else TextPrimary.copy(alpha = 0.85f),
+                                            color = if (isSelected) (if (isMonochrome) TextPrimary else focusColor) else TextPrimary.copy(alpha = 0.85f),
                                             style = tv.medusa.app.ui.theme.TvChipDefaults.textStyle
                                         )
                                     }
@@ -934,7 +985,7 @@ fun DetailScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                             contentDescription = stringResource(R.string.common_back),
-                            tint = Color.White.copy(alpha = 0.90f),
+                            tint = TextPrimary.copy(alpha = 0.90f),
                             modifier = Modifier.size(19.dp)
                         )
                     }
@@ -962,14 +1013,14 @@ fun DetailScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     CircularProgressIndicator(
-                        color = if (isMonochrome) Color.White else Color(0xFF38BDF8),
+                        color = if (isMonochrome) TextPrimary else Color(0xFF38BDF8),
                         strokeWidth = 3.5.dp,
                         modifier = Modifier.size(50.dp)
                     )
                     Text(
                         text = stringResource(R.string.detail_starting_player),
                         style = MaterialTheme.typography.titleMedium,
-                        color = Color.White,
+                        color = TextPrimary,
                         fontWeight = FontWeight.Bold
                     )
                 }
