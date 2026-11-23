@@ -75,7 +75,6 @@ import tv.medusa.app.R
 import tv.medusa.app.domain.model.MediaItem
 import tv.medusa.app.ui.theme.TvAccent
 import tv.medusa.app.ui.theme.adaptiveDialogWidth
-import tv.medusa.app.ui.theme.TvPill
 import tv.medusa.app.ui.theme.TvRatingBadge
 import java.util.Locale
 
@@ -415,10 +414,11 @@ fun MediaContextMenuDialog(
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             if (item.year != null && item.year > 0) {
-                                TvPill(
+                                Text(
                                     text = item.year.toString(),
-                                    containerColor = tv.medusa.app.ui.theme.TvPalette.GlassIdle,
-                                    textColor = tv.medusa.app.ui.theme.TvPalette.TextMuted
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = tv.medusa.app.ui.theme.TextSecondary,
+                                    fontWeight = FontWeight.Medium
                                 )
                             }
 

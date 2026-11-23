@@ -48,8 +48,8 @@ import tv.medusa.app.data.local.ACCENT_CYAN
 import tv.medusa.app.data.local.BUTTON_STYLE_ICONS_ONLY
 import tv.medusa.app.data.local.BUTTON_STYLE_TEXT_ONLY
 import tv.medusa.app.domain.model.MediaItem
+import tv.medusa.app.ui.theme.TextSecondary
 import tv.medusa.app.ui.theme.TvAccent
-import tv.medusa.app.ui.theme.TvPill
 import tv.medusa.app.ui.theme.TvRatingBadge
 
 @OptIn(ExperimentalTvMaterial3Api::class)
@@ -135,24 +135,46 @@ fun CompactFocusedHeader(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (item.rating != null && item.rating > 0f) {
                         TvRatingBadge(rating = item.rating, compact = true)
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = " • ",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextSecondary.copy(alpha = 0.5f)
+                        )
                     }
 
                     if (item.year != null) {
-                        TvPill(text = "${item.year}")
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "${item.year}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextSecondary,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = " • ",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextSecondary.copy(alpha = 0.5f)
+                        )
                     }
 
                     val isTv = item.type.equals("Series", ignoreCase = true) ||
                             item.type.equals("Episode", ignoreCase = true)
-                    TvPill(text = stringResource(if (isTv) R.string.type_series else R.string.type_movie))
+                    Text(
+                        text = stringResource(if (isTv) R.string.type_series else R.string.type_movie),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextSecondary,
+                        fontWeight = FontWeight.Medium
+                    )
 
                     if (!item.overview.isNullOrBlank()) {
-                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = " • ",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextSecondary.copy(alpha = 0.5f)
+                        )
                         Text(
                             text = item.overview,
                             style = MaterialTheme.typography.bodySmall,
-                            color = tv.medusa.app.ui.theme.TvPalette.TextSecondaryCool,
+                            color = TextSecondary,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f, fill = false)

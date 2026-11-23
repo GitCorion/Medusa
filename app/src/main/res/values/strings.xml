@@ -488,11 +488,11 @@
     <!-- Títulos de sección del feed (se resuelven en la UI; el dominio usa el texto en español como clave estable) -->
     <string name="section_continue_watching">Continuar Viendo</string>
     <string name="section_recently_added">Añadido recientemente</string>
-    <string name="section_top_movies">Grandes Producciones de tu colección</string>
+    <string name="section_top_movies">Películas destacadas</string>
     <string name="section_top_series">Series Destacadas</string>
     <string name="section_recommended_movies">Películas Recomendadas</string>
     <string name="section_recommended_of">Recomendados de %1$s</string>
-    <string name="section_hidden_gems">Joyas de tu colección</string>
+    <string name="section_hidden_gems">Joyas ocultas</string>
     <string name="section_genre_hidden_gems">Joyas Ocultas</string>
     <string name="section_top10_essentials">Top 10 Imprescindibles</string>
     <string name="section_new_releases">Novedades Recientes</string>

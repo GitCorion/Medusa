@@ -352,7 +352,7 @@ class GetHomeFeedUseCase(
             updateOrAddSection(HomeSection(
                 title = "Joyas de tu videoteca",
                 items = shuffledHiddenGems.map { it.toMediaItem(prefs.jellyfinServerUrl, prefs.jellyfinAccessToken, MediaSource.JELLYFIN) },
-                badge = "JOYAS OCULTAS",
+                badge = null,
                 kind = HomeSectionKind.HIDDEN_GEMS
             ))
         }

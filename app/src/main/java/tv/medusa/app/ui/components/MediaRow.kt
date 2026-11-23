@@ -37,10 +37,6 @@ import tv.medusa.app.domain.model.HomeSectionLayout
 import tv.medusa.app.domain.model.MediaItem
 import tv.medusa.app.ui.theme.CinematicTypography
 import tv.medusa.app.ui.theme.TextPrimary
-import tv.medusa.app.ui.theme.LocalAccentColor
-import tv.medusa.app.ui.theme.LocalIsMonochromeTheme
-import tv.medusa.app.ui.theme.TvAccent
-import tv.medusa.app.ui.theme.TvPill
 import tv.medusa.app.ui.theme.TvSpacing
 
 @OptIn(ExperimentalTvMaterial3Api::class)
@@ -59,32 +55,10 @@ fun MediaRow(
             .fillMaxWidth()
             .padding(bottom = TvSpacing.ShelfBottomPadding)
     ) {
-        val isMonochrome = LocalIsMonochromeTheme.current
-        val accentKey = LocalAccentColor.current
-        val focusColor = if (isMonochrome) Color.White else TvAccent.getColor(accentKey)
-
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(horizontal = TvSpacing.ScreenSafeHorizontal)
         ) {
-            val badgeText = localizedSectionBadge(section.badge)
-            if (!badgeText.isNullOrBlank()) {
-                Text(
-                    text = badgeText.uppercase(),
-                    color = if (isMonochrome) Color.White else focusColor,
-                    fontWeight = FontWeight.Black,
-                    fontSize = 12.sp,
-                    letterSpacing = 0.8.sp
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "•",
-                    color = tv.medusa.app.ui.theme.TextSecondary.copy(alpha = 0.5f),
-                    fontSize = 13.sp
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-            }
-
             Text(
                 text = localizedSectionTitle(section),
                 style = CinematicTypography.SectionTitle,
