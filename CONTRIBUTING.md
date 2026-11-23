@@ -59,11 +59,12 @@ TMDB ni Trakt para trabajar en la interfaz.
 La identidad está documentada en [`DESIGN.md`](DESIGN.md). En resumen:
 
 - Cero `Modifier.blur()` y cero `RenderEffect`.
-- Cero escalado por tarjeta y cero atenuación de vecinos.
-- Una sola corriente o anillo de foco activo.
+- Cero escalado por tarjeta dentro de carruseles y cero atenuación de vecinos.
+- Un solo foco activo: borde de 1,5 dp en tarjetas, dock de iconos de 18 dp y cero escala por tarjeta.
 - El título y los metadatos de una tarjeta viven fuera del póster.
 - Nada de botones "Volver" en pantalla cuando corre en TV.
-- Nada de píldoras rellenas para navegación, filtros o géneros.
+- La navegación usa un dock de iconos; los chips mantienen su radio de 10 dp. No inventes
+  subrayados ondulados, sonar ni metáforas de interacción propias.
 - Nada de serif editorial, mayúsculas decorativas, separadores con punto medio ni flechas pegadas
   al texto.
 - Respeta `rememberReducedMotion()`.

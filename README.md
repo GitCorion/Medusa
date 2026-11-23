@@ -21,7 +21,7 @@
 
 ![Inicio de Medusa TV en un televisor de 1080p](docs/assets/estudio/captures/inicio-1600.webp)
 
-<p align="center"><sub>Inicio en un televisor de 1920 × 1080. Las capturas reflejan la capa visual de <code>main</code>; el APK publicado 2.3.12 aún no incluye esta pasada.</sub></p>
+<p align="center"><sub>Inicio en un televisor de 1920 × 1080. Las capturas reflejan la capa visual 2.4.0-beta.3; la estable publicada sigue siendo 2.3.12.</sub></p>
 
 ## Qué es
 
@@ -29,7 +29,7 @@ Medusa TV es un cliente Jellyfin nativo para el salón. Convierte tu biblioteca 
 
 No es un envoltorio web ni un catálogo alojado. La app habla directamente con **tu** servidor Jellyfin, guarda el catálogo en local y solo sale a internet para los metadatos, los catálogos de descubrimiento, Trakt (si lo vinculas) y las actualizaciones firmadas de GitHub Releases.
 
-**En este repositorio:** más de 140 archivos Kotlin, 36 pruebas unitarias, una prueba de migración, 13 regiones de catálogo y una identidad visual propia que puedes recorrer en el [estudio publicado](https://gitcorion.github.io/Medusa/).
+**En este repositorio:** más de 140 archivos Kotlin, 38 pruebas unitarias, una prueba de migración, 13 regiones de catálogo y una identidad visual propia que puedes recorrer en el [estudio publicado](https://gitcorion.github.io/Medusa/).
 
 ## Catálogo bajo demanda (TOD)
 
@@ -51,9 +51,9 @@ app.
 
 ## Lo que hace diferente
 
-- **Foco a tres metros.** La navegación usa tabs pill de Material TV y el foco sobre una tab cambia de destino sin exigir OK. Las tarjetas de carrusel llevan borde de 3 dp; botones, tabs y controles aislados escalan 1,1x. El título pasa de sedimento a pergamino.
-- **60 fps por decisión.** `Modifier.blur()` y `RenderEffect` están prohibidos. Las tarjetas dentro de un carrusel no escalan ni atenúan a sus vecinas; el movimiento existe solo cuando el mando actúa. Cero animaciones autónomas.
-- **Piel abisal sobre Material TV.** Tinta abisal, corriente turquesa, violeta de medusa, ámbar de valoración y Space Grotesk como única voz. La identidad vive en la paleta, el emblema y el arte; el comportamiento (tabs, foco, overscan) es el de la plataforma.
+- **Foco a tres metros.** La navegación es un dock de iconos de 18 dp; el foco se lee por un borde de 1,5 dp sobre el póster, `zIndex` y el título a plena luminosidad. Las tarjetas vecinas conservan su opacidad: no hay spotlight ni escala.
+- **60 fps por decisión.** `Modifier.blur()` y `RenderEffect` están prohibidos. Las tarjetas no escalan ni atenúan a sus vecinas; el movimiento existe solo cuando el mando actúa. Cero animaciones autónomas.
+- **Piel abisal de cine.** Tinta `#04060A`, cian eléctrico `#00D2FF`, cobalto, aqua, ámbar y oro con DM Sans como única voz. La identidad vive en el arte, la luz y la tipografía; el comportamiento es el de una tele.
 - **Privacidad por arquitectura.** Sin Firebase, sin analítica, sin publicidad, sin ID de publicidad. Las credenciales se cifran con AES/GCM y Android Keystore. La app no tiene servidores propios de usuario.
 
 ## Funciones
@@ -61,14 +61,14 @@ app.
 | Área | Qué incluye |
 |---|---|
 | **Inicio** | Hero a sangre con ClearLogo, géneros favoritos, placas de plataformas, Continuar viendo con progreso, Top 10 y carruseles por género. Scrim, paginación y una sola acción primaria. |
-| **Navegación** | Tabs pill de Material TV: el foco sobre una tab cambia de destino sin exigir OK. La barra admite iconos, texto o ambos. Overscan de 58/28 dp y objetivos de 48 dp. |
+| **Navegación** | Dock de iconos de 18 dp: el foco no exige OK. La barra admite iconos, texto o ambos y el retroceso sigue en la tecla BACK. |
 | **Descubrir** | Filtros de formato (todo, catálogo, películas, series), rail de temáticas y resultados en tiempo real. Contador y atajos de mando. |
 | **Búsqueda** | Teclado de diez pies con sugerencias predictivas, resultados instantáneos y búsqueda remota en Jellyfin. |
 | **Ficha** | Póster, metadatos editoriales, sinopsis sin panel, estados de progreso/favorito, temporadas y episodios, títulos de la misma saga y recomendaciones. |
-| **Reproductor** | Media3 + FFmpeg. DirectPlay, remux, HLS y transcodificación; `.strm`; subtítulos; pistas de audio; passthrough HDMI; siguiente episodio; salto de intro, recap y avance con Media Segments; frecuencia de refresco automática. |
+| **Reproductor** | Media3 + FFmpeg. DirectPlay, remux, HLS y transcodificación; `.strm`; preparación TOD con el plugin; subtítulos; pistas de audio; passthrough HDMI; siguiente episodio; salto de intro, recap y avance con Media Segments; frecuencia de refresco automática. |
 | **Biblioteca** | Room con búsqueda FTS, caché local, filtros por accesibilidad parental, colecciones y sagas, sincronización incremental en segundo plano. |
 | **Personalización** | Temas de acento (cian bioluminiscente, ámbar cine, blanco puro), modo monocromo, estilos de botón, partículas, sonidos de navegación, música de fondo, tamaño y fondo de subtítulos, movimiento reducido. |
-| **Integraciones** | Jellyfin con descubrimiento en LAN, URL manual, subrutas, IPv6, certificado autofirmado con pin y Quick Connect. Trakt por código de dispositivo. TMDB con clave propia. Catálogos estáticos por región. OTA desde GitHub Releases. |
+| **Integraciones** | Jellyfin con descubrimiento en LAN, URL manual, subrutas, IPv6, certificado autofirmado con pin y Quick Connect. TOD con el plugin de Jellyfin. Trakt por código de dispositivo. TMDB con clave propia. Catálogos estáticos por región. OTA desde GitHub Releases. |
 
 ## Instalación
 
@@ -91,7 +91,7 @@ adb install -r Medusa.apk
 adb shell am start -n tv.medusa.app/tv.medusa.app.MainActivity
 ```
 
-> El `applicationId` es `tv.medusa.app`. Las versiones anteriores usaban `tv.medusa.app.beta`: si vienes de ellas, instala esta y desinstala la antigua una vez. Android las trata como apps distintas y los ajustes no se migran.
+> El `applicationId` es `tv.medusa.app` desde 2.4.0. El APK publicado 2.3.12 todavía usa `tv.medusa.app.beta`: si vienes de esa versión, instala la nueva y desinstala la antigua una vez. Android las trata como apps distintas y los ajustes no se migran.
 
 ### Actualizaciones
 
@@ -118,7 +118,7 @@ Hay dos canales: **estable** (Releases `latest`) y **beta** (pre-releases con ma
   <img src="docs/assets/estudio/captures/ajustes-960.webp" width="49%" alt="Ajustes con barra lateral y estado del servidor">
 </p>
 
-<p align="center"><sub>Capturas reales de la app en un televisor de 1080p. <a href="https://gitcorion.github.io/Medusa/#pantallas">Ver las siete pantallas y sus decisiones de diseño</a>.</sub></p>
+<p align="center"><sub>Capturas reales de la app en un televisor de 1080p. La barra superior admite solo iconos, solo texto o ambos; las capturas muestran los dos primeros modos. <a href="https://gitcorion.github.io/Medusa/#pantallas">Ver las siete pantallas y sus decisiones de diseño</a>.</sub></p>
 
 ## Arquitectura
 
@@ -148,7 +148,7 @@ Decisiones que sostienen el resto:
 - **Credenciales cifradas.** AES/GCM con una clave del Android Keystore. Si el Keystore falla, la escritura falla; nunca se guarda un token en claro.
 - **Reproducción con cascada.** `.strm` resuelto en el servidor, remux, DirectStream, transcode y transcodificación completa. El perfil de dispositivo se serializa con `encodeDefaults = true` y está verificado por una prueba golden.
 - **Trabajo de fondo acotado.** Sincronización, indexado de colecciones y enriquecimiento de sinopsis en workers separados, con concurrencia limitada y pausa cuando la app está en primer plano.
-- **Rendimiento medido en la tele.** Baseline Profile, cero blur, componentes Material TV y foco con escala solo en controles aislados. Sin animaciones autónomas.
+- **Rendimiento medido en la tele.** Baseline Profile, cero blur, componentes de TV y foco de 1,5 dp. Cero escala por tarjeta.
 
 El detalle completo, con capas, flujos y pruebas, está en [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). Las reglas de reproducción que no se deben romper están en [`docs/PLAYBACK.md`](docs/PLAYBACK.md).
 
@@ -291,7 +291,7 @@ Los commits siguen un estilo convencional en español, por ejemplo `fix(player):
 - [Trakt](https://trakt.tv): scrobbling, listas y colecciones.
 - [Android Media3](https://developer.android.com/media/media3): reproducción y sesión multimedia.
 - [Kotlin](https://kotlinlang.org), [Jetpack Compose](https://developer.android.com/compose), [Hilt](https://dagger.dev/hilt/), [Room](https://developer.android.com/training/data-storage/room), [Coil](https://coil-kt.github.io/coil/), [Retrofit](https://square.github.io/retrofit/), [OkHttp](https://square.github.io/okhttp/) y [WorkManager](https://developer.android.com/topic/libraries/architecture/workmanager).
-- [Space Grotesk](https://github.com/floriankarsten/space-grotesk), bajo SIL Open Font License.
+- [DM Sans](https://github.com/googlefonts/dm-fonts), bajo SIL Open Font License.
 - Cartel de *Night of the Living Dead* (1968): dominio público. El resto de pósters y capturas pertenecen a sus titulares y se muestran con fines de documentación.
 
 ## Licencia

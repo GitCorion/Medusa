@@ -39,6 +39,22 @@ duplicarla en los tests.
 No se usa el `Path` del MediaSource ni se construyen `master.m3u8`/`main.m3u8`. Todo el
 tráfico de vídeo pasa por los endpoints oficiales de Jellyfin.
 
+### 2.3. TOD (catálogo bajo demanda con `.strm`)
+
+Si el usuario tiene [TOD](https://github.com/GitCorion/TOD) y el
+[Medusa-Jellyfin-Plugin](https://github.com/GitCorion/Medusa-Jellyfin-Plugin), un `.strm` puede
+apuntar a una fuente que todavía no está preparada. En ese caso:
+
+1. Medusa llama a `Prepare` en el plugin antes de montar el player.
+2. El plugin traduce el ítem de Jellyfin a una clave de TOD y consulta `/status`.
+3. La app muestra el buffer y espera a que `stream_ready` sea verdadero.
+4. Si TOD cambia de fuente, el plugin expone `stream_generation`; la app reinicia la reproducción
+   sin salir de la ficha.
+
+Sin el plugin, el `.strm` sigue siendo un ítem normal de Jellyfin: se reproduce si ya está
+preparado, pero no hay preparación ni progreso desde la app. El orden de candidatos de las
+secciones 2.1 y 2.2 no cambia; TOD se resuelve antes de entregar la URL al reproductor.
+
 ### 2.2. Contenido normal (MKV, MP4, TS, etc.)
 
 1. `DirectStreamUrl` de Jellyfin.

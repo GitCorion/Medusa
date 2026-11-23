@@ -4,7 +4,7 @@ Este documento describe cómo está construida la app, qué piezas se comunican 
 se tomaron las decisiones que no son obvias. Está pensado para alguien que va a tocar el código
 por primera vez, no para repetir el organigrama de carpetas.
 
-**Versión documentada:** 2.3.12 (`versionCode 1000159`).
+**Versión documentada:** 2.4.0-beta.3 (`versionCode 1000162`); estable publicada: 2.3.12.
 **Plataforma:** Android TV, Google TV, Fire TV y tablet. `minSdk 26`, `compileSdk` y `targetSdk` 36.
 
 ## 1. Vista general
@@ -188,6 +188,15 @@ porque Media3 no tiene extractor; Jellyfin los transcodifica.
 Audio: baseline `aac, mp3, flac, opus, ac3, eac3`; DTS/TrueHD solo si hay passthrough real. Los
 reintentos conservan `PlaySessionId`, posición y `MediaSourceId`.
 
+### 6.1. TOD (catálogo bajo demanda)
+
+Si el usuario tiene [TOD](https://github.com/GitCorion/TOD) y el
+[Medusa-Jellyfin-Plugin](https://github.com/GitCorion/Medusa-Jellyfin-Plugin), los ítems `.strm`
+pueden no estar listos. Medusa llama a `Prepare`, consulta el estado y muestra un buffer hasta que
+`stream_ready` es verdadero; si el plugin expone `stream_generation` y cambia la fuente, la
+reproducción se reinicia sin salir de la ficha. Sin plugin, el `.strm` sigue siendo un ítem normal
+de Jellyfin y solo se reproduce si ya está preparado.
+
 Los detalles completos, incluidos los errores que rompieron `.strm` en versiones pasadas, están en
 [`PLAYBACK.md`](PLAYBACK.md). Es lectura obligatoria antes de tocar el reproductor.
 
@@ -210,15 +219,17 @@ Los detalles completos, incluidos los errores que rompieron `.strm` en versiones
 `MainActivity` aplica `MedusaTheme`, inyecta los `CompositionLocal` de acento, monocromo, tema de
 indicadores, estilo de logos y tamaño de ventana, y monta el `NavHost`.
 
-- **Foco.** Cada pantalla declara `FocusRequester` explícitos y maneja `onKeyEvent` direccional.
-  Las tarjetas usan `Border.None` en reposo y un anillo de 1,5 dp en foco; el título sube de
-  `TextSecondary` a `TextPrimary`.
-- **Corriente.** `OceanIdentity.kt` dibuja `CurrentRule`, `currentUnderline`, `BathymetricBackdrop`
-  y `SonarPulse` con `Canvas` y `Path` estáticos. `rememberReducedMotion()` lee
-  `ANIMATOR_DURATION_SCALE`: con 0, la interfaz se queda quieta.
+- **Dock de iconos.** `TvTopBar` monta cinco cápsulas de 18 dp de radio con iconos de 18 dp. El
+  foco no exige OK; la barra admite solo iconos, solo texto o ambos. Sin etiquetas ruidosas por
+  defecto.
+- **Foco.** Las tarjetas usan borde de 1,5 dp `primary` + `zIndex(10f)` + título a plena
+  luminosidad. Las vecinas conservan su opacidad y no hay escala de tarjeta. Es la decisión de
+  v2.3.12 que se mantiene.
+- **Reglas de 10 pies.** Gutter de 48 dp, hero a sangre, una acción primaria por pantalla y
+  navegación con la tecla física BACK en TV.
+- **Movimiento.** No hay animaciones autónomas ni bucles. La interfaz solo responde al mando y
+  respeta la escala de animación del sistema.
 - **Cero blur.** No se usa `Modifier.blur()` ni `RenderEffect` en ninguna pantalla.
-- **Cero escala por tarjeta.** Desde v2.3.12 no hay `focusedScale`, ni spotlight, ni dimming de
-  vecinos. Se prioriza la estabilidad horizontal del carrusel y los 60 fps.
 - **Tablet.** `WindowSizeClass` adapta anchos y la navegación táctil. En TV no se muestran botones
   de volver; en tablet sí, con 38 dp.
 
@@ -229,11 +240,12 @@ indicadores, estilo de logos y tamaño de ventana, y monta el `NavHost`.
 - Caché de imágenes de 1 GB y resize en servidor (`JellyfinImageUtils`).
 - Partículas escaladas según el dispositivo; `AppForeground` baja el ritmo del enriquecimiento.
 - `LazyRow`/`LazyColumn` con claves estables y sin animaciones autónomas.
+- No hay escala por tarjeta ni spotlight: el foco se lee por borde, zIndex y luminosidad del título.
 - Los workers pesados se posponen mientras hay reproducción o la app está visible.
 
 ## 10. Pruebas
 
-36 pruebas unitarias y una instrumentada. Las más importantes por contrato:
+38 pruebas unitarias y una instrumentada. Las más importantes por contrato:
 
 | Prueba | Qué protege |
 |---|---|
@@ -294,7 +306,7 @@ en vivo cuando el usuario configuró su clave y muestra lo que pueda de la bibli
 | Añadir una pantalla | `ui/screens/<nombre>/`, `MainActivity.kt` y un ViewModel con Hilt |
 | Añadir una fuente de datos | `data/remote/`, `data/repository/` y un método en la fachada |
 | Cambiar colores o tipografía | `ui/theme/Color.kt`, `ui/theme/Type.kt`, `DESIGN.md` |
-| Cambiar el foco o la corriente | `ui/components/OceanIdentity.kt` y los componentes de tarjeta |
+| Cambiar la navegación o el foco | `ui/components/TvTopBar.kt`, `ui/theme/TvDesignSystem.kt` y los componentes de tarjeta |
 | Tocar reproducción | `JellyfinPlaybackSourceResolver`, `PlayerViewModel`, `PlayerScreen` y `PLAYBACK.md` |
 | Cambiar el feed de Inicio | `GetHomeFeedUseCase` y `HomeViewModel` |
 | Añadir un worker | `data/worker/`, `di/` y `WorkManager` |

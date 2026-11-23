@@ -8,7 +8,7 @@
   <meta name="theme-color" content="#050a0e">
   <link rel="canonical" href="https://gitcorion.github.io/Medusa/">
   <link rel="icon" href="assets/estudio/favicon.png" type="image/png">
-  <link rel="preload" href="assets/estudio/fonts/space-grotesk-variable.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="preload" href="assets/estudio/fonts/dm-sans-variable.ttf" as="font" type="font/ttf" crossorigin>
   <link rel="stylesheet" href="assets/estudio/estudio.css">
 
   <meta property="og:type" content="website">
@@ -29,7 +29,7 @@
     "name": "Medusa TV",
     "applicationCategory": "MultimediaApplication",
     "operatingSystem": "Android 8.0 o superior",
-    "softwareVersion": "2.3.12",
+    "softwareVersion": "2.4.0-beta.3",
     "url": "https://gitcorion.github.io/Medusa/",
     "downloadUrl": "https://github.com/GitCorion/Medusa/releases/latest/download/Medusa.apk",
     "license": "https://www.gnu.org/licenses/gpl-3.0.html",
@@ -59,45 +59,26 @@
     <a class="btn btn--primary btn--small topbar__cta" href="https://github.com/GitCorion/Medusa/releases/latest/download/Medusa.apk">Descargar</a>
   </header>
 
-  <div class="depth" aria-hidden="true">
-    <span class="depth__end">0 m</span>
-    <span class="depth__track">
-      <span class="depth__fill" id="depthFill"></span>
-      <span class="depth__dot" id="depthDot"></span>
-    </span>
-    <span class="depth__end">900 m</span>
-  </div>
-
   <main id="estudio">
     <!-- ============================================================ hero -->
-    <section class="hero" id="top" data-depth="0">
-      <svg class="hero__contours" viewBox="0 0 1440 900" preserveAspectRatio="none" aria-hidden="true">
-        <g fill="none" stroke="currentColor" stroke-width="1">
-          <path d="M-80 690 C 190 610 380 760 690 672 S 1160 548 1530 640" stroke-opacity=".28"/>
-          <path d="M-80 735 C 210 650 420 810 720 718 S 1180 590 1530 684" stroke-opacity=".22"/>
-          <path d="M-80 782 C 230 700 450 856 760 766 S 1210 640 1530 730" stroke-opacity=".17"/>
-          <path d="M-80 830 C 250 750 480 900 800 812 S 1240 690 1530 778" stroke-opacity=".12"/>
-          <path d="M-80 604 C 170 528 360 664 660 586 S 1130 466 1530 552" stroke-opacity=".14"/>
-          <path d="M-80 520 C 150 448 340 574 620 504 S 1100 394 1530 470" stroke-opacity=".08"/>
-        </g>
-      </svg>
+    <section class="hero" id="top">
 
       <div class="wrap hero__inner">
         <div class="hero__copy">
           <p class="hero__meta">
             <span>Estudio de producto</span>
-            <span>Noviembre de 2026</span>
-            <span>v2.3.12</span>
+            <span>23 de noviembre de 2026</span>
+            <span>beta / 2.4.0-beta.3</span>
           </p>
 
           <h1>
             <span class="line"><span>Una interfaz</span></span>
-            <span class="line"><span>a <em>tres metros<svg class="hero__current" viewBox="0 0 420 14" preserveAspectRatio="none" aria-hidden="true"><path d="M2 8 C 70 14 132 2 202 8 S 322 14 402 6 S 414 5 418 8"/></svg></em>.</span></span>
+            <span class="line"><span>a <em>tres metros</em>.</span></span>
           </h1>
 
           <p class="hero__lead">
-            Medusa TV convierte una biblioteca Jellyfin en un instrumento de observación.
-            <strong>Quince mil títulos, cinco teclas y una sola luz</strong> que dice dónde estás.
+            Medusa TV convierte una biblioteca Jellyfin en una interfaz de diez pies pensada como
+            un instrumento de cine. <strong>DM Sans, cian eléctrico y foco de alto contraste</strong> sobre arte a sangre.
           </p>
 
           <div class="hero__actions">
@@ -123,20 +104,13 @@
             </div>
             <div>
               <dt>Biblioteca de prueba</dt>
-              <dd>15.325 títulos</dd>
+              <dd>15.360 títulos</dd>
             </div>
           </dl>
         </div>
 
         <div class="hero__demo">
           <div class="demo" data-demo>
-            <svg class="demo__arcs" viewBox="0 0 600 420" preserveAspectRatio="none" aria-hidden="true">
-              <g fill="none" stroke="currentColor" stroke-width="1">
-                <path d="M-40 360 C 130 270 330 420 640 300" stroke-opacity=".7"/>
-                <path d="M-40 395 C 150 310 360 455 640 335" stroke-opacity=".5"/>
-                <path d="M-40 430 C 170 350 390 490 640 370" stroke-opacity=".35"/>
-              </g>
-            </svg>
 
             <div class="demo__head">
               <span class="demo__title">El mando es el cursor</span>
@@ -177,7 +151,7 @@
               </span>
             </div>
           </div>
-          <p class="demo__caption" id="demoCaption">Demo de foco, sin reproducción. Un anillo de 1,5 dp, sin escalar la tarjeta ni atenuar a sus vecinas.</p>
+          <p class="demo__caption" id="demoCaption">Demo de foco, sin reproducción. Tarjetas con borde de 1,5 dp; sin escala. Las vecinas conservan su opacidad.</p>
         </div>
       </div>
 
@@ -188,7 +162,7 @@
     </section>
 
     <!-- ============================================================ distance -->
-    <section class="chapter chapter--dark" id="distancia" data-depth="40">
+    <section class="chapter chapter--dark" id="distancia">
       <div class="wrap">
         <div class="chapter__head">
           <div class="chapter__mark">
@@ -211,12 +185,11 @@
               A tres metros, el campo de visión útil se estrecha y el detalle se pierde. Lo que en un
               monitor de 27 pulgadas es un metadato discreto, en un sofá es ruido. La interfaz tiene
               que contestar tres preguntas sin que el usuario se acerque: <strong>dónde estoy, qué puedo
-              hacer y qué ha cambiado</strong>.
+              hacer y qué ha cambiado</strong>. Un gutter de 48 dp deja respirar el contenido.
             </p>
             <p>
               De ahí salen las decisiones que atraviesan toda la app: arte a sangre, títulos fuera del
-              póster, una sola acción primaria por pantalla y una corriente que subraya lo activo en
-              lugar de rellenar bloques enteros de color.
+              póster, una sola acción primaria, un dock de iconos y un foco que no rellena bloques.
             </p>
           </div>
 
@@ -285,7 +258,7 @@
           <div class="ledger__row">
             <span class="ledger__kicker">El hardware</span>
             <span class="ledger__value">60 fps</span>
-            <p class="ledger__text">Sin blur en tiempo real, sin escalar tarjetas y sin animaciones autónomas. La fluidez es una decisión de diseño.</p>
+            <p class="ledger__text">Sin blur en tiempo real, sin escalar tarjetas dentro de carruseles y sin animaciones autónomas. La fluidez es una decisión de diseño.</p>
           </div>
         </div>
 
@@ -297,17 +270,7 @@
     </section>
 
     <!-- ============================================================ system -->
-    <section class="chapter chart" id="sistema" data-depth="120">
-      <svg class="chart__contours" viewBox="0 0 1440 1400" preserveAspectRatio="none" aria-hidden="true">
-        <g fill="none" stroke="currentColor" stroke-width="1">
-          <path d="M-80 220 C 220 140 420 300 740 210 S 1200 90 1540 180"/>
-          <path d="M-80 270 C 240 186 450 346 770 254 S 1220 136 1540 226"/>
-          <path d="M-80 320 C 260 232 480 392 800 300 S 1240 182 1540 272"/>
-          <path d="M-80 980 C 210 900 430 1050 760 960 S 1220 846 1540 930"/>
-          <path d="M-80 1030 C 230 946 460 1096 790 1004 S 1240 890 1540 974"/>
-          <path d="M-80 1080 C 250 992 490 1142 820 1048 S 1260 934 1540 1018"/>
-        </g>
-      </svg>
+    <section class="chapter chart" id="sistema">
 
       <div class="wrap">
         <div class="chapter__head">
@@ -318,76 +281,76 @@
           <div>
             <h2 class="chapter__title">El sistema cabe en una sola voz.</h2>
             <p class="chapter__intro">
-              Space Grotesk cubre titulares, interfaz y datos. La identidad no vive en una tipografía
-              exótica, sino en cómo se comporta la luz: <strong>una corriente turquesa que subraya lo
-              activo</strong> y un violeta que señala lo que se sincroniza.
+              DM Sans cubre titulares, interfaz y datos. La identidad no vive en una metáfora de
+              interacción, sino en <strong>la paleta, el emblema y el arte</strong>; el comportamiento
+              del mando es el de una tele.
             </p>
           </div>
         </div>
 
         <div class="palette" aria-label="Paleta principal">
           <div class="swatch">
-            <span class="swatch__chip" style="background:#050a0e"></span>
+            <span class="swatch__chip" style="background:#04060a"></span>
             <span class="swatch__name">Tinta abisal</span>
-            <span class="swatch__hex">#050A0E</span>
+            <span class="swatch__hex">#04060A</span>
             <span class="swatch__role">Fondo raíz y tinta sobre acentos.</span>
           </div>
           <div class="swatch">
-            <span class="swatch__chip" style="background:#64e0d3"></span>
-            <span class="swatch__name">Corriente</span>
-            <span class="swatch__hex">#64E0D3</span>
-            <span class="swatch__role">Foco, progreso y selección.</span>
+            <span class="swatch__chip" style="background:#00d2ff"></span>
+            <span class="swatch__name">Cian Medusa</span>
+            <span class="swatch__hex">#00D2FF</span>
+            <span class="swatch__role">Foco, selección y progreso.</span>
           </div>
           <div class="swatch">
-            <span class="swatch__chip" style="background:#b9a7e3"></span>
-            <span class="swatch__name">Violeta medusa</span>
-            <span class="swatch__hex">#B9A7E3</span>
-            <span class="swatch__role">Sincronía y favoritos.</span>
+            <span class="swatch__chip" style="background:#0b5eff"></span>
+            <span class="swatch__name">Cobalto abisal</span>
+            <span class="swatch__hex">#0B5EFF</span>
+            <span class="swatch__role">Gradientes y brillos. No se usa como texto.</span>
           </div>
           <div class="swatch">
-            <span class="swatch__chip" style="background:#f2b441"></span>
-            <span class="swatch__name">Ámbar halógeno</span>
-            <span class="swatch__hex">#F2B441</span>
-            <span class="swatch__role">Solo valoraciones.</span>
+            <span class="swatch__chip" style="background:#8bffff"></span>
+            <span class="swatch__name">Aqua glaciar</span>
+            <span class="swatch__hex">#8BFFFF</span>
+            <span class="swatch__role">Reflejos y detalles técnicos.</span>
           </div>
           <div class="swatch">
-            <span class="swatch__chip" style="background:#e8836b"></span>
-            <span class="swatch__name">Coral</span>
-            <span class="swatch__hex">#E8836B</span>
-            <span class="swatch__role">Errores y acciones destructivas.</span>
+            <span class="swatch__chip" style="background:#e5a44d"></span>
+            <span class="swatch__name">Ámbar cine</span>
+            <span class="swatch__hex">#E5A44D</span>
+            <span class="swatch__role">Favoritos y valoraciones. El oro #D4AF37 marca lo visto.</span>
           </div>
           <div class="swatch">
-            <span class="swatch__chip" style="background:#ede8dc"></span>
-            <span class="swatch__name">Pergamino</span>
-            <span class="swatch__hex">#EDE8DC</span>
-            <span class="swatch__role">Texto principal y superficies de carta.</span>
+            <span class="swatch__chip" style="background:#ffffff"></span>
+            <span class="swatch__name">Blanco puro</span>
+            <span class="swatch__hex">#FFFFFF</span>
+            <span class="swatch__role">Texto principal sobre el abismo.</span>
           </div>
         </div>
 
         <div class="palette palette--neutral" aria-label="Neutros de profundidad">
           <div class="swatch">
-            <span class="swatch__chip" style="background:#0c1c22"></span>
+            <span class="swatch__chip" style="background:#0a0f1d"></span>
             <span class="swatch__name">Agua profunda</span>
-            <span class="swatch__hex">#0C1C22</span>
-            <span class="swatch__role">Superficies base y teclado.</span>
+            <span class="swatch__hex">#0A0F1D</span>
+            <span class="swatch__role">Superficie base y teclado.</span>
           </div>
           <div class="swatch">
-            <span class="swatch__chip" style="background:#10232a"></span>
+            <span class="swatch__chip" style="background:#10162a"></span>
             <span class="swatch__name">Agua elevada</span>
-            <span class="swatch__hex">#10232A</span>
-            <span class="swatch__role">Controles y superficies elevadas.</span>
+            <span class="swatch__hex">#10162A</span>
+            <span class="swatch__role">Controles y tarjetas elevadas.</span>
           </div>
           <div class="swatch">
-            <span class="swatch__chip" style="background:#8c9a96"></span>
-            <span class="swatch__name">Sedimento</span>
-            <span class="swatch__hex">#8C9A96</span>
+            <span class="swatch__chip" style="background:#a1a1aa"></span>
+            <span class="swatch__name">Zinc</span>
+            <span class="swatch__hex">#A1A1AA</span>
             <span class="swatch__role">Metadatos y texto secundario.</span>
           </div>
           <div class="swatch">
-            <span class="swatch__chip" style="background:#6e7c78"></span>
-            <span class="swatch__name">Grafito húmedo</span>
-            <span class="swatch__hex">#6E7C78</span>
-            <span class="swatch__role">Micro-datos y etiquetas.</span>
+            <span class="swatch__chip" style="background:#71717a"></span>
+            <span class="swatch__name">Grafito</span>
+            <span class="swatch__hex">#71717A</span>
+            <span class="swatch__role">Micro-datos y separadores.</span>
           </div>
         </div>
 
@@ -395,20 +358,20 @@
           <div class="type-specimen">
             <div class="type-specimen__big">
               <span>Aa</span>
-              <small>Space Grotesk,<br>variable y OFL.<br>Una sola voz.</small>
+              <small>DM Sans,<br>variable y OFL.<br>Una sola voz.</small>
             </div>
             <dl class="type-scale">
-              <div><dt class="t-hero">Titular</dt><dd>38 sp, 700</dd></div>
-              <div><dt class="t-section">Sección</dt><dd>21 sp, 700</dd></div>
-              <div><dt class="t-body">Cuerpo</dt><dd>15 sp, 400</dd></div>
-              <div><dt class="t-meta">Metadatos</dt><dd>13 sp, 400</dd></div>
-              <div><dt class="t-label">Etiqueta</dt><dd>12 sp, 500</dd></div>
+              <div><dt class="t-hero">Titular</dt><dd>36 sp, 700</dd></div>
+              <div><dt class="t-section">Sección</dt><dd>24 sp, 700</dd></div>
+              <div><dt class="t-body">Cuerpo</dt><dd>13 sp, 400</dd></div>
+              <div><dt class="t-meta">Título</dt><dd>16 sp, 600</dd></div>
+              <div><dt class="t-label">Etiqueta</dt><dd>11 sp, 600</dd></div>
             </dl>
             <div class="shapes" aria-label="Radios de la interfaz">
-              <div class="shape"><span class="shape__box shape__box--0"></span><span>0, pestaña</span></div>
+              <div class="shape"><span class="shape__box shape__box--circle"></span><span>circle, icono</span></div>
               <div class="shape"><span class="shape__box shape__box--4"></span><span>4, insignia</span></div>
-              <div class="shape"><span class="shape__box shape__box--10"></span><span>10, tarjeta</span></div>
-              <div class="shape"><span class="shape__box shape__box--16"></span><span>16, diálogo</span></div>
+              <div class="shape"><span class="shape__box shape__box--10"></span><span>10, tarjeta y chip</span></div>
+              <div class="shape"><span class="shape__box shape__box--18"></span><span>18, dock</span></div>
             </div>
           </div>
 
@@ -419,27 +382,32 @@
                 <tr><th scope="col">Color</th><th scope="col">Muestra</th><th scope="col">Ratio</th></tr>
               </thead>
               <tbody>
-                <tr><th scope="row">Pergamino</th><td><span class="contrast__sample" style="background:#ede8dc"></span>#EDE8DC</td><td>16,3:1</td></tr>
-                <tr><th scope="row">Corriente</th><td><span class="contrast__sample" style="background:#64e0d3"></span>#64E0D3</td><td>12,5:1</td></tr>
-                <tr><th scope="row">Ámbar</th><td><span class="contrast__sample" style="background:#f2b441"></span>#F2B441</td><td>10,8:1</td></tr>
-                <tr><th scope="row">Violeta</th><td><span class="contrast__sample" style="background:#b9a7e3"></span>#B9A7E3</td><td>9,2:1</td></tr>
-                <tr><th scope="row">Sedimento</th><td><span class="contrast__sample" style="background:#8c9a96"></span>#8C9A96</td><td>6,8:1</td></tr>
-                <tr><th scope="row">Grafito</th><td><span class="contrast__sample" style="background:#6e7c78"></span>#6E7C78</td><td>4,6:1</td></tr>
+                <tr><th scope="row">Blanco puro</th><td><span class="contrast__sample" style="background:#ffffff"></span>#FFFFFF</td><td>20,3:1</td></tr>
+                <tr><th scope="row">Aqua glaciar</th><td><span class="contrast__sample" style="background:#8bffff"></span>#8BFFFF</td><td>17,2:1</td></tr>
+                <tr><th scope="row">Nota</th><td><span class="contrast__sample" style="background:#facc15"></span>#FACC15</td><td>13,2:1</td></tr>
+                <tr><th scope="row">Cian Medusa</th><td><span class="contrast__sample" style="background:#00d2ff"></span>#00D2FF</td><td>11,3:1</td></tr>
+                <tr><th scope="row">Oro</th><td><span class="contrast__sample" style="background:#d4af37"></span>#D4AF37</td><td>9,6:1</td></tr>
+                <tr><th scope="row">Ámbar</th><td><span class="contrast__sample" style="background:#e5a44d"></span>#E5A44D</td><td>9,4:1</td></tr>
+                <tr><th scope="row">Zinc</th><td><span class="contrast__sample" style="background:#a1a1aa"></span>#A1A1AA</td><td>7,9:1</td></tr>
+                <tr><th scope="row">Grafito</th><td><span class="contrast__sample" style="background:#71717a"></span>#71717A</td><td>4,2:1</td></tr>
+                <tr><th scope="row">Cobalto</th><td><span class="contrast__sample" style="background:#0b5eff"></span>#0B5EFF</td><td>3,9:1</td></tr>
               </tbody>
             </table>
+            <p class="contrast__note">El cobalto no se usa como texto: 3,9:1 no llega a AA. Grafito se reserva a micro-datos y separadores.</p>
 
             <div class="anatomy">
               <div class="anatomy__stage">
-                <span class="anatomy__card"><img src="assets/estudio/posters/expedicion.webp" alt="Póster de Expedición: salvar nuestros mares, con el anillo de foco turquesa" width="300" height="450"></span>
+                <span class="anatomy__card"><img src="assets/estudio/posters/expedicion.webp" alt="Póster de Expedición: salvar nuestros mares, con el borde de foco turquesa" width="300" height="450"></span>
                 <span class="anatomy__title">Expedición: salvar nuestros mares</span>
                 <span class="anatomy__caption">2026, película</span>
+                <span class="anatomy__dock" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3 2 12h3v9h6v-6h2v6h6v-9h3z"/></svg></span>
               </div>
               <div>
                 <h3>Anatomía del foco</h3>
                 <ol>
-                  <li><strong>Anillo de 1,5 dp en corriente.</strong> Un solo elemento lo lleva a la vez; el reposo no simula foco.</li>
-                  <li><strong>El título sube de sedimento a pergamino.</strong> El contraste hace el trabajo que antes hacía un bloque relleno.</li>
-                  <li><strong>Una corriente bajo el título.</strong> La misma gramática que marca la pestaña activa en la barra superior.</li>
+                  <li><strong>Borde de 1,5 dp en el póster.</strong> Un solo elemento lo lleva a la vez; el reposo no simula foco.</li>
+                  <li><strong>Dock de iconos.</strong> Cápsulas de 18 dp de radio e iconos de 18 dp; sin etiquetas ruidosas.</li>
+                  <li><strong>El título sube a plena luminosidad.</strong> Las tarjetas vecinas conservan su opacidad: no hay spotlight.</li>
                   <li><strong>zIndex 10 y nada más.</strong> Sin escalar la tarjeta ni atenuar a sus vecinas: se evita el temblor y se conservan los 60 fps.</li>
                 </ol>
               </div>
@@ -450,7 +418,7 @@
     </section>
 
     <!-- ============================================================ screens -->
-    <section class="chapter chapter--dark" id="pantallas" data-depth="260">
+    <section class="chapter chapter--dark" id="pantallas">
       <div class="wrap">
         <div class="chapter__head">
           <div class="chapter__mark">
@@ -461,7 +429,7 @@
             <h2 class="chapter__title">Siete pantallas, una gramática.</h2>
             <p class="chapter__intro">
               Todas las capturas están tomadas de la app real en un televisor de 1080p, con una
-              biblioteca de 15.325 títulos. No hay maquetas: lo que ves es lo que se renderiza.
+              biblioteca de 15.360 títulos. No hay maquetas: lo que ves es lo que se renderiza.
             </p>
           </div>
         </div>
@@ -471,7 +439,7 @@
             <div class="shot__frame">
               <picture>
                 <source media="(max-width: 700px)" srcset="assets/estudio/captures/inicio-960.webp">
-                <img src="assets/estudio/captures/inicio-1600.webp" alt="Pantalla de inicio de Medusa TV con el hero de Los Anillos de Poder, la navegación tipográfica y la fila de géneros favoritos." width="1600" height="900" decoding="async">
+                <img src="assets/estudio/captures/inicio-1600.webp" alt="Pantalla de inicio de Medusa TV con el hero de Los Anillos de Poder, el dock de iconos y la fila de géneros favoritos." width="1600" height="900" decoding="async">
               </picture>
             </div>
             <figcaption>
@@ -479,8 +447,8 @@
               <div class="shot__body">
                 <p>El hero ocupa la primera pantalla completa. La navegación flota sin competir con el arte y el título del contenido manda.</p>
                 <ul class="shot__notes">
-                  <li>ClearLogo o Space Grotesk bold</li>
-                  <li>anillo de contacto y arcos batimétricos</li>
+                  <li>ClearLogo o DM Sans bold</li>
+                  <li>scrim, ClearLogo y dock de iconos</li>
                 </ul>
               </div>
             </figcaption>
@@ -496,9 +464,9 @@
             <figcaption>
               <span class="shot__name">Inicio<span>filas y carruseles</span></span>
               <div class="shot__body">
-                <p>El título y el año viven fuera del póster. Las plataformas usan placas discretas y las tarjetas de continuar viendo llevan su progreso en corriente.</p>
+                <p>Los pósters muestran el título fuera; Continuar viendo usa el card oficial con título y progreso sobre el arte. Las plataformas son placas discretas.</p>
                 <ul class="shot__notes">
-                  <li>progreso flotante en 16:9</li>
+                  <li>progreso en primary sobre 16:9</li>
                   <li>Top 10 con ranking tipográfico</li>
                 </ul>
               </div>
@@ -509,16 +477,16 @@
             <div class="shot__frame">
               <picture>
                 <source media="(max-width: 700px)" srcset="assets/estudio/captures/descubrir-960.webp">
-                <img src="assets/estudio/captures/descubrir-1600.webp" alt="Pantalla Descubrir con filtros de formato, rail de temáticas y una tarjeta enfocada con anillo turquesa." width="1600" height="900" decoding="async">
+                <img src="assets/estudio/captures/descubrir-1600.webp" alt="Pantalla Descubrir con filtros de formato, chips de género y una tarjeta enfocada con borde cian de 1,5 dp." width="1600" height="900" decoding="async">
               </picture>
             </div>
             <figcaption>
               <span class="shot__name">Descubrir<span>exploración directa</span></span>
               <div class="shot__body">
-                <p>Filtro de formato, rail de temáticas y resultados en la misma pantalla. La corriente marca el filtro activo, no un chip relleno.</p>
+                <p>Filtros de formato y chips de género. La tarjeta enfocada lleva borde de 1,5 dp; el foco no exige OK.</p>
                 <ul class="shot__notes">
                   <li>contador y atajos de mando</li>
-                  <li>el foco no atenúa la fila</li>
+                  <li>chips de 10 dp de radio</li>
                 </ul>
               </div>
             </figcaption>
@@ -536,8 +504,8 @@
               <div class="shot__body">
                 <p>Póster a la izquierda y metadatos editoriales a la derecha. La sinopsis respira sobre el fondo; no hay panel redondeado que la encierre.</p>
                 <ul class="shot__notes">
-                  <li>estados de progreso y favorito</li>
-                  <li>una sola acción primaria</li>
+                  <li>estados de visto y favorito</li>
+                  <li>acciones circulares</li>
                 </ul>
               </div>
             </figcaption>
@@ -585,15 +553,15 @@
             <div class="shot__frame">
               <picture>
                 <source media="(max-width: 700px)" srcset="assets/estudio/captures/ajustes-960.webp">
-                <img src="assets/estudio/captures/ajustes-1600.webp" alt="Pantalla de ajustes con barra lateral plana, secciones tipográficas y el estado del servidor Jellyfin con 15.325 títulos sincronizados." width="1600" height="900" decoding="async">
+                <img src="assets/estudio/captures/ajustes-1600.webp" alt="Pantalla de ajustes con barra lateral, grupos sobre superficie y el estado del servidor Jellyfin con 15.360 títulos sincronizados." width="1600" height="900" decoding="async">
               </picture>
             </div>
             <figcaption>
               <span class="shot__name">Ajustes<span>instrumento, no tienda</span></span>
               <div class="shot__body">
-                <p>Barra lateral plana y grupos tipográficos. Sin tarjetas contenedoras: la corriente vertical marca el ítem activo y el estado del servidor se lee de un vistazo.</p>
+                <p>Barra lateral y grupos sobre superficie elevada. El ítem activo se resalta con el acento y el estado del servidor se lee de un vistazo.</p>
                 <ul class="shot__notes">
-                  <li>secciones sin cajas</li>
+                  <li>tarjetas de 10 dp</li>
                   <li>sincronización y sesión visibles</li>
                 </ul>
               </div>
@@ -602,14 +570,13 @@
         </div>
 
         <p class="gallery__note">
-          Capturas tomadas el 22 de noviembre de 2026 en un televisor de 1920 × 1080, con la app
-          v2.3.12. La biblioteca y los títulos pertenecen a sus titulares.
+          Capturas tomadas el 22 de noviembre de 2026 en un televisor de 1920 × 1080, con la capa visual de main. La barra superior admite solo iconos, solo texto o ambos; las capturas muestran los dos primeros modos. La biblioteca y los títulos pertenecen a sus titulares.
         </p>
       </div>
     </section>
 
     <!-- ============================================================ engine -->
-    <section class="chapter chapter--dark" id="motor" data-depth="480">
+    <section class="chapter chapter--dark" id="motor">
       <div class="wrap">
         <div class="chapter__head">
           <div class="chapter__mark">
@@ -620,8 +587,8 @@
             <h2 class="chapter__title">Lo que no se ve también es diseño.</h2>
             <p class="chapter__intro">
               Una interfaz fluida en un televisor de gama baja no sale del renderizado: sale de
-              decidir qué no se dibuja. <strong>Cero blur, cero escala por tarjeta y una sola animación
-              de entrada</strong> son decisiones de producto, no microoptimizaciones.
+              decidir qué no se dibuja. <strong>Cero blur, cero escala por tarjeta y movimiento solo
+              cuando el mando actúa</strong> son decisiones de producto, no microoptimizaciones.
             </p>
           </div>
         </div>
@@ -630,7 +597,7 @@
           <div class="stack" aria-label="Capas de la aplicación">
             <div class="stack__row">
               <span class="stack__label">Compose TV</span>
-              <span class="stack__desc">Pantallas, foco y corriente. Sin efectos de renderizado ni sombras artificiales.</span>
+              <span class="stack__desc">Pantallas, foco y dock de iconos. Sin blur ni sombras artificiales.</span>
             </div>
             <div class="stack__row">
               <span class="stack__label">ViewModels</span>
@@ -651,13 +618,13 @@
           </div>
 
           <dl class="specs">
-            <div><dt>Versión documentada</dt><dd>2.3.12, versionCode 1000159</dd></div>
+            <div><dt>Versión documentada</dt><dd>2.4.0-beta.3, versionCode 1000162</dd></div>
             <div><dt>Plataforma</dt><dd>Android TV, Google TV, Fire TV y tablet</dd></div>
             <div><dt>Android mínimo</dt><dd>8.0, API 26</dd></div>
             <div><dt>Lenguaje</dt><dd>Kotlin 2.0.21, Compose TV y Hilt</dd></div>
             <div><dt>Reproductor</dt><dd>Media3 1.5.1 y decodificador FFmpeg</dd></div>
             <div><dt>Datos</dt><dd>Room 22, DataStore, Retrofit y OkHttp</dd></div>
-            <div><dt>Pruebas</dt><dd>36 unitarias y 1 de migración</dd></div>
+            <div><dt>Pruebas</dt><dd>38 unitarias y 1 de migración</dd></div>
             <div><dt>Distribución</dt><dd>APK firmado y OTA desde GitHub Releases</dd></div>
           </dl>
         </div>
@@ -680,14 +647,20 @@
           </ol>
         </div>
 
+        <p class="playback__note">
+          Con TOD y el plugin de Jellyfin, Medusa llama a <code>Prepare</code>, muestra el buffer y
+          reproduce cuando <code>stream_ready</code> es verdadero. Si cambia la fuente, reinicia sin
+          salir de la ficha.
+        </p>
+
         <div class="budget">
           <h3>Presupuesto de rendimiento</h3>
           <p>La regla es simple: si cuesta frames, no entra. El perfil de dispositivo y el orden de candidatos están cubiertos por pruebas golden.</p>
           <div class="budget__grid">
             <div class="budget__item"><span class="budget__value">60</span><span class="budget__label">fps objetivo en hardware de entrada</span></div>
             <div class="budget__item"><span class="budget__value">0</span><span class="budget__label">blur en tiempo real</span></div>
-            <div class="budget__item"><span class="budget__value">1,5 dp</span><span class="budget__label">anillo de foco</span></div>
-            <div class="budget__item"><span class="budget__value">1</span><span class="budget__label">pulso de sonar al entrar, nunca en bucle</span></div>
+            <div class="budget__item"><span class="budget__value">1,5 dp</span><span class="budget__label">borde de foco en tarjetas</span></div>
+            <div class="budget__item"><span class="budget__value">18 dp</span><span class="budget__label">icono del dock de navegación</span></div>
             <div class="budget__item"><span class="budget__value">0</span><span class="budget__label">escalados o atenuaciones por tarjeta</span></div>
           </div>
         </div>
@@ -695,7 +668,7 @@
     </section>
 
     <!-- ============================================================ log -->
-    <section class="chapter chapter--dark" id="registro" data-depth="900">
+    <section class="chapter chapter--dark" id="registro">
       <div class="wrap">
         <div class="chapter__head">
           <div class="chapter__mark">
@@ -703,56 +676,75 @@
             <span class="chapter__name">El registro</span>
           </div>
           <div>
-            <h2 class="chapter__title">La identidad se decidió en una tarde.</h2>
+            <h2 class="chapter__title">La identidad se asentó en tres pasadas.</h2>
             <p class="chapter__intro">
-              El 22 de noviembre de 2026 la interfaz cambió de rumbo. Estos son los commits reales,
-              con la hora y el motivo. Un estudio de diseño también es un registro de lo que se
-              descartó.
+              La primera exploró metáforas propias. La segunda probó una capa de componentes
+              Material TV. La tercera volvió al cine. Estos son los commits reales, con la hora y
+              el motivo. Un estudio de diseño también es un registro de lo que se descartó.
             </p>
           </div>
         </div>
 
-        <p class="log__date">22 de noviembre de 2026, Madrid</p>
+        <p class="log__date">22 y 23 de noviembre de 2026, Madrid</p>
         <ol class="log">
           <li class="log__item">
-            <span class="log__when"><time datetime="2026-11-22T21:27">21:27</time><code>8430b41</code></span>
+            <span class="log__when"><time datetime="2026-11-22T21:27">22 nov, 21:27</time><code>8430b41</code></span>
             <div class="log__body">
-              <h3>Identidad abisal</h3>
-              <p>El negro digital y el cian neón se sustituyen por tinta abisal, corriente turquesa y violeta de medusa. Los neutros pasan de gris frío a pergamino y sedimento.</p>
+              <h3>La paleta abisal</h3>
+              <p>El negro digital y el cian neón de plantilla se sustituyen por tinta abisal y una luz bioluminiscente. La paleta sobrevive a las tres pasadas; el acento termina en el cian <code>#00D2FF</code> del logotipo.</p>
             </div>
           </li>
           <li class="log__item">
-            <span class="log__when"><time datetime="2026-11-22T21:27">21:27</time><code>2d6958f</code></span>
+            <span class="log__when"><time datetime="2026-11-22T21:27">22 nov, 21:27</time><code>2d6958f</code></span>
             <div class="log__body">
-              <h3>Navegación tipográfica</h3>
-              <p>Las píldoras rellenas se convierten en pestañas con una corriente bajo la activa. El foco deja de ser un bloque y pasa a ser una señal.</p>
+              <h3>Navegación tipográfica, descartada</h3>
+              <p>Subrayados y pestañas de texto. Se prueba en la tele y se descarta: la navegación vuelve al dock de iconos.</p>
             </div>
           </li>
           <li class="log__item">
-            <span class="log__when"><time datetime="2026-11-22T21:28">21:28</time><code>f47e297</code></span>
+            <span class="log__when"><time datetime="2026-11-22T21:28">22 nov, 21:28</time><code>f47e297</code></span>
             <div class="log__body">
-              <h3>Hero batimétrico</h3>
-              <p>Arcos estáticos, anillo de contacto y un solo pulso de sonar. Profundidad visual sin blur y sin coste de GPU.</p>
+              <h3>Hero batimétrico, descartado</h3>
+              <p>Arcos estáticos, anillo de contacto y un pulso de sonar. La profundidad se veía bien, pero la metáfora no aportaba orientación y añadía una animación autónoma.</p>
             </div>
           </li>
           <li class="log__item">
-            <span class="log__when"><time datetime="2026-11-22T22:05">22:05</time><code>43ab861</code></span>
+            <span class="log__when"><time datetime="2026-11-22T22:05">22 nov, 22:05</time><code>43ab861</code></span>
             <div class="log__body">
               <h3>Legibilidad en la tele real</h3>
-              <p>Ajustes después de mirar la interfaz a tres metros, no en el monitor. La distancia de visionado vuelve a decidir el tamaño y el contraste.</p>
+              <p>Ajustes después de mirar la interfaz a tres metros, no en el monitor. Tamaños, contraste y objetivos. Esta pasada sobrevive entera.</p>
             </div>
           </li>
           <li class="log__item">
-            <span class="log__when"><time datetime="2026-11-22T22:11">22:11</time><code>886ec79</code></span>
+            <span class="log__when"><time datetime="2026-11-22T22:11">22 nov, 22:11</time><code>886ec79</code></span>
             <div class="log__body">
               <h3>De editorial a cinematográfico</h3>
-              <p>Se retira Fraunces. Space Grotesk queda como única voz y el hero deja de parecer una portada de periódico. La identidad se sostiene en la estructura, no en una serif prestada.</p>
+              <p>Se retira Fraunces. La interfaz se queda con una sans de instrumento; la versión final usa DM Sans. El hero deja de parecer una portada de periódico.</p>
+            </div>
+          </li>
+          <li class="log__item">
+            <span class="log__when"><time datetime="2026-11-22T22:56">22 nov, 22:56</time><code>8ed14d9</code></span>
+            <div class="log__body">
+              <h3>Material TV, descartado</h3>
+              <p>Tabs pill, foco 1,1x, chips de 48 dp y overscan de 58/28 dp. La convención de componentes no era la identidad; se retira.</p>
+            </div>
+          </li>
+          <li class="log__item">
+            <span class="log__when"><time datetime="2026-11-23T13:43">23 nov, 13:43</time><code>507fa6d</code></span>
+            <div class="log__body">
+              <h3>La identidad vuelve al cine</h3>
+              <p>DM Sans, cian <code>#00D2FF</code>, dock de iconos, borde de 1,5 dp y cero escala. La paleta gana cobalto, aqua y oro. La identidad queda en el arte, la luz y la tipografía; el comportamiento es el de una tele.</p>
             </div>
           </li>
         </ol>
 
+        <p class="log__after">
+          2.4.0-beta.3 publica esta capa; la estable sigue en 2.3.12. El pulido de badges, el Top 10
+          tipográfico y los canales estable y beta ya están en la beta.
+        </p>
+
         <blockquote class="log__quote">
-          «La medusa no vive solo en el logo; vive en la estructura.»
+          «La identidad está en lo que se renderiza: arte, luz y tipografía.»
           <cite>Sistema de diseño de Medusa, 2026</cite>
         </blockquote>
 
@@ -760,7 +752,7 @@
           <h3>Lo que queda abierto</h3>
           <ul>
             <li><strong>Tablet táctil</strong>El modo solo iconos se pensó para un mando. Falta una pasada de objetivos táctiles y gestos para el uso con el dedo.</li>
-            <li><strong>Nombres heredados</strong><code>TvPalette</code> conserva nombres como <code>TextSecondaryCool</code> o <code>FocusInk</code> que ya no describen sus valores cálidos.</li>
+            <li><strong>Nombres heredados</strong><code>TvPalette</code> conserva nombres como <code>TextSecondaryCool</code> o <code>FocusInk</code> que ya no describen sus valores actuales.</li>
             <li><strong>Medición de frames</strong>La regla de cero blur está en el código y en las revisiones, pero no hay un benchmark automático de frames en CI.</li>
           </ul>
           <p class="open__note">Auditoría de diseño del 22 de noviembre de 2026. La deuda se declara; no se esconde en una diapositiva.</p>
@@ -769,7 +761,7 @@
     </section>
 
     <!-- ============================================================ download -->
-    <section class="download" id="descargar" data-depth="900">
+    <section class="download" id="descargar">
       <div class="wrap download__inner">
         <div>
           <div class="download__app">
@@ -789,11 +781,14 @@
             <a class="btn btn--ghost" href="https://github.com/GitCorion/Medusa/releases">Ver todas las versiones</a>
           </div>
           <div class="download__meta">
-            <span>15,2 MB</span>
+            <span>unos 15 MB</span>
             <span>Android 8.0 o superior</span>
             <span>GPL-3.0</span>
             <span>Sin analítica</span>
           </div>
+          <p class="download__note">
+            La capa visual de este estudio está en la beta 2.4.0-beta.3. La estable publicada sigue siendo 2.3.12.
+          </p>
         </div>
 
         <div class="install">
@@ -851,9 +846,9 @@
         <p>
           Medusa es un cliente independiente de Jellyfin. No aloja ni distribuye contenido. Este
           producto usa la API de TMDB pero no está avalado ni certificado por TMDB. Cartel de
-          <em>Night of the Living Dead</em>: dominio público. Space Grotesk se distribuye bajo SIL OFL.
+          <em>Night of the Living Dead</em>: dominio público. DM Sans se distribuye bajo SIL OFL.
         </p>
-        <p>Última actualización: 22 de noviembre de 2026.</p>
+        <p>Última actualización: 23 de noviembre de 2026.</p>
       </div>
     </div>
   </footer>

@@ -21,7 +21,7 @@
 
 ![Medusa TV home screen on a 1080p television](docs/assets/estudio/captures/inicio-1600.webp)
 
-<p align="center"><sub>Home on a 1920 × 1080 television. Captures show the <code>main</code> visual layer; the published 2.3.12 APK does not include this pass yet.</sub></p>
+<p align="center"><sub>Home on a 1920 × 1080 television. Captures show the 2.4.0-beta.3 visual layer; the published stable release is still 2.3.12.</sub></p>
 
 ## What it is
 
@@ -29,13 +29,27 @@ Medusa TV is a native Jellyfin client for the living room. It turns your self-ho
 
 It is not a web wrapper and it does not host a catalog. The app talks directly to **your** Jellyfin server, stores the catalog on the device and only reaches the internet for metadata, discovery catalogs, Trakt (if you link it) and signed updates from GitHub Releases.
 
-**In this repository:** more than 140 Kotlin files, 36 unit tests, one migration test, 13 catalog regions and a visual identity you can explore in the [published study](https://gitcorion.github.io/Medusa/).
+**In this repository:** more than 140 Kotlin files, 38 unit tests, one migration test, 13 catalog regions and a visual identity you can explore in the [published study](https://gitcorion.github.io/Medusa/).
+
+## Catalog on demand (TOD)
+
+Medusa plays what Jellyfin has in its library. If you also use
+[TOD](https://github.com/GitCorion/TOD), the
+[Medusa-Jellyfin-Plugin](https://github.com/GitCorion/Medusa-Jellyfin-Plugin)
+turns the catalog's `.strm` items into something the TV understands:
+
+- Medusa calls `Prepare` on the plugin when an item is not ready yet.
+- The plugin maps the Jellyfin item to a TOD key and queries `/status`.
+- Medusa shows the buffer and starts playback when `stream_ready` is true.
+- If TOD switches source, the plugin exposes `stream_generation` and Medusa restarts playback without leaving the detail screen.
+
+Without the plugin, `.strm` items remain normal Jellyfin items: they play if they are already prepared, but there is no progress or preparation from the app.
 
 ## What makes it different
 
-- **Focus at three meters.** Navigation uses Material TV pill tabs and focusing a tab changes destination without pressing OK. Carousel cards get a 3 dp border; buttons, tabs and isolated controls scale 1.1x. The title moves from silt to parchment.
-- **60 fps by decision.** `Modifier.blur()` and `RenderEffect` are banned. Cards inside a carousel neither scale nor dim their siblings; motion only exists when the remote acts. No autonomous animation.
-- **Abyssal skin over Material TV.** Abyss ink, turquoise current, Medusa violet, halogen amber and Space Grotesk as the only voice. The identity lives in the palette, emblem and artwork; behavior (tabs, focus, overscan) is the platform's.
+- **Focus at three meters.** Navigation is an 18 dp icon dock; focus is carried by a 1.5 dp border on the poster, `zIndex` and the title at full brightness. Neighbouring cards keep their opacity: no spotlight and no scaling.
+- **60 fps by decision.** `Modifier.blur()` and `RenderEffect` are banned. Cards neither scale nor dim their siblings; motion only exists when the remote acts. No autonomous animation.
+- **Cinematic abyssal skin.** Abyss ink `#04060A`, electric cyan `#00D2FF`, cobalt, aqua, amber and gold with DM Sans as the only voice. The identity lives in the artwork, the light and the typography; behavior is the TV's.
 - **Privacy by architecture.** No Firebase, no analytics, no ads, no advertising ID. Credentials are encrypted with AES/GCM and the Android Keystore. There are no Medusa user servers.
 
 ## Features
@@ -43,14 +57,14 @@ It is not a web wrapper and it does not host a catalog. The app talks directly t
 | Area | What is included |
 |---|---|
 | **Home** | Full-bleed hero with ClearLogo, favorite genres, platform tiles, Continue watching with progress, Top 10 and genre carousels. Scrim, pagination and one primary action. |
-| **Navigation** | Material TV pill tabs: focusing a tab changes destination without pressing OK. The bar supports icons, text or both. 58/28 dp overscan and 48 dp targets. |
+| **Navigation** | 18 dp icon dock: focus does not require OK. The bar supports icons, text or both, and BACK remains the way back. |
 | **Discover** | Format filters (all, catalog, movies, series), theme rail and live results. Result count and remote shortcuts. |
 | **Search** | Ten-foot on-screen keyboard with predictive suggestions, instant results and remote Jellyfin search. |
 | **Detail** | Poster, editorial metadata, container-free synopsis, progress/favorite states, seasons and episodes, saga titles and recommendations. |
-| **Player** | Media3 + FFmpeg. DirectPlay, remux, HLS and transcoding; `.strm`; subtitles; audio tracks; HDMI passthrough; next episode; intro, recap and preview skipping via Media Segments; automatic refresh-rate switching. |
+| **Player** | Media3 + FFmpeg. DirectPlay, remux, HLS and transcoding; `.strm`; TOD preparation with the plugin; subtitles; audio tracks; HDMI passthrough; next episode; intro, recap and preview skipping via Media Segments; automatic refresh-rate switching. |
 | **Library** | Room with full-text search, local cache, parental access filters, collections and sagas, incremental background sync. |
 | **Personalization** | Accent themes (bioluminescent cyan, cinema amber, pure white), monochrome mode, button styles, particles, navigation sounds, theme songs, subtitle size and background, reduced motion. |
-| **Integrations** | Jellyfin with LAN discovery, manual URL, subpaths, IPv6, pinned self-signed certificates and Quick Connect. Trakt via device code. TMDB with your own key. Static regional catalogs. OTA from GitHub Releases. |
+| **Integrations** | Jellyfin with LAN discovery, manual URL, subpaths, IPv6, pinned self-signed certificates and Quick Connect. TOD with the Jellyfin plugin. Trakt via device code. TMDB with your own key. Static regional catalogs. OTA from GitHub Releases. |
 
 ## Installation
 
@@ -73,7 +87,7 @@ adb install -r Medusa.apk
 adb shell am start -n tv.medusa.app/tv.medusa.app.MainActivity
 ```
 
-> The `applicationId` is `tv.medusa.app`. Earlier versions used `tv.medusa.app.beta`: if you come from them, install this build and uninstall the old one once. Android treats them as different apps and settings are not migrated.
+> The `applicationId` is `tv.medusa.app` from 2.4.0. The published 2.3.12 APK still uses `tv.medusa.app.beta`: if you come from it, install the new build and uninstall the old one once. Android treats them as different apps and settings are not migrated.
 
 ### Updates
 
@@ -100,7 +114,7 @@ There are two channels: **stable** (`latest` Releases) and **beta** (pre-release
   <img src="docs/assets/estudio/captures/ajustes-960.webp" width="49%" alt="Settings screen with sidebar and server status">
 </p>
 
-<p align="center"><sub>Real captures from the app on a 1080p television. <a href="https://gitcorion.github.io/Medusa/#pantallas">See all seven screens and the design decisions behind them</a>.</sub></p>
+<p align="center"><sub>Real captures from the app on a 1080p television. The top bar supports icons only, text only or both; the captures show the first two modes. <a href="https://gitcorion.github.io/Medusa/#pantallas">See all seven screens and the design decisions behind them</a>.</sub></p>
 
 ## Architecture
 
@@ -130,7 +144,7 @@ The decisions behind it:
 - **Encrypted credentials.** AES/GCM with an Android Keystore key. If the Keystore fails, the write fails; a token is never stored in plain text.
 - **Cascading playback.** `.strm` resolved on the server, remux, DirectStream, transcode and full transcoding. The device profile is serialized with `encodeDefaults = true` and verified by a golden test.
 - **Bounded background work.** Sync, collection indexing and synopsis enrichment run in separate workers with bounded concurrency and pause while the app is in the foreground.
-- **Performance measured on a TV.** Baseline Profile, zero blur, Material TV components and focus scaling only on isolated controls. No autonomous animation.
+- **Performance measured on a TV.** Baseline Profile, zero blur, TV components and a 1.5 dp focus border. Zero per-card scaling.
 
 Full detail on layers, flows and tests is in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). The playback invariants that must not be broken are in [`docs/PLAYBACK.md`](docs/PLAYBACK.md).
 
@@ -273,7 +287,7 @@ Commits follow a conventional style in Spanish, for example `fix(player): reinte
 - [Trakt](https://trakt.tv): scrobbling, lists and collections.
 - [Android Media3](https://developer.android.com/media/media3): playback and media session.
 - [Kotlin](https://kotlinlang.org), [Jetpack Compose](https://developer.android.com/compose), [Hilt](https://dagger.dev/hilt/), [Room](https://developer.android.com/training/data-storage/room), [Coil](https://coil-kt.github.io/coil/), [Retrofit](https://square.github.io/retrofit/), [OkHttp](https://square.github.io/okhttp/) and [WorkManager](https://developer.android.com/topic/libraries/architecture/workmanager).
-- [Space Grotesk](https://github.com/floriankarsten/space-grotesk), under the SIL Open Font License.
+- [DM Sans](https://github.com/googlefonts/dm-fonts), under the SIL Open Font License.
 - *Night of the Living Dead* (1968) poster: public domain. All other posters and captures belong to their respective owners and are shown for documentation purposes.
 
 ## License

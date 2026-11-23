@@ -57,45 +57,6 @@
     select(0, false);
   }
 
-  /* ---------------------------------------------------------- depth rail */
-  var depthFill = document.getElementById("depthFill");
-  var depthDot = document.getElementById("depthDot");
-  var depthSections = Array.prototype.slice.call(document.querySelectorAll("[data-depth]"));
-  var ticking = false;
-
-  var updateDepth = function () {
-    if (!depthFill || !depthDot) return;
-
-    var marker = window.scrollY + window.innerHeight * 0.42;
-    var current = depthSections[0];
-
-    depthSections.forEach(function (section) {
-      var top = section.getBoundingClientRect().top + window.scrollY;
-      if (top <= marker) current = section;
-    });
-
-    var depth = current ? Number(current.dataset.depth) || 0 : 0;
-    var fill = Math.min(100, (depth / 900) * 100);
-
-    depthFill.style.height = fill + "%";
-    depthDot.style.top = fill + "%";
-
-    ticking = false;
-  };
-
-  var requestDepth = function () {
-    if (!ticking) {
-      ticking = true;
-      window.requestAnimationFrame(updateDepth);
-    }
-  };
-
-  if (depthFill) {
-    window.addEventListener("scroll", requestDepth, { passive: true });
-    window.addEventListener("resize", requestDepth);
-    updateDepth();
-  }
-
   /* ---------------------------------------------------------- current nav */
   var links = Array.prototype.slice.call(document.querySelectorAll(".topnav a"));
   var sections = links

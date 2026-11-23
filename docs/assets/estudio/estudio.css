@@ -5,33 +5,37 @@
    ========================================================================== */
 
 @font-face {
-  font-family: "Space Grotesk";
-  src: url("fonts/space-grotesk-variable.ttf") format("truetype");
-  font-weight: 300 700;
+  font-family: "DM Sans";
+  src: url("fonts/dm-sans-variable.ttf") format("truetype");
+  font-weight: 100 1000;
   font-style: normal;
   font-display: swap;
 }
 
 :root {
-  --abyss: #050a0e;
-  --deep: #0c1c22;
-  --raised: #10232a;
-  --current: #64e0d3;
-  --violet: #b9a7e3;
-  --amber: #f2b441;
-  --coral: #e8836b;
-  --parchment: #ede8dc;
-  --silt: #8c9a96;
-  --graphite: #6e7c78;
+  --abyss: #04060a;
+  --deep: #0a0f1d;
+  --raised: #10162a;
+  --current: #00d2ff;
+  --cobalt: #0b5eff;
+  --aqua: #8bffff;
+  --amber: #e5a44d;
+  --gold: #d4af37;
+  --rating: #facc15;
+  --coral: #ef4444;
+  --paper: #f7f5f0;
+  --parchment: #ffffff;
+  --silt: #a1a1aa;
+  --graphite: #71717a;
 
   --ink: var(--parchment);
   --ink-soft: var(--silt);
   --ink-faint: var(--graphite);
-  --line: rgba(237, 232, 220, 0.12);
-  --line-soft: rgba(237, 232, 220, 0.07);
+  --line: rgba(255, 255, 255, 0.12);
+  --line-soft: rgba(255, 255, 255, 0.07);
   --chart-line: rgba(5, 10, 14, 0.08);
 
-  --font: "Space Grotesk", "Avenir Next", "Helvetica Neue", Arial, sans-serif;
+  --font: "DM Sans", "Avenir Next", "Helvetica Neue", Arial, sans-serif;
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
   --wrap: 1280px;
   --gutter: clamp(20px, 4.2vw, 64px);
@@ -208,34 +212,25 @@ hr {
 }
 
 .topnav a {
-  position: relative;
   color: var(--silt);
   font-size: 14px;
   font-weight: 500;
   text-decoration: none;
-  padding: 6px 0;
-  transition: color 180ms var(--ease);
+  padding: 8px 14px;
+  border-radius: 999px;
+  transition:
+    background 180ms var(--ease),
+    color 180ms var(--ease);
 }
 
-.topnav a::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 100%;
-  bottom: 0;
-  height: 1.5px;
-  background: var(--current);
-  transition: right 260ms var(--ease);
-}
-
-.topnav a:hover,
-.topnav a.is-current {
+.topnav a:hover {
+  background: rgba(255, 255, 255, 0.07);
   color: var(--parchment);
 }
 
-.topnav a:hover::after,
-.topnav a.is-current::after {
-  right: 0;
+.topnav a.is-current {
+  background: var(--current);
+  color: var(--abyss);
 }
 
 .topbar__cta {
@@ -270,7 +265,7 @@ hr {
 }
 
 .btn--primary:hover {
-  background: var(--parchment);
+  background: var(--paper);
   color: var(--abyss);
 }
 
@@ -297,56 +292,6 @@ hr {
   flex: 0 0 auto;
 }
 
-/* ---------------------------------------------------------------- depth rail */
-
-.depth {
-  position: fixed;
-  left: 18px;
-  top: 50%;
-  z-index: 30;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  width: 52px;
-  transform: translateY(-50%);
-  pointer-events: none;
-}
-
-.depth__track {
-  position: relative;
-  display: block;
-  width: 1px;
-  height: 34vh;
-  background: var(--line);
-}
-
-.depth__fill {
-  position: absolute;
-  inset: 0 0 auto;
-  height: 0;
-  background: var(--current);
-  transition: height 320ms var(--ease);
-}
-
-.depth__dot {
-  position: absolute;
-  left: 50%;
-  top: 0;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--current);
-  transform: translate(-50%, -50%);
-  transition: top 320ms var(--ease);
-}
-
-.depth__end {
-  color: var(--graphite);
-  font-size: 9px;
-  font-variant-numeric: tabular-nums;
-}
-
 section[id] {
   scroll-margin-top: 80px;
 }
@@ -361,19 +306,9 @@ section[id] {
   padding: 132px 0 76px;
   overflow: hidden;
   background:
-    radial-gradient(900px 620px at 72% 16%, rgba(100, 224, 211, 0.11), transparent 62%),
-    radial-gradient(700px 520px at 10% 88%, rgba(185, 167, 227, 0.06), transparent 65%),
+    radial-gradient(900px 620px at 72% 16%, rgba(0, 210, 255, 0.11), transparent 62%),
+    radial-gradient(700px 520px at 10% 88%, rgba(11, 94, 255, 0.07), transparent 65%),
     var(--abyss);
-}
-
-.hero__contours {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  color: var(--current);
-  opacity: 0.4;
-  pointer-events: none;
 }
 
 .hero__inner {
@@ -432,42 +367,12 @@ section[id] {
   white-space: nowrap;
 }
 
-.hero__current {
-  position: absolute;
-  left: -1%;
-  bottom: 0;
-  width: 102%;
-  height: 0.09em;
-  overflow: visible;
-  color: var(--current);
-  pointer-events: none;
-  transform-origin: left;
-  animation: draw 900ms var(--ease) 650ms both;
-}
-
-.hero__current path {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 5;
-  stroke-linecap: round;
-  vector-effect: non-scaling-stroke;
-}
-
 @keyframes shutter {
   from {
     clip-path: inset(0 100% 0 0);
   }
   to {
     clip-path: inset(0 0 0 0);
-  }
-}
-
-@keyframes draw {
-  from {
-    transform: scaleX(0);
-  }
-  to {
-    transform: scaleX(1);
   }
 }
 
@@ -508,7 +413,7 @@ section[id] {
 }
 
 .hero__specs dt {
-  color: var(--graphite);
+  color: var(--silt);
   font-size: 11px;
   font-weight: 500;
 }
@@ -533,19 +438,6 @@ section[id] {
   background:
     linear-gradient(160deg, rgba(12, 28, 34, 0.94), rgba(5, 10, 14, 0.98));
   isolation: isolate;
-}
-
-.demo__arcs {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  color: var(--current);
-  opacity: 0.12;
-  border-radius: 16px;
-  overflow: hidden;
-  pointer-events: none;
-  z-index: -1;
 }
 
 .demo__head {
@@ -724,7 +616,7 @@ kbd {
 .demo__caption {
   margin-top: 12px;
   padding-left: 2px;
-  color: var(--graphite);
+  color: var(--silt);
   font-size: 11px;
   line-height: 1.5;
 }
@@ -738,7 +630,7 @@ kbd {
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  color: var(--graphite);
+  color: var(--silt);
   font-size: 11px;
   font-weight: 500;
   text-decoration: none;
@@ -802,7 +694,7 @@ kbd {
 }
 
 .chapter__name {
-  color: var(--graphite);
+  color: var(--silt);
   font-size: 11px;
   font-weight: 500;
 }
@@ -828,7 +720,7 @@ kbd {
 
 .section-label {
   display: inline-block;
-  color: var(--graphite);
+  color: var(--silt);
   font-size: 11px;
   font-weight: 500;
   line-height: 1.4;
@@ -860,7 +752,7 @@ kbd {
   border: 1px solid var(--line);
   border-radius: 16px;
   background:
-    radial-gradient(600px 300px at 70% 20%, rgba(100, 224, 211, 0.08), transparent 70%),
+    radial-gradient(600px 300px at 70% 20%, rgba(0, 210, 255, 0.08), transparent 70%),
     var(--deep);
 }
 
@@ -871,7 +763,7 @@ kbd {
 
 .distance__caption {
   margin-top: 14px;
-  color: var(--graphite);
+  color: var(--silt);
   font-size: 11px;
   line-height: 1.55;
 }
@@ -891,7 +783,7 @@ kbd {
 }
 
 .ledger__kicker {
-  color: var(--graphite);
+  color: var(--silt);
   font-size: 12px;
   font-weight: 500;
 }
@@ -925,7 +817,7 @@ kbd {
 .pullquote cite {
   display: block;
   margin-top: 18px;
-  color: var(--graphite);
+  color: var(--silt);
   font-size: 11px;
   font-style: normal;
   font-weight: 500;
@@ -936,7 +828,7 @@ kbd {
 
 .chart {
   position: relative;
-  background: var(--parchment);
+  background: var(--paper);
   color: var(--abyss);
   overflow: hidden;
 }
@@ -957,16 +849,6 @@ kbd {
 
 .chart .chapter__name {
   color: rgba(5, 10, 14, 0.66);
-}
-
-.chart__contours {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  color: var(--abyss);
-  opacity: 0.06;
-  pointer-events: none;
 }
 
 .chart .wrap {
@@ -1074,6 +956,13 @@ kbd {
   font-variant-numeric: tabular-nums;
 }
 
+.contrast__note {
+  margin-top: 10px;
+  color: rgba(5, 10, 14, 0.7);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
 .contrast__sample {
   display: inline-block;
   width: 9px;
@@ -1177,8 +1066,8 @@ kbd {
   background: rgba(5, 10, 14, 0.04);
 }
 
-.shape__box--0 {
-  border-radius: 0;
+.shape__box--circle {
+  border-radius: 999px;
 }
 
 .shape__box--4 {
@@ -1189,8 +1078,8 @@ kbd {
   border-radius: 10px;
 }
 
-.shape__box--16 {
-  border-radius: 16px;
+.shape__box--18 {
+  border-radius: 18px;
 }
 
 .shape span {
@@ -1248,8 +1137,26 @@ kbd {
 }
 
 .anatomy__caption {
-  color: var(--graphite);
+  color: var(--silt);
   font-size: 10.5px;
+}
+
+.anatomy__dock {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: flex-start;
+  width: 44px;
+  height: 44px;
+  margin-top: 6px;
+  border-radius: 18px;
+  background: var(--current);
+  color: var(--abyss);
+}
+
+.anatomy__dock svg {
+  width: 20px;
+  height: 20px;
 }
 
 .anatomy h3 {
@@ -1344,7 +1251,7 @@ kbd {
 .shot__name span {
   display: block;
   margin-top: 2px;
-  color: var(--graphite);
+  color: var(--silt);
   font-size: 10.5px;
   font-weight: 500;
 }
@@ -1365,7 +1272,7 @@ kbd {
 .shot__notes li {
   position: relative;
   padding-left: 12px;
-  color: var(--graphite);
+  color: var(--silt);
   font-size: 11px;
   line-height: 1.5;
 }
@@ -1385,7 +1292,7 @@ kbd {
   margin-top: clamp(32px, 4vw, 48px);
   padding-top: 18px;
   border-top: 1px solid var(--line);
-  color: var(--graphite);
+  color: var(--silt);
   font-size: 11px;
   line-height: 1.6;
 }
@@ -1478,7 +1385,7 @@ kbd {
 }
 
 .specs dt {
-  color: var(--graphite);
+  color: var(--silt);
   font-size: 10.5px;
   font-weight: 500;
 }
@@ -1544,6 +1451,16 @@ kbd {
   font-weight: 500;
 }
 
+.playback__note {
+  max-width: 70ch;
+  margin-top: 28px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line-soft);
+  color: var(--silt);
+  font-size: 11.5px;
+  line-height: 1.65;
+}
+
 .budget {
   margin-top: clamp(48px, 6vw, 76px);
 }
@@ -1573,7 +1490,7 @@ kbd {
 }
 
 .budget__label {
-  color: var(--graphite);
+  color: var(--silt);
   font-size: 11px;
   line-height: 1.45;
 }
@@ -1582,7 +1499,7 @@ kbd {
 
 .log__date {
   margin-bottom: 28px;
-  color: var(--graphite);
+  color: var(--silt);
   font-size: 11px;
   font-weight: 500;
 }
@@ -1627,7 +1544,7 @@ kbd {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  color: var(--graphite);
+  color: var(--silt);
   font-size: 11px;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
@@ -1635,7 +1552,7 @@ kbd {
 }
 
 .log__when code {
-  color: var(--graphite);
+  color: var(--silt);
   font-size: 10.5px;
 }
 
@@ -1659,6 +1576,14 @@ kbd {
   font-weight: 500;
 }
 
+.log__after {
+  max-width: 64ch;
+  margin-top: 4px;
+  color: var(--silt);
+  font-size: 11.5px;
+  line-height: 1.65;
+}
+
 .log__quote {
   max-width: 22ch;
   margin: clamp(44px, 6vw, 72px) 0;
@@ -1674,7 +1599,7 @@ kbd {
 .log__quote cite {
   display: block;
   margin-top: 12px;
-  color: var(--graphite);
+  color: var(--silt);
   font-size: 11px;
   font-style: normal;
   font-weight: 500;
@@ -1715,7 +1640,7 @@ kbd {
 
 .open__note {
   margin-top: 20px;
-  color: var(--graphite);
+  color: var(--silt);
   font-size: 11px;
 }
 
@@ -1725,7 +1650,7 @@ kbd {
   position: relative;
   padding: clamp(80px, 10vw, 130px) 0;
   background:
-    radial-gradient(800px 460px at 78% 20%, rgba(100, 224, 211, 0.1), transparent 65%),
+    radial-gradient(800px 460px at 78% 20%, rgba(0, 210, 255, 0.1), transparent 65%),
     linear-gradient(180deg, var(--deep), var(--abyss));
   border-top: 1px solid var(--line-soft);
   overflow: hidden;
@@ -1792,7 +1717,7 @@ kbd {
   flex-wrap: wrap;
   gap: 6px 18px;
   margin-top: 18px;
-  color: var(--graphite);
+  color: var(--silt);
   font-size: 11px;
 }
 
@@ -1810,6 +1735,14 @@ kbd {
   height: 4px;
   border-radius: 50%;
   background: var(--current);
+}
+
+.download__note {
+  max-width: 54ch;
+  margin-top: 16px;
+  color: var(--silt);
+  font-size: 10.5px;
+  line-height: 1.55;
 }
 
 .install {
@@ -1875,7 +1808,7 @@ kbd {
 
 .install__note {
   margin-top: 18px;
-  color: var(--graphite);
+  color: var(--silt);
   font-size: 10.5px;
   line-height: 1.55;
 }
@@ -1937,7 +1870,7 @@ kbd {
   margin-top: 44px;
   padding-top: 18px;
   border-top: 1px solid var(--line-soft);
-  color: var(--graphite);
+  color: var(--silt);
   font-size: 10.5px;
   line-height: 1.6;
 }
@@ -1951,10 +1884,6 @@ kbd {
 @media (max-width: 1180px) {
   :root {
     --gutter: 40px;
-  }
-
-  .depth {
-    display: none;
   }
 
   .hero__inner {
@@ -2090,7 +2019,8 @@ kbd {
   }
 
   .hero__meta span + span {
-    padding-left: 10px;
+    padding-left: 0;
+    border-left: 0;
   }
 
   .hero__specs {
@@ -2262,8 +2192,7 @@ kbd {
     transition-duration: 0.01ms !important;
   }
 
-  .hero h1 .line > span,
-  .hero__current {
+  .hero h1 .line > span {
     clip-path: none;
     transform: none;
   }
