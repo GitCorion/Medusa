@@ -1,11 +1,11 @@
 {
-  "versionCode": 1000172,
-  "versionName": "2.4.2-beta.5",
+  "versionCode": 1000173,
+  "versionName": "2.4.2-beta.6",
   "minSupportedVersionCode": 1000105,
   "forceUpdate": false,
   "killSwitch": false,
-  "releaseNotes": "### Corregido\n\n- Reproductor: se eleva el timeout de resolución inicial a 15 minutos (`TORRENT_PREP_TIMEOUT_MS`) para streams On-Demand (TOD), evitando que el watchdog de 75 s salte prematuramente mientras Jellyfin y el enjambre torrent completan el buffer inicial.\n- Overlay TOD: corrección del cálculo y visualización del buffer cuando `buffer_bytes` es nulo o 0 pero `downloaded_bytes` ya contiene datos (>0 MB), garantizando que el porcentaje y la barra de progreso reflejen el avance real en la interfaz.",
-  "apkUrl": "https://github.com/GitCorion/Medusa/releases/download/v2.4.2-beta.5/Medusa.apk",
-  "apkSha256": "2717922a57bacbc141ae70e67dfaff109a22d2062887d35f09455e3554a43268",
+  "releaseNotes": "### Corregido\n\n- Overlay TOD: la barra, la ETA y el aviso de \"conectando con peers\" salen del mismo valor\n  (búfer contiguo o datos descargados). Antes la barra podía ir al 98 % mientras el texto decía\n  que seguía conectando, o al revés.\n- Reproductor: si tras 45 s montado no ha entrado ni un byte, se reintenta una vez la resolución\n  del stream. Cubre el estado colgado en \"Cargando reproducción…\" que dejaba un fallo previo de\n  preparación, sin peticiones al servidor.\n- Reproductor: el `PlayerStreamInfo` de respaldo de `retryWithTranscoding` conserva `isOnDemand`,\n  para que el watchdog de 15 min no vuelva a 75 s después de un reintento.",
+  "apkUrl": "https://github.com/GitCorion/Medusa/releases/download/v2.4.2-beta.6/Medusa.apk",
+  "apkSha256": "c1fd2ae2275a4ece5294da7c36d6fd17a4c54db7c41020c86653706a8c36d60b",
   "signatures": []
 }
