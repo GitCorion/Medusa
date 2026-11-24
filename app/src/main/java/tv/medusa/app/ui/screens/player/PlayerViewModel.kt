@@ -898,7 +898,8 @@ class PlayerViewModel @Inject constructor(
                 startPositionMs = resumePositionMs,
                 playSessionId = activePlaySessionId,
                 mediaSourceId = chosenMs.id,
-                isStrm = isStrmSource
+                isStrm = isStrmSource,
+                isOnDemand = isCurrentItemOnDemand
             ) ?: PlayerStreamInfo(
                 playableId = currentPlayableId,
                 primaryStreamUrl = finalCandidates.first(),
@@ -912,7 +913,8 @@ class PlayerViewModel @Inject constructor(
                 currentVersionName = chosenMs.name ?: "",
                 playSessionId = activePlaySessionId,
                 mediaSourceId = chosenMs.id,
-                isStrm = isStrmSource
+                isStrm = isStrmSource,
+                isOnDemand = isCurrentItemOnDemand
             )
             hasReportedStart = false
             val sanitizedNew = JellyfinDeviceProfileBuilder.sanitizeUrlForLog(finalCandidates.first())
@@ -1746,40 +1748,22 @@ class PlayerViewModel @Inject constructor(
             return
         }
 
-        val sizeBytes = status.sizeBytes ?: 0L
-        val rawDownloaded = (status.downloadedBytes ?: 0L).takeIf { it > 0L }
-            ?: if (sizeBytes > 0) (status.safeProgress * sizeBytes).toLong() else 0L
-        val bufferBytes = status.bufferBytes?.takeIf { it > 0L } ?: rawDownloaded
-        val effectiveDownloaded = if (rawDownloaded > 0L) rawDownloaded else bufferBytes
-
-        // Meta de búfer de arranque: del backend (buffer_required) si existe,
-        // o cálculo local: tamaño / 120 clampeado a [32 MB, 128 MB]
-        val targetBufferBytes = when {
-            (status.bufferRequired ?: 0L) > 0L -> status.bufferRequired!!
-            sizeBytes > 0L -> (sizeBytes / 120L).coerceIn(32L * 1024L * 1024L, 128L * 1024L * 1024L)
-            else -> 50L * 1024L * 1024L
-        }
-
-        // Progreso del búfer de arranque (0f a 1f) basado en buffer contiguo o datos descargados
-        val bufferProgress = when {
-            status.streamReady -> 1.0f
-            targetBufferBytes > 0L -> (effectiveDownloaded.toFloat() / targetBufferBytes.toFloat()).coerceIn(0f, 0.98f)
-            else -> status.safeProgress
-        }
+        val buffer = torrentBufferInfo(
+            bufferBytes = status.bufferBytes,
+            downloadedBytes = status.downloadedBytes,
+            sizeBytes = status.sizeBytes ?: 0L,
+            progress = status.safeProgress,
+            bufferRequired = status.bufferRequired,
+            speedBps = status.safeSpeedBps,
+            streamReady = status.streamReady
+        )
 
         val speedBps = status.safeSpeedBps
         val seeds = status.safeSeeds
         val peers = status.safePeers
         val now = System.currentTimeMillis()
 
-        // ETA calculada específicamente para completar el búfer contiguo inicial
-        val bufferEtaSeconds = if (!status.streamReady && speedBps > 0 && bufferBytes < targetBufferBytes) {
-            ((targetBufferBytes - bufferBytes) / speedBps).coerceAtLeast(1L)
-        } else {
-            0L
-        }
-
-        if (bufferBytes <= 1024L && (status.state.equals("DOWNLOADING", ignoreCase = true) || status.state.equals("COLD", ignoreCase = true))) {
+        if (buffer.isZeroProgress && (status.state.equals("DOWNLOADING", ignoreCase = true) || status.state.equals("COLD", ignoreCase = true))) {
             if (torrentZeroProgressStartMs == null) {
                 torrentZeroProgressStartMs = now
             }
@@ -1821,11 +1805,11 @@ class PlayerViewModel @Inject constructor(
             title = title,
             backdropUrl = backdropUrl,
             state = status.state,
-            progress = bufferProgress,
-            downloadedBytes = effectiveDownloaded,
-            targetBufferBytes = targetBufferBytes,
+            progress = buffer.progress,
+            downloadedBytes = buffer.displayedBytes,
+            targetBufferBytes = buffer.targetBytes,
             speedBps = speedBps,
-            etaSeconds = bufferEtaSeconds,
+            etaSeconds = buffer.etaSeconds,
             seeds = seeds,
             peers = peers,
             streamReady = status.streamReady,

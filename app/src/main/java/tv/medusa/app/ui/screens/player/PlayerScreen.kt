@@ -226,6 +226,13 @@ private data class TrackItem(
     val jellyfinStreamIndex: Int? = null
 )
 
+/**
+ * Si el reproductor lleva este tiempo montado sin recibir un solo byte, se
+ * reintenta la resolución. Cubre el estado colgado en "Cargando reproducción…"
+ * que dejaba un fallo previo de preparación (sin peticiones al servidor).
+ */
+private const val PLAYER_STALL_TIMEOUT_MS = 45_000L
+
 private fun Modifier.monochromeFilter(isMonochrome: Boolean): Modifier = if (isMonochrome) {
     this.drawWithContent {
         val paint = Paint().apply {
@@ -1297,13 +1304,33 @@ private fun PlayerContent(
     val isTodPreparing = torrentOverlayState != null &&
             torrentOverlayState?.state != "ERROR" &&
             torrentOverlayState?.state != "UNAVAILABLE"
-    val timeoutMs = if (info.isOnDemand) TORRENT_PREP_TIMEOUT_MS else 75_000L
+    val timeoutMs = playerResolveTimeoutMs(info.isOnDemand)
     LaunchedEffect(info, retryTrigger, isTodPreparing) {
         if (isTodPreparing) return@LaunchedEffect
         delay(timeoutMs)
         if (!hasEverBeenReady && exoPlayer.playbackState == Player.STATE_BUFFERING && exoPlayer.currentPosition <= 0L) {
             playerErrorMessage = context.applicationContext.getString(R.string.player_resolve_timeout)
             isBuffering = false
+        }
+    }
+
+    // Vigilante de arranque: si no entra ni un byte, reintentar la resolución una vez.
+    var stallRetried by remember { mutableStateOf(false) }
+    LaunchedEffect(info, retryTrigger, isTodPreparing) {
+        if (isTodPreparing || stallRetried) return@LaunchedEffect
+        var waited = 0L
+        while (waited < PLAYER_STALL_TIMEOUT_MS) {
+            delay(1_000L)
+            waited += 1_000L
+            if (hasEverBeenReady || exoPlayer.bufferedPosition > 0L) return@LaunchedEffect
+            if (exoPlayer.playbackState != Player.STATE_BUFFERING) return@LaunchedEffect
+        }
+        if (!hasEverBeenReady && exoPlayer.bufferedPosition == 0L) {
+            stallRetried = true
+            Log.w("PlayerScreen", "Sin datos tras ${PLAYER_STALL_TIMEOUT_MS} ms en el reproductor; reintentando resolución")
+            viewModel.retryWithTranscoding(
+                resumePositionMs = exoPlayer.currentPosition.coerceAtLeast(0L)
+            )
         }
     }
 

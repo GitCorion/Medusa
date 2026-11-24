@@ -1,0 +1,124 @@
+package tv.medusa.app.ui.screens.player
+
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+/**
+ * El overlay TOD no puede contradecirse: la barra, la ETA y el aviso de
+ * "conectando con peers" tienen que salir del mismo valor.
+ */
+class TorrentBufferMathTest {
+
+    private val mb = 1024L * 1024L
+    private val size = 4000L * mb
+
+    @Test
+    fun `usa buffer_bytes cuando es el unico dato`() {
+        val info = torrentBufferInfo(
+            bufferBytes = 8 * mb,
+            downloadedBytes = null,
+            sizeBytes = size,
+            progress = 0f,
+            bufferRequired = 16 * mb,
+            speedBps = 0L,
+            streamReady = false
+        )
+
+        assertEquals(8 * mb, info.displayedBytes)
+        assertEquals(8 * mb, info.bufferBytes)
+        assertEquals(0.5f, info.progress, 0.001f)
+        assertFalse(info.isZeroProgress)
+    }
+
+    @Test
+    fun `cae a downloaded_bytes cuando buffer_bytes es cero`() {
+        val info = torrentBufferInfo(
+            bufferBytes = 0L,
+            downloadedBytes = 500 * mb,
+            sizeBytes = size,
+            progress = 0.12f,
+            bufferRequired = 16 * mb,
+            speedBps = 2 * mb,
+            streamReady = false
+        )
+
+        assertEquals(500 * mb, info.displayedBytes)
+        assertEquals(0.98f, info.progress, 0.001f)
+        assertFalse(info.isZeroProgress)
+        // Ya ha pasado el objetivo mostrado: no tiene sentido enseñar ETA.
+        assertEquals(0L, info.etaSeconds)
+    }
+
+    @Test
+    fun `la eta usa el mismo valor que la barra`() {
+        val info = torrentBufferInfo(
+            bufferBytes = 0L,
+            downloadedBytes = 4 * mb,
+            sizeBytes = size,
+            progress = 0.001f,
+            bufferRequired = 16 * mb,
+            speedBps = 2 * mb,
+            streamReady = false
+        )
+
+        assertEquals(4 * mb, info.displayedBytes)
+        assertEquals(6L, info.etaSeconds)
+    }
+
+    @Test
+    fun `stream_ready completa la barra y quita la eta`() {
+        val info = torrentBufferInfo(
+            bufferBytes = 1 * mb,
+            downloadedBytes = 1 * mb,
+            sizeBytes = size,
+            progress = 0.001f,
+            bufferRequired = 16 * mb,
+            speedBps = 5 * mb,
+            streamReady = true
+        )
+
+        assertEquals(1.0f, info.progress, 0.0f)
+        assertEquals(0L, info.etaSeconds)
+    }
+
+    @Test
+    fun `sin datos ni tamano avisa de cero progreso`() {
+        val info = torrentBufferInfo(
+            bufferBytes = null,
+            downloadedBytes = null,
+            sizeBytes = 0L,
+            progress = 0f,
+            bufferRequired = null,
+            speedBps = 0L,
+            streamReady = false
+        )
+
+        assertTrue(info.isZeroProgress)
+        assertEquals(0L, info.displayedBytes)
+        assertEquals(50 * mb, info.targetBytes)
+    }
+
+    @Test
+    fun `el objetivo por tamano se queda en el rango 32-128 MB`() {
+        val info = torrentBufferInfo(
+            bufferBytes = null,
+            downloadedBytes = null,
+            sizeBytes = size,
+            progress = 0f,
+            bufferRequired = null,
+            speedBps = 0L,
+            streamReady = false
+        )
+
+        assertEquals(size / 120, info.targetBytes)
+        assertTrue(info.targetBytes in (32 * mb)..(128 * mb))
+    }
+
+    @Test
+    fun `el watchdog es de 15 minutos solo en on-demand`() {
+        assertEquals(900_000L, playerResolveTimeoutMs(isOnDemand = true))
+        assertEquals(75_000L, playerResolveTimeoutMs(isOnDemand = false))
+    }
+}

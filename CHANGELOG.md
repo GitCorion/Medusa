@@ -10,6 +10,19 @@ no tienen entrada detallada en este archivo; su histórico está en los Releases
 
 ## [Unreleased]
 
+## [2.4.2-beta.6] - 2026-11-24
+
+### Corregido
+
+- Overlay TOD: la barra, la ETA y el aviso de "conectando con peers" salen del mismo valor
+  (búfer contiguo o datos descargados). Antes la barra podía ir al 98 % mientras el texto decía
+  que seguía conectando, o al revés.
+- Reproductor: si tras 45 s montado no ha entrado ni un byte, se reintenta una vez la resolución
+  del stream. Cubre el estado colgado en "Cargando reproducción…" que dejaba un fallo previo de
+  preparación, sin peticiones al servidor.
+- Reproductor: el `PlayerStreamInfo` de respaldo de `retryWithTranscoding` conserva `isOnDemand`,
+  para que el watchdog de 15 min no vuelva a 75 s después de un reintento.
+
 ## [2.4.2-beta.5] - 2026-11-24
 
 ### Corregido
