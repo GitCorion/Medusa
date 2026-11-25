@@ -1442,6 +1442,9 @@ private fun AboutCategory(
         ) {
             Button(
                 onClick = { viewModel.checkForAppUpdates() },
+                modifier = Modifier.handleTouchClick(enabled = !uiState.isCheckingUpdate) {
+                    viewModel.checkForAppUpdates()
+                },
                 colors = ButtonDefaults.colors(
                     containerColor = tv.medusa.app.ui.theme.TvPalette.GlassSubtle,
                     contentColor = TextPrimary,
@@ -1464,6 +1467,10 @@ private fun AboutCategory(
             if (hasUpdate && updateInfo?.apkUrl != null) {
                 Button(
                     onClick = { viewModel.downloadAndInstallUpdate() },
+                    modifier = Modifier.handleTouchClick(enabled = uiState.downloadProgress == null) {
+                        viewModel.downloadAndInstallUpdate()
+                    },
+                    enabled = uiState.downloadProgress == null,
                     colors = ButtonDefaults.colors(
                         containerColor = tv.medusa.app.ui.theme.TvPalette.GlassRaised,
                         contentColor = TextPrimary,
@@ -2668,7 +2675,15 @@ private fun TvPrivacyPolicyDialog(
                                 focusedContainerColor = focusColor,
                                 focusedContentColor = focusContent
                             ),
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier
+                                .weight(1f)
+                                .handleTouchClick {
+                                    try {
+                                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(ApiConfig.PRIVACY_POLICY_URL))
+                                        context.startActivity(intent)
+                                    } catch (_: Exception) {
+                                    }
+                                }
                         ) {
                             Text(
                                 text = stringResource(R.string.settings_privacy_policy_dialog_open_browser),
@@ -2690,6 +2705,7 @@ private fun TvPrivacyPolicyDialog(
                             modifier = Modifier
                                 .weight(1f)
                                 .focusRequester(focusRequester)
+                                .handleTouchClick { onDismiss() }
                         ) {
                             Text(
                                 text = stringResource(R.string.settings_privacy_policy_dialog_close),

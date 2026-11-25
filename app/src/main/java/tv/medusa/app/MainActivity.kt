@@ -6,6 +6,7 @@ import android.os.SystemClock
 import android.util.Log
 import android.view.KeyEvent
 import android.view.SoundEffectConstants
+import android.widget.Toast
 import androidx.lifecycle.lifecycleScope
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.LinearProgressIndicator
@@ -27,6 +28,7 @@ import tv.medusa.app.ui.theme.LocalIndicatorTheme
 import tv.medusa.app.ui.theme.LocalIsMonochromeTheme
 import tv.medusa.app.ui.theme.TvAccent
 import tv.medusa.app.ui.theme.LocalPlatformLogoStyle
+import tv.medusa.app.ui.util.handleTouchClick
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -714,18 +716,26 @@ fun MedusaApp(
                             val themeFocusContent = if (isMonochrome) Color(0xFF0F172A) else TvAccent.getFocusedContentColor(accentColor)
 
                             if (canUpdate) {
-                                Button(
-                                    onClick = {
-                                        val info = updateInfo
-                                        val apkUrl = info?.apkUrl
-                                        if (apkUrl != null) {
-                                            coroutineScope.launch {
-                                                appUpdateManager.downloadAndInstall(apkUrl, info?.apkSha256)
-                                            }
+                                val triggerDownload = {
+                                    val info = updateInfo
+                                    val apkUrl = info?.apkUrl
+                                    if (apkUrl != null && !isDownloading) {
+                                        coroutineScope.launch {
+                                            appUpdateManager.downloadAndInstall(apkUrl, info.apkSha256)
+                                                .onFailure { err ->
+                                                    val msg = err.localizedMessage?.takeIf { it.isNotBlank() }
+                                                        ?: context.getString(R.string.settings_error_unknown)
+                                                    Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                                                }
                                         }
-                                    },
+                                    }
+                                }
+                                Button(
+                                    onClick = triggerDownload,
                                     enabled = !isDownloading,
-                                    modifier = Modifier.focusRequester(updateButtonFocusRequester),
+                                    modifier = Modifier
+                                        .focusRequester(updateButtonFocusRequester)
+                                        .handleTouchClick(enabled = !isDownloading, onClick = triggerDownload),
                                     colors = ButtonDefaults.colors(
                                         containerColor = if (isForce) Color(0xFFEF4444) else (if (isMonochrome) TextPrimary else themeFocusColor),
                                         contentColor = if (isForce) TextPrimary else themeFocusContent,
@@ -745,8 +755,17 @@ fun MedusaApp(
                             if (!canUpdate) {
                                 // Sin asset verificable (p. ej. modo fail-closed sin red):
                                 // dar siempre una salida y una forma de reintentar.
+                                val retryCheck = {
+                                    coroutineScope.launch { appUpdateManager.checkForUpdates() }
+                                    Unit
+                                }
+                                val closeApp = {
+                                    (context as? Activity)?.finish()
+                                    Unit
+                                }
                                 Button(
-                                    onClick = { coroutineScope.launch { appUpdateManager.checkForUpdates() } },
+                                    onClick = retryCheck,
+                                    modifier = Modifier.handleTouchClick(onClick = retryCheck),
                                     colors = ButtonDefaults.colors(
                                         containerColor = Color(0x18FFFFFF),
                                         contentColor = TextPrimary,
@@ -758,7 +777,8 @@ fun MedusaApp(
                                     Text(stringResource(R.string.update_retry), fontSize = 13.sp)
                                 }
                                 Button(
-                                    onClick = { (context as? Activity)?.finish() },
+                                    onClick = closeApp,
+                                    modifier = Modifier.handleTouchClick(onClick = closeApp),
                                     colors = ButtonDefaults.colors(
                                         containerColor = Color(0x18FFFFFF),
                                         contentColor = TextPrimary,
@@ -772,12 +792,16 @@ fun MedusaApp(
                             }
 
                             if (!isForce) {
-                                Button(
-                                    onClick = {
+                                val dismissUpdate = {
+                                    if (!isDownloading) {
                                         showUpdateBanner = false
                                         updateDismissed = true
-                                    },
+                                    }
+                                }
+                                Button(
+                                    onClick = dismissUpdate,
                                     enabled = !isDownloading,
+                                    modifier = Modifier.handleTouchClick(enabled = !isDownloading, onClick = dismissUpdate),
                                     colors = ButtonDefaults.colors(
                                         containerColor = Color(0x18FFFFFF),
                                         contentColor = Color(0xFFCBD5E1),
