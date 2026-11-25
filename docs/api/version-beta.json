@@ -1,11 +1,11 @@
 {
-  "versionCode": 1000173,
-  "versionName": "2.4.2-beta.6",
+  "versionCode": 1000174,
+  "versionName": "2.4.2-beta.7",
   "minSupportedVersionCode": 1000105,
   "forceUpdate": false,
   "killSwitch": false,
-  "releaseNotes": "### Corregido\n\n- Overlay TOD: la barra, la ETA y el aviso de \"conectando con peers\" salen del mismo valor\n  (búfer contiguo o datos descargados). Antes la barra podía ir al 98 % mientras el texto decía\n  que seguía conectando, o al revés.\n- Reproductor: si tras 45 s montado no ha entrado ni un byte, se reintenta una vez la resolución\n  del stream. Cubre el estado colgado en \"Cargando reproducción…\" que dejaba un fallo previo de\n  preparación, sin peticiones al servidor.\n- Reproductor: el `PlayerStreamInfo` de respaldo de `retryWithTranscoding` conserva `isOnDemand`,\n  para que el watchdog de 15 min no vuelva a 75 s después de un reintento.",
-  "apkUrl": "https://github.com/GitCorion/Medusa/releases/download/v2.4.2-beta.6/Medusa.apk",
-  "apkSha256": "c1fd2ae2275a4ece5294da7c36d6fd17a4c54db7c41020c86653706a8c36d60b",
+  "releaseNotes": "### Corregido\n\n- Reproductor On-Demand (TOD): se desactiva la lectura asíncrona de Cues al final del MKV en TOD para evitar errores de `Range` EOF, se recuperan bloqueos/rebuffer y errores HTTP 503 consultando `/Medusa/Status/{itemId}` sin quemar pistas de audio y se renueva/libera el *lease* en el servidor (`Medusa/Lease/{itemId}`).\n- Reproductor: ajuste en los candidatos de reproducción directa (.strm y fuentes alternativas) con extensión efectiva para mejorar la compatibilidad con Jellyfin.\n- Sincronización con Jellyfin: se purgan de la caché local los títulos borrados en Jellyfin (tanto en sincronización delta como completa) junto a sus episodios huérfanos, y se evita marcar como vistas las series vacías sin episodios (`totalItemCount <= 0`).",
+  "apkUrl": "https://github.com/GitCorion/Medusa/releases/download/v2.4.2-beta.7/Medusa.apk",
+  "apkSha256": "35d891c1f6903f4bcc07d947eccda5cd0d46dd20df48b042f186d6ec9e3ff000",
   "signatures": []
 }
