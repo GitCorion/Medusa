@@ -1,11 +1,11 @@
 {
-  "versionCode": 1000174,
-  "versionName": "2.4.2-beta.7",
+  "versionCode": 1000175,
+  "versionName": "2.4.2-beta.8",
   "minSupportedVersionCode": 1000105,
   "forceUpdate": false,
   "killSwitch": false,
-  "releaseNotes": "### Corregido\n\n- Reproductor On-Demand (TOD): se desactiva la lectura asíncrona de Cues al final del MKV en TOD para evitar errores de `Range` EOF, se recuperan bloqueos/rebuffer y errores HTTP 503 consultando `/Medusa/Status/{itemId}` sin quemar pistas de audio y se renueva/libera el *lease* en el servidor (`Medusa/Lease/{itemId}`).\n- Reproductor: ajuste en los candidatos de reproducción directa (.strm y fuentes alternativas) con extensión efectiva para mejorar la compatibilidad con Jellyfin.\n- Sincronización con Jellyfin: se purgan de la caché local los títulos borrados en Jellyfin (tanto en sincronización delta como completa) junto a sus episodios huérfanos, y se evita marcar como vistas las series vacías sin episodios (`totalItemCount <= 0`).",
-  "apkUrl": "https://github.com/GitCorion/Medusa/releases/download/v2.4.2-beta.7/Medusa.apk",
-  "apkSha256": "35d891c1f6903f4bcc07d947eccda5cd0d46dd20df48b042f186d6ec9e3ff000",
+  "releaseNotes": "### Cambiado\n\n- Sincronización con Jellyfin: se incrementa `SYNC_ALGORITHM_VERSION` a `5` para forzar una única resincronización completa automática tras actualizar, purgando títulos y episodios eliminados del servidor y recuperando elementos omitidos en sincronizaciones incrementales previas.",
+  "apkUrl": "https://github.com/GitCorion/Medusa/releases/download/v2.4.2-beta.8/Medusa.apk",
+  "apkSha256": "0fcd612e549dcce85c99e7b9ea8ce84c41e8927157cc56e36a34917d6fb7cab3",
   "signatures": []
 }
