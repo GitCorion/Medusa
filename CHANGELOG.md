@@ -10,6 +10,14 @@ no tienen entrada detallada en este archivo; su histórico está en los Releases
 
 ## [Unreleased]
 
+## [2.4.2-beta.7] - 2026-11-25
+
+### Corregido
+
+- Reproductor On-Demand (TOD): se desactiva la lectura asíncrona de Cues al final del MKV en TOD para evitar errores de `Range` EOF, se recuperan bloqueos/rebuffer y errores HTTP 503 consultando `/Medusa/Status/{itemId}` sin quemar pistas de audio y se renueva/libera el *lease* en el servidor (`Medusa/Lease/{itemId}`).
+- Reproductor: ajuste en los candidatos de reproducción directa (.strm y fuentes alternativas) con extensión efectiva para mejorar la compatibilidad con Jellyfin.
+- Sincronización con Jellyfin: se purgan de la caché local los títulos borrados en Jellyfin (tanto en sincronización delta como completa) junto a sus episodios huérfanos, y se evita marcar como vistas las series vacías sin episodios (`totalItemCount <= 0`).
+
 ## [2.4.2-beta.6] - 2026-11-24
 
 ### Corregido
