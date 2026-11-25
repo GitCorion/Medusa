@@ -10,6 +10,12 @@ no tienen entrada detallada en este archivo; su histórico está en los Releases
 
 ## [Unreleased]
 
+## [2.4.2-beta.8] - 2026-11-26
+
+### Cambiado
+
+- Sincronización con Jellyfin: se incrementa `SYNC_ALGORITHM_VERSION` a `5` para forzar una única resincronización completa automática tras actualizar, purgando títulos y episodios eliminados del servidor y recuperando elementos omitidos en sincronizaciones incrementales previas.
+
 ## [2.4.2-beta.7] - 2026-11-25
 
 ### Corregido

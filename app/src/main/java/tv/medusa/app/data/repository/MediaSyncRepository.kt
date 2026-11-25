@@ -78,7 +78,7 @@ class MediaSyncRepository(
          * las instalaciones con una versión anterior se resincronizan enteras una vez (arregla
          * catálogos truncados por bugs previos de paginación).
          */
-        const val SYNC_ALGORITHM_VERSION = 4
+        const val SYNC_ALGORITHM_VERSION = 5
 
         /** Tope de páginas por vista: evita bucles si el servidor ignora `StartIndex`. */
         private const val MAX_PAGES_PER_VIEW = 1000
