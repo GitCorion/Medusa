@@ -318,9 +318,12 @@ class JellyfinMediaRemoteRepository(
             val entities = response.items.map { it.toEntity() }
             if (entities.isNotEmpty()) {
                 jellyfinDao.insertOrUpdateAll(jellyfinDao.preserveKnownLastPlayedDates(entities))
-                MediaCaches.serverRecentlyPlayedCache.put(cacheKey, entities)
             }
-            entities
+            val playedEntities = entities.filter { it.isPlayed }
+            if (playedEntities.isNotEmpty()) {
+                MediaCaches.serverRecentlyPlayedCache.put(cacheKey, playedEntities)
+            }
+            playedEntities
         }
     }
 
@@ -661,7 +664,22 @@ class JellyfinMediaRemoteRepository(
                 fields = "UserData,IndexNumber,ParentIndexNumber"
             )
             val validEpisodes = response.items.filter { (it.parentIndexNumber ?: 0) > 0 && (it.indexNumber ?: 0) > 0 }
-            if (validEpisodes.isEmpty()) return@runCatching null
+            if (validEpisodes.isEmpty()) {
+                jellyfinDao.getItemById(seriesId)?.let { localSeries ->
+                    jellyfinDao.insertOrUpdate(
+                        localSeries.copy(
+                            totalItemCount = 0,
+                            unplayedItemCount = 0,
+                            isPlayed = false
+                        )
+                    )
+                }
+                return@runCatching SeriesEpisodeStats(
+                    totalUniqueEpisodes = 0,
+                    playedUniqueEpisodes = 0,
+                    unplayedUniqueEpisodes = 0
+                )
+            }
 
             // Deduplicate across multi-sources and versions by (seasonNumber, episodeNumber)
             val uniqueEpisodes = validEpisodes.groupBy { Pair(it.parentIndexNumber ?: 1, it.indexNumber ?: 1) }
@@ -859,7 +877,7 @@ internal fun JellyfinItemDto.toEntity(): JellyfinMediaEntity {
     val totalCount = effectiveItemCount
     val unplayedCount = userData?.unplayedItemCount
     val itemType = type ?: "Unknown"
-    val playedStatus = userData?.isPlayedForType(itemType) ?: false
+    val playedStatus = userData?.isPlayedForType(itemType, totalCount) ?: false
     val lastPlayedMs = parseIsoToEpochMs(userData?.effectiveLastPlayedDate)
     val premiereMs = parseIsoToEpochMs(premiereDate).takeIf { it > 0L }
         ?: parseIsoToEpochMs(dateCreated).takeIf { it > 0L }

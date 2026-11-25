@@ -132,7 +132,7 @@ class DetailViewModel @Inject constructor(
                         logoUrl = logoUrl,
                         baseUrl = baseUrl,
                         isFavorite = initialEntity.isFavorite,
-                        isPlayed = initialEntity.isPlayed || (initialEntity.unplayedItemCount == 0 && (initialEntity.totalItemCount ?: 0) > 0),
+                        isPlayed = initialEntity.isEffectiveSeriesPlayed(),
                         buttonStyle = prefs.buttonStyle,
                         accentColor = prefs.accentColor,
                         isLoadingEpisodes = isTv
@@ -218,7 +218,7 @@ class DetailViewModel @Inject constructor(
                         logoUrl = logoUrl,
                         baseUrl = baseUrl,
                         isFavorite = finalEntity.isFavorite,
-                        isPlayed = finalEntity.isPlayed || (finalEntity.unplayedItemCount == 0 && (finalEntity.totalItemCount ?: 0) > 0),
+                        isPlayed = finalEntity.isEffectiveSeriesPlayed(),
                         buttonStyle = prefs.buttonStyle,
                         accentColor = prefs.accentColor,
                         isLoadingEpisodes = isTv
@@ -360,7 +360,7 @@ class DetailViewModel @Inject constructor(
                                 selectedSeasonId = selectedSeasonId,
                                 nextUpEpisode = nextUpEpisode,
                                 isLoadingEpisodes = false,
-                                isPlayed = updatedEntity.isPlayed || (updatedEntity.unplayedItemCount == 0 && (updatedEntity.totalItemCount ?: 0) > 0)
+                                isPlayed = updatedEntity.isEffectiveSeriesPlayed()
                             )
                         }
                     }
@@ -560,5 +560,12 @@ class DetailViewModel @Inject constructor(
 
     private fun JellyfinMediaEntity.toMediaItem(baseUrl: String, token: String, source: MediaSource): MediaItem {
         return toOptimizedMediaItem(baseUrl, token, source)
+    }
+
+    private fun JellyfinMediaEntity.isEffectiveSeriesPlayed(): Boolean {
+        if (type.equals("Series", ignoreCase = true) && totalItemCount != null && totalItemCount <= 0) {
+            return false
+        }
+        return isPlayed || (unplayedItemCount == 0 && (totalItemCount ?: 0) > 0)
     }
 }

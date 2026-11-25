@@ -93,10 +93,13 @@ data class JellyfinUserDataDto(
     val rawPlayed: Boolean
         get() = played || playedLower || isPlayedAlias || isPlayedAliasLower
 
-    fun isPlayedForType(type: String?): Boolean {
+    fun isPlayedForType(type: String?, totalItemCount: Int? = null): Boolean {
         return if (type.equals("Series", ignoreCase = true)) {
-            // For Series: ONLY mark played if there are 0 unplayed episodes
-            if (unplayedItemCount != null) {
+            // Una serie sin capítulos (totalItemCount == 0) no puede considerarse vista:
+            // Jellyfin devuelve UnplayedItemCount = 0 y Played = true en series vacías.
+            if (totalItemCount != null && totalItemCount <= 0) {
+                false
+            } else if (unplayedItemCount != null) {
                 unplayedItemCount == 0
             } else {
                 rawPlayed

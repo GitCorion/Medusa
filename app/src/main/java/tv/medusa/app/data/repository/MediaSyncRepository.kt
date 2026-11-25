@@ -20,6 +20,7 @@ import tv.medusa.app.data.local.db.preserveKnownLastPlayedDates
 import tv.medusa.app.data.remote.NetworkClientFactory
 import tv.medusa.app.data.remote.jellyfin.JellyfinApiService
 import tv.medusa.app.data.remote.jellyfin.JellyfinAuthRequest
+import tv.medusa.app.data.remote.jellyfin.JellyfinItemDto
 import tv.medusa.app.data.remote.jellyfin.JellyfinItemsResponse
 import tv.medusa.app.data.worker.JellyfinSyncWorker
 import tv.medusa.app.data.worker.OverviewEnrichmentWorker
@@ -471,6 +472,8 @@ class MediaSyncRepository(
 
                 // Purga entradas caducadas (>24h) de la caché de votos TMDB para que no crezca sin límite.
                 runCatching { tmdbVoteCacheDao?.deleteExpired() }
+                // Corrige series sin capítulos que hayan quedado marcadas como vistas en caché.
+                runCatching { jellyfinDao.fixEmptySeriesPlayedStatus() }
 
                 val currentLocal = jellyfinDao.getCount()
 
@@ -539,7 +542,7 @@ class MediaSyncRepository(
                         val isSeries = view?.collectionType.equals("tvshows", ignoreCase = true) || view?.name.equals("Series", ignoreCase = true)
                         val isMovies = view?.collectionType.equals("movies", ignoreCase = true) || view?.name.equals("Movies", ignoreCase = true) || view?.name.equals("Películas", ignoreCase = true)
                         val itemType = if (isSeries) "Series" else if (isMovies) "Movie" else "Movie,Series"
-                        val viewFields = if (isSeries) {
+                        val viewFields = if (!isMovies) {
                             "Overview,ProviderIds,PrimaryImageTag,BackdropImageTags,CommunityRating,OfficialRating,Genres,Tags,UserData,RecursiveItemCount"
                         } else {
                             "Overview,ProviderIds,PrimaryImageTag,BackdropImageTags,CommunityRating,OfficialRating,Genres,Tags,UserData"
@@ -617,11 +620,30 @@ class MediaSyncRepository(
                         } while (true)
                     }
 
+                    // Reconciliar borrados contra el servidor: `minDateLastSaved` no devuelve ítems
+                    // eliminados, así que consultamos solo los IDs actuales por vista para purgar
+                    // de Room lo que ya no existe en Jellyfin.
+                    val deletedCount = reconcileDeletedItemsWithServer(
+                        api = api,
+                        serverUrl = serverUrl,
+                        initialToken = currentToken,
+                        initialUserId = currentUserId,
+                        views = mediaViews.ifEmpty { listOf(null) },
+                        onAuthRefreshed = { newToken, newUserId ->
+                            currentToken = newToken
+                            currentUserId = newUserId
+                            authHeader = buildJellyfinAuthHeader(token = newToken)
+                        }
+                    )
+
                     // La lista de IDs permitidos se siembra desde el catálogo local ya sincronizado.
-                    // Solo hace falta reescribirla si el delta trajo novedades: un delta vacío
+                    // Solo hace falta reescribirla si el delta trajo novedades o hubo borrados: un delta vacío
                     // reemplazaba 33k filas y un fichero de 1,1 MB en cada arranque.
-                    if (deltaCount > 0) {
+                    if (deltaCount > 0 || deletedCount > 0) {
                         accessPolicy.saveAllowedIds(currentUserId, jellyfinDao.getAllIds().toSet())
+                    }
+                    if (deletedCount > 0) {
+                        MediaCaches.invalidateServerCaches()
                     }
 
                     val nowTimestamp = Instant.now().truncatedTo(ChronoUnit.SECONDS).toString()
@@ -666,6 +688,9 @@ class MediaSyncRepository(
 
                 val viewsToSync = if (mediaViews.isNotEmpty()) mediaViews else listOf(null)
                 var cumulativeViewTotal = savedTotalSynced
+                val trackFullSyncIds = savedViewIndex == 0 && savedOffset == 0
+                val fullSyncServerIds = if (trackFullSyncIds) HashSet<String>() else null
+                var fullSyncReportedTotal = 0
 
                 for ((viewIndex, view) in viewsToSync.withIndex()) {
                     if (viewIndex < savedViewIndex) {
@@ -678,7 +703,7 @@ class MediaSyncRepository(
                     val isMovies = view?.collectionType.equals("movies", ignoreCase = true) || view?.name.equals("Movies", ignoreCase = true) || view?.name.equals("Películas", ignoreCase = true)
                     val itemType = if (isSeries) "Series" else if (isMovies) "Movie" else "Movie,Series"
                     val isRecursive = true // En Jellyfin un UserView contiene subcarpetas/colecciones; recursive = true es necesario
-                    val viewFields = if (isSeries) {
+                    val viewFields = if (!isMovies) {
                         "Overview,ProviderIds,PrimaryImageTag,BackdropImageTags,CommunityRating,OfficialRating,Genres,Tags,UserData,RecursiveItemCount"
                     } else {
                         "Overview,ProviderIds,PrimaryImageTag,BackdropImageTags,CommunityRating,OfficialRating,Genres,Tags,UserData"
@@ -767,12 +792,14 @@ class MediaSyncRepository(
                         val items = response.items
                         if (viewTotal == 0 && response.totalRecordCount > 0) {
                             viewTotal = response.totalRecordCount
+                            fullSyncReportedTotal += viewTotal
                             cumulativeViewTotal += viewTotal
                             grandTotal = maxOf(grandTotal, cumulativeViewTotal)
                         }
 
                         if (items.isEmpty()) break
 
+                        fullSyncServerIds?.addAll(items.map { it.id })
                         val entities = jellyfinDao.preserveKnownLastPlayedDates(items.map { it.toEntity() })
                         jellyfinDao.insertOrUpdateAll(entities)
 
@@ -808,6 +835,29 @@ class MediaSyncRepository(
                 }
 
                 userPreferencesRepository?.clearSyncCheckpoint()
+
+                // Eliminar de Room el contenido que ya no existe en Jellyfin.
+                val fullSyncDeleted = if (fullSyncServerIds != null && (fullSyncServerIds.isNotEmpty() || fullSyncReportedTotal == 0)) {
+                    val toDelete = computeDeletedIds(jellyfinDao.getAllCatalogIds(), fullSyncServerIds)
+                    deleteRemovedItems(toDelete)
+                    toDelete.size
+                } else {
+                    reconcileDeletedItemsWithServer(
+                        api = api,
+                        serverUrl = serverUrl,
+                        initialToken = currentToken,
+                        initialUserId = currentUserId,
+                        views = viewsToSync,
+                        onAuthRefreshed = { newToken, newUserId ->
+                            currentToken = newToken
+                            currentUserId = newUserId
+                            authHeader = buildJellyfinAuthHeader(token = newToken)
+                        }
+                    )
+                }
+                if (fullSyncDeleted > 0) {
+                    MediaCaches.invalidateServerCaches()
+                }
 
                 // Sembrar los IDs permitidos desde el catálogo local ya completo: sustituye a la
                 // reconciliación paginada contra el servidor y deja la lista siempre coherente
@@ -888,6 +938,116 @@ class MediaSyncRepository(
             syncMutex.unlock()
         }
     }
+
+    /**
+     * Consulta en modo ligero (sin campos pesados, imágenes ni datos de usuario) los IDs
+     * actuales de cada vista en Jellyfin y borra de Room cualquier ítem local que ya no exista
+     * en el servidor. Si alguna vista o página falla, aborta sin borrar nada.
+     */
+    private suspend fun reconcileDeletedItemsWithServer(
+        api: JellyfinApiService,
+        serverUrl: String,
+        initialToken: String,
+        initialUserId: String,
+        views: List<JellyfinItemDto?>,
+        onAuthRefreshed: (newToken: String, newUserId: String) -> Unit
+    ): Int {
+        val localIds = jellyfinDao.getAllCatalogIds()
+        if (localIds.isEmpty()) return 0
+
+        var activeToken = initialToken
+        var activeUserId = initialUserId
+        var authHeader = buildJellyfinAuthHeader(token = activeToken)
+        val serverIds = HashSet<String>(localIds.size)
+        var reportedTotalAcrossViews = 0
+        val pageSize = 1000
+
+        for (view in views) {
+            val isSeries = view?.collectionType.equals("tvshows", ignoreCase = true) ||
+                view?.name.equals("Series", ignoreCase = true)
+            val isMovies = view?.collectionType.equals("movies", ignoreCase = true) ||
+                view?.name.equals("Movies", ignoreCase = true) ||
+                view?.name.equals("Películas", ignoreCase = true)
+            val itemType = if (isSeries) "Series" else if (isMovies) "Movie" else "Movie,Series"
+
+            var startIndex = 0
+            var viewTotal = 0
+            var pages = 0
+
+            do {
+                val response = runCatching {
+                    try {
+                        api.getLibraryItems(
+                            authHeader = authHeader,
+                            userId = activeUserId,
+                            parentId = view?.id,
+                            includeItemTypes = itemType,
+                            fields = "",
+                            recursive = true,
+                            limit = pageSize,
+                            startIndex = startIndex,
+                            enableTotalRecordCount = (viewTotal == 0),
+                            enableImages = false,
+                            enableUserData = false
+                        )
+                    } catch (e: Exception) {
+                        if (e is retrofit2.HttpException && e.code() == 401) {
+                            val reauthed = trySilentReauthenticate(serverUrl)
+                            if (reauthed != null) {
+                                activeToken = reauthed.first
+                                activeUserId = reauthed.second
+                                authHeader = buildJellyfinAuthHeader(token = activeToken)
+                                onAuthRefreshed(activeToken, activeUserId)
+                                api.getLibraryItems(
+                                    authHeader = authHeader,
+                                    userId = activeUserId,
+                                    parentId = view?.id,
+                                    includeItemTypes = itemType,
+                                    fields = "",
+                                    recursive = true,
+                                    limit = pageSize,
+                                    startIndex = startIndex,
+                                    enableTotalRecordCount = (viewTotal == 0),
+                                    enableImages = false,
+                                    enableUserData = false
+                                )
+                            } else throw e
+                        } else throw e
+                    }
+                }.getOrNull() ?: return 0 // Error de red: abortar reconciliación sin borrar nada
+
+                if (viewTotal == 0 && response.totalRecordCount > 0) {
+                    viewTotal = response.totalRecordCount
+                    reportedTotalAcrossViews += viewTotal
+                }
+                val items = response.items
+                serverIds.addAll(items.map { it.id })
+                startIndex += items.size
+                pages++
+                if (pages > MAX_PAGES_PER_VIEW) return 0
+                if (!hasMorePages(items.size, startIndex, pageSize, viewTotal)) break
+            } while (viewTotal == 0 || startIndex < viewTotal)
+        }
+
+        if (serverIds.isEmpty() && reportedTotalAcrossViews > 0) return 0
+        val toDelete = computeDeletedIds(localIds, serverIds)
+        deleteRemovedItems(toDelete)
+        return toDelete.size
+    }
+
+    private suspend fun deleteRemovedItems(deletedIds: List<String>) {
+        if (deletedIds.isEmpty()) return
+        deletedIds.chunked(500).forEach { batch ->
+            jellyfinDao.deleteByIds(batch)
+            jellyfinDao.deleteEpisodesBySeriesIds(batch)
+        }
+        jellyfinDao.deleteOrphanedEpisodes()
+    }
+}
+
+internal fun computeDeletedIds(localIds: Collection<String>, serverIds: Set<String>): List<String> {
+    if (localIds.isEmpty()) return emptyList()
+    return localIds.filter { it !in serverIds }
 }
 
 /**

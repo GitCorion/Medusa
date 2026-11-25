@@ -204,6 +204,29 @@ class FakeJellyfinDao : JellyfinDao {
         localDb.removeAll { it.id in ids }
     }
 
+    override suspend fun deleteEpisodesBySeriesIds(seriesIds: List<String>) {
+        localDb.removeAll { it.type == "Episode" && it.seriesId in seriesIds }
+    }
+
+    override suspend fun deleteOrphanedEpisodes() {
+        val seriesIds = localDb.filter { it.type == "Series" }.map { it.id }.toSet()
+        localDb.removeAll { it.type == "Episode" && !it.seriesId.isNullOrEmpty() && it.seriesId !in seriesIds }
+    }
+
+    override suspend fun getAllCatalogIds(): List<String> {
+        return localDb.filter { it.type in listOf("Movie", "Series") }.map { it.id }
+    }
+
+    override suspend fun fixEmptySeriesPlayedStatus() {
+        localDb.replaceAll {
+            if (it.type == "Series" && (it.totalItemCount ?: -1) <= 0 && it.totalItemCount != null && it.isPlayed) {
+                it.copy(isPlayed = false)
+            } else {
+                it
+            }
+        }
+    }
+
     override suspend fun updatePlayedStatus(itemId: String, isPlayed: Boolean) {
         val item = getItemById(itemId) ?: return
         insertOrUpdate(item.copy(isPlayed = isPlayed, playbackPositionTicks = 0L))

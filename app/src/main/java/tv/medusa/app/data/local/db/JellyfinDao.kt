@@ -169,6 +169,9 @@ interface JellyfinDao {
     @Query("SELECT id FROM jellyfin_media")
     suspend fun getAllIds(): List<String>
 
+    @Query("SELECT id FROM jellyfin_media WHERE type IN ('Movie', 'Series')")
+    suspend fun getAllCatalogIds(): List<String>
+
     @Query("SELECT COUNT(*) FROM jellyfin_media")
     fun getCountFlow(): Flow<Int>
 
@@ -316,10 +319,10 @@ interface JellyfinDao {
 
     // Orden por rowid: el sync inserta los vistos en el orden que devuelve el servidor
     // (DatePlayed descendente), así que rowid DESC = visto más recientemente primero.
-    @Query("SELECT * FROM jellyfin_media WHERE isPlayed = 1 AND type IN ('Movie', 'Series', 'Episode') ORDER BY rowid DESC LIMIT :limit")
+    @Query("SELECT * FROM jellyfin_media WHERE isPlayed = 1 AND type IN ('Movie', 'Series', 'Episode') AND NOT (type = 'Series' AND totalItemCount IS NOT NULL AND totalItemCount <= 0) ORDER BY rowid DESC LIMIT :limit")
     suspend fun getRecentlyPlayedLocal(limit: Int = 20): List<JellyfinMediaEntity>
 
-    @Query("SELECT * FROM jellyfin_media WHERE isPlayed = 1 AND type IN ('Movie', 'Series', 'Episode') AND id IN (SELECT mediaId FROM allowed_media_ids) ORDER BY rowid DESC LIMIT :limit")
+    @Query("SELECT * FROM jellyfin_media WHERE isPlayed = 1 AND type IN ('Movie', 'Series', 'Episode') AND NOT (type = 'Series' AND totalItemCount IS NOT NULL AND totalItemCount <= 0) AND id IN (SELECT mediaId FROM allowed_media_ids) ORDER BY rowid DESC LIMIT :limit")
     suspend fun getRecentlyPlayedLocalRestricted(limit: Int = 20): List<JellyfinMediaEntity>
 
     @Query("UPDATE jellyfin_media SET playbackPositionTicks = :positionTicks, isPlayed = :isPlayed, lastPlayedTicks = :lastPlayedTicks WHERE id = :itemId")
@@ -805,8 +808,12 @@ interface JellyfinDao {
     @Query("UPDATE jellyfin_media SET isFavorite = :isFavorite WHERE id = :itemId")
     suspend fun updateFavoriteStatus(itemId: String, isFavorite: Boolean)
 
-    @Query("UPDATE jellyfin_media SET isPlayed = :isPlayed, playbackPositionTicks = 0, unplayedItemCount = CASE WHEN :isPlayed = 1 THEN 0 ELSE totalItemCount END WHERE id = :itemId")
+    @Query("UPDATE jellyfin_media SET isPlayed = CASE WHEN type = 'Series' AND totalItemCount IS NOT NULL AND totalItemCount <= 0 THEN 0 ELSE :isPlayed END, playbackPositionTicks = 0, unplayedItemCount = CASE WHEN :isPlayed = 1 THEN 0 ELSE totalItemCount END WHERE id = :itemId")
     suspend fun updatePlayedStatus(itemId: String, isPlayed: Boolean)
+
+    /** Corrige series sin capítulos que Jellyfin marcó como vistas (`Played = true` con `totalItemCount <= 0`). */
+    @Query("UPDATE jellyfin_media SET isPlayed = 0 WHERE type = 'Series' AND totalItemCount IS NOT NULL AND totalItemCount <= 0 AND isPlayed = 1")
+    suspend fun fixEmptySeriesPlayedStatus()
 
     @Query("DELETE FROM jellyfin_media")
     suspend fun clearAll()
@@ -821,6 +828,14 @@ interface JellyfinDao {
     /** Borra de la caché los ítems eliminados en el servidor (por tandas desde el repositorio). */
     @Query("DELETE FROM jellyfin_media WHERE id IN (:ids)")
     suspend fun deleteByIds(ids: List<String>)
+
+    /** Borra episodios cacheados cuyas series han sido eliminadas del servidor. */
+    @Query("DELETE FROM jellyfin_media WHERE type = 'Episode' AND seriesId IN (:seriesIds)")
+    suspend fun deleteEpisodesBySeriesIds(seriesIds: List<String>)
+
+    /** Borra episodios huérfanos cuya serie padre ya no existe en el catálogo local. */
+    @Query("DELETE FROM jellyfin_media WHERE type = 'Episode' AND seriesId IS NOT NULL AND seriesId != '' AND seriesId NOT IN (SELECT id FROM jellyfin_media WHERE type = 'Series')")
+    suspend fun deleteOrphanedEpisodes()
 
     @Query("SELECT id, overview, backdropImageTag FROM jellyfin_media WHERE overview IS NOT NULL")
     suspend fun getCachedOverviews(): List<CachedOverviewDto>
