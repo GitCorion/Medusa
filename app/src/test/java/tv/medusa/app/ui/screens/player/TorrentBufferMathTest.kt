@@ -121,4 +121,100 @@ class TorrentBufferMathTest {
         assertEquals(900_000L, playerResolveTimeoutMs(isOnDemand = true))
         assertEquals(75_000L, playerResolveTimeoutMs(isOnDemand = false))
     }
+
+    @Test
+    fun `recuperacion on-demand intercepta 503 desde el primer candidato`() {
+        assertTrue(
+            shouldRecoverOnDemandError(
+                isOnDemand = true,
+                isAudioDecoderFailure = false,
+                isDecoderInitFailure = false,
+                isContainerError = false,
+                httpCode = 503,
+                isTimeoutOrSeekError = false,
+                isLastCandidate = false,
+                recoveryAttempts = 0
+            )
+        )
+    }
+
+    @Test
+    fun `recuperacion on-demand no intercepta codecs ni contenido normal ni supera el limite`() {
+        assertFalse(
+            shouldRecoverOnDemandError(
+                isOnDemand = false,
+                isAudioDecoderFailure = false,
+                isDecoderInitFailure = false,
+                isContainerError = false,
+                httpCode = 503,
+                isTimeoutOrSeekError = true,
+                isLastCandidate = true,
+                recoveryAttempts = 0
+            )
+        )
+        assertFalse(
+            shouldRecoverOnDemandError(
+                isOnDemand = true,
+                isAudioDecoderFailure = true,
+                isDecoderInitFailure = false,
+                isContainerError = false,
+                httpCode = 503,
+                isTimeoutOrSeekError = false,
+                isLastCandidate = true,
+                recoveryAttempts = 0
+            )
+        )
+        assertFalse(
+            shouldRecoverOnDemandError(
+                isOnDemand = true,
+                isAudioDecoderFailure = false,
+                isDecoderInitFailure = false,
+                isContainerError = true,
+                httpCode = 503,
+                isTimeoutOrSeekError = false,
+                isLastCandidate = true,
+                recoveryAttempts = 0
+            )
+        )
+        assertFalse(
+            shouldRecoverOnDemandError(
+                isOnDemand = true,
+                isAudioDecoderFailure = false,
+                isDecoderInitFailure = false,
+                isContainerError = false,
+                httpCode = 503,
+                isTimeoutOrSeekError = false,
+                isLastCandidate = false,
+                recoveryAttempts = MAX_ON_DEMAND_RECOVERY_ATTEMPTS
+            )
+        )
+    }
+
+    @Test
+    fun `recuperacion on-demand rescata timeout o seek en ultimo candidato`() {
+        assertFalse(
+            shouldRecoverOnDemandError(
+                isOnDemand = true,
+                isAudioDecoderFailure = false,
+                isDecoderInitFailure = false,
+                isContainerError = false,
+                httpCode = 0,
+                isTimeoutOrSeekError = true,
+                isLastCandidate = false,
+                recoveryAttempts = 0
+            )
+        )
+        assertTrue(
+            shouldRecoverOnDemandError(
+                isOnDemand = true,
+                isAudioDecoderFailure = false,
+                isDecoderInitFailure = false,
+                isContainerError = false,
+                httpCode = 0,
+                isTimeoutOrSeekError = true,
+                isLastCandidate = true,
+                recoveryAttempts = 1
+            )
+        )
+    }
 }

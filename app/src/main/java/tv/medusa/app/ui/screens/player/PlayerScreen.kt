@@ -233,6 +233,12 @@ private data class TrackItem(
  */
 private const val PLAYER_STALL_TIMEOUT_MS = 45_000L
 
+private fun extractHttpResponseCode(error: Throwable?): Int =
+    generateSequence(error) { it.cause }
+        .filterIsInstance<HttpDataSource.InvalidResponseCodeException>()
+        .firstOrNull()
+        ?.responseCode ?: 0
+
 private fun Modifier.monochromeFilter(isMonochrome: Boolean): Modifier = if (isMonochrome) {
     this.drawWithContent {
         val paint = Paint().apply {
@@ -675,7 +681,8 @@ private fun PlayerContent(
         val extractorsFactory = SeekableExtractorsFactory(
             fallbackDurationMs = info.durationMs,
             authHeader = effectiveAuth,
-            trustedHost = runCatching { android.net.Uri.parse(candidates.first()).host }.getOrNull()
+            trustedHost = runCatching { android.net.Uri.parse(candidates.first()).host }.getOrNull(),
+            allowAsyncCuesFetch = !info.isOnDemand
         )
         val mediaSourceFactory = DefaultMediaSourceFactory(resolvingDataSourceFactory, extractorsFactory)
 
@@ -905,6 +912,39 @@ private fun PlayerContent(
                             return
                         }
 
+                        val httpCode = extractHttpResponseCode(error)
+                        val isTimeoutOrSeekError =
+                            error.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT ||
+                                error.errorCode == PlaybackException.ERROR_CODE_IO_READ_POSITION_OUT_OF_RANGE ||
+                                error.errorCode == PlaybackException.ERROR_CODE_IO_UNSPECIFIED
+                        val isLastCandidate = candidateIdx >= candidates.size - 1
+                        if (
+                            shouldRecoverOnDemandError(
+                                isOnDemand = info.isOnDemand,
+                                isAudioDecoderFailure = isAudioDecoderFailure,
+                                isDecoderInitFailure = error.errorCode == PlaybackException.ERROR_CODE_DECODER_INIT_FAILED,
+                                isContainerError = isVideoOrCodecError,
+                                httpCode = httpCode,
+                                isTimeoutOrSeekError = isTimeoutOrSeekError,
+                                isLastCandidate = isLastCandidate,
+                                recoveryAttempts = viewModel.currentOnDemandRecoveryAttempts()
+                            )
+                        ) {
+                            val resumePos = currentPosition.coerceAtLeast(0L)
+                            if (
+                                viewModel.tryRecoverOnDemandPlayback(
+                                    resumePositionMs = resumePos,
+                                    httpCode = httpCode,
+                                    isTimeoutOrSeekError = isTimeoutOrSeekError
+                                )
+                            ) {
+                                Log.w("PlayerScreen", "Error recuperable TOD (http=$httpCode, code=${error.errorCodeName}); comprobando estado en servidor")
+                                chosenStartPositionMs = resumePos
+                                isBuffering = true
+                                return
+                            }
+                        }
+
                         candidateIdx++
                         if (candidateIdx < candidates.size) {
                             val nextUrl = candidates[candidateIdx]
@@ -933,7 +973,6 @@ private fun PlayerContent(
                                 return
                             }
                             Log.e("PlayerScreen", "All ${candidates.size} playback candidates failed!")
-                            val httpCode = (error.cause as? HttpDataSource.InvalidResponseCodeException)?.responseCode ?: 0
                             val appContext = context.applicationContext
                             val humanMsg = when {
                                 httpCode in 500..599 -> appContext.getString(R.string.player_error_http_5xx, httpCode)
@@ -1315,22 +1354,38 @@ private fun PlayerContent(
     }
 
     // Vigilante de arranque: si no entra ni un byte, reintentar la resolución una vez.
-    var stallRetried by remember { mutableStateOf(false) }
+    var stallRetried by remember(info, retryTrigger) { mutableStateOf(false) }
     LaunchedEffect(info, retryTrigger, isTodPreparing) {
         if (isTodPreparing || stallRetried) return@LaunchedEffect
         var waited = 0L
         while (waited < PLAYER_STALL_TIMEOUT_MS) {
             delay(1_000L)
             waited += 1_000L
-            if (hasEverBeenReady || exoPlayer.bufferedPosition > 0L) return@LaunchedEffect
+            if (hasEverBeenReady || exoPlayer.totalBufferedDuration > 0L) return@LaunchedEffect
             if (exoPlayer.playbackState != Player.STATE_BUFFERING) return@LaunchedEffect
         }
-        if (!hasEverBeenReady && exoPlayer.bufferedPosition == 0L) {
+        if (!hasEverBeenReady && exoPlayer.totalBufferedDuration <= 0L) {
             stallRetried = true
+            val resumePos = exoPlayer.currentPosition.coerceAtLeast(0L)
             Log.w("PlayerScreen", "Sin datos tras ${PLAYER_STALL_TIMEOUT_MS} ms en el reproductor; reintentando resolución")
-            viewModel.retryWithTranscoding(
-                resumePositionMs = exoPlayer.currentPosition.coerceAtLeast(0L)
-            )
+            if (info.isOnDemand) {
+                viewModel.tryRecoverOnDemandPlayback(resumePositionMs = resumePos, isTimeoutOrSeekError = true)
+            } else {
+                viewModel.retryWithTranscoding(
+                    resumePositionMs = resumePos,
+                    consumeRetryBudget = false
+                )
+            }
+        }
+    }
+
+    LaunchedEffect(info, isBuffering, isTodPreparing, hasEverBeenReady) {
+        if (!info.isOnDemand || isTodPreparing || !hasEverBeenReady || !isBuffering) return@LaunchedEffect
+        delay(PLAYER_STALL_TIMEOUT_MS)
+        if (exoPlayer.playWhenReady && exoPlayer.playbackState == Player.STATE_BUFFERING && isBuffering) {
+            val resumePos = exoPlayer.currentPosition.coerceAtLeast(0L)
+            Log.w("PlayerScreen", "Rebuffer prolongado On-Demand (${PLAYER_STALL_TIMEOUT_MS} ms); comprobando estado TOD")
+            viewModel.tryRecoverOnDemandPlayback(resumePositionMs = resumePos, isTimeoutOrSeekError = true)
         }
     }
 
@@ -1874,18 +1929,18 @@ private fun PlayerContent(
                     ) {
                         // Sin fuente reproducible, reintentar es un bucle: se ofrece volver.
                         if (!errorIsUnavailable) {
-                            Button(
-                                onClick = {
-                                    playerErrorMessage = null
-                                    viewModel.clearPlaybackError()
+                            val onRetryPlayback = {
+                                playerErrorMessage = null
+                                viewModel.clearPlaybackError()
+                                if (!info.isOnDemand || !viewModel.tryRecoverOnDemandPlayback(resumePositionMs = chosenStartPositionMs)) {
                                     retryTrigger++
-                                },
+                                }
+                                Unit
+                            }
+                            Button(
+                                onClick = onRetryPlayback,
                                 modifier = Modifier
-                                    .handleTouchClick {
-                                        playerErrorMessage = null
-                                        viewModel.clearPlaybackError()
-                                        retryTrigger++
-                                    }
+                                    .handleTouchClick(onClick = onRetryPlayback)
                                     .focusRequester(retryFocusRequester),
                                 colors = ButtonDefaults.colors(
                                     containerColor = tv.medusa.app.ui.theme.TvPalette.GlassRaised,

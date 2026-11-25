@@ -33,7 +33,8 @@ class SeekableExtractorsFactory(
     private val fallbackDurationMs: Long = 0L,
     private val authHeader: String? = null,
     private val trustedHost: String? = null,
-    private val okHttpClient: OkHttpClient = NetworkClientFactory.okHttpClient
+    private val okHttpClient: OkHttpClient = NetworkClientFactory.okHttpClient,
+    private val allowAsyncCuesFetch: Boolean = true
 ) : ExtractorsFactory {
 
     private val defaultFactory = DefaultExtractorsFactory()
@@ -57,7 +58,8 @@ class SeekableExtractorsFactory(
             authHeader = authHeader,
             trustedHost = trustedHost,
             okHttpClient = okHttpClient,
-            backgroundScope = backgroundScope
+            backgroundScope = backgroundScope,
+            allowAsyncCuesFetch = allowAsyncCuesFetch
         )
     }
 
@@ -68,7 +70,8 @@ class SeekableExtractorsFactory(
         private val authHeader: String?,
         private val trustedHost: String?,
         private val okHttpClient: OkHttpClient,
-        private val backgroundScope: CoroutineScope
+        private val backgroundScope: CoroutineScope,
+        private val allowAsyncCuesFetch: Boolean
     ) : Extractor {
 
         private var streamLength: Long = C.LENGTH_UNSET.toLong()
@@ -144,7 +147,7 @@ class SeekableExtractorsFactory(
         }
 
         private fun attemptAsyncCuesExtraction(durationUs: Long) {
-            if (cuesFetchAttempted || streamUrl.isNullOrBlank() || streamLength <= 65536L) return
+            if (!allowAsyncCuesFetch || cuesFetchAttempted || streamUrl.isNullOrBlank() || streamLength <= 65536L) return
             if (delegate !is MatroskaExtractor) return
             cuesFetchAttempted = true
 

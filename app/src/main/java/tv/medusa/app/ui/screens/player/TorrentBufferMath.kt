@@ -72,3 +72,32 @@ internal fun torrentBufferInfo(
 /** El watchdog de resolución es mucho más largo en On-Demand: hay torrent de por medio. */
 internal fun playerResolveTimeoutMs(isOnDemand: Boolean): Long =
     if (isOnDemand) TORRENT_PREP_TIMEOUT_MS else 75_000L
+
+internal const val MAX_ON_DEMAND_RECOVERY_ATTEMPTS = 2
+
+/**
+ * Decide si un error de ExoPlayer en reproducción On-Demand debe activar la recuperación
+ * contra `/Medusa/Status/{itemId}` en lugar de quemar candidatos o fallar de golpe.
+ */
+internal fun shouldRecoverOnDemandError(
+    isOnDemand: Boolean,
+    isAudioDecoderFailure: Boolean,
+    isDecoderInitFailure: Boolean,
+    isContainerError: Boolean,
+    httpCode: Int,
+    isTimeoutOrSeekError: Boolean,
+    isLastCandidate: Boolean,
+    recoveryAttempts: Int
+): Boolean {
+    if (!isOnDemand || isAudioDecoderFailure || isDecoderInitFailure || isContainerError) {
+        return false
+    }
+    if (recoveryAttempts >= MAX_ON_DEMAND_RECOVERY_ATTEMPTS) {
+        return false
+    }
+    // 503 indica casi siempre warming/cambio de fuente en TOD: evitar probar 5 URLs idénticas.
+    if (httpCode == 503) {
+        return true
+    }
+    return isLastCandidate && (httpCode in 500..599 || isTimeoutOrSeekError)
+}

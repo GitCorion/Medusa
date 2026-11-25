@@ -294,4 +294,18 @@ interface JellyfinApiService {
         @Path("itemId") itemId: String,
         @Query("release") releaseId: Long? = null
     ): retrofit2.Response<MedusaPrepareResponseDto>
+
+    @POST("Medusa/Lease/{itemId}")
+    suspend fun leaseMedusaItem(
+        @Header("Authorization") authHeader: String,
+        @Header("X-Emby-Device-Id") deviceId: String,
+        @Path("itemId") itemId: String
+    ): retrofit2.Response<okhttp3.ResponseBody>
+
+    @DELETE("Medusa/Lease/{itemId}")
+    suspend fun releaseMedusaLease(
+        @Header("Authorization") authHeader: String,
+        @Header("X-Emby-Device-Id") deviceId: String,
+        @Path("itemId") itemId: String
+    ): retrofit2.Response<okhttp3.ResponseBody>
 }

@@ -77,6 +77,10 @@ class PlayerResolutionTest {
             "No se deben construir HLS a mano",
             result.any { it.contains("master.m3u8") || it.contains("main.m3u8") }
         )
+        assertTrue(
+            "Debe incluir candidato con extensión mkv para remux/transcode sin error 500",
+            result.any { it.contains("/stream.mkv?") && it.contains("MediaSourceId=ms-abc") }
+        )
     }
 
     @Test

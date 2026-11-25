@@ -66,13 +66,13 @@ internal object JellyfinPlaybackSourceResolver {
             )
         }
 
+        val effectiveContainer = if (container.isNotBlank() && container != "strm") container else "mkv"
+
         if (isStrm) {
             // 1. Proxy del servidor: resuelve el .strm (Docker/rclone/LAN) con HTTP 206 y soporte de Range.
             if (mediaSourceId.isNotBlank()) {
                 add("$baseUrl/Videos/$playableId/stream?static=true&MediaSourceId=$mediaSourceId")
-                if (container.isNotBlank() && container != "strm") {
-                    add("$baseUrl/Videos/$playableId/stream.$container?static=true&MediaSourceId=$mediaSourceId")
-                }
+                add("$baseUrl/Videos/$playableId/stream.$effectiveContainer?static=true&MediaSourceId=$mediaSourceId")
             }
 
             // 2. URLs que entrega Jellyfin (DirectStreamUrl estático oficial primero).
@@ -81,10 +81,16 @@ internal object JellyfinPlaybackSourceResolver {
             // 3. Versiones alternativas mediante el mismo proxy estático.
             alternativeMediaSources
                 .filter { it.id.isNotBlank() && it.id != mediaSourceId }
-                .forEach { add("$baseUrl/Videos/$playableId/stream?static=true&MediaSourceId=${it.id}") }
+                .forEach { altSource ->
+                    val altContainer = altSource.container?.trim()?.lowercase()
+                    val effectiveAltContainer = if (!altContainer.isNullOrBlank() && altContainer != "strm") altContainer else "mkv"
+                    add("$baseUrl/Videos/$playableId/stream?static=true&MediaSourceId=${altSource.id}")
+                    add("$baseUrl/Videos/$playableId/stream.$effectiveAltContainer?static=true&MediaSourceId=${altSource.id}")
+                }
 
             // 4. Remux y transcode como último recurso.
             if (mediaSourceId.isNotBlank()) {
+                add("$baseUrl/Videos/$playableId/stream.$effectiveContainer?MediaSourceId=$mediaSourceId")
                 add("$baseUrl/Videos/$playableId/stream?MediaSourceId=$mediaSourceId")
             }
             add(mediaSource.transcodingUrl)
@@ -96,16 +102,17 @@ internal object JellyfinPlaybackSourceResolver {
             // 2. DirectPlay/DirectStream oficial de Jellyfin.
             if (mediaSourceId.isNotBlank()) {
                 add("$baseUrl/Videos/$playableId/stream?static=true&MediaSourceId=$mediaSourceId")
+                add("$baseUrl/Videos/$playableId/stream.$effectiveContainer?static=true&MediaSourceId=$mediaSourceId")
+                add("$baseUrl/Videos/$playableId/stream.$effectiveContainer?MediaSourceId=$mediaSourceId")
                 add("$baseUrl/Videos/$playableId/stream?MediaSourceId=$mediaSourceId")
-                if (container.isNotBlank() && container != "strm") {
-                    add("$baseUrl/Videos/$playableId/stream.$container?static=true&MediaSourceId=$mediaSourceId")
-                }
             }
         }
 
         // Nunca dejar la lista vacía si hay un ítem reproducible.
         if (candidates.isEmpty()) {
             add("$baseUrl/Videos/$playableId/stream?static=true")
+            add("$baseUrl/Videos/$playableId/stream.$effectiveContainer?static=true")
+            add("$baseUrl/Videos/$playableId/stream.$effectiveContainer")
             add("$baseUrl/Videos/$playableId/stream")
         }
 

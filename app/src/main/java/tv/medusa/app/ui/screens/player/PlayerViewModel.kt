@@ -92,7 +92,8 @@ data class PlayerStreamInfo(
     val playSessionId: String = "",
     val mediaSourceId: String = "",
     val isStrm: Boolean = false,
-    val isOnDemand: Boolean = false
+    val isOnDemand: Boolean = false,
+    val reloadNonce: Long = 0L
 )
 
 internal const val TORRENT_PREP_TIMEOUT_MS = 15L * 60 * 1000L
@@ -210,8 +211,12 @@ class PlayerViewModel @Inject constructor(
 
     private var audioFallbackAttempts = 0
     private var fullTranscodeAttempts = 0
+    private var onDemandRecoveryAttempts = 0
     @Volatile
     private var retryInFlight = false
+    @Volatile
+    private var onDemandRecoveryInFlight = false
+    private var streamReloadNonce = 0L
 
     private val _fatalPlaybackError = MutableStateFlow<String?>(null)
     val fatalPlaybackError: StateFlow<String?> = _fatalPlaybackError.asStateFlow()
@@ -224,6 +229,7 @@ class PlayerViewModel @Inject constructor(
     private var onDemandStreamGeneration: Long? = null
     private var generationJob: Job? = null
     private var isCurrentItemOnDemand: Boolean = false
+    private var medusaLeaseSupported: Boolean = false
     private var activeOnDemandReleaseId: Long? = null
     private var currentPlayableTitle: String = ""
     private var currentPlayableBackdropUrl: String? = null
@@ -233,7 +239,25 @@ class PlayerViewModel @Inject constructor(
         loadStreamJob?.cancel()
         generationJob?.cancel()
         generationJob = null
+        releaseMedusaLeaseAsync()
         _torrentOverlayState.value = null
+    }
+
+    private fun releaseMedusaLeaseAsync(
+        itemId: String = currentPlayableId,
+        baseUrl: String = jellyfinBaseUrl,
+        authHeader: String = jellyfinAuthHeader,
+        isOnDemand: Boolean = isCurrentItemOnDemand
+    ) {
+        if (!isOnDemand || !medusaLeaseSupported) return
+        if (itemId.isBlank() || baseUrl.isBlank() || authHeader.isBlank()) return
+        val deviceId = DeviceUtils.cachedDeviceId ?: "MedusaTV"
+        reportScope.launch {
+            runCatching {
+                val api = NetworkClientFactory.createJellyfinService(baseUrl, JellyfinApiService::class.java)
+                api.releaseMedusaLease(authHeader = authHeader, deviceId = deviceId, itemId = itemId)
+            }
+        }
     }
 
     fun retryTorrentPreparation() {
@@ -323,7 +347,8 @@ class PlayerViewModel @Inject constructor(
     fun loadStreamUrl(
         itemId: String,
         preferredMediaSourceId: String? = null,
-        reuseSessionId: Boolean = false
+        reuseSessionId: Boolean = false,
+        resumePositionMs: Long? = null
     ) {
         loadStreamJob?.cancel()
         loadStreamJob = viewModelScope.launch {
@@ -338,10 +363,12 @@ class PlayerViewModel @Inject constructor(
                 activeSubtitleStreamIndex = null
                 activeMediaSourceId = ""
                 onDemandStreamGeneration = null
+                onDemandRecoveryAttempts = 0
             }
             generationJob?.cancel()
             generationJob = null
             isCurrentItemOnDemand = false
+            medusaLeaseSupported = false
             activeOnDemandReleaseId = null
             // Nueva carga de reproducción: la sesión anterior ya no está activa.
             sessionFinished = false
@@ -349,6 +376,7 @@ class PlayerViewModel @Inject constructor(
             audioFallbackAttempts = 0
             fullTranscodeAttempts = 0
             retryInFlight = false
+            onDemandRecoveryInFlight = false
             _fatalPlaybackError.value = null
             _streamInfo.value = null
             _torrentOverlayState.value = null
@@ -696,7 +724,7 @@ class PlayerViewModel @Inject constructor(
             val primaryStreamUrl = finalCandidates.first()
 
             val rawTicks = itemDto?.userData?.playbackPositionTicks ?: entity?.playbackPositionTicks ?: 0L
-            val startPositionMs = (rawTicks / 10_000L).coerceAtLeast(0L)
+            val startPositionMs = (resumePositionMs ?: (rawTicks / 10_000L)).coerceAtLeast(0L)
 
             val durationTicks = itemDto?.runTimeTicks?.takeIf { it > 0 }
                 ?: chosenMediaSource?.runTimeTicks?.takeIf { it > 0 }
@@ -728,7 +756,8 @@ class PlayerViewModel @Inject constructor(
                 playSessionId = activePlaySessionId,
                 mediaSourceId = activeMediaSourceId,
                 isStrm = chosenMediaSource?.let { JellyfinPlaybackSourceResolver.isStrm(it) } ?: false,
-                isOnDemand = isCurrentItemOnDemand
+                isOnDemand = isCurrentItemOnDemand,
+                reloadNonce = ++streamReloadNonce
             )
             if (isCurrentItemOnDemand) {
                 startOnDemandGenerationWatch(playableId = playableId, releaseId = activeOnDemandReleaseId)
@@ -899,7 +928,8 @@ class PlayerViewModel @Inject constructor(
                 playSessionId = activePlaySessionId,
                 mediaSourceId = chosenMs.id,
                 isStrm = isStrmSource,
-                isOnDemand = isCurrentItemOnDemand
+                isOnDemand = isCurrentItemOnDemand,
+                reloadNonce = ++streamReloadNonce
             ) ?: PlayerStreamInfo(
                 playableId = currentPlayableId,
                 primaryStreamUrl = finalCandidates.first(),
@@ -914,7 +944,8 @@ class PlayerViewModel @Inject constructor(
                 playSessionId = activePlaySessionId,
                 mediaSourceId = chosenMs.id,
                 isStrm = isStrmSource,
-                isOnDemand = isCurrentItemOnDemand
+                isOnDemand = isCurrentItemOnDemand,
+                reloadNonce = ++streamReloadNonce
             )
             hasReportedStart = false
             val sanitizedNew = JellyfinDeviceProfileBuilder.sanitizeUrlForLog(finalCandidates.first())
@@ -966,7 +997,99 @@ class PlayerViewModel @Inject constructor(
         _fatalPlaybackError.value = null
         audioFallbackAttempts = 0
         fullTranscodeAttempts = 0
+        onDemandRecoveryAttempts = 0
         retryInFlight = false
+        onDemandRecoveryInFlight = false
+    }
+
+    fun currentOnDemandRecoveryAttempts(): Int = onDemandRecoveryAttempts
+
+    /**
+     * Ante HTTP 503 o bloqueo inicial/rebuffer en TOD, consulta `/Medusa/Status/{itemId}`
+     * antes de fallar o consumir presupuesto de audio: detecta cambios de generación,
+     * vuelta a preparación (`stream_ready=false`) o reconecta sin tocar codecs.
+     */
+    fun tryRecoverOnDemandPlayback(
+        resumePositionMs: Long,
+        httpCode: Int = 0,
+        isTimeoutOrSeekError: Boolean = false
+    ): Boolean {
+        if (currentPlayableId.isBlank() || jellyfinBaseUrl.isBlank() || onDemandRecoveryInFlight) {
+            return false
+        }
+        if (onDemandRecoveryAttempts >= MAX_ON_DEMAND_RECOVERY_ATTEMPTS) {
+            return false
+        }
+        onDemandRecoveryAttempts++
+        onDemandRecoveryInFlight = true
+        val targetItemId = currentPlayableId
+        viewModelScope.launch {
+            try {
+                if (httpCode == 503 || isTimeoutOrSeekError) {
+                    delay(1_500L)
+                }
+                if (currentPlayableId != targetItemId || sessionFinished || jellyfinBaseUrl.isBlank() || jellyfinAuthHeader.isBlank()) {
+                    return@launch
+                }
+                val api = NetworkClientFactory.createJellyfinService(jellyfinBaseUrl, JellyfinApiService::class.java)
+                val statusRes = runCatching {
+                    api.getMedusaStatus(
+                        authHeader = jellyfinAuthHeader,
+                        itemId = targetItemId,
+                        releaseId = activeOnDemandReleaseId
+                    )
+                }.getOrNull()
+                val status = if (statusRes?.isSuccessful == true) statusRes.body()?.status else null
+                if (status != null) {
+                    val gen = status.streamGeneration
+                    if (gen != null && onDemandStreamGeneration != null && gen != onDemandStreamGeneration) {
+                        onDemandRecoveryAttempts = 0
+                        restartOnDemandPlayback(status, resumePositionMs = resumePositionMs)
+                        return@launch
+                    }
+                    if (status.state.equals("ERROR", ignoreCase = true) ||
+                        status.state.equals("UNAVAILABLE", ignoreCase = true)
+                    ) {
+                        generationJob?.cancel()
+                        generationJob = null
+                        val cachedVersions = _streamInfo.value?.availableVersions ?: emptyList()
+                        _streamInfo.value = null
+                        val isUnavail = status.state.equals("UNAVAILABLE", ignoreCase = true)
+                        val errMsg = appContext.getString(
+                            if (isUnavail) R.string.torrent_unavailable else R.string.torrent_error
+                        )
+                        applyTorrentOverlayError(
+                            playableId = targetItemId,
+                            title = currentPlayableTitle.ifBlank { nowPlaying?.title ?: "" },
+                            backdropUrl = currentPlayableBackdropUrl ?: nowPlaying?.backdropUrl,
+                            message = errMsg,
+                            unavailable = isUnavail,
+                            availableVersions = cachedVersions,
+                            currentMediaSourceId = activeMediaSourceId.takeIf { it.isNotBlank() }
+                        )
+                        return@launch
+                    }
+                    if (!status.streamReady) {
+                        loadStreamUrl(
+                            itemId = targetItemId,
+                            preferredMediaSourceId = activeMediaSourceId.takeIf { it.isNotBlank() },
+                            reuseSessionId = true,
+                            resumePositionMs = resumePositionMs
+                        )
+                        return@launch
+                    }
+                }
+                retryWithTranscoding(
+                    forceAudioTranscodeOnly = false,
+                    forceFullTranscode = false,
+                    resumePositionMs = resumePositionMs,
+                    consumeRetryBudget = false
+                )
+            } finally {
+                onDemandRecoveryInFlight = false
+            }
+        }
+        return true
     }
 
     fun reportStart(positionMs: Long) {
@@ -1101,6 +1224,7 @@ class PlayerViewModel @Inject constructor(
         progressJob?.cancel()
         progressJob = null
         if (sessionFinished) return
+        releaseMedusaLeaseAsync()
         val itemId = currentPlayableId
         if (itemId.isBlank()) return
         // No crear una sesión fantasma si el usuario sale antes de que empiece la reproducción.
@@ -1508,10 +1632,12 @@ class PlayerViewModel @Inject constructor(
     ): Boolean {
         // 1. Detección del plugin: GET /Medusa/Capabilities
         val capsRes = runCatching { api.getMedusaCapabilities() }.getOrNull()
-        if (capsRes == null || !capsRes.isSuccessful || capsRes.body()?.isSupported != true) {
+        val capsBody = capsRes?.body()
+        if (capsRes == null || !capsRes.isSuccessful || capsBody?.isSupported != true) {
             Log.i("PlayerViewModel", "Medusa plugin not available or unsupported (code=${capsRes?.code()}). Proceeding normally with Jellyfin.")
             return true
         }
+        medusaLeaseSupported = capsBody.features.any { it.equals("lease", ignoreCase = true) }
 
         // 2. Consultar estado: GET /Medusa/Status/{itemId}?release=...
         var authHeader = effectiveAuthHeader
@@ -1548,16 +1674,11 @@ class PlayerViewModel @Inject constructor(
         if (statusRes.code() == 503) {
             val body = runCatching { statusRes.errorBody()?.string() }.getOrNull()
             val message = medusaErrorMessage(body) ?: "No se pudo preparar la descarga."
-            val unavailable = message.contains("No hay ninguna fuente", ignoreCase = true)
-            _torrentOverlayState.value = TorrentOverlayUiState(
-                itemId = playableId,
+            applyTorrentOverlayError(
+                playableId = playableId,
                 title = title,
                 backdropUrl = backdropUrl,
-                state = if (unavailable) "UNAVAILABLE" else "ERROR",
-                isError = true,
-                isUnavailable = unavailable,
-                statusText = message,
-                errorMessage = message,
+                message = message,
                 availableVersions = availableVersions,
                 currentMediaSourceId = currentMediaSourceId
             )
@@ -1618,37 +1739,44 @@ class PlayerViewModel @Inject constructor(
             Log.w("PlayerViewModel", "Medusa prepare request failed: ${e.message}")
             val message = (e as? MedusaHttpException)?.serverMessage
                 ?: "No se pudo preparar la descarga."
-            val unavailable = message.contains("No hay ninguna fuente", ignoreCase = true)
-            _torrentOverlayState.value = (_torrentOverlayState.value ?: TorrentOverlayUiState(
-                itemId = playableId,
+            applyTorrentOverlayError(
+                playableId = playableId,
                 title = title,
                 backdropUrl = backdropUrl,
-                state = if (unavailable) "UNAVAILABLE" else "ERROR",
+                message = message,
                 availableVersions = availableVersions,
                 currentMediaSourceId = currentMediaSourceId
-            )).copy(
-                state = if (unavailable) "UNAVAILABLE" else "ERROR",
-                isError = true,
-                isUnavailable = unavailable,
-                statusText = message,
-                errorMessage = message
             )
             return false
         }
 
+        val leaseDeviceId = DeviceUtils.cachedDeviceId ?: "MedusaTV"
+        if (medusaLeaseSupported) {
+            runCatching { api.leaseMedusaItem(authHeader = authHeader, deviceId = leaseDeviceId, itemId = playableId) }
+        }
+
         // 4. Polling cada 1.5 s, con límite total para no dejar la UI colgada para siempre.
         var elapsedMs = 0L
+        var pollCount = 0
         while (coroutineContext.isActive) {
             delay(1500L)
             elapsedMs += 1500L
+            pollCount++
             if (elapsedMs >= TORRENT_PREP_TIMEOUT_MS) {
-                val message = appContext.getString(R.string.torrent_timeout)
-                _torrentOverlayState.value = _torrentOverlayState.value?.copy(
-                    isError = true,
-                    statusText = message,
-                    errorMessage = message
+                applyTorrentOverlayError(
+                    playableId = playableId,
+                    title = title,
+                    backdropUrl = backdropUrl,
+                    message = appContext.getString(R.string.torrent_timeout),
+                    unavailable = false,
+                    availableVersions = availableVersions,
+                    currentMediaSourceId = currentMediaSourceId
                 )
                 return false
+            }
+
+            if (medusaLeaseSupported && pollCount % 14 == 0) {
+                runCatching { api.leaseMedusaItem(authHeader = authHeader, deviceId = leaseDeviceId, itemId = playableId) }
             }
 
             val pollRes = runCatching { api.getMedusaStatus(authHeader = authHeader, itemId = playableId, releaseId = effectiveReleaseId) }.getOrNull()
@@ -1659,13 +1787,13 @@ class PlayerViewModel @Inject constructor(
             if (pollRes.code() == 503) {
                 val body = runCatching { pollRes.errorBody()?.string() }.getOrNull()
                 val message = medusaErrorMessage(body) ?: "No se pudo preparar la descarga."
-                val unavailable = message.contains("No hay ninguna fuente", ignoreCase = true)
-                _torrentOverlayState.value = _torrentOverlayState.value?.copy(
-                    state = if (unavailable) "UNAVAILABLE" else "ERROR",
-                    isError = true,
-                    isUnavailable = unavailable,
-                    statusText = message,
-                    errorMessage = message
+                applyTorrentOverlayError(
+                    playableId = playableId,
+                    title = title,
+                    backdropUrl = backdropUrl,
+                    message = message,
+                    availableVersions = availableVersions,
+                    currentMediaSourceId = currentMediaSourceId
                 )
                 return false
             }
@@ -1705,25 +1833,59 @@ class PlayerViewModel @Inject constructor(
             }
 
             if (currStatus.state.equals("ERROR", ignoreCase = true)) {
-                _torrentOverlayState.value = _torrentOverlayState.value?.copy(
-                    isError = true,
-                    statusText = appContext.getString(R.string.torrent_error),
-                    errorMessage = appContext.getString(R.string.torrent_error)
+                applyTorrentOverlayError(
+                    playableId = playableId,
+                    title = title,
+                    backdropUrl = backdropUrl,
+                    message = appContext.getString(R.string.torrent_error),
+                    unavailable = false,
+                    availableVersions = availableVersions,
+                    currentMediaSourceId = currentMediaSourceId
                 )
                 return false
             }
 
             if (currStatus.state.equals("UNAVAILABLE", ignoreCase = true)) {
-                _torrentOverlayState.value = _torrentOverlayState.value?.copy(
-                    isUnavailable = true,
-                    statusText = appContext.getString(R.string.torrent_unavailable),
-                    errorMessage = appContext.getString(R.string.torrent_unavailable)
+                applyTorrentOverlayError(
+                    playableId = playableId,
+                    title = title,
+                    backdropUrl = backdropUrl,
+                    message = appContext.getString(R.string.torrent_unavailable),
+                    unavailable = true,
+                    availableVersions = availableVersions,
+                    currentMediaSourceId = currentMediaSourceId
                 )
                 return false
             }
         }
 
         return false
+    }
+
+    private fun applyTorrentOverlayError(
+        playableId: String,
+        title: String,
+        backdropUrl: String?,
+        message: String,
+        unavailable: Boolean = message.contains("No hay ninguna fuente", ignoreCase = true),
+        availableVersions: List<JellyfinMediaSourceDto> = emptyList(),
+        currentMediaSourceId: String? = null
+    ) {
+        val current = _torrentOverlayState.value ?: TorrentOverlayUiState(
+            itemId = playableId,
+            title = title,
+            backdropUrl = backdropUrl,
+            state = if (unavailable) "UNAVAILABLE" else "ERROR",
+            availableVersions = availableVersions,
+            currentMediaSourceId = currentMediaSourceId
+        )
+        _torrentOverlayState.value = current.copy(
+            state = if (unavailable) "UNAVAILABLE" else "ERROR",
+            isError = true,
+            isUnavailable = unavailable,
+            statusText = message,
+            errorMessage = message
+        )
     }
 
     private fun updateTorrentOverlay(
@@ -1830,11 +1992,23 @@ class PlayerViewModel @Inject constructor(
     private fun startOnDemandGenerationWatch(playableId: String, releaseId: Long? = null) {
         generationJob?.cancel()
         generationJob = viewModelScope.launch {
+            var pollTick = 0
+            val leaseDeviceId = DeviceUtils.cachedDeviceId ?: "MedusaTV"
             while (isActive && !sessionFinished) {
                 delay(5_000L)
+                pollTick++
                 if (jellyfinBaseUrl.isBlank() || jellyfinAuthHeader.isBlank()) continue
+                val api = NetworkClientFactory.createJellyfinService(jellyfinBaseUrl, JellyfinApiService::class.java)
+                if (medusaLeaseSupported && pollTick % 4 == 0) {
+                    runCatching {
+                        api.leaseMedusaItem(
+                            authHeader = jellyfinAuthHeader,
+                            deviceId = leaseDeviceId,
+                            itemId = playableId
+                        )
+                    }
+                }
                 runCatching {
-                    val api = NetworkClientFactory.createJellyfinService(jellyfinBaseUrl, JellyfinApiService::class.java)
                     api.getMedusaStatus(authHeader = jellyfinAuthHeader, itemId = playableId, releaseId = releaseId)
                 }.onSuccess { response ->
                     if (!response.isSuccessful) return@onSuccess
@@ -1845,6 +2019,7 @@ class PlayerViewModel @Inject constructor(
                         generation != null &&
                         generation != onDemandStreamGeneration
                     ) {
+                        onDemandRecoveryAttempts = 0
                         restartOnDemandPlayback(status)
                     } else if (generation != null) {
                         onDemandStreamGeneration = generation
@@ -1854,7 +2029,10 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
-    private fun restartOnDemandPlayback(status: TodTorrentStatusDto) {
+    private fun restartOnDemandPlayback(
+        status: TodTorrentStatusDto,
+        resumePositionMs: Long? = null
+    ) {
         val reason = status.streamSwitchReason
         val switchMessage = when (reason) {
             "no_contiguous_buffer" -> "La fuente no tenía el inicio; cambiando de versión…"
@@ -1878,12 +2056,14 @@ class PlayerViewModel @Inject constructor(
             currentMediaSourceId = activeMediaSourceId.takeIf { it.isNotBlank() }
         )
         onDemandStreamGeneration = status.streamGeneration
+        val resumeAt = resumePositionMs?.takeIf { it > 0L } ?: lastReportedPositionMs.takeIf { it > 0L }
         // loadStreamUrl ya cancela y reemplaza su propio loadStreamJob: un launch exterior
         // añadía un segundo coroutine sin seguimiento en cada cambio de generación del addon.
         loadStreamUrl(
             itemId = currentPlayableId,
             preferredMediaSourceId = activeMediaSourceId.takeIf { it.isNotBlank() },
-            reuseSessionId = true
+            reuseSessionId = true,
+            resumePositionMs = resumeAt
         )
     }
 }
