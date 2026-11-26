@@ -1,6 +1,6 @@
 <div align="center">
   <img src="app/src/main/res/drawable/ic_medusa_header.png" alt="Medusa TV" width="360">
-  <p><strong>Tu biblioteca Jellyfin, a tres metros.</strong><br>
+  <p><strong>Tu biblioteca de Jellyfin, diseñada para el televisor.</strong><br>
   Cliente nativo para Android TV y tablet, escrito en Kotlin y Compose TV.<br>
   Interfaz 100% nativa, sin Firebase, sin analítica y sin Play Store.</p>
 
@@ -28,8 +28,8 @@
 ## Qué es
 
 Medusa TV es un cliente Jellyfin nativo para el salón. Convierte tu biblioteca autoalojada en una
-interfaz de diez pies pensada para un sofá, un mando de cinco teclas y una pantalla OLED: arte a
-sangre, un foco de alto contraste y cero adornos que compitan con el contenido.
+interfaz pensada para el sofá, el mando a distancia y pantallas OLED: carátulas a pantalla completa,
+foco de alto contraste y cero adornos que compitan con el contenido.
 
 No es un envoltorio web ni un catálogo alojado. La app habla directamente con **tu** servidor
 Jellyfin, guarda el catálogo en local y solo sale a internet para metadatos, catálogos estáticos
@@ -68,9 +68,9 @@ transcodificación, los subtítulos y el progreso de visionado. El flujo complet
 
 | Área | Qué incluye |
 |---|---|
-| **Inicio** | Hero a sangre con ClearLogo, géneros favoritos, plataformas, Continuar viendo, Top 10 y carruseles por género. Scrim, paginación y una sola acción primaria. |
+| **Inicio** | Cabecera a pantalla completa con ClearLogo, géneros favoritos, plataformas, Continuar viendo, Top 10 y carruseles por género. Scrim, paginación y una sola acción primaria. |
 | **Descubrir** | Filtros de formato (todo, catálogo, películas, series) y rail de temáticas con filtros **AND**. Cada etiqueta se suma; `BACK` deshace la última. Resultados en el mismo carrusel. |
-| **Búsqueda** | Teclado de diez pies, sugerencias predictivas, resultados instantáneos y búsqueda remota en Jellyfin. |
+| **Búsqueda** | Teclado en pantalla adaptado al mando, sugerencias predictivas, resultados instantáneos y búsqueda remota en Jellyfin. |
 | **Ficha** | Póster, metadatos editoriales, sinopsis sin panel, estados de progreso/favorito, temporadas y episodios, sagas y recomendaciones. |
 | **Reproductor** | Media3 + FFmpeg. DirectPlay, remux, HLS y transcodificación; `.strm`; preparación TOD; subtítulos; pistas de audio; passthrough HDMI; siguiente episodio; Media Segments; frecuencia de refresco automática. |
 | **Biblioteca e integraciones** | Room 22 con FTS, caché local, filtros parentales, sagas, sincronización incremental, Trakt, TMDB con clave propia y OTA desde GitHub Releases. |
@@ -120,7 +120,7 @@ adb shell am start -n tv.medusa.app/tv.medusa.app.MainActivity
 La app consulta el manifiesto [`docs/api/version.json`](docs/api/version.json) en cada arranque. Si
 hay una versión nueva, descarga `Medusa.apk` del GitHub Release, comprueba el **SHA-256**, el tamaño
 máximo y que el origen sea GitHub, y lanza el instalador del sistema. Si el manifiesto no se puede
-verificar durante siete días, la app **falla cerrada** en lugar de seguir con una versión sin
+verificar durante siete días, la app bloquea la actualización en lugar de continuar con una versión sin
 comprobar. El manifiesto admite actualización forzada y un kill-switch global.
 
 Hay dos canales: **estable** (`latest`) y **beta** (pre-releases con manifiesto propio). El canal se
@@ -240,7 +240,7 @@ terceros. El permiso de Advertising ID se elimina explícitamente del manifiesto
   abrir un tráiler.
 
 Credenciales AES/GCM con Android Keystore, TLS con pin SHA-256 para certificados autofirmados y OTA
-con origen GitHub, 150 MB máximo, SHA-256 obligatorio y fail-closed. Los códigos QR se generan en el
+con origen GitHub, 150 MB máximo, SHA-256 obligatorio y bloqueo ante fallos de verificación. Los códigos QR se generan en el
 dispositivo. Para reportar una vulnerabilidad, sigue [`SECURITY.md`](SECURITY.md) y no abras un issue
 público con tokens, contraseñas, IPs privadas ni capturas de tu servidor.
 
@@ -277,7 +277,7 @@ Los commits siguen un estilo convencional en español, por ejemplo
 ## Créditos
 
 [Medusa-Jellyfin-Plugin](https://github.com/GitCorion/Medusa-Jellyfin-Plugin) (GPL-3.0) y
-[TOD](https://github.com/GitCorion/TOD) (MIT) completan el catálogo bajo demanda. El resto del
+[TOD](https://github.com/GitCorion/TOD) (MIT) completan el soporte opcional bajo demanda. El resto del
 ecosistema es [Jellyfin](https://jellyfin.org), [TMDB](https://www.themoviedb.org),
 [Trakt](https://trakt.tv), [Android Media3](https://developer.android.com/media/media3),
 [Kotlin](https://kotlinlang.org), [Compose](https://developer.android.com/compose),
