@@ -1,11 +1,11 @@
 {
-  "versionCode": 1000177,
-  "versionName": "2.4.2",
+  "versionCode": 1000178,
+  "versionName": "2.4.3",
   "minSupportedVersionCode": 1000105,
   "forceUpdate": false,
   "killSwitch": false,
-  "releaseNotes": "### Cambiado\n\n- Sincronización con Jellyfin: se incrementa `SYNC_ALGORITHM_VERSION` a `5` para forzar una única resincronización completa automática tras actualizar, purgando títulos y episodios eliminados del servidor y recuperando elementos omitidos en sincronizaciones incrementales previas.",
-  "apkUrl": "https://github.com/GitCorion/Medusa/releases/download/v2.4.2/Medusa.apk",
-  "apkSha256": "c25423567020fe47cee0f796cf4b8346ae701c733c09a30f4332afde992375f4",
+  "releaseNotes": "Medusa 2.4.3",
+  "apkUrl": "https://github.com/GitCorion/Medusa/releases/download/v2.4.3/Medusa.apk",
+  "apkSha256": "c68af52794065fb1772b4d82239901f5d4debcd58ad5cc7d8b1aba8a37e96855",
   "signatures": []
 }
