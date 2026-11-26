@@ -212,6 +212,7 @@ class PlayerViewModel @Inject constructor(
     private var audioFallbackAttempts = 0
     private var fullTranscodeAttempts = 0
     private var onDemandRecoveryAttempts = 0
+    private val attemptedMediaSourceIds = linkedSetOf<String>()
     @Volatile
     private var retryInFlight = false
     @Volatile
@@ -286,6 +287,8 @@ class PlayerViewModel @Inject constructor(
         )
     private val cachedDevice4kHevc: Boolean
         by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { canDeviceDecode4kHevc() }
+    private val cachedDeviceDolbyVision: Boolean
+        by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { canDeviceDecodeDolbyVision() }
 
     // ─── Skip markers ──────────────────────────────────────────────────
     // Cada campo de SkipMarker viene directamente del plugin/API, sin valores inventados.
@@ -338,6 +341,59 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
+    private fun canDeviceDecodeDolbyVision(): Boolean {
+        if (DeviceUtils.isEmulator()) {
+            return false
+        }
+        return try {
+            val codecList = MediaCodecList(MediaCodecList.REGULAR_CODECS)
+            codecList.codecInfos.any { info ->
+                !info.isEncoder &&
+                    !info.name.lowercase().let { name ->
+                        name.startsWith("omx.google.") ||
+                            name.startsWith("c2.android.") ||
+                            name.startsWith("c2.goldfish.")
+                    } &&
+                    info.supportedTypes.any { it.equals("video/dolby-vision", ignoreCase = true) }
+            }
+        } catch (e: Exception) {
+            Log.w("PlayerViewModel", "Error checking Dolby Vision capabilities: ${e.message}")
+            false
+        }
+    }
+
+    /**
+     * Si el decodificador de vídeo falla y existen otras versiones sin intentar (p. ej. 1080p
+     * frente a 4K/Dolby Vision), cambia de versión manteniendo la sesión y posición actual.
+     */
+    fun tryFallbackToCompatibleVersion(resumePositionMs: Long = 0L): Boolean {
+        val stream = _streamInfo.value ?: return false
+        if (currentPlayableId.isBlank() || stream.availableVersions.size <= 1) return false
+
+        val snapshot = synchronized(attemptedMediaSourceIds) { attemptedMediaSourceIds.toSet() }
+        val fallback = JellyfinPlaybackSourceResolver.selectFallbackMediaSource(
+            availableVersions = stream.availableVersions,
+            attemptedIds = snapshot,
+            supports4K = cachedDevice4kHevc,
+            supportsDolbyVision = cachedDeviceDolbyVision
+        ) ?: return false
+
+        synchronized(attemptedMediaSourceIds) {
+            attemptedMediaSourceIds.add(fallback.id)
+        }
+        Log.w(
+            "PlayerViewModel",
+            "Video decoder fallback: switching from mediaSource=$activeMediaSourceId to ${fallback.id} (${fallback.name})"
+        )
+        loadStreamUrl(
+            itemId = currentPlayableId,
+            preferredMediaSourceId = fallback.id,
+            reuseSessionId = true,
+            resumePositionMs = resumePositionMs
+        )
+        return true
+    }
+
     fun selectVersion(mediaSourceId: String) {
         if (currentPlayableId.isNotBlank()) {
             loadStreamUrl(currentPlayableId, preferredMediaSourceId = mediaSourceId, reuseSessionId = true)
@@ -362,6 +418,7 @@ class PlayerViewModel @Inject constructor(
                 activeAudioStreamIndex = null
                 activeSubtitleStreamIndex = null
                 activeMediaSourceId = ""
+                synchronized(attemptedMediaSourceIds) { attemptedMediaSourceIds.clear() }
                 onDemandStreamGeneration = null
                 onDemandRecoveryAttempts = 0
             }
@@ -500,11 +557,14 @@ class PlayerViewModel @Inject constructor(
                 currentPlayableTitle = itemDto?.name ?: entity?.title ?: ""
                 currentPlayableBackdropUrl = backdropUrl
                 val allSources = itemDto?.mediaSources ?: emptyList()
-                val chosenMsForPrep = if (!preferredMediaSourceId.isNullOrBlank()) {
-                    allSources.firstOrNull { it.id == preferredMediaSourceId } ?: allSources.firstOrNull()
-                } else {
-                    allSources.firstOrNull()
-                }
+                val supports4KForPrep = withContext(Dispatchers.Default) { cachedDevice4kHevc }
+                val supportsDvForPrep = withContext(Dispatchers.Default) { cachedDeviceDolbyVision }
+                val chosenMsForPrep = JellyfinPlaybackSourceResolver.selectPreferredMediaSource(
+                    mediaSources = allSources,
+                    preferredMediaSourceId = preferredMediaSourceId,
+                    supports4K = supports4KForPrep,
+                    supportsDolbyVision = supportsDvForPrep
+                )
                 val releaseIdFromPath = chosenMsForPrep?.path?.let { path ->
                     runCatching {
                         android.net.Uri.parse(path).getQueryParameter("release")?.toLongOrNull()
@@ -574,29 +634,15 @@ class PlayerViewModel @Inject constructor(
             val mediaSources = playbackInfo?.mediaSources?.ifEmpty { null } ?: itemDto?.mediaSources
 
             val supports4K = withContext(Dispatchers.Default) { cachedDevice4kHevc }
-            Log.i("PlayerViewModel", "Device 4K HEVC hardware decode support: $supports4K")
+            val supportsDolbyVision = withContext(Dispatchers.Default) { cachedDeviceDolbyVision }
+            Log.i("PlayerViewModel", "Device capabilities: 4K HEVC=$supports4K, DolbyVision=$supportsDolbyVision")
 
-            var chosenMediaSource = if (!preferredMediaSourceId.isNullOrBlank()) {
-                mediaSources?.firstOrNull { it.id == preferredMediaSourceId } ?: mediaSources?.firstOrNull()
-            } else if (!supports4K && mediaSources != null && mediaSources.size > 1) {
-                val primaryName = mediaSources.firstOrNull()?.name?.lowercase().orEmpty()
-                val primaryIs4K = primaryName.contains("4k") || primaryName.contains("uhd") || primaryName.contains("2160")
-                if (primaryIs4K) {
-                    val pH264 = mediaSources.firstOrNull { ms ->
-                        val name = ms.name?.lowercase() ?: ""
-                        (name.contains("1080") || name.contains("fhd")) && (name.contains("h264") || name.contains("eng+esp") || name.contains("multi"))
-                    }
-                    val p1080 = mediaSources.firstOrNull { ms ->
-                        val name = ms.name?.lowercase() ?: ""
-                        name.contains("1080") || name.contains("fhd")
-                    }
-                    pH264 ?: p1080 ?: mediaSources.firstOrNull()
-                } else {
-                    mediaSources.firstOrNull()
-                }
-            } else {
-                mediaSources?.firstOrNull()
-            }
+            var chosenMediaSource = JellyfinPlaybackSourceResolver.selectPreferredMediaSource(
+                mediaSources = mediaSources,
+                preferredMediaSourceId = preferredMediaSourceId,
+                supports4K = supports4K,
+                supportsDolbyVision = supportsDolbyVision
+            )
 
             // Selección inteligente de pista de audio:
             // Si la pista por defecto no está soportada (ej. DTS-HD en una TV sin soporte HDMI) y existe una
@@ -649,6 +695,9 @@ class PlayerViewModel @Inject constructor(
                 val mediaSourceId = mediaSource.id
                 val container = mediaSource.container?.lowercase()?.trim() ?: "mkv"
                 activeMediaSourceId = mediaSourceId
+                if (mediaSourceId.isNotBlank()) {
+                    synchronized(attemptedMediaSourceIds) { attemptedMediaSourceIds.add(mediaSourceId) }
+                }
                 activePlayMethod = when {
                     mediaSource.supportsDirectPlay -> "DirectPlay"
                     mediaSource.supportsDirectStream -> "DirectStream"

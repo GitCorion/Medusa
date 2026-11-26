@@ -69,6 +69,14 @@ internal object JellyfinPlaybackSourceResolver {
         val effectiveContainer = if (container.isNotBlank() && container != "strm") container else "mkv"
 
         if (isStrm) {
+            val requiresServerTranscode =
+                !mediaSource.supportsDirectPlay &&
+                    !mediaSource.supportsDirectStream &&
+                    !mediaSource.transcodingUrl.isNullOrBlank()
+            if (requiresServerTranscode) {
+                add(mediaSource.transcodingUrl)
+            }
+
             // 1. Proxy del servidor: resuelve el .strm (Docker/rclone/LAN) con HTTP 206 y soporte de Range.
             if (mediaSourceId.isNotBlank()) {
                 add("$baseUrl/Videos/$playableId/stream?static=true&MediaSourceId=$mediaSourceId")
@@ -168,5 +176,103 @@ internal object JellyfinPlaybackSourceResolver {
 
         val codec = stream.codec?.trim()?.takeIf { it.isNotBlank() } ?: "srt"
         return "$baseUrl/Videos/$playableId/$mediaSourceId/Subtitles/${stream.index}/Stream.$codec?api_key=$token"
+    }
+
+    private val DV_NAME_REGEX = Regex("(^|[^a-z0-9])(dv|dovi|dolby)([^a-z0-9]|$)", RegexOption.IGNORE_CASE)
+
+    fun isFourKSource(mediaSource: JellyfinMediaSourceDto): Boolean {
+        val name = mediaSource.name?.lowercase().orEmpty()
+        if (name.contains("4k") || name.contains("uhd") || name.contains("2160")) {
+            return true
+        }
+        return mediaSource.mediaStreams.any { stream ->
+            stream.type.equals("Video", ignoreCase = true) &&
+                ((stream.width ?: 0) > 1920 || (stream.height ?: 0) > 1200)
+        }
+    }
+
+    fun isDolbyVisionSource(mediaSource: JellyfinMediaSourceDto): Boolean {
+        val name = mediaSource.name.orEmpty()
+        if (DV_NAME_REGEX.containsMatchIn(name)) {
+            return true
+        }
+        return mediaSource.mediaStreams.any { stream ->
+            if (!stream.type.equals("Video", ignoreCase = true)) return@any false
+            val range = stream.videoRangeType?.lowercase().orEmpty()
+            val codec = stream.codec?.lowercase().orEmpty()
+            val title = stream.displayTitle?.lowercase().orEmpty()
+            range.contains("dovi") ||
+                range.contains("dolby") ||
+                codec.contains("dvhe") ||
+                codec.contains("dvh1") ||
+                title.contains("dolby vision")
+        }
+    }
+
+    fun isSourceCompatible(
+        mediaSource: JellyfinMediaSourceDto,
+        supports4K: Boolean,
+        supportsDolbyVision: Boolean
+    ): Boolean {
+        if (!supports4K && isFourKSource(mediaSource)) return false
+        if (!supportsDolbyVision && isDolbyVisionSource(mediaSource)) return false
+        return true
+    }
+
+    private fun pickBestCompatibleSource(sources: List<JellyfinMediaSourceDto>): JellyfinMediaSourceDto? {
+        val p1080H264 = sources.firstOrNull { ms ->
+            val name = ms.name?.lowercase().orEmpty()
+            (name.contains("1080") || name.contains("fhd")) &&
+                (name.contains("h264") || name.contains("avc") || name.contains("eng+esp") || name.contains("multi"))
+        }
+        if (p1080H264 != null) return p1080H264
+
+        val p1080 = sources.firstOrNull { ms ->
+            val name = ms.name?.lowercase().orEmpty()
+            name.contains("1080") || name.contains("fhd")
+        }
+        return p1080 ?: sources.firstOrNull()
+    }
+
+    /**
+     * Selecciona la versión inicial óptima según las capacidades de hardware del dispositivo.
+     * Evita preparar o abrir DirectPlay de versiones 4K o Dolby Vision cuando el dispositivo no las soporta.
+     */
+    fun selectPreferredMediaSource(
+        mediaSources: List<JellyfinMediaSourceDto>?,
+        preferredMediaSourceId: String?,
+        supports4K: Boolean,
+        supportsDolbyVision: Boolean
+    ): JellyfinMediaSourceDto? {
+        if (mediaSources.isNullOrEmpty()) return null
+        if (!preferredMediaSourceId.isNullOrBlank()) {
+            return mediaSources.firstOrNull { it.id == preferredMediaSourceId } ?: mediaSources.firstOrNull()
+        }
+        val first = mediaSources.first()
+        if (mediaSources.size == 1 || isSourceCompatible(first, supports4K, supportsDolbyVision)) {
+            return first
+        }
+        val compatible = mediaSources.filter { isSourceCompatible(it, supports4K, supportsDolbyVision) }
+        return pickBestCompatibleSource(compatible) ?: first
+    }
+
+    /**
+     * Busca una alternativa no intentada tras un fallo de decodificador de vídeo antes de
+     * recurrir a transcodificación completa en el servidor.
+     */
+    fun selectFallbackMediaSource(
+        availableVersions: List<JellyfinMediaSourceDto>,
+        attemptedIds: Set<String>,
+        supports4K: Boolean,
+        supportsDolbyVision: Boolean
+    ): JellyfinMediaSourceDto? {
+        val untried = availableVersions.filter { it.id.isNotBlank() && it.id !in attemptedIds }
+        if (untried.isEmpty()) return null
+
+        val compatible = untried.filter { isSourceCompatible(it, supports4K, supportsDolbyVision) }
+        if (compatible.isNotEmpty()) {
+            return pickBestCompatibleSource(compatible)
+        }
+        return if (supports4K && supportsDolbyVision) untried.firstOrNull() else null
     }
 }

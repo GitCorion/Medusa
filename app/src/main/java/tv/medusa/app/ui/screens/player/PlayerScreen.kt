@@ -864,19 +864,17 @@ private fun PlayerContent(
 
                         // Fallo de decoder: se distingue audio y vídeo para no gastar el
                         // reintento de audio cuando el que falla es el vídeo.
-                        val causeText = error.cause?.message.orEmpty()
-                        val isAudioDecoderFailure =
-                            error.errorCode == PlaybackException.ERROR_CODE_AUDIO_TRACK_INIT_FAILED ||
-                                (error.errorCode == PlaybackException.ERROR_CODE_DECODER_INIT_FAILED &&
-                                    (causeText.contains("audio", ignoreCase = true) ||
-                                        causeText.contains("audio/", ignoreCase = true)))
+                        val decoderFailure = classifyDecoderFailure(error)
+                        val isAudioDecoderFailure = decoderFailure == DecoderFailureKind.AUDIO
+                        val isVideoDecoderFailure = decoderFailure == DecoderFailureKind.VIDEO
 
                         if (isAudioDecoderFailure) {
                             Log.w(
                                 "PlayerScreen",
-                                "Audio decoder init failed (${error.errorCodeName}). Retrying once with server-side audio transcode."
+                                "Audio decoder failed (${error.errorCodeName}). Retrying once with server-side audio transcode."
                             )
                             chosenStartPositionMs = currentPosition.coerceAtLeast(0L)
+                            isBuffering = true
                             viewModel.retryWithTranscoding(
                                 forceAudioTranscodeOnly = true,
                                 resumePositionMs = chosenStartPositionMs
@@ -884,15 +882,23 @@ private fun PlayerContent(
                             return
                         }
 
-                        // Un DECODER_INIT_FAILED sin pistas de audio (o con causa de vídeo)
-                        // se resuelve con transcodificación completa: DirectPlay off y sin
-                        // copiar audio ni vídeo. Así también se reproduce "TODO".
-                        if (error.errorCode == PlaybackException.ERROR_CODE_DECODER_INIT_FAILED) {
+                        // Si el decodificador de vídeo falla (init o ERROR_CODE_DECODING_FAILED /
+                        // capacidades superadas en 4K/DV), primero intentamos otra versión compatible
+                        // (p. ej. 1080p) y si no hay, pedimos transcodificación completa al servidor.
+                        if (isVideoDecoderFailure) {
+                            chosenStartPositionMs = currentPosition.coerceAtLeast(0L)
+                            isBuffering = true
+                            if (viewModel.tryFallbackToCompatibleVersion(resumePositionMs = chosenStartPositionMs)) {
+                                Log.w(
+                                    "PlayerScreen",
+                                    "Video decoder failed (${error.errorCodeName}). Switching to compatible media version."
+                                )
+                                return
+                            }
                             Log.w(
                                 "PlayerScreen",
-                                "Decoder init failed (${error.errorCodeName}). Retrying once with full server transcode."
+                                "Video decoder failed (${error.errorCodeName}). Retrying once with full server transcode."
                             )
-                            chosenStartPositionMs = currentPosition.coerceAtLeast(0L)
                             viewModel.retryWithTranscoding(
                                 forceFullTranscode = true,
                                 resumePositionMs = chosenStartPositionMs
@@ -922,7 +928,7 @@ private fun PlayerContent(
                             shouldRecoverOnDemandError(
                                 isOnDemand = info.isOnDemand,
                                 isAudioDecoderFailure = isAudioDecoderFailure,
-                                isDecoderInitFailure = error.errorCode == PlaybackException.ERROR_CODE_DECODER_INIT_FAILED,
+                                isDecoderInitFailure = decoderFailure != DecoderFailureKind.NONE,
                                 isContainerError = isVideoOrCodecError,
                                 httpCode = httpCode,
                                 isTimeoutOrSeekError = isTimeoutOrSeekError,
@@ -982,7 +988,7 @@ private fun PlayerContent(
                                 error.errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT -> appContext.getString(R.string.player_error_network)
                                 error.errorCode == PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED ||
                                 error.errorCode == PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED -> appContext.getString(R.string.player_error_container)
-                                error.errorCode == PlaybackException.ERROR_CODE_DECODER_INIT_FAILED -> appContext.getString(R.string.player_decoder_unsupported)
+                                decoderFailure != DecoderFailureKind.NONE -> appContext.getString(R.string.player_decoder_unsupported)
                                 else -> error.message ?: error.errorCodeName
                             }
                             playerErrorMessage = humanMsg

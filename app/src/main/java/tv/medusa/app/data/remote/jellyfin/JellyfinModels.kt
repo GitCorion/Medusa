@@ -166,6 +166,9 @@ data class JellyfinMediaStreamDto(
     @SerialName("IsForced") val isForced: Boolean = false,
     @SerialName("Channels") val channels: Int? = null,
     @SerialName("ChannelLayout") val channelLayout: String? = null,
+    @SerialName("Width") val width: Int? = null,
+    @SerialName("Height") val height: Int? = null,
+    @SerialName("VideoRangeType") val videoRangeType: String? = null,
     @SerialName("DeliveryUrl") val deliveryUrl: String? = null,
     @SerialName("SupportsExternalStream") val supportsExternalStream: Boolean = false
 )

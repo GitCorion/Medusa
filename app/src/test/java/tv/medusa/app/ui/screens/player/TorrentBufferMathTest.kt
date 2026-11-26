@@ -1,5 +1,6 @@
 package tv.medusa.app.ui.screens.player
 
+import androidx.media3.common.PlaybackException
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -214,6 +215,57 @@ class TorrentBufferMathTest {
                 isTimeoutOrSeekError = true,
                 isLastCandidate = true,
                 recoveryAttempts = 1
+            )
+        )
+    }
+
+    @Test
+    fun `clasifica ERROR_CODE_DECODING_FAILED de MediaCodec video como fallo de video`() {
+        assertEquals(
+            DecoderFailureKind.VIDEO,
+            classifyDecoderFailure(
+                errorCode = PlaybackException.ERROR_CODE_DECODING_FAILED,
+                causeMessage = "Decoder failed: c2.mtk.hevc.decoder",
+                errorMessage = "MediaCodecVideoRenderer error, format=video/dolby-vision"
+            )
+        )
+        assertEquals(
+            DecoderFailureKind.VIDEO,
+            classifyDecoderFailure(
+                errorCode = PlaybackException.ERROR_CODE_DECODING_FORMAT_EXCEEDS_CAPABILITIES,
+                causeMessage = "NO_EXCEEDS_CAPABILITIES"
+            )
+        )
+        assertEquals(
+            DecoderFailureKind.VIDEO,
+            classifyDecoderFailure(
+                errorCode = PlaybackException.ERROR_CODE_DECODING_FORMAT_UNSUPPORTED,
+                causeMessage = null
+            )
+        )
+    }
+
+    @Test
+    fun `clasifica fallos de decoder de audio y red sin confundirlos`() {
+        assertEquals(
+            DecoderFailureKind.AUDIO,
+            classifyDecoderFailure(
+                errorCode = PlaybackException.ERROR_CODE_AUDIO_TRACK_INIT_FAILED,
+                causeMessage = null
+            )
+        )
+        assertEquals(
+            DecoderFailureKind.AUDIO,
+            classifyDecoderFailure(
+                errorCode = PlaybackException.ERROR_CODE_DECODER_INIT_FAILED,
+                causeMessage = "Decoder init failed for audio/ac3"
+            )
+        )
+        assertEquals(
+            DecoderFailureKind.NONE,
+            classifyDecoderFailure(
+                errorCode = PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS,
+                causeMessage = "HTTP 503"
             )
         )
     }

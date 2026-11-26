@@ -1,5 +1,43 @@
 package tv.medusa.app.ui.screens.player
 
+import androidx.media3.common.PlaybackException
+
+internal enum class DecoderFailureKind {
+    NONE,
+    AUDIO,
+    VIDEO
+}
+
+/**
+ * Clasifica errores de decodificador de Media3 en audio, vídeo o no relacionado con códec.
+ * Incluye `ERROR_CODE_DECODING_FAILED` y errores de capacidad de formato para activar el
+ * fallback de versión/transcodificación cuando `MediaCodec` rechaza el flujo (p. ej. 4K DV).
+ */
+internal fun classifyDecoderFailure(error: PlaybackException): DecoderFailureKind =
+    classifyDecoderFailure(error.errorCode, error.cause?.message, error.message)
+
+internal fun classifyDecoderFailure(
+    errorCode: Int,
+    causeMessage: String?,
+    errorMessage: String? = null
+): DecoderFailureKind {
+    if (errorCode == PlaybackException.ERROR_CODE_AUDIO_TRACK_INIT_FAILED) {
+        return DecoderFailureKind.AUDIO
+    }
+    val isMediaDecoderCode =
+        errorCode == PlaybackException.ERROR_CODE_DECODER_INIT_FAILED ||
+            errorCode == PlaybackException.ERROR_CODE_DECODER_QUERY_FAILED ||
+            errorCode == PlaybackException.ERROR_CODE_DECODING_FAILED ||
+            errorCode == PlaybackException.ERROR_CODE_DECODING_FORMAT_EXCEEDS_CAPABILITIES ||
+            errorCode == PlaybackException.ERROR_CODE_DECODING_FORMAT_UNSUPPORTED
+    if (!isMediaDecoderCode) return DecoderFailureKind.NONE
+
+    val detail = "${causeMessage.orEmpty()} ${errorMessage.orEmpty()}".lowercase()
+    val mentionsAudio = detail.contains("audio") || detail.contains("audio/")
+    val mentionsVideo = detail.contains("video") || detail.contains("mediacodecvideorenderer")
+    return if (mentionsAudio && !mentionsVideo) DecoderFailureKind.AUDIO else DecoderFailureKind.VIDEO
+}
+
 /**
  * Cálculo del búfer del overlay TOD, separado de la vista para poder probarlo.
  *

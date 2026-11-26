@@ -247,4 +247,105 @@ class PlayerResolutionTest {
         assertTrue(containers.contains("ts"))
         assertFalse("Media3 no tiene extractor AVI: debe transcodificarlo el servidor", containers.contains("avi"))
     }
+
+    @Test
+    fun strmRequiringTranscode_prefersTranscodingUrlFirst() {
+        val result = candidates(
+            source = JellyfinMediaSourceDto(
+                id = "ms-4k-dv",
+                path = "http://127.0.0.1:8773/play?key=abc",
+                protocol = "Http",
+                container = "strm",
+                transcodingUrl = "/Videos/12345/master.m3u8?Transcode=true",
+                supportsDirectPlay = false,
+                supportsDirectStream = false,
+                supportsTranscoding = true
+            )
+        )
+
+        assertTrue(
+            "Cuando Jellyfin rechaza DirectPlay/DirectStream, debe priorizar master.m3u8",
+            result.first().contains("master.m3u8")
+        )
+    }
+
+    @Test
+    fun selectPreferredMediaSource_non4kTablet_prefers1080pOver4kOrDolbyVision() {
+        val ms4k = JellyfinMediaSourceDto(
+            id = "ms-4k",
+            name = "4K Cast",
+            mediaStreams = listOf(
+                JellyfinMediaStreamDto(type = "Video", codec = "hevc", width = 3840, height = 1600, videoRangeType = "DOVIWithHDR10Plus")
+            )
+        )
+        val ms1080 = JellyfinMediaSourceDto(
+            id = "ms-1080",
+            name = "1080p Cast",
+            mediaStreams = listOf(
+                JellyfinMediaStreamDto(type = "Video", codec = "h264", width = 1920, height = 800, videoRangeType = "SDR")
+            )
+        )
+
+        val tabletChoice = JellyfinPlaybackSourceResolver.selectPreferredMediaSource(
+            mediaSources = listOf(ms4k, ms1080),
+            preferredMediaSourceId = null,
+            supports4K = false,
+            supportsDolbyVision = false
+        )
+        assertEquals("ms-1080", tabletChoice?.id)
+
+        val tvChoice = JellyfinPlaybackSourceResolver.selectPreferredMediaSource(
+            mediaSources = listOf(ms4k, ms1080),
+            preferredMediaSourceId = null,
+            supports4K = true,
+            supportsDolbyVision = true
+        )
+        assertEquals("ms-4k", tvChoice?.id)
+    }
+
+    @Test
+    fun selectPreferredMediaSource_detects4kAndDolbyVisionFromMediaStreamsEvenWithoutNameTag() {
+        val msGeneric4k = JellyfinMediaSourceDto(
+            id = "ms-default",
+            name = "Blade Runner 2099 S01E01",
+            mediaStreams = listOf(
+                JellyfinMediaStreamDto(type = "Video", codec = "hevc", width = 3840, height = 1600, videoRangeType = "DOVI")
+            )
+        )
+        val ms1080 = JellyfinMediaSourceDto(
+            id = "ms-1080",
+            name = "1080p Cast"
+        )
+
+        val choice = JellyfinPlaybackSourceResolver.selectPreferredMediaSource(
+            mediaSources = listOf(msGeneric4k, ms1080),
+            preferredMediaSourceId = null,
+            supports4K = false,
+            supportsDolbyVision = false
+        )
+        assertEquals("ms-1080", choice?.id)
+    }
+
+    @Test
+    fun selectFallbackMediaSource_skipsAttemptedAnd4kOnTablet() {
+        val msDefault = JellyfinMediaSourceDto(id = "ms-default", name = "Blade Runner 2099 S01E01")
+        val ms1080 = JellyfinMediaSourceDto(id = "ms-1080", name = "1080p Cast")
+        val ms4k = JellyfinMediaSourceDto(id = "ms-4k", name = "4K Cast")
+
+        val firstFallback = JellyfinPlaybackSourceResolver.selectFallbackMediaSource(
+            availableVersions = listOf(msDefault, ms1080, ms4k),
+            attemptedIds = setOf("ms-default"),
+            supports4K = false,
+            supportsDolbyVision = false
+        )
+        assertEquals("ms-1080", firstFallback?.id)
+
+        val secondFallback = JellyfinPlaybackSourceResolver.selectFallbackMediaSource(
+            availableVersions = listOf(msDefault, ms1080, ms4k),
+            attemptedIds = setOf("ms-default", "ms-1080"),
+            supports4K = false,
+            supportsDolbyVision = false
+        )
+        assertEquals(null, secondFallback)
+    }
 }
