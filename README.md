@@ -67,14 +67,6 @@ visionado. El detalle del flujo está en [`docs/PLAYBACK.md`](docs/PLAYBACK.md).
 | **Biblioteca e integraciones** | Room 22 con FTS, caché local, filtros parentales, sincronización incremental, Trakt, TMDB (con clave propia) y actualizaciones OTA desde GitHub Releases. |
 | **Personalización** | Colores de acento (cian/ámbar/blanco), modo monocromo, estilos de botón, partículas opcionales, tamaño/fondo de subtítulos y reducción de movimiento. |
 
-### Reglas de interfaz y rendimiento
-
-- Un único elemento enfocado con borde de `1,5 dp` y `zIndex(10f)`, sin escalar
-  tarjetas ni atenuar las vecinas.
-- Sin `Modifier.blur()` ni `RenderEffect` en tiempo real, para mantener 60 fps
-  en hardware de gama de entrada.
-- Tipografía DM Sans; paleta definida en `ui/theme/Color.kt` y [`DESIGN.md`](DESIGN.md).
-
 ## Instalación
 
 ### Requisitos

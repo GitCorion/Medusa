@@ -57,31 +57,19 @@ subtitles and watch progress keep working. The full flow is in [`docs/PLAYBACK.m
 |---|---|
 | **Home** | Full-bleed hero with ClearLogo, favorite genres, platforms, Continue watching, Top 10 and genre carousels. Scrim, pagination and one primary action. |
 | **Discover** | Format filters (all, catalog, movies, series) and a theme rail with **AND** filters. Each tag adds a filter; `BACK` removes the last one. Results update in the same carousel. |
-| **Search** | Ten-foot keyboard, predictive suggestions, instant results and remote Jellyfin search. |
+| **Search** | Remote-friendly on-screen keyboard, predictive suggestions, instant results and remote Jellyfin search. |
 | **Detail** | Poster, editorial metadata, container-free synopsis, progress/favorite states, seasons and episodes, sagas and recommendations. |
 | **Player** | Media3 + FFmpeg. DirectPlay, remux, HLS and transcoding; `.strm`; TOD preparation; subtitles; audio tracks; HDMI passthrough; next episode; Media Segments; automatic refresh-rate switching. |
 | **Library and integrations** | Room 22 with FTS, local cache, parental filters, sagas, incremental sync, Trakt, TMDB with your own key and OTA from GitHub Releases. |
 | **Personalization** | Cyan/amber/white accents, monochrome mode, button styles, particles, sounds, subtitle size and background, and reduced motion. |
-
-### Design and behavior
-
-- **Focus.** An 18 dp icon dock. Cards use a 1.5 dp border, `zIndex(10f)` and the title at full
-  brightness; neighbours keep their opacity. On TV, `BACK` is the way back.
-- **Performance.** `Modifier.blur()` and `RenderEffect` are banned. Cards neither scale nor dim
-  their neighbours. The chrome has no autonomous animations; the hero rotates every 12 s when
-  unfocused and seasonal particles are optional. The target is 60 fps on entry-level hardware.
-- **Color and type.** DM Sans across the interface, ink `#04060A`, focus cyan `#00D2FF`,
-  cobalt/aqua and amber/gold for ratings. Tokens live in `ui/theme/Color.kt` and
-  [`DESIGN.md`](DESIGN.md).
 
 ## Install
 
 ### Requirements
 
 - Android 8.0 or newer (API 26). Android TV, Google TV, Fire TV or tablet.
-- A Jellyfin server reachable from the device, on the same network or over the internet.
-- Space for the APK (about 15 MB) and its installation. No Medusa account or Google services are
-  required to run the app.
+- A Jellyfin server reachable on the local network or over the Internet.
+- ~15 MB of free space for the APK.
 
 ### Download the APK
 
