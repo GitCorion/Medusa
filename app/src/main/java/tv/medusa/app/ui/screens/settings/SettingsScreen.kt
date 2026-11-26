@@ -973,21 +973,38 @@ private fun LibraryCategory(
     } else {
         TvSectionHeader(title = stringResource(R.string.settings_section_link_account))
 
-        Button(
-            onClick = { viewModel.startTraktDeviceFlow() },
-            colors = ButtonDefaults.colors(
-                containerColor = tv.medusa.app.ui.theme.TvPalette.GlassSubtle,
-                contentColor = TextPrimary,
-                focusedContainerColor = focusColor,
-                focusedContentColor = focusContent
-            ),
-            enabled = !uiState.isWaitingTraktAuth
-        ) {
-            Text(
-                text = if (uiState.isWaitingTraktAuth) stringResource(R.string.settings_btn_generating_code) else stringResource(R.string.settings_btn_link_qr),
-                fontSize = 13.sp,
-                fontWeight = FontWeight.SemiBold
-            )
+        if (tv.medusa.app.util.DeviceUtils.isTouchDevice(LocalContext.current)) {
+            androidx.compose.material3.Button(
+                onClick = { viewModel.startTraktDeviceFlow() },
+                colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                    containerColor = tv.medusa.app.ui.theme.TvPalette.GlassSubtle,
+                    contentColor = TextPrimary
+                ),
+                enabled = !uiState.isWaitingTraktAuth
+            ) {
+                Text(
+                    text = if (uiState.isWaitingTraktAuth) stringResource(R.string.settings_btn_generating_code) else stringResource(R.string.settings_btn_link_qr),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        } else {
+            Button(
+                onClick = { viewModel.startTraktDeviceFlow() },
+                colors = ButtonDefaults.colors(
+                    containerColor = tv.medusa.app.ui.theme.TvPalette.GlassSubtle,
+                    contentColor = TextPrimary,
+                    focusedContainerColor = focusColor,
+                    focusedContentColor = focusContent
+                ),
+                enabled = !uiState.isWaitingTraktAuth
+            ) {
+                Text(
+                    text = if (uiState.isWaitingTraktAuth) stringResource(R.string.settings_btn_generating_code) else stringResource(R.string.settings_btn_link_qr),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
         }
     }
 
