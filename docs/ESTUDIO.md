@@ -1,315 +1,164 @@
-# Estudio de Medusa TV
+# Diseño de interfaz — Medusa TV
 
-**Una interfaz a tres metros**
+Documentación de las decisiones de diseño, sistema visual y restricciones de
+rendimiento de Medusa TV sobre la base de `main` (`2.4.1`).
 
-Capa visual de `main` (2.4.1), 23 de noviembre de 2026 · Estable publicada: 2.4.1 · Madrid
+> La versión interactiva está publicada en <https://gitcorion.github.io/Medusa/>.
 
-> Este documento es la versión larga del estudio publicado en
-> <https://gitcorion.github.io/Medusa/>. Allí puedes probar el foco con las flechas del teclado y
-> ver las capturas a tamaño completo. Aquí están el método, las decisiones y la deuda.
-
-## 1. Ficha
+## 1. Ficha técnica
 
 | | |
 |---|---|
 | Producto | Medusa TV, cliente Jellyfin nativo para Android TV y tablet |
 | Repositorio | <https://github.com/GitCorion/Medusa> |
-| Distribución | APK firmado en GitHub Releases, actualización OTA desde la app |
-| Plataforma | Android 8.0+, `minSdk 26`, `targetSdk` 36 |
-| Construcción | Kotlin 2.0.21, Compose TV, Hilt, Room 22, Media3 |
-| Biblioteca de prueba | Jellyfin local; capturas con la biblioteca sincronizada |
-| Capturas | Televisor de 1920 × 1080, capa visual de `main` (2.4.1); las capturas se tomaron en la build 2.4.0, sin cambios visuales en 2.4.1 |
+| Distribución | APK firmado en GitHub Releases con actualización OTA |
+| Plataforma | Android 8.0+ (`minSdk 26`, `targetSdk 36`) |
+| Stack | Kotlin 2.0.21, Compose TV, Hilt, Room 22, Media3 |
+| Capturas | Televisor 1920 × 1080 |
 | Licencia | GPL-3.0 |
 
-La interfaz es **cinematográfica y de diez pies**: arte a sangre, un dock de iconos, un foco de
-alto contraste y una sola familia tipográfica. La identidad abisal vive en el arte, la luz y la
-tipografía; el comportamiento es el que el usuario espera de una tele.
+## 2. Criterios para televisor
 
-## 2. Método
+Diseñar para Android TV impone cuatro restricciones concretas frente a una app
+móvil o web:
 
-El estudio se hizo sobre cuatro fuentes, no sobre una maqueta:
+- **Distancia de lectura.** En televisor el texto pequeño pierde legibilidad
+  rápido; las pantallas priorizan jerarquía clara y poca densidad por fila.
+- **Control por mando (D-pad).** No hay puntero ni *hover*; `OK` selecciona y
+  `BACK` retrocede. El foco actual debe ser inequívoco en todo momento.
+- **Contraste en sala.** La interfaz convive con luz ambiental y reflejos de
+  pantalla; los textos y estados necesitan contraste suficiente sobre fondos
+  oscuros.
+- **Hardware limitado.** En *dongles* y televisores de gama de entrada, el
+  desenfoque en tiempo real (`blur`) y las animaciones por tarjeta provocan
+  caídas de *framerate*.
 
-1. **Código real.** Lectura de `ui/theme`, `TvTopBar`, tarjetas, navegación, ajustes, reproductor y
-   capas de datos. Los tokens que aparecen aquí son los que renderiza `Color.kt`.
-2. **Televisor real.** Capturas con `adb` de la app instalada en un Android TV a 1080p, con una
-   biblioteca de prueba grande. Nada de composiciones en Figma.
-3. **Registro de commits.** Las tres pasadas del 22 y 23 de noviembre se citan con su hora y su
-   intención. Un estudio de diseño también debe incluir lo que se descartó.
-4. **Auditoría de diseño.** La crítica interna del 22 de noviembre, con sus hallazgos de
-   accesibilidad, contraste y semántica. La deuda declarada del final sale de ahí.
+Regla general: cualquier elemento que no aporte foco, jerarquía o dato útil se
+omite, y no se alteran las interacciones estándar del mando.
 
-**Límites.** No hay pruebas con usuarios externos, ni medición automática de frame time, ni una
-muestra amplia de dispositivos. Las conclusiones de rendimiento son de diseño y de observación en
-un televisor, no un benchmark estadístico.
+## 3. Decisiones principales
 
-## 3. El problema: tres metros
+### Navegación y carátulas
 
-La app se usa desde un sofá. Eso cambia cuatro cosas:
+- Barra superior con iconos de navegación (`18 dp`) sin subrayados ni pestañas
+  que obliguen a pulsar `OK` para cambiar de vista.
+- Carátulas y fondos a pantalla completa. En las filas estándar, título y año
+  van fuera del póster; *Continuar viendo* muestra título y barra de progreso
+  sobre la tarjeta.
+- Sin cajas grises con texto incrustado ni bordes en reposo.
 
-- **La vista.** A tres metros, un texto de 12 sp ocupa menos de cuatro milímetros. La densidad de
-  un dashboard no sirve; hace falta jerarquía.
-- **La mano.** El mando tiene D-pad, OK y BACK. No hay hover, no hay scroll fino y no hay puntero.
-  El foco es el cursor y tiene que estar siempre visible.
-- **La sala.** La pantalla compite con una lámpara, una ventana o el reflejo de una OLED. El
-  contraste no es un adorno.
-- **El hardware.** Un dongle de gama baja no perdona blur en tiempo real ni animaciones de
-  composición por tarjeta. La fluidez es una restricción de producto.
+### Foco único y rendimiento (60 fps)
 
-De ahí sale la regla que gobierna el resto: **si un elemento no comunica foco, jerarquía o dato,
-se elimina**. Y una segunda, aprendida en las pasadas intermedias: **si una interacción no es la
-que el usuario espera de una tele, no se inventa**.
+Las primeras iteraciones escalaban la tarjeta seleccionada (`1,1x`) y atenuaban
+las vecinas. En hardware real generaba temblor horizontal en los carruseles y
+coste extra de composición. La solución actual es más simple y estable:
 
-## 4. Principios y tensiones
+- **Tarjeta enfocada:** borde de `1,5 dp` en cian (`#00D2FF`) y `zIndex(10f)`,
+  sin escalado.
+- **Tarjetas vecinas:** conservan el 100 % de opacidad.
+- **Título:** pasa de `0.75f` a opacidad completa al recibir foco.
 
-### 4.1. Cine primero, tele después
+### Evolución en `main`
 
-El arte ocupa la pantalla y el chrome desaparece. La navegación es un dock de iconos de 18 dp; el
-foco no exige OK y BACK sigue siendo el retroceso. Los filtros son chips compactos de 8 dp, las
-tarjetas tienen radio de 10 dp y las insignias, 6–9 dp. No hay marcos complejos ni metáforas
-literarias.
-
-### 4.2. El arte manda
-
-Los pósters y backdrops van a sangre. El título y el año viven fuera de la carátula; Continuar
-viendo usa el card oficial con título y progreso sobre el arte. No hay cajones grises con texto
-incrustado ni bordes de 1 dp en reposo.
-
-### 4.3. Un solo foco
-
-Exactamente un elemento lleva el borde de 1,5 dp y el `zIndex(10f)`. En reposo no se simula foco.
-Esto evita el ruido de las interfaces que iluminan todas las tarjetas a la vez y hace inequívoca
-la posición del mando.
-
-### 4.4. La tensión: 60 fps frente a feedback
-
-La primera versión atenuaba las tarjetas no enfocadas y escalaba la enfocada. Se veía bien en un
-monitor y costaba composición en la tele; además, el escalado provocaba temblor horizontal en los
-carruseles. La decisión final elimina las dos cosas:
-
-- **Tarjetas:** borde de 1,5 dp + `zIndex`, sin escala.
-- **Vecinas:** mantienen su opacidad al 100 %; no hay spotlight.
-- **Título:** pasa de `0.75f` a plena luminosidad.
-
-Es menos "vistoso" que un spotlight y más estable. Esa es la decisión central del producto.
-
-## 5. Tres pasadas
-
-El 22 y el 23 de noviembre de 2026 la interfaz cambió tres veces. Los commits son reales:
-
-| Hora | Commit | Decisión |
+| Fecha | Commit | Cambio |
 |---|---|---|
-| 22 nov, 21:27 | `8430b41` | **La paleta abisal.** El negro digital y el cian neón de plantilla se sustituyen por tinta abisal y una luz bioluminiscente. La paleta sobrevive; el acento termina en el cian `#00D2FF` del logotipo. |
-| 22 nov, 21:27 | `2d6958f` | **Navegación tipográfica.** Subrayados y pestañas de texto. Se prueba en la tele y se descarta: la navegación vuelve al dock de iconos. |
-| 22 nov, 21:28 | `f47e297` | **Hero batimétrico.** Arcos estáticos, anillo de contacto y un pulso de sonar. La profundidad se veía bien, pero la metáfora no aportaba orientación y añadía una animación autónoma. Se descarta. |
-| 22 nov, 22:05 | `43ab861` | **Legibilidad en la tele real.** Ajustes después de mirar la interfaz a tres metros: tamaños, contraste y objetivos. Esta pasada sobrevive entera. |
-| 22 nov, 22:11 | `886ec79` | **De editorial a cinematográfico.** Se retira Fraunces. La interfaz se queda con una sans de instrumento; la versión final usa DM Sans. |
-| 22 nov, 22:56 | `8ed14d9` | **Material TV.** Tabs pill, foco 1,1x, chips de 48 dp y overscan. La convención de componentes no era la identidad; se retira. |
-| 23 nov, 13:43 | `507fa6d` | **La identidad vuelve al cine.** DM Sans, cian `#00D2FF`, dock de iconos, borde de 1,5 dp y cero escala. La paleta gana cobalto, aqua y oro. |
+| 22 nov | `8430b41` | Paleta oscura propia (`#04060A`) y acento cian `#00D2FF` |
+| 22 nov | `2d6958f` | Prueba de navegación tipográfica con subrayados (descartada) |
+| 22 nov | `f47e297` | Prueba de cabecera con arcos/sonar animados (descartada por ruido visual) |
+| 22 nov | `43ab861` | Ajuste de tamaños, contraste y legibilidad en televisor real |
+| 22 nov | `886ec79` | Retirada de Fraunces (serif) en favor de tipografía sans (DM Sans) |
+| 22 nov | `8ed14d9` | Prueba con tabs *pill* y escala `1,1x` de Material TV (descartada) |
+| 23 nov | `507fa6d` | Consolidación: DM Sans, `#00D2FF`, dock de iconos, borde `1,5 dp` y cero escala |
 
-La lección no es "las metáforas son malas". Es que una interfaz de tele tiene un contrato de
-interacción que el usuario ya conoce. La identidad puede ser específica; el comportamiento no
-debería obligar a reaprender el mando.
+## 4. Sistema visual
 
-## 6. El sistema
+### Color
 
-### 6.1. Color
-
-El fondo es tinta abisal (`#04060A`). La luz principal es el cian eléctrico del logotipo
-(`#00D2FF`); el cobalto y el aqua aportan profundidad; el ámbar y el oro quedan para favoritos,
-valoraciones y visto. Los neutros son zinc y grafito, no grises fríos de plantilla.
-
-| Token | Hex | Uso | Contraste sobre abismo |
+| Token | Hex | Uso | Contraste sobre `#04060A` |
 |---|---|---|---|
-| Tinta abisal | `#04060A` | Fondo raíz y tinta sobre acentos | — |
-| Agua profunda | `#0A0F1D` | Superficie base | 1,1:1 (superficie) |
-| Agua elevada | `#10162A` | Controles y tarjetas | 1,1:1 (superficie) |
-| Cian Medusa | `#00D2FF` | Foco, selección, progreso | 11,3:1 |
-| Cobalto abisal | `#0B5EFF` | Gradientes y brillos; no texto | 3,9:1 |
-| Aqua glaciar | `#8BFFFF` | Reflejos y detalles | 17,2:1 |
-| Ámbar cine | `#E5A44D` | Favoritos y valoraciones | 9,4:1 |
-| Oro nitrato | `#D4AF37` | Visto y sello cinematográfico | 9,6:1 |
-| Nota | `#FACC15` | Estrellas y notas | 13,2:1 |
-| Blanco puro | `#FFFFFF` | Texto principal | 20,3:1 |
-| Zinc | `#A1A1AA` | Metadatos y texto secundario | 7,9:1 |
-| Grafito | `#71717A` | Micro-datos y separadores | 4,2:1 |
+| Fondo raíz | `#04060A` | Fondo principal y texto sobre acentos | — |
+| Superficie base | `#0A0F1D` | Paneles y contenedores base | 1,1:1 |
+| Superficie elevada | `#10162A` | Controles y tarjetas | 1,1:1 |
+| Cian principal | `#00D2FF` | Foco, selección y progreso | 11,3:1 |
+| Azul secundario | `#0B5EFF` | Gradientes y brillos (no para texto) | 3,9:1 |
+| Cian claro | `#8BFFFF` | Detalles y reflejos | 17,2:1 |
+| Ámbar | `#E5A44D` | Favoritos | 9,4:1 |
+| Dorado | `#D4AF37` | Indicador de visto | 9,6:1 |
+| Amarillo nota | `#FACC15` | Valoraciones | 13,2:1 |
+| Blanco | `#FFFFFF` | Texto principal | 20,3:1 |
+| Gris secundario | `#A1A1AA` | Metadatos y texto secundario | 7,9:1 |
+| Gris tenue | `#71717A` | Microdatos y separadores | 4,2:1 |
 
-El cobalto no se usa como texto: 3,9:1 no llega a AA. El grafito se reserva a micro-datos y
-separadores. Sobre papel de estudio, el texto siempre es tinta abisal.
+### Tipografía
 
-### 6.2. Tipografía
-
-Una sola familia: **DM Sans**, variable y OFL. Cubre titulares, secciones, UI, metadatos y cuerpo.
-La escala:
+Una única familia tipográfica: **DM Sans** (variable, licencia OFL).
 
 | Rol | Tamaño | Peso |
 |---|---|---|
-| Display / hero | 32–36 sp | 700 |
-| Headline | 24 sp | 700 |
-| Title | 16–20 sp | 600 |
-| Body | 13–15 sp | 400 |
-| Label | 11–12 sp | 600 |
+| Display / cabecera | 32–36 sp | 700 |
+| Titular | 24 sp | 700 |
+| Título | 16–20 sp | 600 |
+| Cuerpo | 13–15 sp | 400 |
+| Etiqueta | 11–12 sp | 600 |
 
-Prohibido: serif editorial, mayúsculas decorativas, tracking amplio, separadores con punto medio,
-flechas pegadas al texto y monocromo para datos por defecto. El texto se escribe en caja de frase.
-Los ClearLogo del contenido son la única voz display variable.
-
-### 6.3. Forma y foco
+### Radios y movimiento
 
 | Elemento | Radio |
 |---|---|
-| Insignia | 6–9 dp según tamaño |
+| Insignia | 6–9 dp |
 | Chip | 8 dp |
 | Tarjeta | 10 dp |
 | Cápsula del dock | 18 dp |
 | Círculo | 999 dp |
 
-Anatomía del foco:
+- Sin `Modifier.blur()` ni `RenderEffect`.
+- Sin animaciones autónomas en la barra de navegación. El carrusel principal
+  rota cada 12 s cuando no tiene foco y las partículas estacionales son
+  opcionales.
+- Respeta la configuración de movimiento reducido del sistema.
 
-1. Borde de **1,5 dp** cian sobre el póster y `zIndex(10f)`.
-2. Título a plena luminosidad; las tarjetas vecinas conservan su opacidad.
-3. Dock de iconos de 18 dp en cápsulas de 18 dp de radio.
-4. Sin escala de tarjeta, sin spotlight, sin blur.
+## 5. Pantallas
 
-### 6.4. Movimiento
+- **Inicio:** cabecera a pantalla completa con ClearLogo, metadatos, acción
+  primaria y filas de pósters / *Continuar viendo*.
+- **Descubrir:** filtros de formato y rail de temáticas con lógica `AND` (`BACK`
+  deshace el último filtro aplicado).
+- **Ficha:** póster a la izquierda, metadatos y sinopsis sin caja contenedora a
+  la derecha, temporadas/episodios y acciones circulares.
+- **Buscar:** teclado adaptado al mando a la izquierda y sugerencias/resultados
+  a la derecha en la misma pantalla.
+- **Favoritos:** colección filtrable y ordenable directamente en la vista.
+- **Ajustes:** barra lateral y grupos sobre superficie elevada con estado del
+  servidor y sincronización.
 
-- El chrome no tiene animaciones autónomas, bucles, sonar ni metáforas en movimiento.
-- Excepciones acotadas: el hero rota cada 12 s cuando no tiene foco, las partículas estacionales
-  son opcionales y hay pulsos de carga en Favoritos y Buscar.
-- Respeta la escala de animación del sistema. Con movimiento reducido, la interfaz se queda quieta.
-- Cero blur en tiempo real.
+## 6. Accesibilidad y deuda técnica
 
-## 7. Las pantallas
+**Cubierto:**
+- Contraste AA en textos principales y foco visible en todos los controles.
+- Soporte para teclas físicas y `BACK` en TV, además de `TvBackButton` táctil.
+- Subtítulos configurables en tamaño y fondo; textos en español e inglés.
 
-### Inicio
+**Deuda conocida:**
+1. **Capa táctil en tablet:** el dock de `18 dp` y el foco por borde están
+   optimizados para mando; falta una revisión específica para uso táctil.
+2. **Nombres heredados en `TvPalette`:** constantes como `TextSecondaryCool` o
+   `FocusInk` conservan nombres antiguos.
+3. **Benchmarks en CI:** la ausencia de `blur` se vigila en código, pero no hay
+   medición automática de *frame time* en CI.
+4. **Catálogos estáticos:** `catalogs.yml` genera `docs/catalogs`, excluido por
+   `.gitignore` en este árbol.
 
-Hero a sangre con scrim, ClearLogo, metadatos, una acción primaria y paginación. La barra superior
-es un dock de iconos; el foco no rellena bloques. **Lo que funciona:** jerarquía inmediata y una
-sola acción principal. **Lo que vigilar:** el equilibrio entre el arte y los metadatos cuando el
-título es muy largo, y el autoavance del carrusel.
-
-### Inicio, filas
-
-Pósters con el título fuera; Continuar viendo con título y progreso sobre el arte. Las plataformas
-son placas discretas. **Lo que funciona:** el arte manda y la fila se lee de un vistazo. **Lo que
-vigilar:** la densidad de metadatos y el contraste de los badges sobre arte claro.
-
-### Descubrir
-
-Filtros de formato y un rail de temáticas, con resultados en la misma pantalla. Cada etiqueta se
-suma como filtro AND; `BACK` deshace la última y el carrusel se recalcula. La tarjeta enfocada lleva
-borde de 1,5 dp. **Lo que funciona:** exploración sin cambiar de contexto. **Lo que vigilar:** la
-carga cognitiva de filtro + etiquetas + resultados; el estado vacío debe explicar qué hacer.
-
-### Ficha
-
-Póster a la izquierda, metadatos editoriales a la derecha y acciones circulares. La sinopsis
-respira sobre el fondo; no hay panel que la encierre. **Lo que funciona:** se lee como una página
-de cine, no como un formulario. **Lo que vigilar:** el contraste de metadatos sobre backdrops
-luminosos y el estado de visto/favorito.
-
-### Buscar
-
-Teclado a la izquierda, sugerencias y resultados a la derecha. Escribir no cambia de pantalla.
-**Lo que funciona:** teclas grandes y separación clara entre teclado y resultados. **Lo que
-vigilar:** la precisión del D-pad en la rejilla y el orden de las sugerencias.
-
-### Favoritos
-
-Filtros y orden sobre la colección, no en un menú aparte. **Lo que funciona:** una colección
-personal se siente como una estantería. **Lo que vigilar:** corazones y notas sobre el póster sin
-tapar el arte.
-
-### Ajustes
-
-Barra lateral y grupos sobre superficie elevada, con el ítem activo resaltado. **Lo que funciona:**
-el estado del servidor y la sincronización se leen de un vistazo. **Lo que vigilar:** la jerga
-técnica y la longitud de la columna en pantallas pequeñas.
-
-## 8. Accesibilidad
-
-Lo que ya está:
-
-- Contraste AA en los textos principales: blanco 20,3:1, aqua 17,2:1, cian 11,3:1, oro 9,6:1,
-  ámbar 9,4:1, zinc 7,9:1.
-- Foco visible en todos los elementos interactivos; no se depende del color solamente.
-- Dock de iconos con etiquetas en el modo texto o ambos.
-- Movimiento reducido respetado desde el sistema.
-- Teclas físicas y `BACK` en TV; botón táctil `TvBackButton` de 36 dp en Marca, Género y Especiales.
-- Subtítulos con tamaño y fondo configurables.
-- Textos en español e inglés.
-
-Lo que falta o hay que vigilar:
-
-- La capa táctil de tablet merece una pasada propia; el dock de 18 dp se pensó para un mando.
-- La semántica de selección en algunos rails puede mejorar (`Role.Checkbox`/`selected`) para
-  lectores de pantalla.
-- Los metadatos más pequeños sobre backdrops claros necesitan comprobación caso por caso.
-- No hay pruebas automáticas de contraste ni de frames en CI.
-
-## 9. La ingeniería que se ve
-
-La fluidez no sale del renderizado: sale de decidir qué no se dibuja.
-
-- **Cero blur.** `Modifier.blur()` y `RenderEffect` están prohibidos. La profundidad viene del arte,
-  el scrim y la jerarquía, no de un shader.
-- **Caché en cascada.** Inicio intenta memoria, snapshot en fichero, Room y generación en vivo, en
-  ese orden. El feed tiene TTL de 15 minutos y se emite antes de completar la generación.
-- **Reproducción con fallback.** `.strm` resuelto en el servidor, remux, DirectStream, transcode y
-  transcodificación completa. La lista de candidatos nunca queda vacía. Con [TOD](https://github.com/GitCorion/TOD) y el
-  [plugin Medusa](https://github.com/GitCorion/Medusa-Jellyfin-Plugin), la app consulta el
-  estado, pide `Prepare` y espera `stream_ready` antes de montar el player.
-- **DeviceProfile serializado con `encodeDefaults`.** Sin eso, Jellyfin sustituye el perfil por
-  `Type: Audio`, listas vacías y códecs vacíos. Hay una prueba golden.
-- **Trabajo de fondo acotado.** Sincronización, indexado y enriquecimiento en workers separados,
-  con concurrencia limitada y pausa cuando la app está visible o reproduciendo.
-- **OTA verificada.** GitHub como único origen, 150 MB máximo, SHA-256 obligatorio, manifiesto con
-  caducidad de siete días y kill-switch.
-
-## 10. Lo que se descartó
-
-| Se descartó | Motivo |
-|---|---|
-| Navegación tipográfica con subrayado | La tele espera un dock de iconos; el foco no debe exigir OK. |
-| Corriente ondulada, sonar y batimetría | Metáfora propia que no aportaba orientación y añadía animación autónoma. |
-| Capa Material TV con tabs pill y escala 1,1x | La convención de componentes no era la identidad; añadía movimiento y ruido. |
-| Serif editorial (Fraunces) | El hero leía como una portada de noticias; la única voz display son los ClearLogo. |
-| Atenuación de tarjetas no enfocadas | Coste de composición y pérdida de contexto en el carrusel. |
-| Escalado de tarjetas | Temblor horizontal y coste en hardware de entrada. |
-| Blur en tiempo real | 60 fps innegociables en dongles de gama baja. |
-| Botones "Volver" en TV | El mando tiene BACK; un botón en pantalla es ruido. |
-| Tarjetas grises con texto incrustado | El arte es el contenido; la caja lo encierra y lo apaga. |
-
-## 11. Deuda declarada
-
-1. **Tablet táctil.** El dock de 18 dp y el foco de borde se pensaron para un mando. Falta una
-   pasada de dedo, gestos y tamaños táctiles.
-2. **Nombres heredados.** `TvPalette` conserva `TextSecondaryCool` o `FocusInk`, nombres que ya no
-   describen sus valores actuales. Es deuda de nombres, no de color.
-3. **Medición de frames.** La regla de cero blur está en el código y en las revisiones, pero no hay
-   un benchmark automático en CI.
-4. **Catálogos en el árbol.** El workflow manual `catalogs.yml` genera `docs/catalogs`, pero la
-   carpeta está excluida por `.gitignore` en este árbol. Un fork debe versionarla o la app caerá al
-   fallback de TMDB para las regiones sin catálogo.
-
-## 12. Cómo reproducir el estudio
+## 7. Reproducir el estudio en local
 
 ```bash
-# Capturas de la app en un dispositivo conectado
 adb exec-out screencap -p > captura.png
-
-# Servir el estudio en local
 python3 -m http.server 8123 -d docs
-
 # Abrir http://127.0.0.1:8123/
 ```
 
-El estudio web usa la misma DM Sans que la app (`app/src/main/res/font/dm_sans.ttf`), los mismos
-tokens de `Color.kt` y capturas reales. No hay fuentes externas ni peticiones a terceros: la página
-se puede abrir sin conexión una vez cargada.
+## 8. Créditos
 
-## 13. Créditos
-
-Jellyfin, TMDB y Trakt son proyectos independientes. *This product uses the TMDB API but is not
-endorsed or certified by TMDB.* DM Sans se distribuye bajo SIL OFL. El cartel de *Night of the
-Living Dead* (1968) es de dominio público. El resto de pósters pertenece a sus titulares y se
-muestra con fines de documentación.
+Jellyfin, TMDB y Trakt son proyectos independientes. *This product uses the TMDB
+API but is not endorsed or certified by TMDB.* DM Sans se distribuye bajo SIL
+OFL. El cartel de *Night of the Living Dead* (1968) es de dominio público; el
+resto de pósters pertenecen a sus respectivos titulares.
