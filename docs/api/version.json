@@ -1,11 +1,11 @@
 {
-  "versionCode": 1000167,
-  "versionName": "2.4.1",
+  "versionCode": 1000177,
+  "versionName": "2.4.2",
   "minSupportedVersionCode": 1000105,
   "forceUpdate": false,
   "killSwitch": false,
-  "releaseNotes": "### Añadido\n\n- Selector de canal en Ajustes → Acerca de: **Estable** o **Beta**. La elección se guarda y el\n  actualizador lee el manifiesto del canal correspondiente.\n- Aviso al cambiar de canal: desde una beta más nueva no se puede bajar a una estable anterior;\n  el equipo vuelve a estable con la siguiente publicación estable.",
-  "apkUrl": "https://github.com/GitCorion/Medusa/releases/download/v2.4.1/Medusa.apk",
-  "apkSha256": "969f1341d66068dbbe40b47b17f130f0c561f4b6694e3339a8b1b0667bcadfae",
+  "releaseNotes": "### Cambiado\n\n- Sincronización con Jellyfin: se incrementa `SYNC_ALGORITHM_VERSION` a `5` para forzar una única resincronización completa automática tras actualizar, purgando títulos y episodios eliminados del servidor y recuperando elementos omitidos en sincronizaciones incrementales previas.",
+  "apkUrl": "https://github.com/GitCorion/Medusa/releases/download/v2.4.2/Medusa.apk",
+  "apkSha256": "c25423567020fe47cee0f796cf4b8346ae701c733c09a30f4332afde992375f4",
   "signatures": []
 }
