@@ -1,9 +1,9 @@
 <div align="center">
-  <img src="app/src/main/res/drawable/ic_medusa_header.png" alt="Medusa TV" width="360">
+  <img src="app/src/main/res/drawable/ic_medusa_header.png" alt="Medusa TV" width="320">
   <p>Native Jellyfin client for Android TV and tablets, built with Kotlin and Compose TV.</p>
 
   [![Release](https://img.shields.io/github/v/release/GitCorion/Medusa?style=flat-square&color=00D2FF&label=release)](https://github.com/GitCorion/Medusa/releases)
-  [![Android](https://img.shields.io/badge/Android-8.0%2B-00D2FF?style=flat-square)](#requirements)
+  [![Android](https://img.shields.io/badge/Android-8.0%2B-00D2FF?style=flat-square)](#install)
   [![Kotlin](https://img.shields.io/badge/Kotlin-2.0.21-00D2FF?style=flat-square)](https://kotlinlang.org)
   [![Compose TV](https://img.shields.io/badge/Compose%20TV-1.0.0--alpha07-00D2FF?style=flat-square)](https://developer.android.com/training/tv/use-apis/compose)
   [![License](https://img.shields.io/badge/license-GPL--3.0-00D2FF?style=flat-square)](LICENSE)
@@ -17,29 +17,23 @@
   </p>
 </div>
 
-![Medusa TV home screen on a 1080p television](docs/assets/estudio/captures/inicio-1600.webp)
+![Medusa TV home screen on a 1080p TV](docs/assets/estudio/captures/inicio-1600.webp)
 
-**Contents:** [Overview](#overview) · [Ecosystem](#ecosystem) · [Features](#features) · [Install](#install) · [Initial setup](#initial-setup) · [Screenshots](#screenshots) · [Architecture](#architecture) · [Build](#build) · [Documentation](#documentation) · [Privacy](#privacy-and-security) · [Troubleshooting](#troubleshooting)
-
-## Overview
-
-Medusa TV is a native Jellyfin client designed for remote-control navigation on
-Android TV, Google TV, Fire TV, and tablets. It caches your Jellyfin library
-locally in Room for responsive browsing regardless of network latency.
-
-- **Platform:** Android 8.0+ (API 26).
-- **OTA channels:** stable and beta, selectable under **Settings → About → Channel**.
+Medusa TV is a native Jellyfin client for Android TV, Google TV, Fire TV, and
+tablets. It syncs your library into a local Room database for responsive
+browsing and plays media via Media3 and FFmpeg.
 
 ## Ecosystem
 
-Medusa is the client piece. The other two are optional and only needed if you want catalog-on-demand
-playback.
+Medusa works standalone with any Jellyfin server. If you also use
+[TOD](https://github.com/GitCorion/TOD) for on-demand `.strm` playback, the
+Jellyfin companion plugin bridges both services:
 
 | Piece | Role | When you need it |
 |---|---|---|
 | [Medusa](https://github.com/GitCorion/Medusa) (this repository) | Native Android TV and tablet client. Plays through Jellyfin. | Always |
-| [Medusa-Jellyfin-Plugin](https://github.com/GitCorion/Medusa-Jellyfin-Plugin) | Jellyfin↔TOD bridge: status, preparation, lease and version negotiation. Appears in Jellyfin as **Medusa**. | If you use TOD |
-| [TOD](https://github.com/GitCorion/TOD) | On-demand library: releases, qBittorrent queue, `.strm` generation and range streaming. Optionally Prowlarr/Jackett and Radarr/Sonarr. | If you prepare undownloaded content |
+| [Medusa-Jellyfin-Plugin](https://github.com/GitCorion/Medusa-Jellyfin-Plugin) | Jellyfin↔TOD bridge: status, preparation, lease, and version negotiation. | Only if using TOD |
+| [TOD](https://github.com/GitCorion/TOD) | On-demand library: releases, qBittorrent queue, `.strm` generation, and range streaming. | Only for on-demand content |
 
 ```text
 Medusa TV ──▶ Jellyfin ──▶ Medusa plugin ──▶ TOD :8773 ──▶ qBittorrent
@@ -47,229 +41,85 @@ Medusa TV ──▶ Jellyfin ──▶ Medusa plugin ──▶ TOD :8773 ──�
                                                              └── Radarr / Sonarr (API)
 ```
 
-Medusa **never talks to TOD directly**. It talks to Jellyfin; the plugin translates the
-conversation. The client never uses TOD's `play` URL: it plays through Jellyfin so transcoding,
-subtitles and watch progress keep working. The full flow is in [`docs/PLAYBACK.md`](docs/PLAYBACK.md).
+All playback requests go through Jellyfin so transcoding, subtitles, and watch
+progress keep working (see [`docs/PLAYBACK.md`](docs/PLAYBACK.md)).
 
 ## Features
 
-| Area | What is included |
+| Area | Details |
 |---|---|
-| **Home** | Full-bleed hero with ClearLogo, favorite genres, platforms, Continue watching, Top 10 and genre carousels. Scrim, pagination and one primary action. |
-| **Discover** | Format filters (all, catalog, movies, series) and a theme rail with **AND** filters. Each tag adds a filter; `BACK` removes the last one. Results update in the same carousel. |
-| **Search** | Remote-friendly on-screen keyboard, predictive suggestions, instant results and remote Jellyfin search. |
-| **Detail** | Poster, editorial metadata, container-free synopsis, progress/favorite states, seasons and episodes, sagas and recommendations. |
-| **Player** | Media3 + FFmpeg. DirectPlay, remux, HLS and transcoding; `.strm`; TOD preparation; subtitles; audio tracks; HDMI passthrough; next episode; Media Segments; automatic refresh-rate switching. |
-| **Library and integrations** | Room 22 with FTS, local cache, parental filters, sagas, incremental sync, Trakt, TMDB with your own key and OTA from GitHub Releases. |
-| **Personalization** | Cyan/amber/white accents, monochrome mode, button styles, particles, sounds, subtitle size and background, and reduced motion. |
-
-## Install
-
-### Requirements
-
-- Android 8.0 or newer (API 26). Android TV, Google TV, Fire TV or tablet.
-- A Jellyfin server reachable on the local network or over the Internet.
-- ~15 MB of free space for the APK.
-
-### Download the APK
-
-1. Open [the latest release](https://github.com/GitCorion/Medusa/releases/latest) in the TV browser,
-   or download the APK on your phone and send it to the device.
-2. Allow installing apps from unknown sources for the file manager or receiver you use.
-3. Open `Medusa.apk` and install it.
-
-You can also sideload it with ADB:
-
-```bash
-adb install -r Medusa.apk
-adb shell am start -n tv.medusa.app/tv.medusa.app.MainActivity
-```
-
-> The `applicationId` is `tv.medusa.app` from 2.4.0. The published 2.3.12 APK still uses
-> `tv.medusa.app.beta`: if you come from it, install the new build and uninstall the old one once.
-> Android treats them as different apps and settings are not migrated.
-
-### Updates
-
-The app reads the [`docs/api/version.json`](docs/api/version.json) manifest on startup. When a new
-version exists, it downloads `Medusa.apk` from the GitHub Release, verifies the **SHA-256**, the
-maximum size and that the origin is GitHub, then launches the system installer. If the manifest
-cannot be verified for seven days, the app **fails closed** instead of running an unverified
-version. The manifest supports forced updates and a global kill switch.
-
-There are two channels: **stable** (`latest`) and **beta** (pre-releases with their own manifest).
-The channel is chosen in **Settings → About → Channel**; the APK value is only the default. Beta
-reads both manifests and a later stable returns the device to the stable channel. Details in
-[`docs/RELEASE.md`](docs/RELEASE.md).
-
-## Initial setup
-
-There is no separate onboarding wizard: everything is configured in **Settings**.
-
-1. **Server.** Medusa looks for Jellyfin on the local network. If it does not appear, enter the full
-   URL, including a subpath such as `https://host/jellyfin`. For a self-signed certificate, enable
-   it explicitly and pin its SHA-256.
-2. **Sign in.** Use a username and password, or **Quick Connect**: the TV shows a code and you
-   authorize it from Jellyfin on your phone.
-3. **Sync.** The first pass downloads the catalog into Room. Later passes are incremental and run in
-   the background with WorkManager.
-4. **Optional.** In **Platforms and channels** you choose region and platforms; in **Library and
-   Trakt** you can link Trakt. The TMDB key is optional and stays on the device.
-5. **Done.** Home, Discover and Search now work against your local catalog, even if the server is
-   slow to respond.
+| **Home** | Hero banner with ClearLogo, favorite genres, platforms, Continue Watching, Top 10, and genre rows. |
+| **Discover** | Format filters and combinable theme tags (`AND`; `BACK` removes the last filter). |
+| **Search** | Remote-friendly on-screen keyboard, local suggestions, and remote Jellyfin search. |
+| **Detail** | Poster, metadata, synopsis, watched/favorite state, seasons and episodes, collections, and recommendations. |
+| **Player** | Media3 + FFmpeg: DirectPlay, remux, HLS, transcoding, `.strm`, TOD preparation, subtitles, audio tracks, HDMI passthrough, Media Segments, and auto refresh-rate switching. |
+| **Library & integrations** | Room local cache, parental filters, incremental sync, Trakt, TMDB (user API key), and OTA updates from GitHub Releases. |
+| **Customization** | Accent colors, monochrome mode, button styles, optional particles, subtitle size/background, and reduced motion. |
 
 ## Screenshots
 
 <p align="center">
-  <img src="docs/assets/estudio/captures/descubrir-960.webp" width="49%" alt="Discover screen with filters, theme rail and cyan focus">
+  <img src="docs/assets/estudio/captures/descubrir-960.webp" width="49%" alt="Discover screen with filters and theme rail">
   <img src="docs/assets/estudio/captures/ficha-960.webp" width="49%" alt="Movie detail screen with poster and metadata">
 </p>
 <p align="center">
-  <img src="docs/assets/estudio/captures/buscar-960.webp" width="49%" alt="Search with on-screen keyboard and results">
-  <img src="docs/assets/estudio/captures/ajustes-960.webp" width="49%" alt="Settings with sidebar and server status">
+  <img src="docs/assets/estudio/captures/buscar-960.webp" width="49%" alt="Search screen with on-screen keyboard">
+  <img src="docs/assets/estudio/captures/ajustes-960.webp" width="49%" alt="Settings screen with server status">
 </p>
 
-<p align="center"><sub>Real captures from the app on a 1080p television. The top bar supports icons
-only, text only or both; the captures use icons only.
-<a href="https://gitcorion.github.io/Medusa/#pantallas">See the screens and the design decisions behind them</a>.</sub></p>
+## Install
 
-## Architecture
+Requires **Android 8.0+ (API 26)** and a reachable Jellyfin server (HTTP/HTTPS,
+LAN, subpath, or self-signed certificate with SHA-256 pinning).
 
-One activity, Navigation Compose and one state per screen. `MediaRepository` is a thin facade over
-specialized repositories (local, Jellyfin, sync, TMDB and Trakt), with Room 22 + FTS, credentials
-encrypted with Android Keystore and bounded background work through WorkManager.
-
-Playback lives in `JellyfinPlaybackSourceResolver` + `PlayerViewModel` + `PlayerScreen`; the
-candidate cascade and DeviceProfile are covered by golden tests. Full detail is in
-[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and the invariants are in
-[`docs/PLAYBACK.md`](docs/PLAYBACK.md).
+- **APK:** download `Medusa.apk` from [GitHub Releases](https://github.com/GitCorion/Medusa/releases/latest) and install on the device or via ADB:
+  ```bash
+  adb install -r Medusa.apk
+  ```
+- **Sign in:** under **Settings**, pick the discovered server (or enter its URL) and sign in with credentials or **Quick Connect**.
+- **OTA updates:** checks GitHub Releases on startup with SHA-256 verification; switch between **stable** and **beta** in **Settings → About → Channel**.
 
 ## Build
 
-### Requirements
-
-- JDK 17.
-- Android SDK 36 (`compileSdk = 36`, `targetSdk = 36`).
-- A recent Android Studio or Gradle from the terminal.
+Requires **JDK 17** and **Android SDK 36**.
 
 ```bash
 git clone https://github.com/GitCorion/Medusa.git
 cd Medusa
-./gradlew :app:assembleDebug
+./gradlew :app:assembleDebug          # APK at app/build/outputs/apk/debug/app-debug.apk
+./gradlew :app:testDebugUnitTest      # Unit tests
+./gradlew :app:lintDebug              # Lint
 ```
 
-The debug APK is written to `app/build/outputs/apk/debug/app-debug.apk`.
-
-### Tests and analysis
-
-```bash
-./gradlew :app:testDebugUnitTest
-./gradlew :app:lintDebug
-./gradlew :app:connectedDebugAndroidTest   # Room migrations, requires a device
-```
-
-### Signed release
-
-Keys are not versioned. Use environment variables or a local `keystore.properties`:
-
-```bash
-KEYSTORE_PATH=/path/to/release.keystore \
-KEYSTORE_PASSWORD=... \
-KEY_ALIAS=... \
-KEY_PASSWORD=... \
-./gradlew :app:assembleRelease
-```
-
-Optional variable: `TRAKT_CLIENT_ID` at build time. `TRAKT_CLIENT_SECRET` is configured in Settings
-and is not embedded. The TMDB key is **not** embedded: each user enters their own in Settings.
-
-Publishing by tag and the [`release.yml`](.github/workflows/release.yml) workflow are described in
-[`docs/RELEASE.md`](docs/RELEASE.md).
+For signed release builds (`assembleRelease`), pass `KEYSTORE_PATH`,
+`KEYSTORE_PASSWORD`, `KEY_ALIAS`, and `KEY_PASSWORD` via environment variables
+or `keystore.properties` (see [`docs/RELEASE.md`](docs/RELEASE.md)).
 
 ## Documentation
 
-| Document | Purpose |
+| Document | Contents |
 |---|---|
-| [Design study](https://gitcorion.github.io/Medusa/) | The visual story of the product, with a focus demo, system, screens and decision log. |
-| [`docs/ESTUDIO.md`](docs/ESTUDIO.md) | The same study in Markdown, with the story and captures. |
-| [`DESIGN.md`](DESIGN.md) | Tokens, typography, structure, motion and Do/Don't rules. |
-| [`PRODUCT.md`](PRODUCT.md) | Users, purpose, positioning and product constraints. |
-| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Layers, flows, caches, workers, tests and technical decisions. |
-| [`docs/PLAYBACK.md`](docs/PLAYBACK.md) | Candidate order, device profile, audio, subtitles and mistakes not to repeat. |
-| [`docs/RELEASE.md`](docs/RELEASE.md) | GitHub Releases distribution, OTA, signing and secrets. |
-| [`docs/CATALOGS.md`](docs/CATALOGS.md) | Regional discovery catalogs and manual publishing. |
-| [`CONTRIBUTING.md`](CONTRIBUTING.md) | Environment, style, tests and PR checklist. |
-| [`SECURITY.md`](SECURITY.md) | How to report a vulnerability and what the app guarantees. |
-| [`CHANGELOG.md`](CHANGELOG.md) | Current release changes and a link to the release history. |
-
-## Privacy and security
-
-Medusa does not collect data, show ads or include analytics or third-party crash reporting. The
-Advertising ID permission is explicitly removed from the manifest. It only talks to:
-
-- **Your Jellyfin** (always) and, if you use TOD, the Medusa plugin on the same server.
-- **GitHub raw** for the OTA manifest, optional static catalogs and the tag dictionary.
-- **TMDB** only if you configure your key, **Trakt** only if you link it and **YouTube nocookie** only
-  when you open a trailer.
-
-Credentials use AES/GCM with Android Keystore, TLS uses a SHA-256 pin for self-signed certificates,
-and OTA is GitHub-only with a 150 MB maximum, mandatory SHA-256 and fail-closed behaviour. QR codes
-are generated on the device. To report a vulnerability, follow [`SECURITY.md`](SECURITY.md) and do
-not open a public issue with tokens, passwords, private IPs or captures of your server.
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Layers, repositories, Room, workers, and tests |
+| [`docs/PLAYBACK.md`](docs/PLAYBACK.md) | Playback candidates, `DeviceProfile`, audio, and subtitles |
+| [`docs/RELEASE.md`](docs/RELEASE.md) | GitHub Releases publishing, OTA, and signing |
+| [`docs/ESTUDIO.md`](docs/ESTUDIO.md) / [`DESIGN.md`](DESIGN.md) | Visual system, tokens, and UI decisions |
+| [`docs/CATALOGS.md`](docs/CATALOGS.md) | Static regional discovery catalogs |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | Contribution guide and commit conventions |
+| [`SECURITY.md`](SECURITY.md) | Security policy and vulnerability reporting |
+| [`CHANGELOG.md`](CHANGELOG.md) | Changelog |
 
 ## Troubleshooting
 
-| Symptom | What to try |
+| Symptom | Check |
 |---|---|
-| Server not found | Check that both are on the same network, that Jellyfin listens on the right interface and that the firewall does not block discovery. Enter the URL manually. |
-| Certificate error | For a self-signed certificate, enable it per server and pin the SHA-256. An expired certificate also fails. |
-| A `.strm` does not start | The TV must never try the file's internal IP. Check that Jellyfin resolves the destination and read [`docs/PLAYBACK.md`](docs/PLAYBACK.md). |
-| DTS/TrueHD audio is silent | Enable HDMI passthrough if your receiver supports it, or let Jellyfin transcode. There is no software DTS/TrueHD decoding. |
-| Subtitles do not appear | Check the server subtitle endpoint and that the track exists in the MediaSource. |
-| The update does not appear | Check that the `versionCode` is higher, the channel manifest is current and the APK is the `Medusa.apk` asset. |
-| UI stutters | Disable particles and ambient sounds, check the system's reduced-motion setting and avoid servers forcing 4K transcoding. |
-
-If none of that helps, open an [issue](https://github.com/GitCorion/Medusa/issues) with device model,
-Android version, app version, Jellyfin version and a description of the flow. Never include tokens
-or credentials.
-
-## Contributing
-
-Contributions are welcome, especially with a test that describes the bug. Before opening a PR:
-
-1. Read [`CONTRIBUTING.md`](CONTRIBUTING.md).
-2. Run `./gradlew :app:testDebugUnitTest` and `./gradlew :app:lintDebug`.
-3. Do not break the playback invariants in [`docs/PLAYBACK.md`](docs/PLAYBACK.md).
-4. Keep both translations (`values/strings.xml` and `values-en/strings.xml`).
-5. Respect the visual rules: zero blur, zero per-card scaling and one active focus at a time.
-
-Commits use a conventional style, for example
-`fix(player): retry audio without losing the position`.
-
-## Credits
-
-[Medusa-Jellyfin-Plugin](https://github.com/GitCorion/Medusa-Jellyfin-Plugin) (GPL-3.0) and
-[TOD](https://github.com/GitCorion/TOD) (MIT) complete catalog-on-demand playback. The rest of the
-ecosystem is [Jellyfin](https://jellyfin.org), [TMDB](https://www.themoviedb.org),
-[Trakt](https://trakt.tv), [Android Media3](https://developer.android.com/media/media3),
-[Kotlin](https://kotlinlang.org), [Compose](https://developer.android.com/compose),
-[Hilt](https://dagger.dev/hilt/), [Room](https://developer.android.com/training/data-storage/room),
-[Coil](https://coil-kt.github.io/coil/), [Retrofit](https://square.github.io/retrofit/),
-[OkHttp](https://square.github.io/okhttp/) and
-[WorkManager](https://developer.android.com/topic/libraries/architecture/workmanager).
-
-*This product uses the TMDB API but is not endorsed or certified by TMDB.* DM Sans is distributed
-under the SIL Open Font License. The *Night of the Living Dead* (1968) poster is public domain; the
-remaining posters and captures belong to their owners and are shown for documentation purposes.
+| Server not found | Ensure device and server are on the same network without firewall blocks; enter the URL manually. |
+| Certificate error | Enable self-signed certificates for that server and pin its SHA-256 fingerprint. |
+| `.strm` fails to start | Ensure the TV is not trying to reach an internal server IP (see [`docs/PLAYBACK.md`](docs/PLAYBACK.md)). |
+| No DTS/TrueHD audio | Enable HDMI passthrough if supported by your receiver, or let Jellyfin transcode. |
+| Missing subtitles | Verify the track exists in `MediaSource` and the subtitle endpoint responds. |
 
 ## License
 
-Medusa TV is distributed under the **GNU General Public License v3.0**. See [`LICENSE`](LICENSE).
-
-Medusa is an independent client and is not affiliated with or endorsed by Jellyfin, TMDB or Trakt.
-Jellyfin is a trademark of its owners. The Medusa plugin is distributed under GPL-3.0 and TOD
-under MIT, each in its own repository.
-
-<div align="center">
-  <p><strong>Built for Jellyfin. No cloud, no Medusa accounts and no tracking what you watch.</strong></p>
-</div>
+**GNU General Public License v3.0** ([`LICENSE`](LICENSE)).
+*This product uses the TMDB API but is not endorsed or certified by TMDB.*
+DM Sans is distributed under the SIL Open Font License.
