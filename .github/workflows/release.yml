@@ -162,6 +162,14 @@ jobs:
       - name: Decode signing keystore
         run: echo "${{ secrets.KEYSTORE_B64 }}" | base64 --decode > app/keystore.jks
 
+      - name: Decode google-services.json
+        env:
+          GOOGLE_SERVICES_JSON_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
+        run: |
+          if [ -n "$GOOGLE_SERVICES_JSON_B64" ]; then
+            echo "$GOOGLE_SERVICES_JSON_B64" | base64 --decode > app/google-services.json
+          fi
+
       - name: Verify signing keystore
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
