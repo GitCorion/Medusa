@@ -538,8 +538,13 @@ fun MedusaApp(
             val itemId = backStackEntry.arguments?.getString("itemId") ?: ""
             DetailScreen(
                 itemId = itemId,
-                onPlay = { id ->
-                    navController.navigate("player/$id")
+                onPlay = { id, mediaSourceId ->
+                    val route = if (mediaSourceId.isNullOrBlank()) {
+                        "player/$id"
+                    } else {
+                        "player/$id?mediaSourceId=${android.net.Uri.encode(mediaSourceId)}"
+                    }
+                    navController.navigate(route)
                 },
                 onNavigateToDetail = { id ->
                     navController.navigate("detail/$id")
@@ -551,12 +556,21 @@ fun MedusaApp(
         }
 
         composable(
-            route = "player/{itemId}",
-            arguments = listOf(navArgument("itemId") { type = NavType.StringType })
+            route = "player/{itemId}?mediaSourceId={mediaSourceId}",
+            arguments = listOf(
+                navArgument("itemId") { type = NavType.StringType },
+                navArgument("mediaSourceId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
         ) { backStackEntry ->
             val itemId = backStackEntry.arguments?.getString("itemId") ?: ""
+            val mediaSourceId = backStackEntry.arguments?.getString("mediaSourceId")
             PlayerScreen(
                 itemId = itemId,
+                initialMediaSourceId = mediaSourceId,
                 onBack = {
                     navController.popBackStack()
                 }

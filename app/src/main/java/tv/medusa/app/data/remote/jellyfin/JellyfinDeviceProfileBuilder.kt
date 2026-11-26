@@ -23,6 +23,50 @@ object JellyfinDeviceProfileBuilder {
     private var cachedProfile: JellyfinDeviceProfile? = null
     @Volatile
     private var cachedPassthroughMode: Int? = null
+    private val cachedSupports4kHevc: Boolean by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+        hasHardwareDecoderFor("video/hevc", minWidth = 3840, minHeight = 2160)
+    }
+    private val cachedSupportsDolbyVision: Boolean by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+        hasHardwareDecoderFor("video/dolby-vision")
+    }
+
+    fun supportsDevice4kHevc(): Boolean = cachedSupports4kHevc
+
+    fun supportsDeviceDolbyVision(): Boolean = cachedSupportsDolbyVision
+
+    private fun hasHardwareDecoderFor(
+        mimeType: String,
+        minWidth: Int? = null,
+        minHeight: Int? = null
+    ): Boolean {
+        if (DeviceUtils.isEmulator()) {
+            return false
+        }
+        return try {
+            val codecList = MediaCodecList(MediaCodecList.REGULAR_CODECS)
+            codecList.codecInfos.any { info ->
+                if (info.isEncoder) return@any false
+                val name = info.name.lowercase()
+                val isSoftware = name.startsWith("omx.google.") ||
+                    name.startsWith("c2.android.") ||
+                    name.startsWith("c2.goldfish.")
+                if (isSoftware) return@any false
+                info.supportedTypes.any { type ->
+                    if (!type.equals(mimeType, ignoreCase = true)) return@any false
+                    if (minWidth != null && minHeight != null) {
+                        info.getCapabilitiesForType(type)
+                            .videoCapabilities
+                            ?.isSizeSupported(minWidth, minHeight) == true
+                    } else {
+                        true
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Error checking capabilities for $mimeType: ${e.message}")
+            false
+        }
+    }
 
     /** Códecs que Media3/FFmpeg decodifican siempre a PCM, sin depender del hardware. */
     private val SOFTWARE_AUDIO_CODECS = setOf("aac", "mp3", "flac", "opus")

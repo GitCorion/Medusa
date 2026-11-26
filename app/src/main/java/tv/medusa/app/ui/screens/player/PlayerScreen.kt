@@ -374,14 +374,15 @@ private fun getLanguageDisplayName(langCode: String?, rawLabel: String?): String
 @Composable
 fun PlayerScreen(
     itemId: String,
+    initialMediaSourceId: String? = null,
     onBack: () -> Unit,
     viewModel: PlayerViewModel = hiltViewModel()
 ) {
-    LaunchedEffect(itemId) {
-        Log.i("PlayerScreen", "PlayerScreen LaunchedEffect for itemId=$itemId")
+    LaunchedEffect(itemId, initialMediaSourceId) {
+        Log.i("PlayerScreen", "PlayerScreen LaunchedEffect for itemId=$itemId initialMediaSourceId=$initialMediaSourceId")
         tv.medusa.app.util.SeasonalAudioManager.release()
         tv.medusa.app.util.ThemeSongPlayerManager.release()
-        viewModel.loadStreamUrl(itemId)
+        viewModel.loadStreamUrl(itemId, preferredMediaSourceId = initialMediaSourceId)
     }
 
     val streamInfo by viewModel.streamInfo.collectAsStateWithLifecycle()

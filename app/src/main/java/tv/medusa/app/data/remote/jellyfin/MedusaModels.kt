@@ -14,6 +14,9 @@ data class MedusaCapabilitiesDto(
         get() = apiVersion == 1 &&
                 features.any { it.equals("status", ignoreCase = true) } &&
                 features.any { it.equals("prepare", ignoreCase = true) }
+
+    val supportsVersionNegotiation: Boolean
+        get() = features.any { it.equals("version-negotiation", ignoreCase = true) }
 }
 
 @Serializable
@@ -51,12 +54,33 @@ data class TodTorrentStatusDto(
 }
 
 @Serializable
+data class MedusaVersionDto(
+    @SerialName("media_source_id") val mediaSourceId: String? = null,
+    @SerialName("release_id") val releaseId: Long? = null,
+    @SerialName("label") val label: String? = null,
+    @SerialName("title") val title: String? = null,
+    @SerialName("quality") val quality: String? = null,
+    @SerialName("codec") val codec: String? = null,
+    @SerialName("audio") val audio: String? = null,
+    @SerialName("width") val width: Int? = null,
+    @SerialName("height") val height: Int? = null,
+    @SerialName("size_bytes") val sizeBytes: Long? = null,
+    @SerialName("dolby_vision") val dolbyVision: Boolean = false,
+    @SerialName("available") val available: Boolean = false,
+    @SerialName("compatible") val compatible: Boolean = true,
+    @SerialName("recommended") val recommended: Boolean = false
+)
+
+@Serializable
 data class MedusaStatusDto(
     @SerialName("is_catalog") val isCatalog: Boolean = false,
     @SerialName("item_id") val itemId: String? = null,
     @SerialName("key") val key: String? = null,
     @SerialName("release_id") val releaseId: Long? = null,
-    @SerialName("status") val status: TodTorrentStatusDto? = null
+    @SerialName("status") val status: TodTorrentStatusDto? = null,
+    @SerialName("recommended_media_source_id") val recommendedMediaSourceId: String? = null,
+    @SerialName("recommended_release_id") val recommendedReleaseId: Long? = null,
+    @SerialName("versions") val versions: List<MedusaVersionDto> = emptyList()
 )
 
 @Serializable

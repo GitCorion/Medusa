@@ -118,7 +118,7 @@ import tv.medusa.app.util.ThemeSongPlayerManager
 @Composable
 fun DetailScreen(
     itemId: String,
-    onPlay: (String) -> Unit,
+    onPlay: (String, String?) -> Unit,
     onNavigateToDetail: (String) -> Unit = {},
     onBack: () -> Unit,
     viewModel: DetailViewModel = hiltViewModel()
@@ -645,7 +645,7 @@ fun DetailScreen(
                                             if (isTvSeries && state.nextUpEpisode != null) {
                                                 lastPlayedEpisodeId = state.nextUpEpisode.id
                                             }
-                                            onPlay(playTargetId)
+                                            onPlay(playTargetId, state.selectedVersionId)
                                         }
                                     )
 
@@ -697,6 +697,66 @@ fun DetailScreen(
                                         focusColor = focusColor,
                                         focusContentColor = focusContent
                                     )
+                                }
+                            }
+
+                            if (state.availableVersions.size > 1) {
+                                Spacer(modifier = Modifier.height(14.dp))
+                                Text(
+                                    text = stringResource(R.string.detail_versions_label),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = tv.medusa.app.ui.theme.TvPalette.TextSecondaryCool,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                LazyRow(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    contentPadding = PaddingValues(vertical = 2.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    items(
+                                        items = state.availableVersions,
+                                        key = { it.id },
+                                        contentType = { "version_chip" }
+                                    ) { version ->
+                                        val isSelected = version.id == (state.selectedVersionId ?: state.recommendedVersionId)
+                                        val isRecommended = version.id == state.recommendedVersionId
+                                        val medusaMeta = state.medusaVersions.firstOrNull { it.mediaSourceId == version.id }
+                                        val isCompatible = medusaMeta?.compatible ?: tv.medusa.app.data.remote.jellyfin.JellyfinPlaybackSourceResolver.isSourceCompatible(
+                                            mediaSource = version,
+                                            supports4K = tv.medusa.app.data.remote.jellyfin.JellyfinDeviceProfileBuilder.supportsDevice4kHevc(),
+                                            supportsDolbyVision = tv.medusa.app.data.remote.jellyfin.JellyfinDeviceProfileBuilder.supportsDeviceDolbyVision()
+                                        )
+                                        val rawName = version.name?.takeIf { it.isNotBlank() } ?: medusaMeta?.label ?: "Versión"
+                                        val chipLabel = when {
+                                            isRecommended -> stringResource(R.string.detail_version_recommended, rawName)
+                                            !isCompatible -> stringResource(R.string.detail_version_incompatible, rawName)
+                                            else -> rawName
+                                        }
+                                        Button(
+                                            onClick = { viewModel.selectVersion(version.id) },
+                                            modifier = Modifier
+                                                .height(tv.medusa.app.ui.theme.TvChipDefaults.Height)
+                                                .handleTouchClick { viewModel.selectVersion(version.id) },
+                                            scale = tv.medusa.app.ui.theme.TvChipDefaults.buttonScale(),
+                                            contentPadding = tv.medusa.app.ui.theme.TvChipDefaults.ContentPadding,
+                                            colors = tv.medusa.app.ui.theme.TvChipDefaults.buttonColors(
+                                                isSelected = isSelected,
+                                                focusColor = focusColor,
+                                                focusContent = focusContent
+                                            ),
+                                            border = tv.medusa.app.ui.theme.TvChipDefaults.buttonBorder(),
+                                            shape = ButtonDefaults.shape(shape = tv.medusa.app.ui.theme.TvChipDefaults.Shape)
+                                        ) {
+                                            Text(
+                                                text = chipLabel,
+                                                color = if (isSelected) (if (isMonochrome) TextPrimary else focusColor)
+                                                else if (!isCompatible) TextPrimary.copy(alpha = 0.55f)
+                                                else TextPrimary.copy(alpha = 0.85f),
+                                                style = tv.medusa.app.ui.theme.TvChipDefaults.textStyle
+                                            )
+                                        }
+                                    }
                                 }
                             }
 
@@ -825,12 +885,19 @@ fun DetailScreen(
                                     contentType = { "episode_card" }
                                 ) { episode ->
                                     val isTarget = episode.id == lastPlayedEpisodeId
+                                    val playTargetId = when {
+                                        state.isCollection && state.collectionItems.isNotEmpty() -> state.collectionItems.first().id
+                                        isTvSeries && state.nextUpEpisode != null -> state.nextUpEpisode.id
+                                        isTvSeries && state.episodes.isNotEmpty() -> state.episodes.first().id
+                                        else -> entity.id
+                                    }
                                     EpisodeCard(
                                         episode = episode,
                                         onClick = {
                                             isLaunchingPlayer = true
                                             lastPlayedEpisodeId = episode.id
-                                            onPlay(episode.id)
+                                            val versionForEpisode = if (episode.id == playTargetId) state.selectedVersionId else null
+                                            onPlay(episode.id, versionForEpisode)
                                         },
                                         accentColor = state.accentColor,
                                         modifier = if (isTarget) Modifier.focusRequester(episodeFocusRequester) else Modifier

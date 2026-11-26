@@ -286,9 +286,9 @@ class PlayerViewModel @Inject constructor(
             userPreferencesRepository.audioPassthroughMode.value
         )
     private val cachedDevice4kHevc: Boolean
-        by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { canDeviceDecode4kHevc() }
+        get() = JellyfinDeviceProfileBuilder.supportsDevice4kHevc()
     private val cachedDeviceDolbyVision: Boolean
-        by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { canDeviceDecodeDolbyVision() }
+        get() = JellyfinDeviceProfileBuilder.supportsDeviceDolbyVision()
 
     // ─── Skip markers ──────────────────────────────────────────────────
     // Cada campo de SkipMarker viene directamente del plugin/API, sin valores inventados.
@@ -314,53 +314,6 @@ class PlayerViewModel @Inject constructor(
 
     private val _recommendedList = MutableStateFlow<List<NextEpisodeInfo>>(emptyList())
     val recommendedList: StateFlow<List<NextEpisodeInfo>> = _recommendedList.asStateFlow()
-
-    private fun canDeviceDecode4kHevc(): Boolean {
-        if (DeviceUtils.isEmulator()) {
-            return false
-        }
-        return try {
-            val codecList = MediaCodecList(MediaCodecList.REGULAR_CODECS)
-            codecList.codecInfos.any { info ->
-                if (!info.isEncoder) {
-                    val name = info.name.lowercase()
-                    val isSoftware = name.startsWith("omx.google.") || name.startsWith("c2.android.") || name.startsWith("c2.goldfish.")
-                    if (!isSoftware) {
-                        info.supportedTypes.any { type ->
-                            if (type.equals("video/hevc", ignoreCase = true)) {
-                                val caps = info.getCapabilitiesForType(type)
-                                caps.videoCapabilities?.isSizeSupported(3840, 2160) == true
-                            } else false
-                        }
-                    } else false
-                } else false
-            }
-        } catch (e: Exception) {
-            Log.w("PlayerViewModel", "Error checking 4K HEVC capabilities: ${e.message}")
-            false
-        }
-    }
-
-    private fun canDeviceDecodeDolbyVision(): Boolean {
-        if (DeviceUtils.isEmulator()) {
-            return false
-        }
-        return try {
-            val codecList = MediaCodecList(MediaCodecList.REGULAR_CODECS)
-            codecList.codecInfos.any { info ->
-                !info.isEncoder &&
-                    !info.name.lowercase().let { name ->
-                        name.startsWith("omx.google.") ||
-                            name.startsWith("c2.android.") ||
-                            name.startsWith("c2.goldfish.")
-                    } &&
-                    info.supportedTypes.any { it.equals("video/dolby-vision", ignoreCase = true) }
-            }
-        } catch (e: Exception) {
-            Log.w("PlayerViewModel", "Error checking Dolby Vision capabilities: ${e.message}")
-            false
-        }
-    }
 
     /**
      * Si el decodificador de vídeo falla y existen otras versiones sin intentar (p. ej. 1080p
@@ -550,6 +503,7 @@ class PlayerViewModel @Inject constructor(
             // Detección y preparación de torrent de Catálogo ANTES de solicitar PlaybackInfo.
             // Si el torrent está frío (stream_ready=false), solicitar PlaybackInfo a Jellyfin bloquearía
             // su motor de análisis multimedia (ffprobe) congelando la petición durante 120s.
+            var negotiatedMediaSourceId: String? = null
             if (isStrm) {
                 val backdropUrl = nowPlaying?.backdropUrl ?: entity?.backdropImageTag?.let { tag ->
                     tv.medusa.app.util.JellyfinImageUtils.getBackdropUrl(baseUrl, playableId, tag, token = effectiveToken)
@@ -565,12 +519,14 @@ class PlayerViewModel @Inject constructor(
                     supports4K = supports4KForPrep,
                     supportsDolbyVision = supportsDvForPrep
                 )
-                val releaseIdFromPath = chosenMsForPrep?.path?.let { path ->
-                    runCatching {
-                        android.net.Uri.parse(path).getQueryParameter("release")?.toLongOrNull()
-                    }.getOrNull()
-                }
-                val isReady = handleOnDemandPreparation(
+                val releaseIdFromPath = if (!preferredMediaSourceId.isNullOrBlank()) {
+                    chosenMsForPrep?.path?.let { path ->
+                        runCatching {
+                            android.net.Uri.parse(path).getQueryParameter("release")?.toLongOrNull()
+                        }.getOrNull()
+                    }
+                } else null
+                val (isReady, addonRecommendedMsId) = handleOnDemandPreparation(
                     api = api,
                     effectiveAuthHeader = effectiveAuthHeader,
                     playableId = playableId,
@@ -578,13 +534,19 @@ class PlayerViewModel @Inject constructor(
                     backdropUrl = backdropUrl,
                     releaseId = releaseIdFromPath,
                     availableVersions = allSources,
-                    currentMediaSourceId = chosenMsForPrep?.id
+                    currentMediaSourceId = chosenMsForPrep?.id,
+                    allowVersionNegotiation = preferredMediaSourceId.isNullOrBlank(),
+                    supports4K = supports4KForPrep,
+                    supportsDolbyVision = supportsDvForPrep
                 )
                 if (!isReady) {
                     Log.i("PlayerViewModel", "Medusa preparation halted or cancelled for $playableId")
                     return@launch
                 }
+                negotiatedMediaSourceId = addonRecommendedMsId
             }
+
+            val effectivePreferredMediaSourceId = preferredMediaSourceId ?: negotiatedMediaSourceId
 
             var playbackInfoResult = runCatching {
                 api.getPlaybackInfo(authHeader = effectiveAuthHeader, itemId = playableId, userId = effectiveUserId, startTimeTicks = entityTicks, request = pbRequest)
@@ -639,7 +601,7 @@ class PlayerViewModel @Inject constructor(
 
             var chosenMediaSource = JellyfinPlaybackSourceResolver.selectPreferredMediaSource(
                 mediaSources = mediaSources,
-                preferredMediaSourceId = preferredMediaSourceId,
+                preferredMediaSourceId = effectivePreferredMediaSourceId,
                 supports4K = supports4K,
                 supportsDolbyVision = supportsDolbyVision
             )
@@ -1677,24 +1639,37 @@ class PlayerViewModel @Inject constructor(
         backdropUrl: String?,
         releaseId: Long? = null,
         availableVersions: List<JellyfinMediaSourceDto> = emptyList(),
-        currentMediaSourceId: String? = null
-    ): Boolean {
+        currentMediaSourceId: String? = null,
+        allowVersionNegotiation: Boolean = false,
+        supports4K: Boolean = true,
+        supportsDolbyVision: Boolean = true
+    ): Pair<Boolean, String?> {
         // 1. Detección del plugin: GET /Medusa/Capabilities
         val capsRes = runCatching { api.getMedusaCapabilities() }.getOrNull()
         val capsBody = capsRes?.body()
         if (capsRes == null || !capsRes.isSuccessful || capsBody?.isSupported != true) {
             Log.i("PlayerViewModel", "Medusa plugin not available or unsupported (code=${capsRes?.code()}). Proceeding normally with Jellyfin.")
-            return true
+            return true to null
         }
         medusaLeaseSupported = capsBody.features.any { it.equals("lease", ignoreCase = true) }
+        val maxWidth = if (supports4K) 3840 else 1920
 
-        // 2. Consultar estado: GET /Medusa/Status/{itemId}?release=...
+        // 2. Consultar estado: GET /Medusa/Status/{itemId}?release=...&maxWidth=...&supports4k=...&supportsDv=...
         var authHeader = effectiveAuthHeader
-        var statusRes = runCatching { api.getMedusaStatus(authHeader = authHeader, itemId = playableId, releaseId = releaseId) }.getOrNull()
+        var statusRes = runCatching {
+            api.getMedusaStatus(
+                authHeader = authHeader,
+                itemId = playableId,
+                releaseId = releaseId,
+                maxWidth = maxWidth,
+                supports4k = supports4K,
+                supportsDv = supportsDolbyVision
+            )
+        }.getOrNull()
 
         if (statusRes == null || statusRes.code() == 404) {
             Log.i("PlayerViewModel", "Medusa status 404/network error. Proceeding normally.")
-            return true
+            return true to null
         }
 
         if (statusRes.code() == 401) {
@@ -1712,11 +1687,20 @@ class PlayerViewModel @Inject constructor(
             }.getOrDefault(false)
 
             if (reAuthSuccess) {
-                statusRes = runCatching { api.getMedusaStatus(authHeader = authHeader, itemId = playableId, releaseId = releaseId) }.getOrNull()
+                statusRes = runCatching {
+                    api.getMedusaStatus(
+                        authHeader = authHeader,
+                        itemId = playableId,
+                        releaseId = releaseId,
+                        maxWidth = maxWidth,
+                        supports4k = supports4K,
+                        supportsDv = supportsDolbyVision
+                    )
+                }.getOrNull()
             }
             if (statusRes == null || statusRes.code() == 401) {
                 _fatalPlaybackError.value = appContext.getString(R.string.player_error_http_401)
-                return false
+                return false to null
             }
         }
 
@@ -1731,17 +1715,39 @@ class PlayerViewModel @Inject constructor(
                 availableVersions = availableVersions,
                 currentMediaSourceId = currentMediaSourceId
             )
-            return false
+            return false to null
         }
 
         val initialBody = statusRes.body()
         if (initialBody == null || !initialBody.isCatalog) {
             Log.i("PlayerViewModel", "Item $playableId is not a catalog torrent (is_catalog=false). Proceeding normally.")
-            return true
+            return true to null
+        }
+
+        val negotiatedMsId = if (allowVersionNegotiation) {
+            initialBody.recommendedMediaSourceId
+                ?.takeIf { recId -> availableVersions.any { it.id == recId } }
+                ?: initialBody.recommendedReleaseId?.let { recRel ->
+                    availableVersions.firstOrNull { ms ->
+                        ms.path?.let { p ->
+                            runCatching { android.net.Uri.parse(p).getQueryParameter("release")?.toLongOrNull() }.getOrNull()
+                        } == recRel
+                    }?.id
+                }
+        } else null
+        val effectiveMediaSourceId = negotiatedMsId ?: currentMediaSourceId
+        val releaseFromNegotiatedMs = negotiatedMsId?.let { msId ->
+            availableVersions.firstOrNull { it.id == msId }?.path?.let { p ->
+                runCatching { android.net.Uri.parse(p).getQueryParameter("release")?.toLongOrNull() }.getOrNull()
+            }
         }
 
         isCurrentItemOnDemand = true
-        val effectiveReleaseId = releaseId ?: initialBody.releaseId ?: initialBody.status?.releaseId
+        val effectiveReleaseId = releaseId
+            ?: releaseFromNegotiatedMs
+            ?: initialBody.recommendedReleaseId
+            ?: initialBody.releaseId
+            ?: initialBody.status?.releaseId
         activeOnDemandReleaseId = effectiveReleaseId
 
         val initialStatus = initialBody.status
@@ -1752,31 +1758,38 @@ class PlayerViewModel @Inject constructor(
             initialGeneration != onDemandStreamGeneration
         ) {
             restartOnDemandPlayback(initialStatus)
-            return false
+            return false to negotiatedMsId
         }
         if (initialGeneration != null) {
             onDemandStreamGeneration = initialGeneration
         }
 
-        if (initialStatus?.streamReady == true) {
-            Log.i("PlayerViewModel", "Torrent stream_ready is already true for $playableId. Proceeding normally without overlay.")
-            return true
+        if (initialStatus?.streamReady == true && (negotiatedMsId == null || negotiatedMsId == currentMediaSourceId)) {
+            Log.i("PlayerViewModel", "Torrent stream_ready is already true for $playableId (negotiatedMs=$negotiatedMsId). Proceeding normally without overlay.")
+            return true to negotiatedMsId
         }
 
         if (initialStatus?.state.equals("UNAVAILABLE", ignoreCase = true)) {
             Log.w("PlayerViewModel", "Torrent is UNAVAILABLE for $playableId.")
-            updateTorrentOverlay(playableId, title, backdropUrl, initialStatus, availableVersions, currentMediaSourceId)
-            return false
+            updateTorrentOverlay(playableId, title, backdropUrl, initialStatus, availableVersions, effectiveMediaSourceId)
+            return false to negotiatedMsId
         }
 
         // 3. stream_ready == false: mostrar overlay e iniciar descarga sin vídeo
-        Log.i("PlayerViewModel", "Torrent not ready for $playableId. Showing overlay and calling Prepare (releaseId=$effectiveReleaseId).")
+        Log.i("PlayerViewModel", "Torrent not ready for $playableId. Showing overlay and calling Prepare (releaseId=$effectiveReleaseId, ms=$effectiveMediaSourceId).")
         torrentZeroProgressStartMs = System.currentTimeMillis()
-        updateTorrentOverlay(playableId, title, backdropUrl, initialStatus, availableVersions, currentMediaSourceId)
+        updateTorrentOverlay(playableId, title, backdropUrl, initialStatus, availableVersions, effectiveMediaSourceId)
 
         // POST /Medusa/Prepare/{itemId} una sola vez
         runCatching {
-            val prepRes = api.prepareMedusaItem(authHeader = authHeader, itemId = playableId, releaseId = effectiveReleaseId)
+            val prepRes = api.prepareMedusaItem(
+                authHeader = authHeader,
+                itemId = playableId,
+                releaseId = effectiveReleaseId,
+                maxWidth = maxWidth,
+                supports4k = supports4K,
+                supportsDv = supportsDolbyVision
+            )
             if (prepRes.code() == 503 || !prepRes.isSuccessful) {
                 val body = runCatching { prepRes.errorBody()?.string() }.getOrNull()
                 throw MedusaHttpException(
@@ -1794,9 +1807,9 @@ class PlayerViewModel @Inject constructor(
                 backdropUrl = backdropUrl,
                 message = message,
                 availableVersions = availableVersions,
-                currentMediaSourceId = currentMediaSourceId
+                currentMediaSourceId = effectiveMediaSourceId
             )
-            return false
+            return false to negotiatedMsId
         }
 
         val leaseDeviceId = DeviceUtils.cachedDeviceId ?: "MedusaTV"
@@ -1819,16 +1832,25 @@ class PlayerViewModel @Inject constructor(
                     message = appContext.getString(R.string.torrent_timeout),
                     unavailable = false,
                     availableVersions = availableVersions,
-                    currentMediaSourceId = currentMediaSourceId
+                    currentMediaSourceId = effectiveMediaSourceId
                 )
-                return false
+                return false to negotiatedMsId
             }
 
             if (medusaLeaseSupported && pollCount % 14 == 0) {
                 runCatching { api.leaseMedusaItem(authHeader = authHeader, deviceId = leaseDeviceId, itemId = playableId) }
             }
 
-            val pollRes = runCatching { api.getMedusaStatus(authHeader = authHeader, itemId = playableId, releaseId = effectiveReleaseId) }.getOrNull()
+            val pollRes = runCatching {
+                api.getMedusaStatus(
+                    authHeader = authHeader,
+                    itemId = playableId,
+                    releaseId = effectiveReleaseId,
+                    maxWidth = maxWidth,
+                    supports4k = supports4K,
+                    supportsDv = supportsDolbyVision
+                )
+            }.getOrNull()
             if (pollRes == null) {
                 continue
             }
@@ -1842,21 +1864,21 @@ class PlayerViewModel @Inject constructor(
                     backdropUrl = backdropUrl,
                     message = message,
                     availableVersions = availableVersions,
-                    currentMediaSourceId = currentMediaSourceId
+                    currentMediaSourceId = effectiveMediaSourceId
                 )
-                return false
+                return false to negotiatedMsId
             }
 
             if (pollRes.code() == 404) {
                 Log.w("PlayerViewModel", "Medusa status 404 during polling. Proceeding normally.")
                 _torrentOverlayState.value = null
-                return true
+                return true to negotiatedMsId
             }
 
             val pollBody = pollRes.body() ?: continue
             if (!pollBody.isCatalog) {
                 _torrentOverlayState.value = null
-                return true
+                return true to negotiatedMsId
             }
 
             val currStatus = pollBody.status ?: continue
@@ -1867,18 +1889,18 @@ class PlayerViewModel @Inject constructor(
                 pollGeneration != onDemandStreamGeneration
             ) {
                 restartOnDemandPlayback(currStatus)
-                return false
+                return false to negotiatedMsId
             }
             if (pollGeneration != null) {
                 onDemandStreamGeneration = pollGeneration
             }
 
-            updateTorrentOverlay(playableId, title, backdropUrl, currStatus, availableVersions, currentMediaSourceId)
+            updateTorrentOverlay(playableId, title, backdropUrl, currStatus, availableVersions, effectiveMediaSourceId)
 
             if (currStatus.streamReady) {
                 Log.i("PlayerViewModel", "Torrent reached stream_ready for $playableId! Starting playback.")
                 _torrentOverlayState.value = null
-                return true
+                return true to negotiatedMsId
             }
 
             if (currStatus.state.equals("ERROR", ignoreCase = true)) {
@@ -1889,9 +1911,9 @@ class PlayerViewModel @Inject constructor(
                     message = appContext.getString(R.string.torrent_error),
                     unavailable = false,
                     availableVersions = availableVersions,
-                    currentMediaSourceId = currentMediaSourceId
+                    currentMediaSourceId = effectiveMediaSourceId
                 )
-                return false
+                return false to negotiatedMsId
             }
 
             if (currStatus.state.equals("UNAVAILABLE", ignoreCase = true)) {
@@ -1902,13 +1924,13 @@ class PlayerViewModel @Inject constructor(
                     message = appContext.getString(R.string.torrent_unavailable),
                     unavailable = true,
                     availableVersions = availableVersions,
-                    currentMediaSourceId = currentMediaSourceId
+                    currentMediaSourceId = effectiveMediaSourceId
                 )
-                return false
+                return false to negotiatedMsId
             }
         }
 
-        return false
+        return false to negotiatedMsId
     }
 
     private fun applyTorrentOverlayError(

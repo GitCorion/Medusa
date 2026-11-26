@@ -578,6 +578,9 @@
     <string name="player_tab_subtitles">Subtitles</string>
     <string name="player_versions">Versions</string>
     <string name="player_tab_versions">Available versions</string>
+    <string name="detail_versions_label">Available versions</string>
+    <string name="detail_version_recommended">%1$s · Recommended</string>
+    <string name="detail_version_incompatible">%1$s · Transcode</string>
     <string name="player_version_choose">Choose a version of this title</string>
     <string name="player_no_versions">No alternative versions are available for this title.</string>
     <string name="player_version_default">Version %1$d</string>

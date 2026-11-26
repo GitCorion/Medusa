@@ -287,14 +287,20 @@ interface JellyfinApiService {
     suspend fun getMedusaStatus(
         @Header("Authorization") authHeader: String,
         @Path("itemId") itemId: String,
-        @Query("release") releaseId: Long? = null
+        @Query("release") releaseId: Long? = null,
+        @Query("maxWidth") maxWidth: Int? = null,
+        @Query("supports4k") supports4k: Boolean? = null,
+        @Query("supportsDv") supportsDv: Boolean? = null
     ): retrofit2.Response<MedusaStatusDto>
 
     @POST("Medusa/Prepare/{itemId}")
     suspend fun prepareMedusaItem(
         @Header("Authorization") authHeader: String,
         @Path("itemId") itemId: String,
-        @Query("release") releaseId: Long? = null
+        @Query("release") releaseId: Long? = null,
+        @Query("maxWidth") maxWidth: Int? = null,
+        @Query("supports4k") supports4k: Boolean? = null,
+        @Query("supportsDv") supportsDv: Boolean? = null
     ): retrofit2.Response<MedusaPrepareResponseDto>
 
     @POST("Medusa/Lease/{itemId}")

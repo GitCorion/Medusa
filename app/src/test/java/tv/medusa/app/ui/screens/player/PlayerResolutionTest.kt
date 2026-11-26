@@ -348,4 +348,34 @@ class PlayerResolutionTest {
         )
         assertEquals(null, secondFallback)
     }
+
+    @Test
+    fun medusaCapabilitiesAndStatus_parseVersionNegotiationFields() {
+        val caps = tv.medusa.app.data.remote.jellyfin.medusaJson.decodeFromString<
+            tv.medusa.app.data.remote.jellyfin.MedusaCapabilitiesDto
+        >(
+            """{"api_version":1,"features":["status","prepare","versions","version-negotiation"]}"""
+        )
+        assertTrue(caps.isSupported)
+        assertTrue(caps.supportsVersionNegotiation)
+
+        val status = tv.medusa.app.data.remote.jellyfin.medusaJson.decodeFromString<
+            tv.medusa.app.data.remote.jellyfin.MedusaStatusDto
+        >(
+            """{
+                "is_catalog":true,
+                "recommended_media_source_id":"ms-1080",
+                "recommended_release_id":62517,
+                "versions":[
+                    {"media_source_id":"ms-1080","release_id":62517,"label":"1080p Cast","available":true,"compatible":true,"recommended":true},
+                    {"media_source_id":"ms-4k","release_id":62515,"label":"4K Cast","dolby_vision":true,"available":true,"compatible":false,"recommended":false}
+                ]
+            }"""
+        )
+        assertEquals("ms-1080", status.recommendedMediaSourceId)
+        assertEquals(62517L, status.recommendedReleaseId)
+        assertEquals(2, status.versions.size)
+        assertTrue(status.versions[0].recommended)
+        assertFalse(status.versions[1].compatible)
+    }
 }

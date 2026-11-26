@@ -3,8 +3,16 @@ package tv.medusa.app.ui.screens.detail
 import tv.medusa.app.data.local.ACCENT_CYAN
 import tv.medusa.app.data.local.DEFAULT_TMDB_API_KEY
 import tv.medusa.app.data.remote.NetworkClientFactory
+import tv.medusa.app.data.remote.jellyfin.JellyfinApiService
+import tv.medusa.app.data.remote.jellyfin.JellyfinDeviceProfileBuilder
+import tv.medusa.app.data.remote.jellyfin.JellyfinMediaSourceDto
+import tv.medusa.app.data.remote.jellyfin.JellyfinPlaybackSourceResolver
+import tv.medusa.app.data.remote.jellyfin.MedusaVersionDto
 import tv.medusa.app.data.remote.tmdb.TmdbApiService
 import tv.medusa.app.data.remote.ApiConfig
+import tv.medusa.app.data.repository.buildJellyfinAuthHeader
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -58,7 +66,11 @@ sealed interface DetailUiState {
         val genreName: String? = null,
         val collectionItems: List<MediaItem> = emptyList(),
         val isCollection: Boolean = false,
-        val playedEpisodes: Int? = null
+        val playedEpisodes: Int? = null,
+        val availableVersions: List<JellyfinMediaSourceDto> = emptyList(),
+        val medusaVersions: List<MedusaVersionDto> = emptyList(),
+        val selectedVersionId: String? = null,
+        val recommendedVersionId: String? = null
     ) : DetailUiState
     data class Error(val message: String) : DetailUiState
 }
@@ -363,8 +375,26 @@ class DetailViewModel @Inject constructor(
                                 isPlayed = updatedEntity.isEffectiveSeriesPlayed()
                             )
                         }
+                        nextUpEpisode?.id?.let { targetEpId ->
+                            launch {
+                                loadPlayableVersions(
+                                    targetItemId = targetEpId,
+                                    baseUrl = baseUrl,
+                                    userId = prefs.jellyfinUserId,
+                                    token = token
+                                )
+                            }
+                        }
                     }
                 } else if (isTv && finalEntity.type.equals("Episode", ignoreCase = true) && !finalEntity.seriesId.isNullOrBlank()) {
+                    launch {
+                        loadPlayableVersions(
+                            targetItemId = finalEntity.id,
+                            baseUrl = baseUrl,
+                            userId = prefs.jellyfinUserId,
+                            token = token
+                        )
+                    }
                     launch {
                         val sId = finalEntity.seriesId
                         val seasons = mediaRepository.getSeasons(baseUrl, prefs.jellyfinUserId, token, sId)
@@ -381,6 +411,15 @@ class DetailViewModel @Inject constructor(
                                 isLoadingEpisodes = false
                             )
                         }
+                    }
+                } else {
+                    launch {
+                        loadPlayableVersions(
+                            targetItemId = finalEntity.id,
+                            baseUrl = baseUrl,
+                            userId = prefs.jellyfinUserId,
+                            token = token
+                        )
                     }
                 }
 
@@ -465,6 +504,65 @@ class DetailViewModel @Inject constructor(
                 if (_uiState.value !is DetailUiState.Success) {
                     _uiState.value = DetailUiState.Error(e.localizedMessage ?: context.getString(R.string.detail_error_loading))
                 }
+            }
+        }
+    }
+
+    fun selectVersion(mediaSourceId: String) {
+        val curr = _uiState.value as? DetailUiState.Success ?: return
+        if (curr.availableVersions.none { it.id == mediaSourceId }) return
+        _uiState.value = curr.copy(selectedVersionId = mediaSourceId)
+    }
+
+    private suspend fun loadPlayableVersions(
+        targetItemId: String,
+        baseUrl: String,
+        userId: String,
+        token: String
+    ) {
+        if (targetItemId.isBlank() || baseUrl.isBlank() || userId.isBlank()) return
+        runCatching {
+            val api = NetworkClientFactory.createJellyfinService(baseUrl, JellyfinApiService::class.java)
+            val authHeader = buildJellyfinAuthHeader(token = token)
+            val detail = api.getItemDetail(authHeader = authHeader, userId = userId, itemId = targetItemId)
+            val sources = detail.mediaSources
+            if (sources.isEmpty()) return@runCatching
+
+            val supports4K = withContext(Dispatchers.Default) { JellyfinDeviceProfileBuilder.supportsDevice4kHevc() }
+            val supportsDv = withContext(Dispatchers.Default) { JellyfinDeviceProfileBuilder.supportsDeviceDolbyVision() }
+            val maxWidth = if (supports4K) 3840 else 1920
+
+            val medusaStatus = runCatching {
+                val caps = api.getMedusaCapabilities().body()
+                if (caps?.isSupported == true) {
+                    api.getMedusaStatus(
+                        authHeader = authHeader,
+                        itemId = targetItemId,
+                        maxWidth = maxWidth,
+                        supports4k = supports4K,
+                        supportsDv = supportsDv
+                    ).body()
+                } else null
+            }.getOrNull()
+
+            val addonRecommendedId = medusaStatus?.recommendedMediaSourceId
+                ?.takeIf { recId -> sources.any { it.id == recId } }
+            val recommendedId = addonRecommendedId
+                ?: JellyfinPlaybackSourceResolver.selectPreferredMediaSource(
+                    mediaSources = sources,
+                    preferredMediaSourceId = null,
+                    supports4K = supports4K,
+                    supportsDolbyVision = supportsDv
+                )?.id
+
+            (_uiState.value as? DetailUiState.Success)?.let { curr ->
+                val keptSelection = curr.selectedVersionId?.takeIf { sel -> sources.any { it.id == sel } }
+                _uiState.value = curr.copy(
+                    availableVersions = sources,
+                    medusaVersions = medusaStatus?.versions ?: emptyList(),
+                    recommendedVersionId = recommendedId,
+                    selectedVersionId = keptSelection ?: recommendedId
+                )
             }
         }
     }
