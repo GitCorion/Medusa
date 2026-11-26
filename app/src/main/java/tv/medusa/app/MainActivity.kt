@@ -744,25 +744,43 @@ fun MedusaApp(
                                         }
                                     }
                                 }
-                                Button(
-                                    onClick = triggerDownload,
-                                    enabled = !isDownloading,
-                                    modifier = Modifier
-                                        .focusRequester(updateButtonFocusRequester)
-                                        .handleTouchClick(enabled = !isDownloading, onClick = triggerDownload),
-                                    colors = ButtonDefaults.colors(
-                                        containerColor = if (isForce) Color(0xFFEF4444) else (if (isMonochrome) TextPrimary else themeFocusColor),
-                                        contentColor = if (isForce) TextPrimary else themeFocusContent,
-                                        focusedContainerColor = themeFocusColor,
-                                        focusedContentColor = themeFocusContent
-                                    ),
-                                    shape = ButtonDefaults.shape(RoundedCornerShape(12.dp))
-                                ) {
-                                    Text(
-                                        text = if (isDownloading) stringResource(R.string.update_downloading) else stringResource(R.string.update_now),
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 13.sp
-                                    )
+                                if (tv.medusa.app.util.DeviceUtils.isTouchDevice(context)) {
+                                    androidx.compose.material3.Button(
+                                        onClick = triggerDownload,
+                                        enabled = !isDownloading,
+                                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                                            containerColor = if (isForce) Color(0xFFEF4444) else (if (isMonochrome) TextPrimary else themeFocusColor),
+                                            contentColor = if (isForce) TextPrimary else themeFocusContent
+                                        ),
+                                        shape = RoundedCornerShape(12.dp)
+                                    ) {
+                                        Text(
+                                            text = if (isDownloading) stringResource(R.string.update_downloading) else stringResource(R.string.update_now),
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 13.sp
+                                        )
+                                    }
+                                } else {
+                                    Button(
+                                        onClick = triggerDownload,
+                                        enabled = !isDownloading,
+                                        modifier = Modifier
+                                            .focusRequester(updateButtonFocusRequester)
+                                            .handleTouchClick(enabled = !isDownloading, onClick = triggerDownload),
+                                        colors = ButtonDefaults.colors(
+                                            containerColor = if (isForce) Color(0xFFEF4444) else (if (isMonochrome) TextPrimary else themeFocusColor),
+                                            contentColor = if (isForce) TextPrimary else themeFocusContent,
+                                            focusedContainerColor = themeFocusColor,
+                                            focusedContentColor = themeFocusContent
+                                        ),
+                                        shape = ButtonDefaults.shape(RoundedCornerShape(12.dp))
+                                    ) {
+                                        Text(
+                                            text = if (isDownloading) stringResource(R.string.update_downloading) else stringResource(R.string.update_now),
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 13.sp
+                                        )
+                                    }
                                 }
                             }
 
