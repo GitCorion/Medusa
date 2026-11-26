@@ -1,8 +1,6 @@
 <div align="center">
   <img src="app/src/main/res/drawable/ic_medusa_header.png" alt="Medusa TV" width="360">
-  <p><strong>Your Jellyfin library, three meters away.</strong><br>
-  A native Android TV and tablet client built with Kotlin and Compose TV.<br>
-  A fully native interface with no Firebase, no analytics and no Play Store.</p>
+  <p>Native Jellyfin client for Android TV and tablets, built with Kotlin and Compose TV.</p>
 
   [![Release](https://img.shields.io/github/v/release/GitCorion/Medusa?style=flat-square&color=00D2FF&label=release)](https://github.com/GitCorion/Medusa/releases)
   [![Android](https://img.shields.io/badge/Android-8.0%2B-00D2FF?style=flat-square)](#requirements)
@@ -11,9 +9,9 @@
   [![License](https://img.shields.io/badge/license-GPL--3.0-00D2FF?style=flat-square)](LICENSE)
 
   <p>
-    <a href="https://github.com/GitCorion/Medusa/releases/latest/download/Medusa.apk"><strong>Download the APK</strong></a>
+    <a href="https://github.com/GitCorion/Medusa/releases/latest/download/Medusa.apk"><strong>Download APK</strong></a>
     &nbsp;·&nbsp;
-    <a href="https://gitcorion.github.io/Medusa/"><strong>Design study</strong></a>
+    <a href="https://gitcorion.github.io/Medusa/"><strong>Design system</strong></a>
     &nbsp;·&nbsp;
     <a href="README.md">Español</a>
   </p>
@@ -21,26 +19,16 @@
 
 ![Medusa TV home screen on a 1080p television](docs/assets/estudio/captures/inicio-1600.webp)
 
-<p align="center"><sub>Home on a 1080p television.</sub></p>
+**Contents:** [Overview](#overview) · [Ecosystem](#ecosystem) · [Features](#features) · [Install](#install) · [Initial setup](#initial-setup) · [Screenshots](#screenshots) · [Architecture](#architecture) · [Build](#build) · [Documentation](#documentation) · [Privacy](#privacy-and-security) · [Troubleshooting](#troubleshooting)
 
-**Contents:** [What it is](#what-it-is) · [Ecosystem](#ecosystem) · [Features](#features) · [Install](#install) · [Initial setup](#initial-setup) · [Screenshots](#screenshots) · [Architecture](#architecture) · [Build](#build) · [Documentation](#documentation) · [Privacy](#privacy-and-security) · [Troubleshooting](#troubleshooting)
+## Overview
 
-## What it is
+Medusa TV is a native Jellyfin client designed for remote-control navigation on
+Android TV, Google TV, Fire TV, and tablets. It caches your Jellyfin library
+locally in Room for responsive browsing regardless of network latency.
 
-Medusa TV is a native Jellyfin client for the living room. It turns your self-hosted library into a
-ten-foot interface built for a couch, a five-key remote and an OLED screen: full-bleed artwork,
-high-contrast focus and no chrome competing with the content.
-
-It is not a web wrapper or a hosted catalog. The app talks directly to **your** Jellyfin server,
-stores the catalog on the device and only reaches the internet for metadata, optional static
-catalogs, Trakt (if you link it) and signed updates from GitHub Releases.
-
-## Status
-
-- **Current stable:** `2.4.1` (`versionCode 1000167`).
-- **Platform:** Android 8.0+ (API 26). Android TV, Google TV, Fire TV and tablet.
-- **OTA channels:** stable and beta, with a selector in **Settings → About → Channel**.
-- **Distribution:** signed APK on GitHub Releases. No Medusa account, Firebase or Play Store.
+- **Platform:** Android 8.0+ (API 26).
+- **OTA channels:** stable and beta, selectable under **Settings → About → Channel**.
 
 ## Ecosystem
 

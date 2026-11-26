@@ -66,9 +66,9 @@ Flujo del cliente:
    plugin mantiene un lease para seguir la sesión si TOD cambia de fuente.
 5. Si `is_catalog` es falso o el plugin no está instalado, se reproduce como un `.strm` normal.
 
-El cliente **no** usa la URL `play` del proxy: reproducir a través de Jellyfin conserva la
+El cliente **no** usa la URL `play` de TOD: reproducir a través de Jellyfin conserva la
 transcodificación, los subtítulos y el estado de visionado. El plugin requiere Jellyfin 12.4+ y un
-proxy TOD accesible, normalmente en loopback (`http://127.0.0.1:8773`). Sin plugin, el `.strm` se
+servicio TOD accesible, normalmente en loopback (`http://127.0.0.1:8773`). Sin plugin, el `.strm` se
 reproduce solo si ya está preparado; no hay preparación ni progreso bajo demanda desde la app.
 
 ## 3. Perfil de dispositivo

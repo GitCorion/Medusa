@@ -1,7 +1,7 @@
 # Release y actualizaciones (GitHub Releases)
 
-Medusa se distribuye **públicamente desde GitHub Releases**, en dos canales y con una sola app
-(`tv.medusa.app`). No hay Firebase ni Google Play.
+Medusa se distribuye desde **GitHub Releases**, en dos canales y con una sola app
+(`tv.medusa.app`).
 
 ## Canales
 

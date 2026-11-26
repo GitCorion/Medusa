@@ -28,7 +28,6 @@ distancia en televisores (Android TV / Google TV / Fire TV) y en tablet.
 Sincroniza el catálogo de tu servidor Jellyfin en una base local (Room) para
 navegar con fluidez sin depender de la latencia de red en cada desplazamiento.
 
-- **Versión estable:** `2.4.1` (`versionCode 1000167`).
 - **Compatibilidad:** Android 8.0+ (API 26).
 - **Canales OTA:** estable y beta, seleccionables desde **Ajustes → Acerca de → Canal**.
 

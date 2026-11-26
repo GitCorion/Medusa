@@ -1,6 +1,6 @@
 ---
 name: "Medusa TV"
-description: "Sistema visual real de Medusa TV para Android TV: DM Sans, cian de foco, arte a sangre, cero blur en tiempo real y foco de alto contraste para una interfaz de diez pies."
+description: "Sistema visual de Medusa TV para Android TV: DM Sans, acento cian, carátulas a pantalla completa, sin blur en tiempo real y foco de alto contraste."
 colors:
   void-black: "#04060a"
   abyss-surface: "#0a0f1d"
@@ -71,49 +71,48 @@ components:
     focusBorderColor: "{colors.focus-cyan}"
 ---
 
-# Sistema de diseño real: Medusa TV
+# Sistema de diseño: Medusa TV
 
-## 1. Principio
+## 1. Principios
 
-Medusa TV es una interfaz de salón para Jellyfin. Se usa a tres metros, con un mando de
-cinco teclas y una pantalla OLED. El arte del contenido manda; el chrome desaparece. Cada
-elemento que no comunica **foco, jerarquía o dato** se elimina.
+Medusa TV es un cliente de Jellyfin para Android TV controlado por mando a
+distancia (D-pad, OK y BACK). Las carátulas ocupan el protagonismo y cualquier
+elemento que no comunique **foco, jerarquía o dato** se omite.
 
-La app se construye en Kotlin y Compose TV. Las pantallas son nativas: el único WebView es
-el reproductor de tráilers de YouTube. La interfaz no usa `Modifier.blur()` ni
-`RenderEffect`.
+La app es nativa en Kotlin y Compose TV (el único WebView es el reproductor de
+tráilers de YouTube). No se utiliza `Modifier.blur()` ni `RenderEffect`.
 
 **Fuente de verdad:** `ui/theme/Color.kt`, `ui/theme/Type.kt`, `ui/theme/TvDesignSystem.kt`,
 `ui/components/TvTopBar.kt`, `ui/components/MediaCard.kt` y `ui/screens/medusa/MedusaTagRail.kt`.
-Este documento resume esos valores; si cambia un token, se cambia también aquí y en
-`docs/ESTUDIO.md`.
+Si cambia un token en código, debe actualizarse aquí y en `docs/ESTUDIO.md`.
 
 ## 2. Color
 
-El fondo es tinta abisal (`#04060A`). El foco es el cian eléctrico del logotipo
-(`#00D2FF`). El cobalto y el aqua aportan profundidad; el ámbar y el oro quedan para
-favoritos, valoraciones y visto. Los neutros son zinc y grafito, no grises fríos de plantilla.
+El fondo base es `#04060A` y el color de foco principal es `#00D2FF`. El azul
+secundario y el cian claro se usan para detalles y reflejos; ámbar y dorado se
+reservan para favoritos, valoraciones e indicador de visto.
 
-| Token | Hex | Uso | Contraste sobre abismo |
+| Token | Hex | Uso | Contraste sobre `#04060A` |
 |---|---|---|---|
-| Tinta abisal | `#04060A` | Fondo raíz y tinta sobre acentos | — |
-| Agua profunda | `#0A0F1D` | Superficie base | 1,1:1 (superficie) |
-| Agua elevada | `#10162A` | Controles y superficies elevadas | 1,1:1 (superficie) |
-| Tarjeta | `#080D1A` | Fondo de carátulas | 1,1:1 (superficie) |
-| Chip | `#0D1424` | Chips y filtros en reposo | 1,1:1 (superficie) |
-| Cian Medusa | `#00D2FF` | Foco, selección, progreso | 11,3:1 |
+| Fondo raíz | `#04060A` | Fondo principal y texto sobre acentos | — |
+| Superficie base | `#0A0F1D` | Superficie base | 1,1:1 |
+| Superficie elevada | `#10162A` | Controles y superficies elevadas | 1,1:1 |
+| Tarjeta | `#080D1A` | Fondo de carátulas | 1,1:1 |
+| Chip | `#0D1424` | Chips y filtros en reposo | 1,1:1 |
+| Cian principal | `#00D2FF` | Foco, selección, progreso | 11,3:1 |
 | Tinta de foco | `#04060A` | Texto e iconos sobre cian | 11,3:1 |
-| Cobalto abisal | `#0B5EFF` | Gradientes y brillos; no texto | 3,9:1 |
-| Aqua glaciar | `#8BFFFF` | Reflejos y detalles | 17,2:1 |
-| Ámbar cine | `#E5A44D` | Favoritos y valoraciones | 9,4:1 |
-| Oro nitrato | `#D4AF37` | Visto y sello cinematográfico | 9,6:1 |
-| Nota | `#FACC15` | Estrellas y notas | 13,2:1 |
-| Blanco puro | `#FFFFFF` | Texto principal | 20,3:1 |
-| Zinc | `#A1A1AA` | Metadatos y texto secundario | 7,9:1 |
-| Grafito | `#71717A` | Micro-datos y separadores | 4,2:1 |
+| Azul secundario | `#0B5EFF` | Gradientes y brillos; no para texto | 3,9:1 |
+| Cian claro | `#8BFFFF` | Reflejos y detalles | 17,2:1 |
+| Ámbar | `#E5A44D` | Favoritos y valoraciones | 9,4:1 |
+| Dorado | `#D4AF37` | Visto | 9,6:1 |
+| Amarillo nota | `#FACC15` | Estrellas y notas | 13,2:1 |
+| Blanco | `#FFFFFF` | Texto principal | 20,3:1 |
+| Gris secundario | `#A1A1AA` | Metadatos y texto secundario | 7,9:1 |
+| Gris tenue | `#71717A` | Microdatos y separadores | 4,2:1 |
 
-El cobalto no se usa como texto. El grafito se reserva a micro-datos y separadores. Sobre
-superficie clara, el texto siempre es tinta abisal.
+El azul secundario (`#0B5EFF`) no se usa como color de texto. El gris tenue se
+reserva a microdatos y separadores. Sobre superficies claras, el texto usa
+`#04060A`.
 
 ## 3. Tipografía
 
