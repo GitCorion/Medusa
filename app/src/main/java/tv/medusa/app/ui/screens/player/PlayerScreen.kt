@@ -2405,11 +2405,14 @@ private fun PlayerContent(
                 buttonStyle = buttonStyle,
                 onSelectAudioTrack = { track ->
                     notifyInteraction()
-                    // El índice enviado a Jellyfin es SIEMPRE MediaStream.Index, nunca el
-                    // índice interno de ExoPlayer. Si no hay mapeo fiable, solo cambiamos
-                    // la pista localmente.
                     val jfIndex = track.jellyfinStreamIndex
-                    if (jfIndex != null) {
+                    val hasLocalTrack = track.trackIndex >= 0
+                    if (hasLocalTrack) {
+                        selectAudioTrackInExoPlayer(exoPlayer, track)
+                        if (jfIndex != null) {
+                            viewModel.updateActiveAudioStreamIndex(jfIndex)
+                        }
+                    } else if (jfIndex != null) {
                         viewModel.selectAudioStream(
                             streamIndex = jfIndex,
                             resumePositionMs = exoPlayer.currentPosition.coerceAtLeast(0L)
