@@ -1015,7 +1015,11 @@ private fun PlayerContent(
      * de navegar. El onDispose del player solo guarda progreso para no matar el transcode
      * cuando el player se recrea por un fallback.
      */
+    var isExitingPlayer by remember { mutableStateOf(false) }
+
     fun exitPlayer() {
+        isExitingPlayer = true
+        exoPlayer.pause()
         val pos = exoPlayer.currentPosition.coerceAtLeast(0L)
         val dur = exoPlayer.duration.takeIf { it > 0 } ?: info.durationMs.coerceAtLeast(0L)
         viewModel.finishPlayback(pos, dur)
@@ -1080,7 +1084,8 @@ private fun PlayerContent(
                 Lifecycle.Event.ON_PAUSE -> {
                     // En tablets/móvil, el background entra en PiP y la reproducción continúa.
                     // En TV no se activa: allí la app nunca se "minimiza" y el mando manda.
-                    val canUsePip = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+                    val canUsePip = !isExitingPlayer &&
+                        Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
                         tv.medusa.app.util.DeviceUtils.isTouchDevice(context) &&
                         context.packageManager.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE) &&
                         activity?.isInPictureInPictureMode == false
