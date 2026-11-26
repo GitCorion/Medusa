@@ -50,8 +50,8 @@ playback.
 | Piece | Role | When you need it |
 |---|---|---|
 | [Medusa](https://github.com/GitCorion/Medusa) (this repository) | Native Android TV and tablet client. Plays through Jellyfin. | Always |
-| [Medusa-Jellyfin-Plugin](https://github.com/GitCorion/Medusa-Jellyfin-Plugin) | Jellyfin↔TOD bridge: status, preparation and lease. It appears in Jellyfin as **Medusa**. | If you use TOD |
-| [TOD](https://github.com/GitCorion/TOD) | Catalog on demand: sources, qBittorrent, `.strm` and range proxy. Optionally Prowlarr/Jackett and Radarr/Sonarr. | If you prepare undownloaded content |
+| [Medusa-Jellyfin-Plugin](https://github.com/GitCorion/Medusa-Jellyfin-Plugin) | Jellyfin↔TOD bridge: status, preparation, lease and version negotiation. Appears in Jellyfin as **Medusa**. | If you use TOD |
+| [TOD](https://github.com/GitCorion/TOD) | On-demand library: releases, qBittorrent queue, `.strm` generation and range streaming. Optionally Prowlarr/Jackett and Radarr/Sonarr. | If you prepare undownloaded content |
 
 ```text
 Medusa TV ──▶ Jellyfin ──▶ Medusa plugin ──▶ TOD :8773 ──▶ qBittorrent
@@ -60,7 +60,7 @@ Medusa TV ──▶ Jellyfin ──▶ Medusa plugin ──▶ TOD :8773 ──�
 ```
 
 Medusa **never talks to TOD directly**. It talks to Jellyfin; the plugin translates the
-conversation. The client never uses the proxy `play` URL: it plays through Jellyfin so transcoding,
+conversation. The client never uses TOD's `play` URL: it plays through Jellyfin so transcoding,
 subtitles and watch progress keep working. The full flow is in [`docs/PLAYBACK.md`](docs/PLAYBACK.md).
 
 ## Features
