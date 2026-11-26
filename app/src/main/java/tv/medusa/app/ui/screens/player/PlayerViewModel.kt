@@ -1780,12 +1780,11 @@ class PlayerViewModel @Inject constructor(
         torrentZeroProgressStartMs = System.currentTimeMillis()
         updateTorrentOverlay(playableId, title, backdropUrl, initialStatus, availableVersions, effectiveMediaSourceId)
 
-        // POST /Medusa/Prepare/{itemId} una sola vez
-        runCatching {
+        suspend fun tryPrepare(targetReleaseId: Long?): Throwable? = runCatching {
             val prepRes = api.prepareMedusaItem(
                 authHeader = authHeader,
                 itemId = playableId,
-                releaseId = effectiveReleaseId,
+                releaseId = targetReleaseId,
                 maxWidth = maxWidth,
                 supports4k = supports4K,
                 supportsDv = supportsDolbyVision
@@ -1797,10 +1796,36 @@ class PlayerViewModel @Inject constructor(
                     serverMessage = medusaErrorMessage(body)
                 )
             }
-        }.onFailure { e ->
-            Log.w("PlayerViewModel", "Medusa prepare request failed: ${e.message}")
-            val message = (e as? MedusaHttpException)?.serverMessage
-                ?: "No se pudo preparar la descarga."
+        }.exceptionOrNull()
+
+        var currentReleaseId = effectiveReleaseId
+        // POST /Medusa/Prepare/{itemId}; si el release fijado falla, mostrar alerta de búsqueda y reintentar sin pin
+        var prepareFailure = tryPrepare(currentReleaseId)
+        if (prepareFailure != null && currentReleaseId != null) {
+            Log.w("PlayerViewModel", "Medusa prepare failed for releaseId=$currentReleaseId (${prepareFailure.message}); searching alternative sources...")
+            _torrentOverlayState.value = (_torrentOverlayState.value ?: TorrentOverlayUiState(
+                itemId = playableId,
+                title = title,
+                backdropUrl = backdropUrl,
+                state = "COLD",
+                availableVersions = availableVersions,
+                currentMediaSourceId = effectiveMediaSourceId
+            )).copy(
+                state = "COLD",
+                isError = false,
+                isUnavailable = false,
+                statusText = appContext.getString(R.string.torrent_searching_alternatives),
+                reasonText = appContext.getString(R.string.torrent_searching_alternatives_desc),
+                errorMessage = null
+            )
+            currentReleaseId = null
+            activeOnDemandReleaseId = null
+            prepareFailure = tryPrepare(null)
+        }
+        if (prepareFailure != null) {
+            Log.w("PlayerViewModel", "Medusa prepare request failed: ${prepareFailure.message}")
+            val message = (prepareFailure as? MedusaHttpException)?.serverMessage
+                ?: appContext.getString(R.string.torrent_prepare_failed)
             applyTorrentOverlayError(
                 playableId = playableId,
                 title = title,
@@ -1845,7 +1870,7 @@ class PlayerViewModel @Inject constructor(
                 api.getMedusaStatus(
                     authHeader = authHeader,
                     itemId = playableId,
-                    releaseId = effectiveReleaseId,
+                    releaseId = currentReleaseId,
                     maxWidth = maxWidth,
                     supports4k = supports4K,
                     supportsDv = supportsDolbyVision
@@ -1921,7 +1946,7 @@ class PlayerViewModel @Inject constructor(
                     playableId = playableId,
                     title = title,
                     backdropUrl = backdropUrl,
-                    message = appContext.getString(R.string.torrent_unavailable),
+                    message = appContext.getString(R.string.torrent_no_alternatives_found),
                     unavailable = true,
                     availableVersions = availableVersions,
                     currentMediaSourceId = effectiveMediaSourceId
@@ -1942,6 +1967,11 @@ class PlayerViewModel @Inject constructor(
         availableVersions: List<JellyfinMediaSourceDto> = emptyList(),
         currentMediaSourceId: String? = null
     ) {
+        val displayMessage = if (message.contains("No hay ninguna fuente", ignoreCase = true)) {
+            appContext.getString(R.string.torrent_no_alternatives_found)
+        } else {
+            message
+        }
         val current = _torrentOverlayState.value ?: TorrentOverlayUiState(
             itemId = playableId,
             title = title,
@@ -1954,8 +1984,8 @@ class PlayerViewModel @Inject constructor(
             state = if (unavailable) "UNAVAILABLE" else "ERROR",
             isError = true,
             isUnavailable = unavailable,
-            statusText = message,
-            errorMessage = message
+            statusText = displayMessage,
+            errorMessage = displayMessage
         )
     }
 
@@ -2006,19 +2036,24 @@ class PlayerViewModel @Inject constructor(
 
         val isZeroProgressFor10s = torrentZeroProgressStartMs != null && (now - torrentZeroProgressStartMs!!) >= 10_000L
 
+        val isSwitching = status.playbackState.equals("switching", ignoreCase = true) ||
+            (!status.streamSwitchReason.isNullOrBlank() && !status.streamReady && status.safeProgress <= 0f)
+
         val statusText = when {
             status.streamReady -> appContext.getString(R.string.torrent_buffer_ready)
+            isSwitching -> appContext.getString(R.string.torrent_searching_alternatives)
             isZeroProgressFor10s -> appContext.getString(R.string.torrent_connecting_peers)
             status.state.equals("COLD", ignoreCase = true) -> appContext.getString(R.string.torrent_preparing)
             status.state.equals("DOWNLOADING", ignoreCase = true) -> appContext.getString(R.string.torrent_buffering)
             status.state.equals("PAUSED", ignoreCase = true) -> appContext.getString(R.string.torrent_paused)
             status.state.equals("SEEDING", ignoreCase = true) || status.state.equals("AVAILABLE", ignoreCase = true) -> appContext.getString(R.string.torrent_ready)
             status.state.equals("ERROR", ignoreCase = true) -> appContext.getString(R.string.torrent_error)
-            status.state.equals("UNAVAILABLE", ignoreCase = true) -> appContext.getString(R.string.torrent_unavailable)
+            status.state.equals("UNAVAILABLE", ignoreCase = true) -> appContext.getString(R.string.torrent_no_alternatives_found)
             else -> appContext.getString(R.string.torrent_preparing)
         }
 
         val reasonText = when {
+            isSwitching -> appContext.getString(R.string.torrent_searching_alternatives_desc)
             isZeroProgressFor10s -> appContext.getString(R.string.torrent_connecting_peers_desc)
             else -> appContext.getString(R.string.torrent_buffering_desc)
         }

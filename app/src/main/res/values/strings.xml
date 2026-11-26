@@ -726,6 +726,9 @@
     <string name="torrent_retry">Reintentar</string>
     <string name="torrent_seeds_peers">Semillas: %1$d · Pares: %2$d</string>
     <string name="torrent_searching_seeds">Buscando semillas…</string>
+    <string name="torrent_searching_alternatives">Buscando fuentes alternativas…</string>
+    <string name="torrent_searching_alternatives_desc">Esta fuente no ha respondido; estamos probando otra copia disponible.</string>
+    <string name="torrent_no_alternatives_found">Buscando fuentes alternativas: no hay ninguna disponible en este momento.</string>
     <string name="torrent_connecting_swarm">Conectando con el enjambre…</string>
     <string name="torrent_starting_download">Iniciando descarga…</string>
     <string name="torrent_eta_remaining">Faltan ~%1$s</string>

@@ -39,7 +39,8 @@ data class TodTorrentStatusDto(
     @SerialName("tail_ready") val tailReady: Boolean? = null,
     @SerialName("stream_generation") val streamGeneration: Long? = null,
     @SerialName("stream_switched_at") val streamSwitchedAt: String? = null,
-    @SerialName("stream_switch_reason") val streamSwitchReason: String? = null
+    @SerialName("stream_switch_reason") val streamSwitchReason: String? = null,
+    @SerialName("playback_state") val playbackState: String? = null
 ) {
     val safeProgress: Float
         get() = (progress ?: 0f).coerceIn(0f, 1f)

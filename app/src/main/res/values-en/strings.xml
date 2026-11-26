@@ -727,6 +727,9 @@
     <string name="torrent_retry">Retry</string>
     <string name="torrent_seeds_peers">Seeds: %1$d · Peers: %2$d</string>
     <string name="torrent_searching_seeds">Looking for seeds…</string>
+    <string name="torrent_searching_alternatives">Searching for alternative sources…</string>
+    <string name="torrent_searching_alternatives_desc">This source did not respond; trying another available copy.</string>
+    <string name="torrent_no_alternatives_found">Searching for alternative sources: none available right now.</string>
     <string name="torrent_connecting_swarm">Connecting to the swarm…</string>
     <string name="torrent_starting_download">Starting download…</string>
     <string name="torrent_eta_remaining">About %1$s left</string>
