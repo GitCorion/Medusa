@@ -751,6 +751,8 @@
     <string name="sort_dialog_subtitle">Choose how to sort</string>
     <string name="sort_default">Default (Relevance)</string>
     <string name="sort_default_short">Sort</string>
+    <string name="sort_date_added_desc">Date added (Newest first)</string>
+    <string name="sort_date_added_desc_short">Added ▼</string>
     <string name="sort_title_asc">Title (A → Z)</string>
     <string name="sort_title_asc_short">A → Z</string>
     <string name="sort_title_desc">Title (Z → A)</string>

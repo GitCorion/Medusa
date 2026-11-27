@@ -221,7 +221,8 @@ interface JellyfinDao {
                jm.seasonNumber, jm.episodeNumber, jm.totalItemCount, jm.unplayedItemCount,
                0 AS lastPlayedTicks,
                '' AS titleLower, '' AS originalTitleLower, '' AS seriesNameLower,
-               NULL AS premiereDateMs
+               NULL AS premiereDateMs,
+               NULL AS dateCreatedMs
         FROM jellyfin_media jm
         LEFT JOIN (SELECT mediaId, MAX(score) AS maxScore FROM collection_items GROUP BY mediaId) ci ON ci.mediaId = jm.id
         WHERE jm.type IN ('Movie', 'Series')
@@ -248,7 +249,8 @@ interface JellyfinDao {
                jm.seasonNumber, jm.episodeNumber, jm.totalItemCount, jm.unplayedItemCount,
                0 AS lastPlayedTicks,
                '' AS titleLower, '' AS originalTitleLower, '' AS seriesNameLower,
-               NULL AS premiereDateMs
+               NULL AS premiereDateMs,
+               NULL AS dateCreatedMs
         FROM jellyfin_media jm
         LEFT JOIN (SELECT mediaId, MAX(score) AS maxScore FROM collection_items GROUP BY mediaId) ci ON ci.mediaId = jm.id
         WHERE jm.type IN ('Movie', 'Series')

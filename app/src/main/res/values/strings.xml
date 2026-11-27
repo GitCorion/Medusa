@@ -750,6 +750,8 @@
     <string name="sort_dialog_subtitle">Selecciona el criterio de ordenación</string>
     <string name="sort_default">Predeterminado (Relevancia)</string>
     <string name="sort_default_short">Orden</string>
+    <string name="sort_date_added_desc">Fecha de añadido (Más recientes primero)</string>
+    <string name="sort_date_added_desc_short">Añadido ▼</string>
     <string name="sort_title_asc">Título (A → Z)</string>
     <string name="sort_title_asc_short">A → Z</string>
     <string name="sort_title_desc">Título (Z → A)</string>

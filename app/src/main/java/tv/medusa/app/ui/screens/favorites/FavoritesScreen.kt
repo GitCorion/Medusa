@@ -104,8 +104,8 @@ fun FavoritesScreen(
     val showIcons = buttonStyleKey != BUTTON_STYLE_TEXT_ONLY
     val showText = buttonStyleKey != BUTTON_STYLE_ICONS_ONLY
 
-    // En Favoritos el orden natural es el contenido más reciente primero.
-    var sortOption by rememberSaveable { mutableStateOf(CatalogSortOption.YEAR_DESC) }
+    // En Favoritos el orden natural es por fecha de añadido (más recientes primero).
+    var sortOption by rememberSaveable { mutableStateOf(CatalogSortOption.DATE_ADDED_DESC) }
     val sortButtonFocusRequester = remember { FocusRequester() }
     val firstResultFocusRequester = remember { FocusRequester() }
     // Destino explícito de ARRIBA desde el contenido: la pestaña activa, no Inicio.
@@ -113,7 +113,8 @@ fun FavoritesScreen(
     val gridState = rememberLazyGridState()
     val coroutineScope = rememberCoroutineScope()
 
-    LaunchedEffect(sortOption) {
+    val currentSuccess = uiState as? FavoritesUiState.Success
+    LaunchedEffect(sortOption, currentSuccess?.activeFilter, currentSuccess?.hideWatched) {
         try { gridState.scrollToItem(0) } catch (_: Exception) {}
     }
 
@@ -289,12 +290,9 @@ fun FavoritesScreen(
                                         isMonochrome = isMonochrome,
                                         focusRequester = sortButtonFocusRequester,
                                         buttonStyleKey = buttonStyleKey,
-                                        modifier = Modifier
-                                            .focusRequester(sortButtonFocusRequester)
-                                            .focusProperties {
-                                                down = firstResultFocusRequester
-                                                up = topBarFavoritesFocusRequester
-                                            }
+                                        modifier = Modifier.focusProperties {
+                                            down = firstResultFocusRequester
+                                        }
                                     )
                                 }
                             }

@@ -44,6 +44,7 @@ object MediaItemSnapshotCodec {
             appendField(sb, item.seriesId)
             appendField(sb, item.seriesName)
             appendField(sb, item.premiereDateMs?.toString())
+            appendField(sb, item.dateCreatedMs?.toString())
         }
         return sb.toString()
     }
@@ -77,7 +78,8 @@ object MediaItemSnapshotCodec {
                     trailerUrl = f[16].ifBlank { null },
                     seriesId = f[17].ifBlank { null },
                     seriesName = f[18].ifBlank { null },
-                    premiereDateMs = f.getOrNull(19)?.toLongOrNull()
+                    premiereDateMs = f.getOrNull(19)?.toLongOrNull(),
+                    dateCreatedMs = f.getOrNull(20)?.toLongOrNull()
                 )
             )
         }

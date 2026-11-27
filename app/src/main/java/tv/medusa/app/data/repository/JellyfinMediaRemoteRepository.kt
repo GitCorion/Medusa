@@ -881,6 +881,7 @@ internal fun JellyfinItemDto.toEntity(): JellyfinMediaEntity {
     val lastPlayedMs = parseIsoToEpochMs(userData?.effectiveLastPlayedDate)
     val premiereMs = parseIsoToEpochMs(premiereDate).takeIf { it > 0L }
         ?: parseIsoToEpochMs(dateCreated).takeIf { it > 0L }
+    val createdMs = parseIsoToEpochMs(dateCreated).takeIf { it > 0L }
 
     return JellyfinMediaEntity(
         id = id,
@@ -909,6 +910,7 @@ internal fun JellyfinItemDto.toEntity(): JellyfinMediaEntity {
         totalItemCount = totalCount,
         unplayedItemCount = unplayedCount,
         lastPlayedTicks = lastPlayedMs,
-        premiereDateMs = premiereMs
+        premiereDateMs = premiereMs,
+        dateCreatedMs = createdMs
     )
 }

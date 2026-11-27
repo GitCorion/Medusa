@@ -11,6 +11,7 @@ enum class CatalogSortOption(
     val shortLabelRes: Int
 ) {
     DEFAULT(R.string.sort_default, R.string.sort_default_short),
+    DATE_ADDED_DESC(R.string.sort_date_added_desc, R.string.sort_date_added_desc_short),
     TITLE_ASC(R.string.sort_title_asc, R.string.sort_title_asc_short),
     TITLE_DESC(R.string.sort_title_desc, R.string.sort_title_desc_short),
     YEAR_DESC(R.string.sort_year_desc, R.string.sort_year_desc_short),
@@ -20,6 +21,12 @@ enum class CatalogSortOption(
     fun sort(items: List<MediaItem>): List<MediaItem> {
         return when (this) {
             DEFAULT -> items
+            DATE_ADDED_DESC -> items.sortedWith(
+                compareByDescending<MediaItem> { it.dateCreatedMs ?: 0L }
+                    .thenByDescending { it.premiereDateMs ?: 0L }
+                    .thenByDescending { it.year ?: 0 }
+                    .thenBy(String.CASE_INSENSITIVE_ORDER) { it.title }
+            )
             TITLE_ASC -> items.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.title })
             TITLE_DESC -> items.sortedWith(compareByDescending(String.CASE_INSENSITIVE_ORDER) { it.title })
             YEAR_DESC -> items.sortedWith(

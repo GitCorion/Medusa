@@ -49,4 +49,18 @@ class CatalogSortOptionTest {
         val sorted = CatalogSortOption.RATING_DESC.sort(sampleList)
         assertEquals(listOf("3", "2", "4", "1", "5"), sorted.map { it.id })
     }
+
+    @Test
+    fun dateAddedDesc_sortsMostRecentlyAddedFirstWithNullsLast() {
+        val older = MediaItem(id = "1", title = "Older", year = 2024, dateCreatedMs = 1_000L)
+        val newest = MediaItem(id = "2", title = "Newest", year = 2010, dateCreatedMs = 3_000L)
+        val middle = MediaItem(id = "3", title = "Middle", year = 2020, dateCreatedMs = 2_000L)
+        val noDateNewYear = MediaItem(id = "4", title = "NoDate2025", year = 2025, dateCreatedMs = null)
+        val noDateOldYear = MediaItem(id = "5", title = "NoDate1999", year = 1999, dateCreatedMs = null)
+
+        val sorted = CatalogSortOption.DATE_ADDED_DESC.sort(
+            listOf(noDateOldYear, older, noDateNewYear, newest, middle)
+        )
+        assertEquals(listOf("2", "3", "1", "4", "5"), sorted.map { it.id })
+    }
 }

@@ -54,6 +54,7 @@ data class JellyfinMediaEntity(
     val unplayedItemCount: Int? = null,
     val lastPlayedTicks: Long = 0L,
     val premiereDateMs: Long? = null,
+    val dateCreatedMs: Long? = null,
     /**
      * Columnas normalizadas (ASCII lower, igual que el `LOWER()` de SQLite) para que las búsquedas
      * exactas por título (`findByTitle*`, `getSeriesByTitle`) usen índice en lugar de un full-scan

@@ -10,6 +10,16 @@ no tienen entrada detallada en este archivo; su histórico está en los Releases
 
 ## [Unreleased]
 
+## [2.5.1] - 2026-11-27
+
+### Añadido
+
+- Favoritos y catálogos: nueva opción de ordenación por **fecha de añadido** (`DateCreated` de Jellyfin, más recientes primero), establecida como orden predeterminado en la pantalla de Favoritos.
+
+### Corregido
+
+- Favoritos: corregida la navegación de foco hacia arriba desde el botón de ordenación para pasar por la barra de filtros (`Ocultar vistos` / formato) antes de subir a la barra superior, eliminado el `FocusRequester` duplicado y reiniciado el scroll al cambiar de filtro.
+
 ## [2.5.0] - 2026-11-27
 
 ### Añadido

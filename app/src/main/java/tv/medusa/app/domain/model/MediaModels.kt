@@ -34,7 +34,8 @@ data class MediaItem(
     val trailerUrl: String? = null,
     val seriesId: String? = null,
     val seriesName: String? = null,
-    val premiereDateMs: Long? = null
+    val premiereDateMs: Long? = null,
+    val dateCreatedMs: Long? = null
 )
 
 /**
