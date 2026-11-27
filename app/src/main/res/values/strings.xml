@@ -194,6 +194,7 @@
     <string name="settings_field_tmdb_api_key_placeholder">Pega tu clave de themoviedb.org</string>
     <string name="settings_tmdb_key_set">Configurada</string>
     <string name="settings_tmdb_key_unset">No configurada</string>
+    <string name="settings_tmdb_server_configured">Configurada por el servidor</string>
 
     <!-- Navegación lateral -->
     <string name="settings_title">Ajustes</string>
@@ -423,6 +424,7 @@
     <string name="settings_update_available_toast">¡Nueva versión %1$s disponible!</string>
     <string name="settings_up_to_date_toast">Medusa está al día (%1$s)</string>
     <string name="settings_trakt_verified">Cuenta Trakt verificada: @%1$s</string>
+    <string name="settings_trakt_server_synced">Sincronizado desde el servidor</string>
     <string name="settings_trakt_connected_msg">Trakt conectado (%1$s)</string>
     <string name="settings_saving_trakt_token">Guardando y verificando Token de Trakt…</string>
     <string name="settings_trakt_token_removed">Token de Trakt eliminado.</string>

@@ -102,6 +102,7 @@ Para firmar una release (`assembleRelease`), pasa `KEYSTORE_PATH`,
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Capas, repositorios, Room, workers y pruebas |
 | [`docs/PLAYBACK.md`](docs/PLAYBACK.md) | Candidatos de reproducción, `DeviceProfile`, audio y subtítulos |
 | [`docs/RELEASE.md`](docs/RELEASE.md) | Publicación en GitHub Releases, OTA y firma |
+| [`docs/ROLLBACK.md`](docs/ROLLBACK.md) | Reversión del sync de credenciales y compilación para probarlo |
 | [`docs/ESTUDIO.md`](docs/ESTUDIO.md) / [`DESIGN.md`](DESIGN.md) | Sistema visual, tokens y decisiones de interfaz |
 | [`docs/CATALOGS.md`](docs/CATALOGS.md) | Catálogos estáticos de descubrimiento por región |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | Guía de contribución y estilo de commits |

@@ -424,7 +424,9 @@ object NetworkClientFactory {
     private data class ServiceCacheKey(
         val baseUrl: String,
         val serviceClass: Class<*>,
-        val jsonIdentity: Int
+        val jsonIdentity: Int,
+        /** Cabecera MediaBrowser del servidor. Vacía para servicios públicos (TMDB, Trakt…). */
+        val authIdentity: String = ""
     )
 
     private val serviceCache = ConcurrentHashMap<ServiceCacheKey, Any>()
@@ -541,6 +543,17 @@ object NetworkClientFactory {
         createServiceInternal(baseUrl, serviceClass, json)
 
     /**
+     * Servicio contra el propio servidor Jellyfin (p. ej. el proxy `/Medusa/Tmdb/`). Añade la
+     * autenticación MediaBrowser **solo** a las peticiones del mismo host, puerto y prefijo de
+     * ruta: el token nunca sale del servidor configurado, aunque Retrofit siga un redirect.
+     */
+    fun <T> createAuthenticatedService(
+        baseUrl: String,
+        serviceClass: Class<T>,
+        authHeader: String
+    ): T = createServiceInternal(baseUrl, serviceClass, json, authHeader)
+
+    /**
      * Servicio Retrofit de Jellyfin. Usa [jellyfinJson] para que DeviceProfile, capabilities
      * y eventos de sesión viajen completos aunque sus valores coincidan con los defaults.
      */
@@ -551,21 +564,49 @@ object NetworkClientFactory {
     private fun <T> createServiceInternal(
         baseUrl: String,
         serviceClass: Class<T>,
-        serializerJson: Json
+        serializerJson: Json,
+        authHeader: String? = null
     ): T {
         val cleanUrl = normalizeUrl(baseUrl)
         val validUrl = if (cleanUrl.endsWith("/")) cleanUrl else "$cleanUrl/"
         val cacheKey = ServiceCacheKey(
             baseUrl = validUrl,
             serviceClass = serviceClass,
-            jsonIdentity = System.identityHashCode(serializerJson)
+            jsonIdentity = System.identityHashCode(serializerJson),
+            authIdentity = authHeader.orEmpty()
         )
 
         return serviceCache.getOrPut(cacheKey) {
             val contentType = "application/json".toMediaType()
+            val target = runCatching { URI(validUrl) }.getOrNull()
+            val client = if (authHeader.isNullOrBlank() || target == null) {
+                okHttpClient
+            } else {
+                val expectedHost = target.host?.lowercase()?.removeSurrounding("[", "]")
+                val expectedPort = target.port.takeIf { it > 0 }
+                    ?: if (target.scheme.equals("https", ignoreCase = true)) 443 else 80
+                val expectedPath = target.path.takeIf { it.isNotBlank() } ?: "/"
+                okHttpClient.newBuilder()
+                    .addInterceptor { chain ->
+                        val original = chain.request()
+                        val isSameServer = original.url.host.equals(expectedHost, ignoreCase = true) &&
+                            original.url.port == expectedPort &&
+                            original.url.encodedPath.startsWith(expectedPath)
+                        val request = if (isSameServer) {
+                            original.newBuilder()
+                                .header("Authorization", authHeader)
+                                .header("X-Emby-Authorization", authHeader)
+                                .build()
+                        } else {
+                            original
+                        }
+                        chain.proceed(request)
+                    }
+                    .build()
+            }
             Retrofit.Builder()
                 .baseUrl(validUrl)
-                .client(okHttpClient)
+                .client(client)
                 .addConverterFactory(serializerJson.asConverterFactory(contentType))
                 .build()
                 .create(serviceClass) as Any

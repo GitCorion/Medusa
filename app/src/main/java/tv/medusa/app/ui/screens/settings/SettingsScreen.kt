@@ -875,7 +875,10 @@ private fun LibraryCategory(
 
         TvSettingRow(
             title = stringResource(R.string.settings_row_trakt_user),
-            value = "@${uiState.traktUsername ?: stringResource(R.string.settings_status_active)}"
+            value = "@${uiState.traktUsername ?: uiState.serverTraktUsername ?: stringResource(R.string.settings_status_active)}",
+            fieldDescription = if (uiState.serverTraktSynced) {
+                stringResource(R.string.settings_trakt_server_synced)
+            } else null
         )
 
         TvSettingRow(
@@ -1067,9 +1070,12 @@ private fun PlatformsCategory(
     TvSettingRow(
         title = stringResource(R.string.settings_field_tmdb_api_key),
         value = stringResource(
-            if (uiState.tmdbApiKey.isBlank()) R.string.settings_tmdb_key_unset
+            if (uiState.tmdbApiKey.isBlank() && !uiState.serverTmdbConfigured) R.string.settings_tmdb_key_unset
             else R.string.settings_tmdb_key_set
         ),
+        fieldDescription = if (uiState.serverTmdbConfigured) {
+            stringResource(R.string.settings_tmdb_server_configured)
+        } else null,
         onClick = { viewModel.openEditDialog(SettingField.TMDB_API_KEY) }
     )
 
@@ -1121,7 +1127,7 @@ private fun PlatformsCategory(
 
     // Sin clave TMDB no hay catálogo que filtrar: los toggles no tendrían efecto y parecerían
     // rotos. La fila de la clave, arriba, sigue visible para que el usuario pueda activarlos.
-    if (uiState.tmdbApiKey.isNotBlank()) {
+    if (uiState.tmdbApiKey.isNotBlank() || uiState.serverTmdbConfigured) {
         TvSectionHeader(title = stringResource(R.string.settings_section_filter_platform))
 
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -1744,6 +1750,7 @@ private fun TvSettingRow(
     value: String? = null,
     onClick: (() -> Unit)? = null,
     trailingContent: (@Composable () -> Unit)? = null,
+    fieldDescription: String? = null,
     modifier: Modifier = Modifier
 ) {
     val isMonochrome = LocalIsMonochromeTheme.current
@@ -1774,13 +1781,22 @@ private fun TvSettingRow(
                     .padding(horizontal = 16.dp, vertical = 13.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = title,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = TextPrimary,
-                    modifier = Modifier.weight(1f)
-                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = title,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = TextPrimary
+                    )
+                    if (fieldDescription != null) {
+                        Text(
+                            text = fieldDescription,
+                            fontSize = 11.sp,
+                            color = tv.medusa.app.ui.theme.TvPalette.TextSecondaryCool,
+                            modifier = Modifier.padding(top = 2.dp)
+                        )
+                    }
+                }
 
                 if (value != null) {
                     Text(
@@ -1815,13 +1831,22 @@ private fun TvSettingRow(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = title,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = tv.medusa.app.ui.theme.TvPalette.TextMuted,
-                    modifier = Modifier.weight(1f)
-                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = title,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = tv.medusa.app.ui.theme.TvPalette.TextMuted
+                    )
+                    if (fieldDescription != null) {
+                        Text(
+                            text = fieldDescription,
+                            fontSize = 11.sp,
+                            color = tv.medusa.app.ui.theme.TvPalette.TextSecondaryCool,
+                            modifier = Modifier.padding(top = 2.dp)
+                        )
+                    }
+                }
 
                 if (value != null) {
                     Text(

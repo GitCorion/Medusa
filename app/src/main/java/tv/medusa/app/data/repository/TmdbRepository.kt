@@ -1,5 +1,6 @@
 package tv.medusa.app.data.repository
 
+import tv.medusa.app.data.local.UserPreferencesRepository
 import tv.medusa.app.data.remote.ApiConfig
 import tv.medusa.app.data.local.db.TmdbVoteCacheDao
 import tv.medusa.app.data.local.db.TmdbVoteCacheEntity
@@ -21,13 +22,41 @@ import kotlinx.coroutines.sync.withPermit
  * Extraído de `MediaRepository`. Los votos se cachean en Room 24h para evitar el N+1.
  */
 class TmdbRepository(
-    private val tmdbVoteCacheDao: TmdbVoteCacheDao? = null
+    private val tmdbVoteCacheDao: TmdbVoteCacheDao? = null,
+    private val userPreferencesRepository: UserPreferencesRepository? = null
 ) {
+    /**
+     * El plugin del servidor inyecta la clave TMDB, así que las peticiones al proxy se hacen sin
+     * `api_key` y con el token Jellyfin. Si no hay plugin o el usuario escribió su propia clave,
+     * se mantiene el acceso directo a TMDB (fail-open).
+     */
+    private fun useServerProxy(): Boolean {
+        val prefs = userPreferencesRepository?.userPreferences?.value ?: return false
+        return prefs.tmdbUseServer &&
+            prefs.jellyfinServerUrl.isNotBlank() &&
+            prefs.jellyfinAccessToken.isNotBlank()
+    }
+
+    private fun effectiveApiKey(apiKey: String): String = if (useServerProxy()) "" else apiKey
+
+    private fun tmdbService(): TmdbApiService {
+        if (!useServerProxy()) {
+            return NetworkClientFactory.createService(ApiConfig.TMDB_BASE_URL, TmdbApiService::class.java)
+        }
+        val prefs = requireNotNull(userPreferencesRepository?.userPreferences?.value)
+        val proxyUrl = "${NetworkClientFactory.normalizeUrl(prefs.jellyfinServerUrl)}/Medusa/Tmdb/"
+        return NetworkClientFactory.createAuthenticatedService(
+            baseUrl = proxyUrl,
+            serviceClass = TmdbApiService::class.java,
+            authHeader = buildJellyfinAuthHeader(token = prefs.jellyfinAccessToken)
+        )
+    }
+
     suspend fun getTmdbTrending(apiKey: String): Result<List<TmdbItemDto>> {
         MediaCaches.tmdbTrendingCache.get(apiKey)?.let { return Result.success(it) }
         return runCatching {
-            val api = NetworkClientFactory.createService(ApiConfig.TMDB_BASE_URL, TmdbApiService::class.java)
-            val response = api.getTrending(apiKey = apiKey)
+            val api = tmdbService()
+            val response = api.getTrending(apiKey = effectiveApiKey(apiKey))
             if (response.results.isNotEmpty()) {
                 MediaCaches.tmdbTrendingCache.put(apiKey, response.results)
             }
@@ -39,16 +68,16 @@ class TmdbRepository(
         val cacheKey = "trending-day-es-$apiKey-$maxPages"
         MediaCaches.tmdbTrendingDayCache.get(cacheKey)?.let { return Result.success(it) }
         return runCatching {
-            val api = NetworkClientFactory.createService(ApiConfig.TMDB_BASE_URL, TmdbApiService::class.java)
+            val api = tmdbService()
             val (moviePages, tvPages) = coroutineScope {
                 val m = async {
                     (1..maxPages).flatMap { p ->
-                        runCatching { api.getTrendingMoviesDay(apiKey = apiKey, page = p, language = "es-ES") }.getOrNull()?.results ?: emptyList()
+                        runCatching { api.getTrendingMoviesDay(apiKey = effectiveApiKey(apiKey), page = p, language = "es-ES") }.getOrNull()?.results ?: emptyList()
                     }
                 }
                 val t = async {
                     (1..maxPages).flatMap { p ->
-                        runCatching { api.getTrendingTvDay(apiKey = apiKey, page = p, language = "es-ES") }.getOrNull()?.results ?: emptyList()
+                        runCatching { api.getTrendingTvDay(apiKey = effectiveApiKey(apiKey), page = p, language = "es-ES") }.getOrNull()?.results ?: emptyList()
                     }
                 }
                 Pair(m.await(), t.await())
@@ -73,11 +102,11 @@ class TmdbRepository(
         MediaCaches.tmdbRecommendationsCache.get(cacheKey)?.let { return Result.success(it) }
 
         return runCatching {
-            val api = NetworkClientFactory.createService(ApiConfig.TMDB_BASE_URL, TmdbApiService::class.java)
+            val api = tmdbService()
             val results = if (isTv) {
-                api.getTvRecommendations(seriesId = tmdbId, apiKey = apiKey).results
+                api.getTvRecommendations(seriesId = tmdbId, apiKey = effectiveApiKey(apiKey)).results
             } else {
-                api.getMovieRecommendations(movieId = tmdbId, apiKey = apiKey).results
+                api.getMovieRecommendations(movieId = tmdbId, apiKey = effectiveApiKey(apiKey)).results
             }
             if (results.isNotEmpty()) {
                 MediaCaches.tmdbRecommendationsCache.put(cacheKey, results)
@@ -103,12 +132,12 @@ class TmdbRepository(
         //    (200 tarjetas pidiendo el mismo TMDB id al arrancar) en una sola llamada.
         val fetched: Result<TmdbVoteStats?> = MediaCaches.remoteFetchFlight.run("vote|$isTv|$tmdbId") {
             runCatching {
-                val api = NetworkClientFactory.createService(ApiConfig.TMDB_BASE_URL, TmdbApiService::class.java)
+                val api = tmdbService()
                 val stats = if (isTv) {
-                    val d = api.getTvDetails(seriesId = tmdbId, apiKey = apiKey)
+                    val d = api.getTvDetails(seriesId = tmdbId, apiKey = effectiveApiKey(apiKey))
                     TmdbVoteStats(voteCount = d.voteCount ?: 0, voteAverage = d.voteAverage ?: 0f)
                 } else {
-                    val d = api.getMovieDetails(movieId = tmdbId, apiKey = apiKey)
+                    val d = api.getMovieDetails(movieId = tmdbId, apiKey = effectiveApiKey(apiKey))
                     TmdbVoteStats(voteCount = d.voteCount ?: 0, voteAverage = d.voteAverage ?: 0f)
                 }
                 tmdbVoteCacheDao?.upsert(
@@ -127,11 +156,11 @@ class TmdbRepository(
 
     suspend fun getTmdbTrailerUrl(apiKey: String, tmdbId: Long, isTv: Boolean = false): String? {
         return runCatching {
-            val api = NetworkClientFactory.createService(ApiConfig.TMDB_BASE_URL, TmdbApiService::class.java)
+            val api = tmdbService()
             val response = if (isTv) {
-                api.getTvVideos(seriesId = tmdbId, apiKey = apiKey)
+                api.getTvVideos(seriesId = tmdbId, apiKey = effectiveApiKey(apiKey))
             } else {
-                api.getMovieVideos(movieId = tmdbId, apiKey = apiKey)
+                api.getMovieVideos(movieId = tmdbId, apiKey = effectiveApiKey(apiKey))
             }
             val trailer = response.results.firstOrNull { it.type.equals("Trailer", ignoreCase = true) && it.site.equals("YouTube", ignoreCase = true) }
                 ?: response.results.firstOrNull { it.site.equals("YouTube", ignoreCase = true) }
@@ -144,11 +173,11 @@ class TmdbRepository(
         MediaCaches.tmdbGenreCache.get(cacheKey)?.let { return Result.success(it) }
 
         return runCatching {
-            val api = NetworkClientFactory.createService(ApiConfig.TMDB_BASE_URL, TmdbApiService::class.java)
+            val api = tmdbService()
             val results = if (isTv) {
-                api.discoverTvByGenre(apiKey = apiKey, genreId = genreId).results
+                api.discoverTvByGenre(apiKey = effectiveApiKey(apiKey), genreId = genreId).results
             } else {
-                api.discoverMoviesByGenre(apiKey = apiKey, genreId = genreId).results
+                api.discoverMoviesByGenre(apiKey = effectiveApiKey(apiKey), genreId = genreId).results
             }
             if (results.isNotEmpty()) {
                 MediaCaches.tmdbGenreCache.put(cacheKey, results)
@@ -162,13 +191,13 @@ class TmdbRepository(
         MediaCaches.tmdbProviderCache.get(cacheKey)?.let { return Result.success(it) }
 
         return runCatching {
-            val api = NetworkClientFactory.createService(ApiConfig.TMDB_BASE_URL, TmdbApiService::class.java)
+            val api = tmdbService()
             val (movies, tv) = coroutineScope {
                 val m = async {
                     (1..maxPages).map { p ->
                         async {
                             runCatching {
-                                api.discoverMoviesByProvider(apiKey = apiKey, providerId = providerId, watchRegion = region, page = p)
+                                api.discoverMoviesByProvider(apiKey = effectiveApiKey(apiKey), providerId = providerId, watchRegion = region, page = p)
                             }.getOrNull()?.results ?: emptyList()
                         }
                     }.awaitAll().flatten()
@@ -177,7 +206,7 @@ class TmdbRepository(
                     (1..maxPages).map { p ->
                         async {
                             runCatching {
-                                api.discoverTvByProvider(apiKey = apiKey, providerId = providerId, watchRegion = region, page = p)
+                                api.discoverTvByProvider(apiKey = effectiveApiKey(apiKey), providerId = providerId, watchRegion = region, page = p)
                             }.getOrNull()?.results ?: emptyList()
                         }
                     }.awaitAll().flatten()
@@ -204,17 +233,17 @@ class TmdbRepository(
         region: String = ApiConfig.TMDB_WATCH_REGION
     ): Result<List<TmdbItemDto>> {
         return runCatching {
-            val api = NetworkClientFactory.createService(ApiConfig.TMDB_BASE_URL, TmdbApiService::class.java)
+            val api = tmdbService()
 
             val first = coroutineScope {
                 val m = async {
                     runCatching {
-                        api.discoverMoviesByProvider(apiKey = apiKey, providerId = providerId, watchRegion = region, page = 1)
+                        api.discoverMoviesByProvider(apiKey = effectiveApiKey(apiKey), providerId = providerId, watchRegion = region, page = 1)
                     }.getOrNull()
                 }
                 val t = async {
                     runCatching {
-                        api.discoverTvByProvider(apiKey = apiKey, providerId = providerId, watchRegion = region, page = 1)
+                        api.discoverTvByProvider(apiKey = effectiveApiKey(apiKey), providerId = providerId, watchRegion = region, page = 1)
                     }.getOrNull()
                 }
                 Pair(m.await(), t.await())
@@ -239,9 +268,9 @@ class TmdbRepository(
                             semaphore.withPermit {
                                 runCatching {
                                     if (kind == "movie") {
-                                        api.discoverMoviesByProvider(apiKey = apiKey, providerId = providerId, watchRegion = region, page = page).results
+                                        api.discoverMoviesByProvider(apiKey = effectiveApiKey(apiKey), providerId = providerId, watchRegion = region, page = page).results
                                     } else {
-                                        api.discoverTvByProvider(apiKey = apiKey, providerId = providerId, watchRegion = region, page = page).results
+                                        api.discoverTvByProvider(apiKey = effectiveApiKey(apiKey), providerId = providerId, watchRegion = region, page = page).results
                                     }
                                 }.getOrDefault(emptyList())
                             }
@@ -273,19 +302,19 @@ class TmdbRepository(
         MediaCaches.tmdbPopularRegionCache.get(cacheKey)?.let { return Result.success(it) }
 
         return runCatching {
-            val api = NetworkClientFactory.createService(ApiConfig.TMDB_BASE_URL, TmdbApiService::class.java)
+            val api = tmdbService()
             val (movies, tv) = coroutineScope {
                 val m = async {
                     (1..maxPages).flatMap { p ->
                         runCatching {
-                            api.discoverPopularMovies(apiKey = apiKey, watchRegion = region, page = p)
+                            api.discoverPopularMovies(apiKey = effectiveApiKey(apiKey), watchRegion = region, page = p)
                         }.getOrNull()?.results ?: emptyList()
                     }
                 }
                 val t = async {
                     (1..maxPages).flatMap { p ->
                         runCatching {
-                            api.discoverPopularTv(apiKey = apiKey, watchRegion = region, page = p)
+                            api.discoverPopularTv(apiKey = effectiveApiKey(apiKey), watchRegion = region, page = p)
                         }.getOrNull()?.results ?: emptyList()
                     }
                 }
@@ -301,15 +330,15 @@ class TmdbRepository(
 
     suspend fun getTmdbMovieDetail(apiKey: String, movieId: Long): TmdbMovieDetailDto? {
         return runCatching {
-            val api = NetworkClientFactory.createService(ApiConfig.TMDB_BASE_URL, TmdbApiService::class.java)
-            api.getMovieDetails(movieId = movieId, apiKey = apiKey)
+            val api = tmdbService()
+            api.getMovieDetails(movieId = movieId, apiKey = effectiveApiKey(apiKey))
         }.getOrNull()
     }
 
     suspend fun getTmdbTvDetail(apiKey: String, seriesId: Long): TmdbTvDetailDto? {
         return runCatching {
-            val api = NetworkClientFactory.createService(ApiConfig.TMDB_BASE_URL, TmdbApiService::class.java)
-            api.getTvDetails(seriesId = seriesId, apiKey = apiKey)
+            val api = tmdbService()
+            api.getTvDetails(seriesId = seriesId, apiKey = effectiveApiKey(apiKey))
         }.getOrNull()
     }
 
@@ -318,16 +347,16 @@ class TmdbRepository(
         MediaCaches.tmdbTopRatedCache.get(cacheKey)?.let { return Result.success(it) }
 
         return runCatching {
-            val api = NetworkClientFactory.createService(ApiConfig.TMDB_BASE_URL, TmdbApiService::class.java)
+            val api = tmdbService()
             val (movies, tv) = coroutineScope {
                 val m = async {
                     (1..maxPages).map { p ->
-                        async { runCatching { api.getTopRatedMovies(apiKey = apiKey, page = p) }.getOrNull()?.results ?: emptyList() }
+                        async { runCatching { api.getTopRatedMovies(apiKey = effectiveApiKey(apiKey), page = p) }.getOrNull()?.results ?: emptyList() }
                     }.awaitAll().flatten()
                 }
                 val t = async {
                     (1..maxPages).map { p ->
-                        async { runCatching { api.getTopRatedTv(apiKey = apiKey, page = p) }.getOrNull()?.results ?: emptyList() }
+                        async { runCatching { api.getTopRatedTv(apiKey = effectiveApiKey(apiKey), page = p) }.getOrNull()?.results ?: emptyList() }
                     }.awaitAll().flatten()
                 }
                 Pair(m.await(), t.await())
@@ -345,10 +374,10 @@ class TmdbRepository(
         tmdbId: Long?,
         jellyfinStatus: String?
     ): SeriesStatus {
-        if (tmdbId != null && tmdbApiKey.isNotBlank()) {
+        if (tmdbId != null && (tmdbApiKey.isNotBlank() || useServerProxy())) {
             val tmdbStatus = runCatching {
-                val tmdbApi = NetworkClientFactory.createService(ApiConfig.TMDB_BASE_URL, TmdbApiService::class.java)
-                val detail = tmdbApi.getTvDetails(seriesId = tmdbId, apiKey = tmdbApiKey)
+                val tmdbApi = tmdbService()
+                val detail = tmdbApi.getTvDetails(seriesId = tmdbId, apiKey = effectiveApiKey(tmdbApiKey))
                 detail.status
             }.getOrNull()
             if (!tmdbStatus.isNullOrBlank()) {
@@ -366,13 +395,13 @@ class TmdbRepository(
         maxPages: Int = 3
     ): Result<List<TmdbItemDto>> {
         return runCatching {
-            val api = NetworkClientFactory.createService(ApiConfig.TMDB_BASE_URL, TmdbApiService::class.java)
+            val api = tmdbService()
             val pages = coroutineScope {
                 (1..maxPages).map { p ->
                     async {
                         runCatching {
                             api.discoverSeasonalMovies(
-                                apiKey = apiKey,
+                                apiKey = effectiveApiKey(apiKey),
                                 withKeywords = withKeywords,
                                 withGenres = withGenres,
                                 withoutGenres = withoutGenres,

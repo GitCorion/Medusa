@@ -56,7 +56,7 @@ class MediaRepository(
     private val local = LocalMediaRepository(jellyfinDao, accessPolicy)
     private val jellyfinRemote = JellyfinMediaRemoteRepository(jellyfinDao, accessPolicy, local, appContext)
     private val sync = MediaSyncRepository(jellyfinDao, userPreferencesRepository, tmdbVoteCacheDao, accessPolicy, appContext)
-    private val tmdb = TmdbRepository(tmdbVoteCacheDao)
+    private val tmdb = TmdbRepository(tmdbVoteCacheDao, userPreferencesRepository)
     private val trakt = TraktRepository()
 
     companion object {

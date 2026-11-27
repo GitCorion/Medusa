@@ -84,6 +84,12 @@ data class UserPreferences(
     val traktAccessToken: String = "",
     val traktClientId: String = DEFAULT_TRAKT_CLIENT_ID,
     val traktClientSecret: String = DEFAULT_TRAKT_CLIENT_SECRET,
+    /** Usa el proxy del plugin del servidor para TMDB mientras el usuario no escriba su clave. */
+    val tmdbUseServer: Boolean = true,
+    /** Las credenciales Trakt las gestiona el servidor (sin QR en este dispositivo). */
+    val traktUseServer: Boolean = true,
+    /** Revisión de las credenciales Trakt del servidor, para detectar cambios y conflictos. */
+    val traktServerRevision: Int = 0,
     val tmdbApiKey: String = DEFAULT_TMDB_API_KEY,
     val watchRegion: String = ApiConfig.TMDB_WATCH_REGION,
     val buttonStyle: String = BUTTON_STYLE_ICONS_ONLY,
@@ -151,6 +157,9 @@ class UserPreferencesRepository(context: Context) {
         val TRAKT_ACCESS_TOKEN = stringPreferencesKey("trakt_access_token")
         val TRAKT_CLIENT_ID = stringPreferencesKey("trakt_client_id")
         val TRAKT_CLIENT_SECRET = stringPreferencesKey("trakt_client_secret")
+        val TRAKT_USE_SERVER = booleanPreferencesKey("trakt_use_server")
+        val TRAKT_SERVER_REVISION = intPreferencesKey("trakt_server_revision")
+        val TMDB_USE_SERVER = booleanPreferencesKey("tmdb_use_server")
         val TMDB_API_KEY = stringPreferencesKey("tmdb_api_key")
         val WATCH_REGION = stringPreferencesKey("watch_region")
         val BUTTON_STYLE = stringPreferencesKey("button_style")
@@ -195,6 +204,12 @@ class UserPreferencesRepository(context: Context) {
 
     /** Alias de compatibilidad: mismo [StateFlow] compartido, expuesto como [Flow]. */
     val userPreferencesFlow: Flow<UserPreferences> = userPreferences
+
+    /**
+     * Lectura directa de DataStore. A diferencia de `userPreferences.first()`, nunca devuelve
+     * el valor inicial por defecto del StateFlow mientras DataStore todavía está emitiendo.
+     */
+    suspend fun readPreferences(): UserPreferences = appContext.dataStore.data.first().toUserPreferences()
 
     init {
         appScope.launch {
@@ -390,6 +405,41 @@ class UserPreferencesRepository(context: Context) {
         appContext.dataStore.edit { prefs ->
             prefs[Keys.TMDB_API_KEY] = apiKey
             prefs[Keys.WATCH_REGION] = region
+        }
+    }
+
+    /** El usuario ha introducido su propia clave: se deja de usar el proxy del servidor. */
+    suspend fun setTmdbUseServer(useServer: Boolean) {
+        appContext.dataStore.edit { prefs ->
+            prefs[Keys.TMDB_USE_SERVER] = useServer
+        }
+    }
+
+    suspend fun setTraktUseServer(useServer: Boolean) {
+        appContext.dataStore.edit { prefs ->
+            prefs[Keys.TRAKT_USE_SERVER] = useServer
+        }
+    }
+
+    suspend fun setTraktServerRevision(revision: Int) {
+        appContext.dataStore.edit { prefs ->
+            prefs[Keys.TRAKT_SERVER_REVISION] = revision
+        }
+    }
+
+    /** Guarda en una sola escritura las credenciales Trakt procedentes del servidor. */
+    suspend fun applyServerTraktCredentials(
+        accessToken: String,
+        clientId: String,
+        clientSecret: String,
+        revision: Int
+    ) {
+        appContext.dataStore.edit { prefs ->
+            prefs[Keys.TRAKT_ACCESS_TOKEN] = CryptoUtils.encrypt(accessToken)
+            if (clientId.isNotBlank()) prefs[Keys.TRAKT_CLIENT_ID] = clientId
+            if (clientSecret.isNotBlank()) prefs[Keys.TRAKT_CLIENT_SECRET] = CryptoUtils.encrypt(clientSecret)
+            prefs[Keys.TRAKT_USE_SERVER] = true
+            prefs[Keys.TRAKT_SERVER_REVISION] = revision
         }
     }
 
@@ -696,6 +746,9 @@ class UserPreferencesRepository(context: Context) {
                 traktAccessToken = CryptoUtils.decryptStored(this[Keys.TRAKT_ACCESS_TOKEN] ?: ""),
                 traktClientId = traktId,
                 traktClientSecret = traktSecret,
+                tmdbUseServer = this[Keys.TMDB_USE_SERVER] ?: true,
+                traktUseServer = this[Keys.TRAKT_USE_SERVER] ?: true,
+                traktServerRevision = this[Keys.TRAKT_SERVER_REVISION] ?: 0,
                 tmdbApiKey = tmdbKey,
                 watchRegion = this[Keys.WATCH_REGION] ?: ApiConfig.TMDB_WATCH_REGION,
                 buttonStyle = this[Keys.BUTTON_STYLE] ?: BUTTON_STYLE_ICONS_ONLY,
