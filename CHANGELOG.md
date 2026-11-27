@@ -10,6 +10,17 @@ no tienen entrada detallada en este archivo; su histórico está en los Releases
 
 ## [Unreleased]
 
+## [2.5.0] - 2026-11-27
+
+### Añadido
+
+- Sincronización con el plugin Medusa de Jellyfin: soporte para proxy TMDB gestionado por el servidor (`/Medusa/Tmdb/`) y sincronización de credenciales Trakt entre dispositivos del mismo usuario Jellyfin, manteniendo prioridad para las credenciales locales y modo *fail-open* si el plugin no está disponible.
+
+### Corregido
+
+- Proxy TMDB enrutado de forma uniforme en portada, detalle, géneros, plataformas, índice de colecciones y enriquecimiento en segundo plano sin requerir clave local.
+- Sincronización automática al iniciar sesión en Jellyfin, limpieza al desvincular o cambiar de cuenta y restricción estricta de cabeceras de autorización en redirecciones HTTP.
+
 ## [2.4.2-beta.8] - 2026-11-26
 
 ### Cambiado

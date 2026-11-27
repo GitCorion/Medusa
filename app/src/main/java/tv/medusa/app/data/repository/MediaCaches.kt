@@ -97,4 +97,14 @@ object MediaCaches {
         serverTopMoviesCache.clear()
         serverTopSeriesCache.clear()
     }
+
+    fun invalidateTmdbCaches() {
+        tmdbTopRatedCache.clear()
+        tmdbTrendingDayCache.clear()
+        tmdbTrendingCache.clear()
+        tmdbRecommendationsCache.clear()
+        tmdbGenreCache.clear()
+        tmdbProviderCache.clear()
+        tmdbPopularRegionCache.clear()
+    }
 }

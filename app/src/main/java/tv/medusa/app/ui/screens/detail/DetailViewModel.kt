@@ -8,7 +8,6 @@ import tv.medusa.app.data.remote.jellyfin.JellyfinDeviceProfileBuilder
 import tv.medusa.app.data.remote.jellyfin.JellyfinMediaSourceDto
 import tv.medusa.app.data.remote.jellyfin.JellyfinPlaybackSourceResolver
 import tv.medusa.app.data.remote.jellyfin.MedusaVersionDto
-import tv.medusa.app.data.remote.tmdb.TmdbApiService
 import tv.medusa.app.data.remote.ApiConfig
 import tv.medusa.app.data.repository.buildJellyfinAuthHeader
 import kotlinx.coroutines.Dispatchers
@@ -261,15 +260,11 @@ class DetailViewModel @Inject constructor(
                         }
 
                         // Si aún falta overview, intentar con TMDB
-                        if (enrichedEntity.overview.isNullOrBlank() && tmdbLong != null && prefs.tmdbApiKey.isNotBlank()) {
-                            val tmdbApi = NetworkClientFactory.createService(
-                                ApiConfig.TMDB_BASE_URL,
-                                TmdbApiService::class.java
-                            )
+                        if (enrichedEntity.overview.isNullOrBlank() && tmdbLong != null && prefs.hasTmdbAccess) {
                             val tmdbOverview: String? = if (isTv) {
-                                runCatching { tmdbApi.getTvDetails(tmdbLong, prefs.tmdbApiKey).overview }.getOrNull()
+                                mediaRepository.getTmdbTvDetail(prefs.tmdbApiKey, tmdbLong)?.overview
                             } else {
-                                runCatching { tmdbApi.getMovieDetails(tmdbLong, prefs.tmdbApiKey).overview }.getOrNull()
+                                mediaRepository.getTmdbMovieDetail(prefs.tmdbApiKey, tmdbLong)?.overview
                             }
                             if (!tmdbOverview.isNullOrBlank()) {
                                 enrichedEntity = enrichedEntity.copy(overview = tmdbOverview)
@@ -288,7 +283,7 @@ class DetailViewModel @Inject constructor(
 
                 // 3. Cargar en paralelo sin bloquear la pantalla: Trailer, Series/Episodios, Recomendaciones, Colecciones
                 // Trailer
-                if (tmdbLong != null && prefs.tmdbApiKey.isNotBlank()) {
+                if (tmdbLong != null && prefs.hasTmdbAccess) {
                     launch {
                         val trailer = mediaRepository.getTmdbTrailerUrl(prefs.tmdbApiKey, tmdbLong, isTv = isTv)
                         if (trailer != null) {
@@ -428,7 +423,7 @@ class DetailViewModel @Inject constructor(
                     try {
                         var similarItems: List<MediaItem> = emptyList()
                         val effectiveTmdbKey = prefs.tmdbApiKey.takeIf { it.isNotBlank() } ?: DEFAULT_TMDB_API_KEY
-                        if (tmdbLong != null && effectiveTmdbKey.isNotBlank()) {
+                        if (tmdbLong != null && prefs.hasTmdbAccess) {
                             val tmdbRecs = mediaRepository.getTmdbRecommendations(effectiveTmdbKey, tmdbLong, isTv).getOrDefault(emptyList())
                             if (tmdbRecs.isNotEmpty()) {
                                 val matchedRecs = filterToLibraryUseCase.filterTmdbItems(

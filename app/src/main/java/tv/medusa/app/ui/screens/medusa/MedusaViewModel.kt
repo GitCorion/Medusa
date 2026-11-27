@@ -172,7 +172,7 @@ class MedusaViewModel @Inject constructor(
 
             // Enriquecer en segundo plano con TMDB si hay conexión sin bloquear la UI
             val tmdbKey = prefs.tmdbApiKey.takeIf { it.isNotBlank() } ?: DEFAULT_TMDB_API_KEY
-            if (tmdbKey.isNotBlank()) {
+            if (prefs.hasTmdbAccess) {
                 withContext(Dispatchers.IO) {
                     val (matchedCanon, matchedTrending) = coroutineScope {
                         val cD = async {

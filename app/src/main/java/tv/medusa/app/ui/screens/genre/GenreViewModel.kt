@@ -11,8 +11,6 @@ import tv.medusa.app.R
 import tv.medusa.app.data.local.DEFAULT_TMDB_API_KEY
 import tv.medusa.app.data.local.UserPreferencesRepository
 import tv.medusa.app.data.local.db.JellyfinMediaEntity
-import tv.medusa.app.data.remote.NetworkClientFactory
-import tv.medusa.app.data.remote.tmdb.TmdbApiService
 import tv.medusa.app.data.repository.MediaRepository
 import tv.medusa.app.domain.model.HomeSection
 import tv.medusa.app.domain.model.MediaItem
@@ -279,22 +277,18 @@ class GenreViewModel @Inject constructor(
             val tvGenreId = tmdbTvGenreId(genreName)
             // Si el género no está mapeado en TMDB, no inventamos un id (antes caía en Acción y
             // traía recomendaciones incongruentes): nos quedamos solo con el contenido local.
-            if (effectiveTmdbKey.isNotBlank() && (movieGenreId != null || tvGenreId != null)) {
+            if (prefs.hasTmdbAccess && (movieGenreId != null || tvGenreId != null)) {
                 try {
-                    val api = NetworkClientFactory.createService(ApiConfig.TMDB_BASE_URL, TmdbApiService::class.java)
-
                     val (movieGenre, tvGenre) = coroutineScope {
                         val m = async {
                             if (movieGenreId == null) emptyList()
-                            else runCatching {
-                                api.discoverMoviesByGenre(apiKey = effectiveTmdbKey, genreId = movieGenreId)
-                            }.getOrNull()?.results ?: emptyList()
+                            else mediaRepository.getTmdbByGenre(effectiveTmdbKey, movieGenreId, isTv = false)
+                                .getOrDefault(emptyList())
                         }
                         val t = async {
                             if (tvGenreId == null) emptyList()
-                            else runCatching {
-                                api.discoverTvByGenre(apiKey = effectiveTmdbKey, genreId = tvGenreId)
-                            }.getOrNull()?.results ?: emptyList()
+                            else mediaRepository.getTmdbByGenre(effectiveTmdbKey, tvGenreId, isTv = true)
+                                .getOrDefault(emptyList())
                         }
                         Pair(m.await(), t.await())
                     }

@@ -249,11 +249,39 @@ class MediaRepository(
     suspend fun getTmdbProviderCatalog(apiKey: String, providerId: String, region: String = tv.medusa.app.data.remote.ApiConfig.TMDB_WATCH_REGION): Result<List<TmdbItemDto>> =
         tmdb.getTmdbProviderCatalog(apiKey, providerId, region)
 
-    suspend fun getTmdbMovieDetail(apiKey: String, movieId: Long): TmdbMovieDetailDto? =
-        tmdb.getTmdbMovieDetail(apiKey, movieId)
+    suspend fun discoverTmdbMoviesByProvider(
+        apiKey: String,
+        providerId: String,
+        region: String = tv.medusa.app.data.remote.ApiConfig.TMDB_WATCH_REGION,
+        sortBy: String = "popularity.desc",
+        voteCountGte: Int? = null,
+        page: Int = 1
+    ): List<TmdbItemDto> =
+        tmdb.discoverMoviesByProvider(apiKey, providerId, region, sortBy, voteCountGte, page)
 
-    suspend fun getTmdbTvDetail(apiKey: String, seriesId: Long): TmdbTvDetailDto? =
-        tmdb.getTmdbTvDetail(apiKey, seriesId)
+    suspend fun discoverTmdbTvByProvider(
+        apiKey: String,
+        providerId: String,
+        region: String = tv.medusa.app.data.remote.ApiConfig.TMDB_WATCH_REGION,
+        sortBy: String = "popularity.desc",
+        voteCountGte: Int? = null,
+        page: Int = 1
+    ): List<TmdbItemDto> =
+        tmdb.discoverTvByProvider(apiKey, providerId, region, sortBy, voteCountGte, page)
+
+    suspend fun getTmdbMovieDetail(
+        apiKey: String,
+        movieId: Long,
+        language: String = tv.medusa.app.data.remote.ApiConfig.TMDB_LANGUAGE
+    ): TmdbMovieDetailDto? =
+        tmdb.getTmdbMovieDetail(apiKey, movieId, language)
+
+    suspend fun getTmdbTvDetail(
+        apiKey: String,
+        seriesId: Long,
+        language: String = tv.medusa.app.data.remote.ApiConfig.TMDB_LANGUAGE
+    ): TmdbTvDetailDto? =
+        tmdb.getTmdbTvDetail(apiKey, seriesId, language)
 
     suspend fun getTmdbTopRated(apiKey: String, maxPages: Int = 3): Result<List<TmdbItemDto>> = tmdb.getTmdbTopRated(apiKey, maxPages)
 

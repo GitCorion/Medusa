@@ -86,6 +86,8 @@ data class UserPreferences(
     val traktClientSecret: String = DEFAULT_TRAKT_CLIENT_SECRET,
     /** Usa el proxy del plugin del servidor para TMDB mientras el usuario no escriba su clave. */
     val tmdbUseServer: Boolean = true,
+    /** True cuando el plugin del servidor confirmó tener configurada su clave TMDB. */
+    val tmdbServerConfigured: Boolean = false,
     /** Las credenciales Trakt las gestiona el servidor (sin QR en este dispositivo). */
     val traktUseServer: Boolean = true,
     /** Revisión de las credenciales Trakt del servidor, para detectar cambios y conflictos. */
@@ -119,6 +121,17 @@ data class UserPreferences(
     val isMonochrome: Boolean
         get() = indicatorTheme == INDICATOR_THEME_MONOCHROME || accentColor == ACCENT_WHITE
 
+    /** True si el proxy TMDB del servidor está activo y configurado para la sesión actual. */
+    val hasServerTmdbProxy: Boolean
+        get() = tmdbUseServer &&
+            tmdbServerConfigured &&
+            jellyfinServerUrl.isNotBlank() &&
+            jellyfinAccessToken.isNotBlank()
+
+    /** True si hay una fuente TMDB operativa (clave propia del usuario o proxy del servidor). */
+    val hasTmdbAccess: Boolean
+        get() = tmdbApiKey.isNotBlank() || hasServerTmdbProxy
+
     fun getEffectiveParticleScale(context: Context): Float {
         return when (performanceMode) {
             PERFORMANCE_MODE_HIGH -> 1.0f
@@ -136,7 +149,20 @@ data class UserPreferences(
     }
 }
 
-class UserPreferencesRepository(context: Context) {
+/** Abstracción mínima de preferencias para `MedusaServerSync` (facilita tests JVM sin Context). */
+interface ServerSyncPreferencesStore {
+    suspend fun readPreferences(): UserPreferences
+    suspend fun setTmdbServerConfigured(configured: Boolean)
+    suspend fun applyServerTraktCredentials(
+        accessToken: String,
+        clientId: String,
+        clientSecret: String,
+        revision: Int
+    )
+    suspend fun clearServerSyncedTraktCredentials()
+}
+
+class UserPreferencesRepository(context: Context) : ServerSyncPreferencesStore {
 
     private val appContext = context.applicationContext
 
@@ -160,6 +186,7 @@ class UserPreferencesRepository(context: Context) {
         val TRAKT_USE_SERVER = booleanPreferencesKey("trakt_use_server")
         val TRAKT_SERVER_REVISION = intPreferencesKey("trakt_server_revision")
         val TMDB_USE_SERVER = booleanPreferencesKey("tmdb_use_server")
+        val TMDB_SERVER_CONFIGURED = booleanPreferencesKey("tmdb_server_configured")
         val TMDB_API_KEY = stringPreferencesKey("tmdb_api_key")
         val WATCH_REGION = stringPreferencesKey("watch_region")
         val BUTTON_STYLE = stringPreferencesKey("button_style")
@@ -209,7 +236,7 @@ class UserPreferencesRepository(context: Context) {
      * Lectura directa de DataStore. A diferencia de `userPreferences.first()`, nunca devuelve
      * el valor inicial por defecto del StateFlow mientras DataStore todavía está emitiendo.
      */
-    suspend fun readPreferences(): UserPreferences = appContext.dataStore.data.first().toUserPreferences()
+    override suspend fun readPreferences(): UserPreferences = appContext.dataStore.data.first().toUserPreferences()
 
     init {
         appScope.launch {
@@ -415,6 +442,12 @@ class UserPreferencesRepository(context: Context) {
         }
     }
 
+    override suspend fun setTmdbServerConfigured(configured: Boolean) {
+        appContext.dataStore.edit { prefs ->
+            prefs[Keys.TMDB_SERVER_CONFIGURED] = configured
+        }
+    }
+
     suspend fun setTraktUseServer(useServer: Boolean) {
         appContext.dataStore.edit { prefs ->
             prefs[Keys.TRAKT_USE_SERVER] = useServer
@@ -427,8 +460,31 @@ class UserPreferencesRepository(context: Context) {
         }
     }
 
+    /** Borra el token Trakt heredado del servidor sin desactivar futuras sincronizaciones. */
+    override suspend fun clearServerSyncedTraktCredentials() {
+        appContext.dataStore.edit { prefs ->
+            prefs[Keys.TRAKT_ACCESS_TOKEN] = ""
+            prefs[Keys.TRAKT_SERVER_REVISION] = 0
+            prefs[Keys.TRAKT_USE_SERVER] = true
+        }
+    }
+
+    /** Reinicia el estado de sync al cerrar sesión o cambiar de servidor/usuario Jellyfin. */
+    suspend fun resetServerSyncOnIdentityChange() {
+        appContext.dataStore.edit { prefs ->
+            val wasTraktFromServer = prefs[Keys.TRAKT_USE_SERVER] ?: true
+            if (wasTraktFromServer) {
+                prefs[Keys.TRAKT_ACCESS_TOKEN] = ""
+            }
+            prefs[Keys.TMDB_SERVER_CONFIGURED] = false
+            prefs[Keys.TMDB_USE_SERVER] = (prefs[Keys.TMDB_API_KEY] ?: "").isBlank()
+            prefs[Keys.TRAKT_USE_SERVER] = true
+            prefs[Keys.TRAKT_SERVER_REVISION] = 0
+        }
+    }
+
     /** Guarda en una sola escritura las credenciales Trakt procedentes del servidor. */
-    suspend fun applyServerTraktCredentials(
+    override suspend fun applyServerTraktCredentials(
         accessToken: String,
         clientId: String,
         clientSecret: String,
@@ -747,6 +803,7 @@ class UserPreferencesRepository(context: Context) {
                 traktClientId = traktId,
                 traktClientSecret = traktSecret,
                 tmdbUseServer = this[Keys.TMDB_USE_SERVER] ?: true,
+                tmdbServerConfigured = this[Keys.TMDB_SERVER_CONFIGURED] ?: false,
                 traktUseServer = this[Keys.TRAKT_USE_SERVER] ?: true,
                 traktServerRevision = this[Keys.TRAKT_SERVER_REVISION] ?: 0,
                 tmdbApiKey = tmdbKey,

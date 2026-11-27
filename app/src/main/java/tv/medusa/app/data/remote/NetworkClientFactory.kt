@@ -587,9 +587,12 @@ object NetworkClientFactory {
                     ?: if (target.scheme.equals("https", ignoreCase = true)) 443 else 80
                 val expectedPath = target.path.takeIf { it.isNotBlank() } ?: "/"
                 okHttpClient.newBuilder()
-                    .addInterceptor { chain ->
+                    // NetworkInterceptor se ejecuta por cada salto HTTP (incluidos redirects),
+                    // evitando que OkHttp reenvíe credenciales a otro host/puerto/ruta.
+                    .addNetworkInterceptor { chain ->
                         val original = chain.request()
-                        val isSameServer = original.url.host.equals(expectedHost, ignoreCase = true) &&
+                        val isSameServer = original.url.scheme.equals(target.scheme, ignoreCase = true) &&
+                            original.url.host.equals(expectedHost, ignoreCase = true) &&
                             original.url.port == expectedPort &&
                             original.url.encodedPath.startsWith(expectedPath)
                         val request = if (isSameServer) {
@@ -598,7 +601,12 @@ object NetworkClientFactory {
                                 .header("X-Emby-Authorization", authHeader)
                                 .build()
                         } else {
-                            original
+                            original.newBuilder()
+                                .removeHeader("Authorization")
+                                .removeHeader("X-Emby-Authorization")
+                                .removeHeader("X-Emby-Token")
+                                .removeHeader("X-MediaBrowser-Token")
+                                .build()
                         }
                         chain.proceed(request)
                     }

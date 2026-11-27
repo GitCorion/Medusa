@@ -873,9 +873,12 @@ private fun LibraryCategory(
     if (uiState.isTraktConnected) {
         TvSectionHeader(title = stringResource(R.string.settings_section_account_linked))
 
+        val displayTraktUser = uiState.traktUsername?.takeIf { it.isNotBlank() }
+            ?: uiState.serverTraktUsername?.takeIf { it.isNotBlank() }
+            ?: stringResource(R.string.settings_status_active)
         TvSettingRow(
             title = stringResource(R.string.settings_row_trakt_user),
-            value = "@${uiState.traktUsername ?: uiState.serverTraktUsername ?: stringResource(R.string.settings_status_active)}",
+            value = "@$displayTraktUser",
             fieldDescription = if (uiState.serverTraktSynced) {
                 stringResource(R.string.settings_trakt_server_synced)
             } else null

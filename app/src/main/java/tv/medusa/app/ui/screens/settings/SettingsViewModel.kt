@@ -299,32 +299,36 @@ class SettingsViewModel @Inject constructor(
                 jellyfinCertificateFingerprint = prefs.jellyfinCertificateFingerprint
             )
             if (isJfConnected) {
-                viewModelScope.launch {
-                    val config = MedusaServerSync.apply(userPreferencesRepository).getOrNull()
-                    if (config != null) {
-                        _uiState.value = _uiState.value.copy(
-                            // El cartel solo se muestra si realmente se está usando el proxy.
-                            serverTmdbConfigured = config.tmdbConfigured && prefs.tmdbUseServer,
-                            serverTraktSynced = config.traktSynced && prefs.traktUseServer,
-                            serverTraktUsername = config.traktUsername
-                        )
-                    }
-                    // El servidor puede haber aportado credenciales Trakt: se validan con el
-                    // cliente efectivo para que la fila de usuario salga como vinculada.
-                    val updated = userPreferencesRepository.readPreferences()
-                    _uiState.value = _uiState.value.copy(
-                        traktToken = updated.traktAccessToken,
-                        traktClientId = updated.traktClientId,
-                        traktClientSecret = updated.traktClientSecret
-                    )
-                    if (updated.traktAccessToken.isNotBlank()) {
-                        validateTraktToken(updated.traktAccessToken, updated.traktClientId)
-                        loadTraktUserLists(updated.traktAccessToken, updated.traktClientId)
-                    }
-                }
+                syncServerSettings()
             } else if (prefs.traktAccessToken.isNotBlank()) {
                 validateTraktToken(prefs.traktAccessToken, prefs.traktClientId)
                 loadTraktUserLists(prefs.traktAccessToken, prefs.traktClientId)
+            }
+        }
+    }
+
+    private fun syncServerSettings() {
+        viewModelScope.launch {
+            val config = MedusaServerSync.apply(userPreferencesRepository).getOrNull()
+            val updated = userPreferencesRepository.readPreferences()
+            val hasToken = updated.traktAccessToken.isNotBlank()
+            val traktSyncedFromServer = (config?.traktSynced ?: hasToken) && updated.traktUseServer
+            _uiState.value = _uiState.value.copy(
+                // El cartel solo se muestra si realmente se está usando el proxy.
+                serverTmdbConfigured = updated.hasServerTmdbProxy,
+                serverTraktSynced = traktSyncedFromServer,
+                serverTraktUsername = config?.traktUsername?.takeIf { it.isNotBlank() }
+                    ?: if (traktSyncedFromServer) _uiState.value.serverTraktUsername else null,
+                traktToken = updated.traktAccessToken,
+                traktClientId = updated.traktClientId,
+                traktClientSecret = updated.traktClientSecret,
+                isTraktConnected = hasToken,
+                traktUsername = if (hasToken) _uiState.value.traktUsername else null,
+                traktUserLists = if (hasToken) _uiState.value.traktUserLists else emptyList()
+            )
+            if (hasToken) {
+                validateTraktToken(updated.traktAccessToken, updated.traktClientId)
+                loadTraktUserLists(updated.traktAccessToken, updated.traktClientId)
             }
         }
     }
@@ -715,18 +719,33 @@ class SettingsViewModel @Inject constructor(
             SettingField.TMDB_API_KEY -> {
                 val previousKey = _uiState.value.tmdbApiKey
                 val isUserEdit = value != previousKey
+                val returningToServer = value.isBlank()
                 _uiState.value = _uiState.value.copy(
                     tmdbApiKey = value,
-                    // Al escribir su propia clave se deja de usar la del servidor.
-                    serverTmdbConfigured = if (isUserEdit) false else _uiState.value.serverTmdbConfigured
+                    // Si borra la clave vuelve a seguir al servidor; si escribe la suya, modo local.
+                    serverTmdbConfigured = if (returningToServer) {
+                        userPreferencesRepository.userPreferences.value.tmdbServerConfigured
+                    } else if (isUserEdit) {
+                        false
+                    } else {
+                        _uiState.value.serverTmdbConfigured
+                    }
                 )
                 viewModelScope.launch {
-                    if (isUserEdit) userPreferencesRepository.setTmdbUseServer(false)
+                    if (returningToServer) {
+                        userPreferencesRepository.setTmdbUseServer(true)
+                    } else if (isUserEdit) {
+                        userPreferencesRepository.setTmdbUseServer(false)
+                    }
                     userPreferencesRepository.updateTmdbConfig(
                         apiKey = value,
                         region = _uiState.value.watchRegion
                     )
                     MediaCaches.invalidateServerCaches()
+                    MediaCaches.invalidateTmdbCaches()
+                    if (returningToServer && _uiState.value.isJellyfinConnected) {
+                        syncServerSettings()
+                    }
                 }
             }
         }
@@ -773,6 +792,7 @@ class SettingsViewModel @Inject constructor(
         cancelLibraryWorkers()
         mediaRepository.clearLocalCatalog()
         userPreferencesRepository.clearJellyfinSyncMetadata()
+        userPreferencesRepository.resetServerSyncOnIdentityChange()
         GetHomeFeedUseCase.invalidateFeedCache()
         HomeViewModel.invalidateStaticCaches()
         GenreViewModel.clearAllCaches()
@@ -780,6 +800,16 @@ class SettingsViewModel @Inject constructor(
         GetHomeFeedUseCase.clearMemorySnapshot()
         runCatching { HomeSnapshotFileStore(context).clear() }
         runCatching { database.collectionDao().clearAll() }
+        val resetPrefs = userPreferencesRepository.readPreferences()
+        _uiState.value = _uiState.value.copy(
+            serverTmdbConfigured = false,
+            serverTraktSynced = false,
+            serverTraktUsername = null,
+            traktToken = resetPrefs.traktAccessToken,
+            isTraktConnected = resetPrefs.traktAccessToken.isNotBlank(),
+            traktUsername = if (resetPrefs.traktAccessToken.isBlank()) null else _uiState.value.traktUsername,
+            traktUserLists = if (resetPrefs.traktAccessToken.isBlank()) emptyList() else _uiState.value.traktUserLists
+        )
         return true
     }
 
@@ -807,6 +837,7 @@ class SettingsViewModel @Inject constructor(
         jellyfinQuickConnectJob?.cancel()
         viewModelScope.launch {
             clearAllLocalCatalog()
+            userPreferencesRepository.resetServerSyncOnIdentityChange()
             userPreferencesRepository.updateJellyfinConfig(
                 serverUrl = "",
                 userId = "",
@@ -816,6 +847,7 @@ class SettingsViewModel @Inject constructor(
             )
             // No dejar credenciales descifradas en memoria tras cerrar sesión.
             tv.medusa.app.util.CryptoUtils.clearCache()
+            val resetPrefs = userPreferencesRepository.readPreferences()
             _uiState.value = _uiState.value.copy(
                 isJellyfinConnected = false,
                 serverUrl = "",
@@ -823,6 +855,13 @@ class SettingsViewModel @Inject constructor(
                 password = "",
                 serverName = null,
                 serverVersion = null,
+                serverTmdbConfigured = false,
+                serverTraktSynced = false,
+                serverTraktUsername = null,
+                traktToken = resetPrefs.traktAccessToken,
+                isTraktConnected = resetPrefs.traktAccessToken.isNotBlank(),
+                traktUsername = if (resetPrefs.traktAccessToken.isBlank()) null else _uiState.value.traktUsername,
+                traktUserLists = if (resetPrefs.traktAccessToken.isBlank()) emptyList() else _uiState.value.traktUserLists,
                 isSuccess = false,
                 discoveredServers = emptyList(),
                 statusMessage = context.getString(R.string.settings_jellyfin_session_closed)
@@ -870,8 +909,8 @@ class SettingsViewModel @Inject constructor(
     fun disconnectTrakt() {
         traktPollJob?.cancel()
         viewModelScope.launch {
-            userPreferencesRepository.updateTraktConfig("", _uiState.value.traktClientId, _uiState.value.traktClientSecret)
             val prefs = userPreferencesRepository.readPreferences()
+            userPreferencesRepository.updateTraktConfig("", _uiState.value.traktClientId, _uiState.value.traktClientSecret)
             // Solo se borra el vínculo compartido si se estaba usando; si el usuario estaba en
             // modo propio, desvincular aquí no debe afectar a las demás TVs.
             if (prefs.traktUseServer
@@ -883,7 +922,6 @@ class SettingsViewModel @Inject constructor(
                     token = prefs.jellyfinAccessToken
                 )
             }
-            userPreferencesRepository.setTraktUseServer(false)
             userPreferencesRepository.setTraktServerRevision(0)
             BrandViewModel.clearCache("trakt")
             _uiState.value = _uiState.value.copy(
@@ -951,11 +989,14 @@ class SettingsViewModel @Inject constructor(
                                 clientId = clientId,
                                 clientSecret = clientSecret
                             )
+                            val resolvedUsername = mediaRepository
+                                .getTraktUserProfile(tokenResponse.accessToken, clientId)
+                                .getOrNull()
+                                ?.let { it.username?.takeIf { u -> u.isNotBlank() } ?: it.name?.takeIf { n -> n.isNotBlank() } }
                             // Comparte las credenciales con el plugin para que el resto de
                             // dispositivos no tenga que repetir el emparejamiento por QR.
                             val serverPrefs = userPreferencesRepository.readPreferences()
                             if (serverPrefs.jellyfinServerUrl.isNotBlank() && serverPrefs.jellyfinAccessToken.isNotBlank()) {
-                                val knownUsername = _uiState.value.traktUsername ?: _uiState.value.serverTraktUsername
                                 val upload = TraktCredentialsUploadDto(
                                     accessToken = tokenResponse.accessToken,
                                     refreshToken = tokenResponse.refreshToken.orEmpty(),
@@ -963,7 +1004,7 @@ class SettingsViewModel @Inject constructor(
                                     createdAt = tokenResponse.createdAt,
                                     clientId = clientId,
                                     clientSecret = clientSecret,
-                                    username = knownUsername,
+                                    username = resolvedUsername,
                                     baseRevision = serverPrefs.traktServerRevision
                                 )
                                 var result = MedusaSyncRepository.saveTraktCredentials(
@@ -978,7 +1019,7 @@ class SettingsViewModel @Inject constructor(
                                         serverUrl = serverPrefs.jellyfinServerUrl,
                                         token = serverPrefs.jellyfinAccessToken
                                     ).getOrNull()
-                                    if (current != null && current.configured) {
+                                    if (current != null && (current.configured || !current.accessToken.isNullOrBlank())) {
                                         result = MedusaSyncRepository.saveTraktCredentials(
                                             serverUrl = serverPrefs.jellyfinServerUrl,
                                             token = serverPrefs.jellyfinAccessToken,
@@ -991,15 +1032,26 @@ class SettingsViewModel @Inject constructor(
                                     userPreferencesRepository.setTraktServerRevision(saved.revision)
                                     _uiState.value = _uiState.value.copy(
                                         serverTraktSynced = true,
-                                        serverTraktUsername = saved.username ?: knownUsername
+                                        serverTraktUsername = saved.username?.takeIf { it.isNotBlank() } ?: resolvedUsername
+                                    )
+                                }.onFailure {
+                                    // Si falla la subida al servidor, conservar el token local sin
+                                    // permitir que el arranque lo sobrescriba con el vínculo antiguo.
+                                    userPreferencesRepository.setTraktUseServer(false)
+                                    _uiState.value = _uiState.value.copy(
+                                        serverTraktSynced = false,
+                                        serverTraktUsername = null
                                     )
                                 }
+                            } else {
+                                userPreferencesRepository.setTraktUseServer(false)
                             }
                             BrandViewModel.clearCache("trakt")
                             _uiState.value = _uiState.value.copy(
                                 isWaitingTraktAuth = false,
                                 isTraktConnected = true,
                                 traktToken = tokenResponse.accessToken,
+                                traktUsername = resolvedUsername ?: _uiState.value.traktUsername,
                                 statusMessage = context.getString(R.string.settings_trakt_linked)
                             )
                             validateTraktToken(tokenResponse.accessToken, clientId)
@@ -1256,8 +1308,10 @@ class SettingsViewModel @Inject constructor(
                             statusMessage = context.getString(R.string.settings_authorized_as, me.effectiveName)
                         )
 
+                        // 2. Aplicar configuración compartida del servidor (TMDB proxy / Trakt) y
+                        //    sincronizar catálogo en segundo plano.
+                        syncServerSettings()
                         val repository = mediaRepository
-                        // 2. Sincronizar catálogo en segundo plano (no se cancela al salir de la pantalla)
                         repository.startBackgroundSync(
                             serverUrl = cleanUrl,
                             userId = me.effectiveId,
@@ -1385,6 +1439,7 @@ class SettingsViewModel @Inject constructor(
                 clearCatalogIfIdentityChanged(cleanUrl, userId)
 
                 // 2. Guardar credenciales inmediatamente en DataStore (una sola escritura)
+                val postResetPrefs = userPreferencesRepository.readPreferences()
                 userPreferencesRepository.saveConnectionConfig(
                     serverUrl = cleanUrl,
                     userId = userId,
@@ -1393,12 +1448,13 @@ class SettingsViewModel @Inject constructor(
                     password = effectivePassword,
                     serverId = detectedServerId,
                     serverVersion = detectedServerVersion,
-                    traktToken = state.traktToken,
-                    traktClientId = state.traktClientId,
-                    traktClientSecret = state.traktClientSecret,
-                    tmdbApiKey = state.tmdbApiKey,
+                    traktToken = postResetPrefs.traktAccessToken,
+                    traktClientId = postResetPrefs.traktClientId,
+                    traktClientSecret = postResetPrefs.traktClientSecret,
+                    tmdbApiKey = postResetPrefs.tmdbApiKey,
                     watchRegion = state.watchRegion
                 )
+                syncServerSettings()
 
                 // Registrar capacidades del dispositivo en Jellyfin
                 runCatching {
@@ -1419,7 +1475,7 @@ class SettingsViewModel @Inject constructor(
                 )
 
                 val count = repository.getLocalCount()
-                _uiState.value = state.copy(
+                _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     isSuccess = true,
                     username = authedUser,

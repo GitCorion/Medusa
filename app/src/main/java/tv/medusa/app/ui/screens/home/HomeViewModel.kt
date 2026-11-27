@@ -87,13 +87,12 @@ class HomeViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), tv.medusa.app.data.remote.ApiConfig.TMDB_WATCH_REGION)
 
     /**
-     * Indica si hay alguna fuente para llenar las pantallas de plataforma. Hoy la única es
-     * la clave TMDB del usuario: sin ella (y sin catálogo remoto publicado) la fila de logos
-     * llevaría a una pantalla vacía, así que se oculta. Si se restaura el catálogo estático,
-     * este flujo debe pasar a `tmdbApiKey.isNotBlank() || catálogoDisponible`.
+     * Indica si hay alguna fuente para llenar las pantallas de plataforma (clave TMDB local o
+     * proxy del plugin del servidor): sin ella (y sin catálogo remoto publicado) la fila de logos
+     * llevaría a una pantalla vacía, así que se oculta.
      */
     val hasDiscoverySource: StateFlow<Boolean> = userPreferencesRepository.userPreferencesFlow
-        .map { it.tmdbApiKey.isNotBlank() }
+        .map { it.hasTmdbAccess }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     val syncProgress: StateFlow<SyncProgress> = MediaRepository.syncProgress

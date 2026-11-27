@@ -32,9 +32,7 @@ class TmdbRepository(
      */
     private fun useServerProxy(): Boolean {
         val prefs = userPreferencesRepository?.userPreferences?.value ?: return false
-        return prefs.tmdbUseServer &&
-            prefs.jellyfinServerUrl.isNotBlank() &&
-            prefs.jellyfinAccessToken.isNotBlank()
+        return prefs.hasServerTmdbProxy
     }
 
     private fun effectiveApiKey(apiKey: String): String = if (useServerProxy()) "" else apiKey
@@ -328,17 +326,67 @@ class TmdbRepository(
         }
     }
 
-    suspend fun getTmdbMovieDetail(apiKey: String, movieId: Long): TmdbMovieDetailDto? {
+    suspend fun discoverMoviesByProvider(
+        apiKey: String,
+        providerId: String,
+        region: String = ApiConfig.TMDB_WATCH_REGION,
+        sortBy: String = "popularity.desc",
+        voteCountGte: Int? = null,
+        page: Int = 1
+    ): List<TmdbItemDto> {
         return runCatching {
             val api = tmdbService()
-            api.getMovieDetails(movieId = movieId, apiKey = effectiveApiKey(apiKey))
+            api.discoverMoviesByProvider(
+                apiKey = effectiveApiKey(apiKey),
+                providerId = providerId,
+                watchRegion = region,
+                sortBy = sortBy,
+                voteCountGte = voteCountGte,
+                page = page
+            ).results
+        }.getOrDefault(emptyList())
+    }
+
+    suspend fun discoverTvByProvider(
+        apiKey: String,
+        providerId: String,
+        region: String = ApiConfig.TMDB_WATCH_REGION,
+        sortBy: String = "popularity.desc",
+        voteCountGte: Int? = null,
+        page: Int = 1
+    ): List<TmdbItemDto> {
+        return runCatching {
+            val api = tmdbService()
+            api.discoverTvByProvider(
+                apiKey = effectiveApiKey(apiKey),
+                providerId = providerId,
+                watchRegion = region,
+                sortBy = sortBy,
+                voteCountGte = voteCountGte,
+                page = page
+            ).results
+        }.getOrDefault(emptyList())
+    }
+
+    suspend fun getTmdbMovieDetail(
+        apiKey: String,
+        movieId: Long,
+        language: String = ApiConfig.TMDB_LANGUAGE
+    ): TmdbMovieDetailDto? {
+        return runCatching {
+            val api = tmdbService()
+            api.getMovieDetails(movieId = movieId, apiKey = effectiveApiKey(apiKey), language = language)
         }.getOrNull()
     }
 
-    suspend fun getTmdbTvDetail(apiKey: String, seriesId: Long): TmdbTvDetailDto? {
+    suspend fun getTmdbTvDetail(
+        apiKey: String,
+        seriesId: Long,
+        language: String = ApiConfig.TMDB_LANGUAGE
+    ): TmdbTvDetailDto? {
         return runCatching {
             val api = tmdbService()
-            api.getTvDetails(seriesId = seriesId, apiKey = effectiveApiKey(apiKey))
+            api.getTvDetails(seriesId = seriesId, apiKey = effectiveApiKey(apiKey), language = language)
         }.getOrNull()
     }
 

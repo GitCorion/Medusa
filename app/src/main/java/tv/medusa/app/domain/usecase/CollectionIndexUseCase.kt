@@ -64,7 +64,7 @@ class CollectionIndexUseCase @Inject constructor(
             // 1. Catálogo centralizado en el repositorio público. Si está disponible, el dispositivo
             //    no llama a TMDB: descarga el fichero ya preparado y solo cruza con su biblioteca.
             val manifest = catalogRemote.fetchManifest(region)
-            if (apiKey.isBlank() && manifest == null) return 0
+            if (!prefs.hasTmdbAccess && manifest == null) return 0
 
             val version = "v$INDEX_VERSION|remote:${manifest?.updatedAt ?: 0L}|" +
                 "${prefs.jellyfinServerUrl}|${prefs.jellyfinLastSync}|" +

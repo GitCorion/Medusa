@@ -11,7 +11,7 @@ import tv.medusa.app.data.local.UserPreferencesRepository
 import tv.medusa.app.data.local.db.JellyfinDao
 import tv.medusa.app.data.remote.NetworkClientFactory
 import tv.medusa.app.data.remote.jellyfin.JellyfinApiService
-import tv.medusa.app.data.remote.tmdb.TmdbApiService
+import tv.medusa.app.data.repository.MediaRepository
 import tv.medusa.app.data.repository.buildJellyfinAuthHeader
 import tv.medusa.app.util.AppForeground
 import tv.medusa.app.util.forEachBounded
@@ -34,7 +34,8 @@ class OverviewEnrichmentWorker @AssistedInject constructor(
     @Assisted appContext: Context,
     @Assisted params: WorkerParameters,
     private val userPreferencesRepository: UserPreferencesRepository,
-    private val jellyfinDao: JellyfinDao
+    private val jellyfinDao: JellyfinDao,
+    private val mediaRepository: MediaRepository
 ) : CoroutineWorker(appContext, params) {
 
     companion object {
@@ -72,7 +73,13 @@ class OverviewEnrichmentWorker @AssistedInject constructor(
         Log.i("OverviewEnrichmentWorker", "OverviewEnrichmentWorker STARTING for serverUrl=$serverUrl userId=$userId")
 
         return try {
-            enrich(serverUrl = serverUrl, userId = userId, token = token, tmdbApiKey = prefs.tmdbApiKey)
+            enrich(
+                serverUrl = serverUrl,
+                userId = userId,
+                token = token,
+                tmdbApiKey = prefs.tmdbApiKey,
+                hasTmdbAccess = prefs.hasTmdbAccess
+            )
             Log.i("OverviewEnrichmentWorker", "OverviewEnrichmentWorker FINISHED successfully.")
             Result.success()
         } catch (e: Exception) {
@@ -81,13 +88,18 @@ class OverviewEnrichmentWorker @AssistedInject constructor(
         }
     }
 
-    private suspend fun enrich(serverUrl: String, userId: String, token: String, tmdbApiKey: String) {
-        val tmdbApi = NetworkClientFactory.createService(ApiConfig.TMDB_BASE_URL, TmdbApiService::class.java)
+    private suspend fun enrich(
+        serverUrl: String,
+        userId: String,
+        token: String,
+        tmdbApiKey: String,
+        hasTmdbAccess: Boolean
+    ) {
         val tmdbKey = tmdbApiKey.takeIf { it.isNotBlank() } ?: DEFAULT_TMDB_API_KEY
 
         // FASE 1: Completar pósteres faltantes vía TMDB (Ultra-rápido)
         var totalPostersEnriched = 0
-        while (totalPostersEnriched < 5000) {
+        while (hasTmdbAccess && totalPostersEnriched < 5000) {
             if (AppForeground.isPlaybackActive) break
             val yielding = AppForeground.isVisible
             val tmdbConcurrency = if (yielding) 4 else 8
@@ -101,13 +113,11 @@ class OverviewEnrichmentWorker @AssistedInject constructor(
                 val tmdbLong = media.tmdbId?.toLongOrNull()
                 val posterPath: String? = if (tmdbLong != null && tmdbLong > 0) {
                     val isTv = media.type.equals("Series", ignoreCase = true)
-                    runCatching {
-                        if (isTv) {
-                            tmdbApi.getTvDetails(seriesId = tmdbLong, apiKey = tmdbKey).posterPath
-                        } else {
-                            tmdbApi.getMovieDetails(movieId = tmdbLong, apiKey = tmdbKey).posterPath
-                        }
-                    }.getOrNull()
+                    if (isTv) {
+                        mediaRepository.getTmdbTvDetail(tmdbKey, tmdbLong)?.posterPath
+                    } else {
+                        mediaRepository.getTmdbMovieDetail(tmdbKey, tmdbLong)?.posterPath
+                    }
                 } else null
 
                 if (!posterPath.isNullOrBlank()) {
@@ -124,7 +134,7 @@ class OverviewEnrichmentWorker @AssistedInject constructor(
 
         // FASE 2: Completar descripciones faltantes en español vía TMDB
         var totalOverviewsEnriched = 0
-        while (totalOverviewsEnriched < 5000) {
+        while (hasTmdbAccess && totalOverviewsEnriched < 5000) {
             if (AppForeground.isPlaybackActive) break
             val yielding = AppForeground.isVisible
             val tmdbConcurrency = if (yielding) 4 else 8
@@ -138,13 +148,11 @@ class OverviewEnrichmentWorker @AssistedInject constructor(
                 val tmdbLong = media.tmdbId?.toLongOrNull()
                 val tmdbOverview: String? = if (tmdbLong != null && tmdbLong > 0) {
                     val isTv = media.type.equals("Series", ignoreCase = true)
-                    runCatching {
-                        if (isTv) {
-                            tmdbApi.getTvDetails(seriesId = tmdbLong, apiKey = tmdbKey, language = "es-ES").overview
-                        } else {
-                            tmdbApi.getMovieDetails(movieId = tmdbLong, apiKey = tmdbKey, language = "es-ES").overview
-                        }
-                    }.getOrNull()
+                    if (isTv) {
+                        mediaRepository.getTmdbTvDetail(tmdbKey, tmdbLong, language = "es-ES")?.overview
+                    } else {
+                        mediaRepository.getTmdbMovieDetail(tmdbKey, tmdbLong, language = "es-ES")?.overview
+                    }
                 } else null
 
                 if (!tmdbOverview.isNullOrBlank()) {

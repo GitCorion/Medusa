@@ -13,8 +13,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import tv.medusa.app.data.local.DEFAULT_TMDB_API_KEY
 import tv.medusa.app.data.local.UserPreferencesRepository
-import tv.medusa.app.data.remote.NetworkClientFactory
-import tv.medusa.app.data.remote.tmdb.TmdbApiService
 import tv.medusa.app.data.remote.tmdb.TmdbItemDto
 import tv.medusa.app.data.repository.MediaRepository
 import tv.medusa.app.domain.model.HomeSection
@@ -407,8 +405,6 @@ class BrandViewModel @Inject constructor(
                 //    se pinta el fallback en vivo. Al terminar, la pantalla se refresca sola.
                 CollectionIndexScheduler.enqueuePlatformNow(context, brand.id)
 
-                val api = NetworkClientFactory.createService(ApiConfig.TMDB_BASE_URL, TmdbApiService::class.java)
-
                 val tmdbSectionOrder = listOf("En Tendencia", "Novedades y Estrenos", "Series Destacadas", "Cine Aclamado")
 
                 val updateUiAndCache = {
@@ -434,19 +430,25 @@ class BrandViewModel @Inject constructor(
 
                 Log.d("BrandVM", "=== Loading brand feed: id=${brand.id}, name=${brand.name}, providerId=${brand.providerId}, region=$effectiveRegion ===")
 
-                try {
+                if (prefs.hasTmdbAccess) try {
                     supervisorScope {
                         launch {
                             val (trendingMovies, trendingTv) = coroutineScope {
                                 val m = async {
-                                    runCatching {
-                                        api.discoverMoviesByProvider(apiKey = effectiveApiKey, providerId = brand.providerId, watchRegion = effectiveRegion, page = 1)
-                                    }.getOrNull()?.results ?: emptyList()
+                                    mediaRepository.discoverTmdbMoviesByProvider(
+                                        apiKey = effectiveApiKey,
+                                        providerId = brand.providerId,
+                                        region = effectiveRegion,
+                                        page = 1
+                                    )
                                 }
                                 val t = async {
-                                    runCatching {
-                                        api.discoverTvByProvider(apiKey = effectiveApiKey, providerId = brand.providerId, watchRegion = effectiveRegion, page = 1)
-                                    }.getOrNull()?.results ?: emptyList()
+                                    mediaRepository.discoverTmdbTvByProvider(
+                                        apiKey = effectiveApiKey,
+                                        providerId = brand.providerId,
+                                        region = effectiveRegion,
+                                        page = 1
+                                    )
                                 }
                                 Pair(m.await(), t.await())
                             }
@@ -474,9 +476,12 @@ class BrandViewModel @Inject constructor(
                         }
 
                         launch {
-                            val trendingTv = runCatching {
-                                api.discoverTvByProvider(apiKey = effectiveApiKey, providerId = brand.providerId, watchRegion = effectiveRegion, page = 2)
-                            }.getOrNull()?.results ?: emptyList()
+                            val trendingTv = mediaRepository.discoverTmdbTvByProvider(
+                                apiKey = effectiveApiKey,
+                                providerId = brand.providerId,
+                                region = effectiveRegion,
+                                page = 2
+                            )
 
                             val localMatched = filterToLibraryUseCase.filterTmdbItems(
                                 tmdbItems = trendingTv.take(40),
@@ -499,9 +504,14 @@ class BrandViewModel @Inject constructor(
                         }
 
                         launch {
-                            val topMovies = runCatching {
-                                api.discoverMoviesByProvider(apiKey = effectiveApiKey, providerId = brand.providerId, watchRegion = effectiveRegion, sortBy = "vote_average.desc", voteCountGte = 200, page = 1)
-                            }.getOrNull()?.results ?: emptyList()
+                            val topMovies = mediaRepository.discoverTmdbMoviesByProvider(
+                                apiKey = effectiveApiKey,
+                                providerId = brand.providerId,
+                                region = effectiveRegion,
+                                sortBy = "vote_average.desc",
+                                voteCountGte = 200,
+                                page = 1
+                            )
 
                             val localMatched = filterToLibraryUseCase.filterTmdbItems(
                                 tmdbItems = topMovies.take(40),

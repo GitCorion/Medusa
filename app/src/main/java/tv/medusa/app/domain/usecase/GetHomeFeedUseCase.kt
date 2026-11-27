@@ -505,7 +505,7 @@ class GetHomeFeedUseCase(
                 }
 
                 val trendingMatched = mutableListOf<JellyfinMediaEntity>()
-                if (effectiveTmdbKey.isNotBlank()) {
+                if (prefs.hasTmdbAccess) {
                     runCatching {
                         withTimeoutOrNull(12000L) {
                             // Tendencia global + respaldo regional: el trending de TMDB es global
@@ -578,7 +578,7 @@ class GetHomeFeedUseCase(
             // JOB 3: PLATAFORMAS OFICIALES DE STREAMING (CONCURRENTE CON STREAMING)
             // ---------------------------------------------------------------------
             launch {
-                if (effectiveTmdbKey.isNotBlank()) {
+                if (prefs.hasTmdbAccess) {
                     val selected = prefs.selectedPlatforms
                     val activeProviders = (if (selected.isEmpty()) {
                         SUPPORTED_PLATFORMS
@@ -835,8 +835,8 @@ class GetHomeFeedUseCase(
                     launch {
                         val matchedRecs = mutableListOf<JellyfinMediaEntity>()
 
-                        // 1. Intentar con recomendaciones de TMDB si hay tmdbId y clave configurada
-                        if (effectiveTmdbKey.isNotBlank() && seed.tmdbId != null) {
+                        // 1. Intentar con recomendaciones de TMDB si hay tmdbId y acceso configurado
+                        if (prefs.hasTmdbAccess && seed.tmdbId != null) {
                             runCatching {
                                 withTimeoutOrNull(3500L) {
                                     val tmdbIdLong = seed.tmdbId?.toLongOrNull() ?: return@withTimeoutOrNull

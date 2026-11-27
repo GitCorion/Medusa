@@ -310,7 +310,7 @@ class GetSeasonalFeedUseCase @Inject constructor(
                         maxCandidates = 120
                     )
                 }
-                if (tmdbKey.isNotBlank() && event.tmdbKeywords.isNotEmpty()) {
+                if (prefs.hasTmdbAccess && event.tmdbKeywords.isNotEmpty()) {
                     val combined = event.tmdbKeywords.joinToString("|")
                     val raw = mediaRepository.getTmdbSeasonalDiscover(
                         apiKey = tmdbKey,
