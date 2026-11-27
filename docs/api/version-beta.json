@@ -1,11 +1,11 @@
 {
-  "versionCode": 1000178,
-  "versionName": "2.4.3",
+  "versionCode": 1000179,
+  "versionName": "2.5.0",
   "minSupportedVersionCode": 1000105,
   "forceUpdate": false,
   "killSwitch": false,
-  "releaseNotes": "Medusa 2.4.3",
-  "apkUrl": "https://github.com/GitCorion/Medusa/releases/download/v2.4.3/Medusa.apk",
-  "apkSha256": "c68af52794065fb1772b4d82239901f5d4debcd58ad5cc7d8b1aba8a37e96855",
+  "releaseNotes": "### Añadido\n\n- Sincronización con el plugin Medusa de Jellyfin: soporte para proxy TMDB gestionado por el servidor (`/Medusa/Tmdb/`) y sincronización de credenciales Trakt entre dispositivos del mismo usuario Jellyfin, manteniendo prioridad para las credenciales locales y modo *fail-open* si el plugin no está disponible.\n\n### Corregido\n\n- Proxy TMDB enrutado de forma uniforme en portada, detalle, géneros, plataformas, índice de colecciones y enriquecimiento en segundo plano sin requerir clave local.\n- Sincronización automática al iniciar sesión en Jellyfin, limpieza al desvincular o cambiar de cuenta y restricción estricta de cabeceras de autorización en redirecciones HTTP.",
+  "apkUrl": "https://github.com/GitCorion/Medusa/releases/download/v2.5.0/Medusa.apk",
+  "apkSha256": "5656345929c7d098067e438e72362d0efe793ddf1106e99f758458605a261c9d",
   "signatures": []
 }
