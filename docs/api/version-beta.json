@@ -1,11 +1,11 @@
 {
-  "versionCode": 1000179,
-  "versionName": "2.5.0",
+  "versionCode": 1000180,
+  "versionName": "2.5.1",
   "minSupportedVersionCode": 1000105,
   "forceUpdate": false,
   "killSwitch": false,
-  "releaseNotes": "### Añadido\n\n- Sincronización con el plugin Medusa de Jellyfin: soporte para proxy TMDB gestionado por el servidor (`/Medusa/Tmdb/`) y sincronización de credenciales Trakt entre dispositivos del mismo usuario Jellyfin, manteniendo prioridad para las credenciales locales y modo *fail-open* si el plugin no está disponible.\n\n### Corregido\n\n- Proxy TMDB enrutado de forma uniforme en portada, detalle, géneros, plataformas, índice de colecciones y enriquecimiento en segundo plano sin requerir clave local.\n- Sincronización automática al iniciar sesión en Jellyfin, limpieza al desvincular o cambiar de cuenta y restricción estricta de cabeceras de autorización en redirecciones HTTP.",
-  "apkUrl": "https://github.com/GitCorion/Medusa/releases/download/v2.5.0/Medusa.apk",
-  "apkSha256": "5656345929c7d098067e438e72362d0efe793ddf1106e99f758458605a261c9d",
+  "releaseNotes": "### Añadido\n\n- Favoritos y catálogos: nueva opción de ordenación por **fecha de añadido** (`DateCreated` de Jellyfin, más recientes primero), establecida como orden predeterminado en la pantalla de Favoritos.\n\n### Corregido\n\n- Favoritos: corregida la navegación de foco hacia arriba desde el botón de ordenación para pasar por la barra de filtros (`Ocultar vistos` / formato) antes de subir a la barra superior, eliminado el `FocusRequester` duplicado y reiniciado el scroll al cambiar de filtro.",
+  "apkUrl": "https://github.com/GitCorion/Medusa/releases/download/v2.5.1/Medusa.apk",
+  "apkSha256": "dd1322e3a43a8fdd9ad402d8e1ba5fefda01785ac065a867942efcbbb5809fbe",
   "signatures": []
 }
